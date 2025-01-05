@@ -1,10 +1,13 @@
 package board
 
 import (
+	"fmt"
 	"iter"
 	"math/bits"
+	"strings"
 
 	"github.com/paulsonkoly/chess-3/move"
+
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
@@ -186,32 +189,105 @@ out:
 	return &b
 }
 
+func (b Board) FEN() string {
+	s := " KN kn"
+	sb := strings.Builder{}
+
+	count := 0
+
+	for rank := 7; rank >= 0; rank-- {
+		for file := range 8 {
+			sq := Square(rank*8 + file)
+			p := b.SquaresToPiece[sq]
+
+			if p != NoPiece {
+				c := Black
+
+				if b.Colors[White]&(1<<sq) != 0 {
+					c = White
+				}
+
+				if count > 0 {
+					sb.WriteString(fmt.Sprint(count))
+					count = 0
+				}
+
+				sb.WriteByte(s[int(3*c)+int(p)]) // TODO add pieces
+			} else {
+				count++
+			}
+		}
+		if count > 0 {
+			sb.WriteString(fmt.Sprint(count))
+			count = 0
+		}
+		if rank != 0 {
+			sb.WriteString("/")
+		}
+	}
+
+	sb.WriteString(fmt.Sprintf(" %c - - 0 1", "wb"[b.STM]))
+
+	// if (board->castle & CALC_CASTLE(WHITE, SHORT_CASTLE)) printf("K");
+	// if (board->castle & CALC_CASTLE(WHITE, LONG_CASTLE)) printf("Q");
+	// if (board->castle & CALC_CASTLE(BLACK, SHORT_CASTLE)) printf("k");
+	// if (board->castle & CALC_CASTLE(BLACK, LONG_CASTLE)) printf("q");
+	// if (board->castle == 0) printf("-");
+	//
+	// if (board->en_passant) {
+	//   SQUARE ep = __builtin_ctzll(board->en_passant);
+	//   SQUARE f = (ep & 7), r = (ep >> 3);
+	//
+	//   printf(" %c%c 0 1 ", 'a' + f, '1' + r);
+	// }
+	// else {
+	//   printf(" - 0 1 ");
+	// }
+
+	return sb.String()
+}
+
 func (b *Board) MakeMove(m *move.Move) {
+
 	m.Captured = b.SquaresToPiece[m.To]
+
+	b.Pieces[m.Captured] &= ^(1 << m.To)
 	b.Pieces[m.Piece] ^= (1 << m.From) | (1 << m.To)
+
+	b.Colors[b.STM.Flip()] &= ^(1 << m.To)
 	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
+
 	b.SquaresToPiece[m.From] = NoPiece
 	b.SquaresToPiece[m.To] = m.Piece
-	// if b.Pieces[types.Knight]|b.Pieces[types.King] != b.Colors[types.White]|b.Colors[types.Black] {
+
+	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
+	// 	b.Print(*ansi.NewWriter(os.Stdout))
+	// 	fmt.Println(*b)
+	// 	fmt.Println(*m)
 	// 	panic("board inconsistency")
 	// }
 	b.STM = b.STM.Flip()
 }
 
+var captureMask = [...]BitBoard{
+  0, Full, Full,  // TODO more piece types
+}
+
 func (b *Board) UndoMove(m *move.Move) {
 	b.STM = b.STM.Flip()
+
 	b.Pieces[m.Piece] ^= (1 << m.From) | (1 << m.To)
 	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
 	b.SquaresToPiece[m.To] = NoPiece
 	b.SquaresToPiece[m.From] = m.Piece
 
-	b.Pieces[m.Captured] ^= (1 << m.To)
 	b.SquaresToPiece[m.To] = m.Captured
-	if m.Captured != NoPiece {
-		b.Colors[b.STM.Flip()] ^= (1 << m.To)
-	}
 
-	// if b.Pieces[types.Knight]|b.Pieces[types.King] != b.Colors[types.White]|b.Colors[types.Black] {
+  cm := (1 << m.To) & captureMask[m.Captured]
+  b.Pieces[m.Captured] ^= cm
+  b.Colors[b.STM.Flip()] ^= cm
+
+	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	panic("board inconsistency")
 	// }
 }
