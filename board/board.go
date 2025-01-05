@@ -102,7 +102,7 @@ func (b *Board) MakeMove(m *move.Move) {
 }
 
 var captureMask = [...]BitBoard{
-  0, Full, Full,  // TODO more piece types
+  0, Full, Full, Full, Full, Full, Full, 
 }
 
 func (b *Board) UndoMove(m *move.Move) {
