@@ -9,7 +9,7 @@ import (
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/stretchr/testify/assert"
 
-	//revive:disable-next-line
+	// revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
@@ -23,7 +23,7 @@ func TestMoves(t *testing.T) {
 	}{
 		{
 			name:   "simple king move",
-			b:      board.FromFEN("8/8/8/8/8/4K3/8/8 w - - 0 1"),
+			b:      board.FromFEN("8/8/8/8/8/4K3/8/k7 w - - 0 1"),
 			target: board.Full,
 			want: []move.Move{
 				K(E3, D2), K(E3, E2), K(E3, F2),
@@ -33,7 +33,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name:   "king in the corner",
-			b:      board.FromFEN("8/8/8/8/8/8/8/7k b - - 0 1"),
+			b:      board.FromFEN("8/8/8/8/8/8/K7/7k b - - 0 1"),
 			target: board.Full,
 			want: []move.Move{
 				K(H1, H2), K(H1, G2), K(H1, G1),
@@ -41,25 +41,54 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name:   "simple knight move",
-			b:      board.FromFEN("8/8/8/8/8/4N3/8/8 w - - 0 1"),
+			b:      board.FromFEN("8/8/8/8/8/4N3/8/k6K w - - 0 1"),
 			target: board.Full,
 			want: []move.Move{
 				N(E3, C4), N(E3, D5), N(E3, F5), N(E3, G4),
 				N(E3, C2), N(E3, D1), N(E3, F1), N(E3, G2),
+				K(H1, G1), K(H1, G2), K(H1, H2), 
 			},
 		},
 		{
 			name:   "knight in the corner",
-			b:      board.FromFEN("8/8/8/8/8/8/8/7n b - - 0 1"),
+			b:      board.FromFEN("k7/8/8/8/8/8/8/K6N w - - 0 1"),
 			target: board.Full,
 			want: []move.Move{
 				N(H1, F2), N(H1, G3),
+				K(A1, A2), K(A1, B2), K(A1, B1), 
+			},
+		},
+		{
+			name:   "simple bishop move",
+			b:      board.FromFEN("k7/8/8/8/8/3B4/8/7K w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        B(D3, C2), B(D3, B1), B(D3, E2), B(D3, F1), B(D3, C4), B(D3, B5),
+        B(D3, A6), B(D3, E4), B(D3, F5), B(D3, G6), B(D3, H7), 
+				K(H1, G1), K(H1, G2), K(H1, H2), 
+			},
+		},
+		{
+			name:   "bishop in the corner",
+			b:      board.FromFEN("k7/8/8/8/8/8/8/B6K w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        B(A1, B2), B(A1, C3), B(A1, D4), B(A1, E5), B(A1, F6), B(A1, G7), B(A1, H8),
+				K(H1, G1), K(H1, G2), K(H1, H2), 
+			},
+		},
+		{
+			name:   "bishop blocked by friendly",
+			b:      board.FromFEN("k7/8/8/8/8/2K5/1B6/8 w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        B(B2, A3), B(B2, A1) , B(B2, C1),
+        K(C3, B3), K(C3, B4), K(C3, C2), K(C3, C4), K(C3, D2), K(C3, D3), K(C3, D4),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			want := tt.want
 			ok := make([]bool, len(want))
 
@@ -89,10 +118,13 @@ func N(f, t Square) move.Move {
 	return move.Move{From: f, To: t, Piece: Knight}
 }
 
+func B(f, t Square) move.Move {
+	return move.Move{From: f, To: t, Piece: Bishop}
+}
+
 func TestIsAttacked(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
+		name   string
 		b      *board.Board
 		by     Color
 		target board.BitBoard
@@ -100,30 +132,30 @@ func TestIsAttacked(t *testing.T) {
 	}{
 		{
 			name:   "king not in check",
-			b:      board.FromFEN("8/8/4k3/4n3/8/4K3/8/8 w - - 0 1"),
-			by:     Black,
-			target: board.BitBoardFromSquares(E3),
+			b:      board.FromFEN("8/1k6/8/8/8/8/8/RNBQKBNR w - - 0 1"),
+			by:     White,
+			target: board.BitBoardFromSquares(B7),
 			want:   false,
 		},
 		{
 			name:   "king in check by knight",
-			b:      board.FromFEN("8/8/4k3/4n3/2n5/4K3/8/8 w - - 0 1"),
-			by:     Black,
+			b:      board.FromFEN("8/8/8/8/8/2k5/8/RNBQKBNR w - - 0 1"),
+			by:     White,
+			target: board.BitBoardFromSquares(C3),
+			want:   true,
+		},
+		{
+			name:   "king in check by bishop",
+			b:      board.FromFEN("8/8/8/8/8/4k3/8/RNBQKBNR w - - 0 1"),
+			by:     White,
 			target: board.BitBoardFromSquares(E3),
 			want:   true,
 		},
 		{
-			name:   "king in check by king (illegal)",
-			b:      board.FromFEN("8/8/8/4k3/4K3/8/8/8 w - - 0 1"),
-			by:     Black,
-			target: board.BitBoardFromSquares(E4),
-			want:   true,
-		},
-		{
-			name:   "king not in check by own knight",
-			b:      board.FromFEN("8/8/8/4k3/8/8/4K3/2N5 w - - 0 1"),
-			by:     Black,
-			target: board.BitBoardFromSquares(E2),
+			name:   "bishop does not attack through a blocking piece",
+			b:      board.FromFEN("8/8/8/8/8/4k3/3N4/R1BQKBNR w - - 0 1"),
+			by:     White,
+			target: board.BitBoardFromSquares(E3),
 			want:   false,
 		},
 	}
@@ -133,3 +165,4 @@ func TestIsAttacked(t *testing.T) {
 		})
 	}
 }
+
