@@ -234,33 +234,29 @@ func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 	r := int(sq / 8)
 	f := int(sq % 8)
 
-	for rr := r + 1; rr <= 7; r++ {
+	for rr := r + 1; rr <= 7 ; rr++ {
 		result |= (1 << (f + rr*8))
 		if occ&(1<<(f+rr*8)) != 0 {
 			break
 		}
-		rr++
 	}
 	for rr := r - 1; rr >= 0; rr-- {
 		result |= (1 << (f + rr*8))
 		if occ&(1<<(f+rr*8)) != 0 {
 			break
 		}
-		rr--
 	}
 	for ff := f + 1; ff <= 7; ff++ {
 		result |= (1 << (ff + r*8))
 		if occ&(1<<(ff+r*8)) != 0 {
 			break
 		}
-		ff++
 	}
 	for ff := f - 1; ff >= 0; ff-- {
 		result |= (1 << (ff + r*8))
 		if occ&(1<<(ff+r*8)) != 0 {
 			break
 		}
-		ff--
 	}
 
 	return result
@@ -318,6 +314,26 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 				}
 			}
 		}
+
+		// rook moves
+		{
+			pieces := self & b.Pieces[Rook]
+
+			for piece := range pieces.All() {
+				from := piece.LowestSet()
+				mask := rookMasks[from]
+				magic := rookMagics[from]
+				shift := rookShifts[from]
+
+				bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
+
+				for target := range bb.All() {
+					if !yield(move.Move{Piece: Rook, From: from, To: target.LowestSet()}) {
+						return
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -351,6 +367,18 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 			shift := bishopShifts[tsq]
 
 			hit := bishopAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & b.Pieces[Bishop] & other
+			if hit != 0 {
+				return true
+			}
+		}
+
+		// rook moves
+		{
+			mask := rookMasks[tsq]
+			magic := rookMagics[tsq]
+			shift := rookShifts[tsq]
+
+			hit := rookAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & b.Pieces[Rook] & other
 			if hit != 0 {
 				return true
 			}

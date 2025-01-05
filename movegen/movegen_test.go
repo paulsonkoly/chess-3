@@ -86,6 +86,36 @@ func TestMoves(t *testing.T) {
         K(C3, B3), K(C3, B4), K(C3, C2), K(C3, C4), K(C3, D2), K(C3, D3), K(C3, D4),
 			},
 		},
+		{
+			name:   "simple rook move",
+			b:      board.FromFEN("k7/8/8/8/4R3/8/8/7K w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        R(E4, D4), R(E4, C4), R(E4, B4), R(E4, A4), R(E4, H4), R(E4, G4), R(E4, F4),
+        R(E4, E5), R(E4, E6), R(E4, E7), R(E4, E8), R(E4, E3), R(E4, E2), R(E4, E1),
+				K(H1, G1), K(H1, G2), K(H1, H2), 
+			},
+		},
+		{
+			name:   "rook in the corner",
+			b:      board.FromFEN("k7/8/8/8/8/8/8/R6K w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        R(A1, A2), R(A1, A3), R(A1, A4), R(A1, A5), R(A1, A6), R(A1, A7), R(A1, A8),
+        R(A1, B1), R(A1, C1), R(A1, D1), R(A1, E1), R(A1, F1), R(A1, G1),
+				K(H1, G1), K(H1, G2), K(H1, H2), 
+			},
+		},
+		{
+			name:   "rook blocked by friendly",
+			b:      board.FromFEN("k7/8/8/8/8/2K5/2R5/8 w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        R(C2, B2), R(C2, A2), R(C2, D2), R(C2, E2), R(C2, F2), R(C2, G2), R(C2, H2),
+        R(C2, C1),
+        K(C3, B3), K(C3, B4), K(C3, B2), K(C3, C4), K(C3, D2), K(C3, D3), K(C3, D4),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -122,6 +152,10 @@ func B(f, t Square) move.Move {
 	return move.Move{From: f, To: t, Piece: Bishop}
 }
 
+func R(f, t Square) move.Move {
+	return move.Move{From: f, To: t, Piece: Rook}
+}
+
 func TestIsAttacked(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -156,6 +190,20 @@ func TestIsAttacked(t *testing.T) {
 			b:      board.FromFEN("8/8/8/8/8/4k3/3N4/R1BQKBNR w - - 0 1"),
 			by:     White,
 			target: board.BitBoardFromSquares(E3),
+			want:   false,
+		},
+		{
+			name:   "king in check by rook",
+			b:      board.FromFEN("k7/8/8/8/8/8/8/RNBQKBNR w - - 0 1"),
+			by:     White,
+			target: board.BitBoardFromSquares(A8),
+			want:   true,
+		},
+		{
+			name:   "rook does not attack through a blocking piece",
+			b:      board.FromFEN("k7/8/8/8/8/N7/8/R1BQKBNR w - - 0 1"),
+			by:     White,
+			target: board.BitBoardFromSquares(A8),
 			want:   false,
 		},
 	}
