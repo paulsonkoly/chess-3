@@ -6,13 +6,17 @@ type Piece byte
 
 const (
 	NoPiece = Piece(iota)
-	King
+  Pawn
 	Knight
+  Bishop
+  Rook
+  Queen
+	King
 )
 
 func AllPieces() iter.Seq[Piece] {
 	return func(yield func(Piece) bool) {
-		for piece := King; piece <= Knight; piece++ {
+		for piece := Pawn; piece <= King; piece++ {
 			if !yield(piece) {
 				return
 			}
