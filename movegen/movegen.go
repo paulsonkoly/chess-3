@@ -333,6 +333,33 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 					}
 				}
 			}
+    }
+
+		// queen moves
+		{
+			pieces := self & b.Pieces[Queen]
+
+			for piece := range pieces.All() {
+				from := piece.LowestSet()
+				mask := rookMasks[from]
+				magic := rookMagics[from]
+				shift := rookShifts[from]
+
+				bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] 
+
+				mask = bishopMasks[from]
+				magic = bishopMagics[from]
+				shift = bishopShifts[from]
+
+				bb |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
+        bb &= ^self & target
+
+				for target := range bb.All() {
+					if !yield(move.Move{Piece: Queen, From: from, To: target.LowestSet()}) {
+						return
+					}
+				}
+			}
 		}
 	}
 }
@@ -360,25 +387,25 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 			}
 		}
 
-		// bishop moves
+		// bishop or queen moves
 		{
 			mask := bishopMasks[tsq]
 			magic := bishopMagics[tsq]
 			shift := bishopShifts[tsq]
 
-			hit := bishopAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & b.Pieces[Bishop] & other
+			hit := bishopAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & (b.Pieces[Queen] | b.Pieces[Bishop]) & other
 			if hit != 0 {
 				return true
 			}
 		}
 
-		// rook moves
+		// rook or queen moves
 		{
 			mask := rookMasks[tsq]
 			magic := rookMagics[tsq]
 			shift := rookShifts[tsq]
 
-			hit := rookAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & b.Pieces[Rook] & other
+			hit := rookAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & (b.Pieces[Rook] | b.Pieces[Queen]) & other
 			if hit != 0 {
 				return true
 			}

@@ -116,6 +116,40 @@ func TestMoves(t *testing.T) {
         K(C3, B3), K(C3, B4), K(C3, B2), K(C3, C4), K(C3, D2), K(C3, D3), K(C3, D4),
 			},
 		},
+		{
+			name:   "simple queen move",
+			b:      board.FromFEN("k7/8/8/8/4Q3/8/8/7K w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        Q(E4, D4), Q(E4, C4), Q(E4, B4), Q(E4, A4), Q(E4, H4), Q(E4, G4), Q(E4, F4),
+        Q(E4, E5), Q(E4, E6), Q(E4, E7), Q(E4, E8), Q(E4, E3), Q(E4, E2), Q(E4, E1),
+        Q(E4, F5), Q(E4, G6), Q(E4, H7), Q(E4, F3), Q(E4, G2), 
+        Q(E4, D5), Q(E4, C6), Q(E4, B7), Q(E4, A8), Q(E4, D3), Q(E4, C2), Q(E4, B1),
+				K(H1, G1), K(H1, G2), K(H1, H2), 
+			},
+		},
+		{
+			name:   "queen in the corner",
+			b:      board.FromFEN("k7/8/8/8/8/8/8/Q6K w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        Q(A1, A2), Q(A1, A3), Q(A1, A4), Q(A1, A5), Q(A1, A6), Q(A1, A7), Q(A1, A8),
+        Q(A1, B1), Q(A1, C1), Q(A1, D1), Q(A1, E1), Q(A1, F1), Q(A1, G1),
+        Q(A1, B2), Q(A1, C3), Q(A1, D4), Q(A1, E5), Q(A1, F6), Q(A1, G7), Q(A1, H8),
+				K(H1, G1), K(H1, G2), K(H1, H2), 
+			},
+		},
+		{
+			name:   "queen blocked by friendly",
+			b:      board.FromFEN("8/8/8/2k5/8/2K5/2Q5/8 w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+        Q(C2, B1), Q(C2, C1), Q(C2, D1), Q(C2, A2), Q(C2, B2), Q(C2, D2), Q(C2, E2),
+        Q(C2, F2), Q(C2, G2), Q(C2, H2), Q(C2, B3), Q(C2, D3), Q(C2, A4), Q(C2, E4),
+        Q(C2, F5), Q(C2, G6), Q(C2, H7),
+        K(C3, B2), K(C3, D2), K(C3, B3), K(C3, D3), K(C3, B4), K(C3, C4), K(C3, D4),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -154,6 +188,10 @@ func B(f, t Square) move.Move {
 
 func R(f, t Square) move.Move {
 	return move.Move{From: f, To: t, Piece: Rook}
+}
+
+func Q(f, t Square) move.Move {
+	return move.Move{From: f, To: t, Piece: Queen}
 }
 
 func TestIsAttacked(t *testing.T) {
@@ -204,6 +242,20 @@ func TestIsAttacked(t *testing.T) {
 			b:      board.FromFEN("k7/8/8/8/8/N7/8/R1BQKBNR w - - 0 1"),
 			by:     White,
 			target: board.BitBoardFromSquares(A8),
+			want:   false,
+		},
+		{
+			name:   "king in check by queen",
+			b:      board.FromFEN("8/8/8/8/3k4/8/8/RNBQKBNR w - - 0 1"),
+			by:     White,
+			target: board.BitBoardFromSquares(D4),
+			want:   true,
+		},
+		{
+			name:   "queen does not attack through a blocking piece",
+			b:      board.FromFEN("8/8/8/8/6k1/8/4N3/RNBQKB1R w - - 0 1"),
+			by:     White,
+			target: board.BitBoardFromSquares(G4),
 			want:   false,
 		},
 	}
