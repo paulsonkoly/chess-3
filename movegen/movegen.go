@@ -234,7 +234,7 @@ func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 	r := int(sq / 8)
 	f := int(sq % 8)
 
-	for rr := r + 1; rr <= 7 ; rr++ {
+	for rr := r + 1; rr <= 7; rr++ {
 		result |= (1 << (f + rr*8))
 		if occ&(1<<(f+rr*8)) != 0 {
 			break
@@ -265,30 +265,27 @@ func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 	return func(yield func(move.Move) bool) {
 		self := b.Colors[b.STM]
+		them := b.Colors[b.STM.Flip()]
 
 		// king moves
 		{
 			piece := self & b.Pieces[King]
 			from := piece.LowestSet()
 
-			for target := range (kingMoves[from] & ^self & target).All() {
-				if !yield(move.Move{Piece: King, From: from, To: target.LowestSet()}) {
+			for to := range (kingMoves[from] & ^self & target).All() {
+				if !yield(move.Move{Piece: King, From: from, To: to.LowestSet()}) {
 					return
 				}
 			}
 		}
 
 		// knight moves
-		{
-			pieces := self & b.Pieces[Knight]
+		for piece := range (self & b.Pieces[Knight]).All() {
+			from := piece.LowestSet()
 
-			for piece := range pieces.All() {
-				from := piece.LowestSet()
-
-				for target := range (knightMoves[from] & ^self & target).All() {
-					if !yield(move.Move{Piece: Knight, From: from, To: target.LowestSet()}) {
-						return
-					}
+			for to := range (knightMoves[from] & ^self & target).All() {
+				if !yield(move.Move{Piece: Knight, From: from, To: to.LowestSet()}) {
+					return
 				}
 			}
 		}
@@ -296,66 +293,155 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 		occ := b.Colors[White] | b.Colors[Black]
 
 		// bishop moves
-		{
-			pieces := self & b.Pieces[Bishop]
+		for piece := range (self & b.Pieces[Bishop]).All() {
+			from := piece.LowestSet()
+			mask := bishopMasks[from]
+			magic := bishopMagics[from]
+			shift := bishopShifts[from]
 
-			for piece := range pieces.All() {
-				from := piece.LowestSet()
-				mask := bishopMasks[from]
-				magic := bishopMagics[from]
-				shift := bishopShifts[from]
+			bb := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
 
-				bb := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
-
-				for target := range bb.All() {
-					if !yield(move.Move{Piece: Bishop, From: from, To: target.LowestSet()}) {
-						return
-					}
+			for to := range bb.All() {
+				if !yield(move.Move{Piece: Bishop, From: from, To: to.LowestSet()}) {
+					return
 				}
 			}
 		}
 
 		// rook moves
-		{
-			pieces := self & b.Pieces[Rook]
+		for piece := range (self & b.Pieces[Rook]).All() {
+			from := piece.LowestSet()
+			mask := rookMasks[from]
+			magic := rookMagics[from]
+			shift := rookShifts[from]
 
-			for piece := range pieces.All() {
-				from := piece.LowestSet()
-				mask := rookMasks[from]
-				magic := rookMagics[from]
-				shift := rookShifts[from]
+			bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
 
-				bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
-
-				for target := range bb.All() {
-					if !yield(move.Move{Piece: Rook, From: from, To: target.LowestSet()}) {
-						return
-					}
+			for to := range bb.All() {
+				if !yield(move.Move{Piece: Rook, From: from, To: to.LowestSet()}) {
+					return
 				}
 			}
-    }
+		}
 
 		// queen moves
-		{
-			pieces := self & b.Pieces[Queen]
+		for piece := range (self & b.Pieces[Queen]).All() {
+			from := piece.LowestSet()
+			mask := rookMasks[from]
+			magic := rookMagics[from]
+			shift := rookShifts[from]
 
-			for piece := range pieces.All() {
-				from := piece.LowestSet()
-				mask := rookMasks[from]
-				magic := rookMagics[from]
-				shift := rookShifts[from]
+			bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
 
-				bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] 
+			mask = bishopMasks[from]
+			magic = bishopMagics[from]
+			shift = bishopShifts[from]
 
-				mask = bishopMasks[from]
-				magic = bishopMagics[from]
-				shift = bishopShifts[from]
+			bb |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
+			bb &= ^self & target
 
-				bb |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
-        bb &= ^self & target
+			for to := range bb.All() {
+				if !yield(move.Move{Piece: Queen, From: from, To: to.LowestSet()}) {
+					return
+				}
+			}
+		}
 
-				for target := range bb.All() {
-					if !yield(move.Move{Piece: Queen, From: from, To: target.LowestSet()}) {
+		sndRank := [...]board.BitBoard{board.SecondRank, board.SeventhRank}
+		mySndRank := sndRank[b.STM]
+		theirSndRank := sndRank[b.STM.Flip()]
+
+		// since shifting by negative is illegal, I bite the bullet and branch on STM
+		var (
+			occ1, occ2   board.BitBoard
+			occ1l, occ1r board.BitBoard
+			tgt1, tgt2   board.BitBoard
+			shift        int
+		)
+		if b.STM == White {
+			occ1 = occ >> 8
+			tgt1 = target >> 8
+			occ1l = (them &^ board.AFile) >> 7
+			occ1r = (them &^ board.HFile) >> 9
+			occ2 = occ >> 16
+			tgt2 = target >> 16
+			shift = 8
+		} else {
+			occ1 = (occ | ^target) << 8
+			tgt1 = target << 8
+			occ1l = (them &^ board.AFile) << 7
+			occ1r = (them &^ board.HFile) << 9
+			occ2 = occ << 16
+			tgt2 = target << 16
+			shift = -8
+		}
+
+		pushable := self & b.Pieces[Pawn] & ^occ1
+
+		// single pawn pushes (no promotions)
+		for piece := range (pushable & tgt1 & ^theirSndRank).All() {
+			from := piece.LowestSet()
+
+			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + shift)}) {
+				return
+			}
+		}
+
+		// promotions pushes
+		for piece := range (pushable & tgt1 & theirSndRank).All() {
+			from := piece.LowestSet()
+			for promo := Queen; promo > Pawn; promo-- {
+				if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + shift), Promo: promo}) {
+					return
+				}
+			}
+		}
+
+		// double pawn pushes
+		for piece := range (pushable & tgt2 & mySndRank & ^occ2).All() {
+			from := piece.LowestSet()
+
+			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + 2*shift)}) {
+				return
+			}
+		}
+
+		// pawn captures (no promotions)
+		for piece := range (self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r)).All() {
+			from := piece.LowestSet()
+			var bb board.BitBoard
+
+			if b.STM == White {
+				bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
+			} else {
+				bb = ((piece & ^board.AFile) >> 7) | ((piece & ^board.HFile) >> 9)
+			}
+
+			for toBB := range (bb & target & them).All() {
+				to := toBB.LowestSet()
+
+				if !yield(move.Move{Piece: Pawn, From: from, To: to}) {
+					return
+				}
+			}
+		}
+
+		// pawn captures with promotions
+		for piece := range (self & b.Pieces[Pawn] & theirSndRank & (occ1l | occ1r)).All() {
+			from := piece.LowestSet()
+			var bb board.BitBoard
+
+			if b.STM == White {
+				bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
+			} else {
+				bb = ((piece & ^board.AFile) >> 7) | ((piece & ^board.HFile) >> 9)
+			}
+
+			for toBB := range (bb & target & them).All() {
+				to := toBB.LowestSet()
+
+				for promo := Queen; promo > Pawn; promo-- {
+					if !yield(move.Move{Piece: Pawn, From: from, To: to, Promo: promo}) {
 						return
 					}
 				}
@@ -410,6 +496,23 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 				return true
 			}
 		}
+
+		// pawn capture
+		{
+			var bb board.BitBoard
+
+			if by == White {
+				bb = ((t & ^board.AFile) >> 7) | ((t & ^board.HFile) >> 9)
+			} else {
+				bb = ((t & ^board.AFile) << 7) | ((t & ^board.HFile) << 9)
+			}
+
+			hit := bb & b.Pieces[Pawn] & other
+			if hit != 0 {
+				return true
+			}
+		}
 	}
+
 	return false
 }

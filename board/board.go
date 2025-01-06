@@ -45,6 +45,15 @@ const (
 	FFile = BitBoard(0x0404040040404040)
 	GFile = BitBoard(0x0202020020202020)
 	HFile = BitBoard(0x0101010010101010)
+
+	FistRank    = BitBoard(0x00000000000000ff)
+	SecondRank  = BitBoard(0x000000000000ff00)
+	ThirdRank   = BitBoard(0x0000000000ff0000)
+	FourthRank  = BitBoard(0x00000000ff000000)
+	FifthRank   = BitBoard(0x000000ff00000000)
+	SixRank     = BitBoard(0x0000ff0000000000)
+	SeventhRank = BitBoard(0x00ff000000000000)
+	EightsRank  = BitBoard(0xff00000000000000)
 )
 
 const Full = BitBoard(0xffffffffffffffff)
@@ -56,41 +65,50 @@ type Board struct {
 	Colors         [2]BitBoard
 }
 
-// func New() *Board {
-// 	sqTP := [64]Piece{}
-// 	sqTP[B1] = Knight
-// 	sqTP[G1] = Knight
-// 	sqTP[B8] = Knight
-// 	sqTP[G8] = Knight
+//	func New() *Board {
+//		sqTP := [64]Piece{}
+//		sqTP[B1] = Knight
+//		sqTP[G1] = Knight
+//		sqTP[B8] = Knight
+//		sqTP[G8] = Knight
 //
-// 	sqTP[E1] = King
-// 	sqTP[E8] = King
+//		sqTP[E1] = King
+//		sqTP[E8] = King
 //
-// 	return &Board{
-// 		SquaresToPiece: sqTP,
-// 		Pieces: [7]BitBoard{
-// 			Full,
-// 			BitBoardFromSquares(E1, E8),
-// 			BitBoardFromSquares(B1, G1, B8, G8),
-// 		},
-// 		Colors: [2]BitBoard{
-// 			BitBoardFromSquares(B1, E1, G1),
-// 			BitBoardFromSquares(B8, E8, G8),
-// 		},
-// 	}
-// }
+//		return &Board{
+//			SquaresToPiece: sqTP,
+//			Pieces: [7]BitBoard{
+//				Full,
+//				BitBoardFromSquares(E1, E8),
+//				BitBoardFromSquares(B1, G1, B8, G8),
+//			},
+//			Colors: [2]BitBoard{
+//				BitBoardFromSquares(B1, E1, G1),
+//				BitBoardFromSquares(B8, E8, G8),
+//			},
+//		}
+//	}
+
+var pieceMask = [...]BitBoard{
+	0, Full, Full, Full, Full, Full, Full,
+}
+
 func (b *Board) MakeMove(m *move.Move) {
 
 	m.Captured = b.SquaresToPiece[m.To]
 
+	pm := pieceMask[m.Promo]
+
 	b.Pieces[m.Captured] &= ^(1 << m.To)
-	b.Pieces[m.Piece] ^= (1 << m.From) | (1 << m.To)
+	b.Pieces[m.Piece] ^= (1 << m.From) | ((1 << m.To) & ^pm)
+	b.Pieces[m.Promo] ^= (1 << m.To) & pm
 
 	b.Colors[b.STM.Flip()] &= ^(1 << m.To)
 	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
 
 	b.SquaresToPiece[m.From] = NoPiece
-	b.SquaresToPiece[m.To] = m.Piece
+	promo := Piece(pm & 1)
+	b.SquaresToPiece[m.To] = (1-promo)*m.Piece + promo*m.Promo
 
 	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	b.Print(*ansi.NewWriter(os.Stdout))
@@ -101,23 +119,23 @@ func (b *Board) MakeMove(m *move.Move) {
 	b.STM = b.STM.Flip()
 }
 
-var captureMask = [...]BitBoard{
-  0, Full, Full, Full, Full, Full, Full, 
-}
-
 func (b *Board) UndoMove(m *move.Move) {
 	b.STM = b.STM.Flip()
 
-	b.Pieces[m.Piece] ^= (1 << m.From) | (1 << m.To)
+	pm := pieceMask[m.Promo]
+
+	b.Pieces[m.Piece] ^= (1 << m.From) | ((1 << m.To) & ^pm)
+	b.Pieces[m.Promo] ^= (1 << m.To) & pm
 	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
-	b.SquaresToPiece[m.To] = NoPiece
+
+	//b.SquaresToPiece[m.To] = NoPiece
 	b.SquaresToPiece[m.From] = m.Piece
 
 	b.SquaresToPiece[m.To] = m.Captured
 
-  cm := (1 << m.To) & captureMask[m.Captured]
-  b.Pieces[m.Captured] ^= cm
-  b.Colors[b.STM.Flip()] ^= cm
+	cm := (1 << m.To) & pieceMask[m.Captured]
+	b.Pieces[m.Captured] ^= cm
+	b.Colors[b.STM.Flip()] ^= cm
 
 	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	panic("board inconsistency")
