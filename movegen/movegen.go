@@ -262,6 +262,11 @@ func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 	return result
 }
 
+var (
+	sndRank    = [...]board.BitBoard{board.SecondRank, board.SeventhRank}
+	fourthRank = [...]board.BitBoard{board.FourthRank, board.FifthRank}
+)
+
 func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 	return func(yield func(move.Move) bool) {
 		self := b.Colors[b.STM]
@@ -347,7 +352,6 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			}
 		}
 
-		sndRank := [...]board.BitBoard{board.SecondRank, board.SeventhRank}
 		mySndRank := sndRank[b.STM]
 		theirSndRank := sndRank[b.STM.Flip()]
 
@@ -401,7 +405,7 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 		for piece := range (pushable & tgt2 & mySndRank & ^occ2).All() {
 			from := piece.LowestSet()
 
-			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + 2*shift)}) {
+			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + 2*shift), EPSq: 0xff}) {
 				return
 			}
 		}
@@ -445,6 +449,16 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 						return
 					}
 				}
+			}
+		}
+
+		// en-passant
+		ep := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & fourthRank[b.STM.Flip()]
+		for piece := range (ep & self & b.Pieces[Pawn]).All() {
+			from := piece.LowestSet()
+
+			if yield(move.Move{Piece: Pawn, From: from, To: Square(int(b.EnPassant) + shift), EPP: Pawn}) {
+				return
 			}
 		}
 	}

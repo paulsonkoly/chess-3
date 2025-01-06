@@ -15,7 +15,7 @@ func TestFENConversion(t *testing.T) {
 			name: "Initial Position",
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1",
 		},
-		{
+		{ // TODO review these examples.
 			name: "Empty Board",
 			fen:  "8/8/8/8/8/8/8/8 w - - 0 1",
 		},
@@ -27,7 +27,7 @@ func TestFENConversion(t *testing.T) {
 			name: "Multiple Pieces",
 			fen:  "rnbqkbnr/pppppppp/8/8/4N3/8/PPPPPPPP/RNBQKBNR w - - 0 1",
 		},
-    // TODO implement me
+		// TODO implement me
 		// {
 		// 	name: "Complex Position",
 		// 	fen:  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2",
@@ -35,6 +35,11 @@ func TestFENConversion(t *testing.T) {
 		{
 			name: "Checkmate Position",
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - 0 1",
+		},
+		// review up to here
+		{
+			name: "en passant",
+			fen:  "r1bqkbnr/p1pppppp/n7/Pp6/8/8/1PPPPPPP/RNBQKBNR w - b6 0 1",
 		},
 	}
 
@@ -53,4 +58,3 @@ func TestFENConversion(t *testing.T) {
 		})
 	}
 }
-

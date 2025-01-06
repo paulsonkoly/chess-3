@@ -265,6 +265,15 @@ func TestMoves(t *testing.T) {
 				K(A1, B1), K(A1, B2), K(A1, A2),
 			},
 		},
+		{
+			name:   "en passant",
+			b:      board.FromFEN("7k/8/8/2Pp4/8/8/8/K7 w - d6 0 1"), 
+			target: board.Full,
+			want: []move.Move{
+        P(C5, C6), P(C5, D6),
+				K(A1, B1), K(A1, B2), K(A1, A2),
+			},
+		},
 
 		{
 			name:   "regression #1",
@@ -317,6 +326,8 @@ func TestMoves(t *testing.T) {
 			ok := make([]bool, len(want))
 
 			for m := range movegen.Moves(tt.b, tt.target) {
+				m.EPP = 0
+				m.EPSq = 0
 				ix := slices.Index(want, m)
 				if ix == -1 {
 					t.Errorf("unexpected move %s%s generated", m.Piece, m)

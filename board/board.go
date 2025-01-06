@@ -59,10 +59,11 @@ const (
 const Full = BitBoard(0xffffffffffffffff)
 
 type Board struct {
-	STM            Color
 	SquaresToPiece [64]Piece
 	Pieces         [7]BitBoard
 	Colors         [2]BitBoard
+	STM            Color
+	EnPassant      Square
 }
 
 //	func New() *Board {
@@ -95,7 +96,11 @@ var pieceMask = [...]BitBoard{
 
 func (b *Board) MakeMove(m *move.Move) {
 
+	b.Pieces[m.EPP] &= ^((1 << b.EnPassant) & pieceMask[m.EPP])
+	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & pieceMask[m.EPP])
+
 	m.Captured = b.SquaresToPiece[m.To]
+	m.EPSq, b.EnPassant = b.EnPassant, m.To&m.EPSq // m.EnPassant is 0xff for double pawn pushes
 
 	pm := pieceMask[m.Promo]
 
@@ -136,6 +141,11 @@ func (b *Board) UndoMove(m *move.Move) {
 	cm := (1 << m.To) & pieceMask[m.Captured]
 	b.Pieces[m.Captured] ^= cm
 	b.Colors[b.STM.Flip()] ^= cm
+
+	b.EnPassant = m.EPSq
+
+	b.Pieces[Pawn] |= (1 << b.EnPassant) & pieceMask[m.EPP]
+	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & pieceMask[m.EPP]
 
 	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	panic("board inconsistency")

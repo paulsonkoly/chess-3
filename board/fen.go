@@ -64,6 +64,30 @@ out:
 	case 'b':
 		b.STM = Black
 	}
+	ix++
+
+	for fen[ix] == ' ' {
+		ix++
+	}
+
+	for fen[ix] != ' ' {
+		ix++ // castle
+	}
+
+	for fen[ix] == ' ' {
+		ix++
+	}
+
+	if fen[ix] != '-' {
+		file := fen[ix] - 'a'
+		rank := fen[ix+1] - '1'
+		if rank == 2 {
+			rank = 3
+		} else if rank == 5 {
+			rank = 4
+		}
+		b.EnPassant = Square(rank*8 + file)
+	}
 
 	// for (; *ptr == ' '; ++ptr);
 
@@ -135,7 +159,7 @@ func (b Board) FEN() string {
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf(" %c - - 0 1", "wb"[b.STM]))
+	sb.WriteString(fmt.Sprintf(" %c - ", "wb"[b.STM]))
 
 	// if (board->castle & CALC_CASTLE(WHITE, SHORT_CASTLE)) printf("K");
 	// if (board->castle & CALC_CASTLE(WHITE, LONG_CASTLE)) printf("Q");
@@ -143,6 +167,17 @@ func (b Board) FEN() string {
 	// if (board->castle & CALC_CASTLE(BLACK, LONG_CASTLE)) printf("q");
 	// if (board->castle == 0) printf("-");
 	//
+	if b.EnPassant == 0 {
+		sb.WriteString("- 0 1")
+	} else {
+		var ep Square
+		if b.EnPassant <= 31 {
+			ep = b.EnPassant - 8
+		} else {
+			ep = b.EnPassant + 8
+		}
+		sb.WriteString(fmt.Sprintf("%s 0 1", ep))
+	}
 	// if (board->en_passant) {
 	//   SQUARE ep = __builtin_ctzll(board->en_passant);
 	//   SQUARE f = (ep & 7), r = (ep >> 3);

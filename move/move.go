@@ -1,12 +1,15 @@
 package move
 
-import "github.com/paulsonkoly/chess-3/types"
+//revive:disable-next-line
+import . "github.com/paulsonkoly/chess-3/types"
 
 type Move struct {
-	Promo    types.Piece
-	Captured types.Piece
-	Piece    types.Piece
-	From, To types.Square
+	Promo    Piece
+	Captured Piece
+	Piece    Piece
+	From, To Square
+	EPSq     Square
+	EPP      Piece
 }
 
 func (m Move) String() string {
