@@ -37,14 +37,14 @@ func BitBoardFromSquares(squares ...Square) BitBoard {
 }
 
 const (
-	AFile = BitBoard(0x8080808080808080)
-	BFile = BitBoard(0x4040404040404040)
-	CFile = BitBoard(0x2020202020202020)
-	DFile = BitBoard(0x1010101010101010)
-	EFile = BitBoard(0x0808080080808080)
-	FFile = BitBoard(0x0404040040404040)
-	GFile = BitBoard(0x0202020020202020)
-	HFile = BitBoard(0x0101010010101010)
+	AFile = BitBoard(0x0101010101010101)
+	BFile = BitBoard(0x0202020202020202)
+	CFile = BitBoard(0x0404040404040404)
+	DFile = BitBoard(0x0808080808080808)
+	EFile = BitBoard(0x1010101010101010)
+	FFile = BitBoard(0x2020202020202020)
+	GFile = BitBoard(0x4040404040404040)
+	HFile = BitBoard(0x8080808080808080)
 
 	FistRank    = BitBoard(0x00000000000000ff)
 	SecondRank  = BitBoard(0x000000000000ff00)

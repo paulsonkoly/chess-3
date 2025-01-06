@@ -6,11 +6,11 @@ type Piece byte
 
 const (
 	NoPiece = Piece(iota)
-  Pawn
+	Pawn
 	Knight
-  Bishop
-  Rook
-  Queen
+	Bishop
+	Rook
+	Queen
 	King
 )
 
@@ -22,4 +22,8 @@ func AllPieces() iter.Seq[Piece] {
 			}
 		}
 	}
+}
+
+func (p Piece) String() string {
+	return string(" PKBRQK"[p])
 }

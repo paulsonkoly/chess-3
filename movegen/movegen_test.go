@@ -229,7 +229,7 @@ func TestMoves(t *testing.T) {
 			},
 		},
 		{
-			name:   "pawn capture on AFile testing for wrap on HFile",
+			name:   "pawn capture on AFile testing for wrap to HFile",
 			b:      board.FromFEN("7k/8/8/8/1n5n/P7/8/K7 w - - 0 1"),
 			target: board.Full,
 			want: []move.Move{
@@ -265,6 +265,18 @@ func TestMoves(t *testing.T) {
 				K(A1, B1), K(A1, B2), K(A1, A2),
 			},
 		},
+
+		{
+			name:   "regression #1",
+			b:      board.FromFEN("rnbqkbnr/1ppppppp/8/p7/8/7P/PPPPPPP1/RNBQKBNR w - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+				P(A2, A3), P(B2, B3), P(C2, C3), P(D2, D3), P(E2, E3), P(F2, F3), P(G2, G3), P(H3, H4),
+				P(A2, A4), P(B2, B4), P(C2, C4), P(D2, D4), P(E2, E4), P(F2, F4), P(G2, G4),
+				N(B1, A3), N(B1, C3), N(G1, F3),
+				R(H1, H2),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -275,7 +287,7 @@ func TestMoves(t *testing.T) {
 			for m := range movegen.Moves(tt.b, tt.target) {
 				ix := slices.Index(want, m)
 				if ix == -1 {
-					t.Errorf("unexpected move %s generated", m)
+					t.Errorf("unexpected move %s%s generated", m.Piece, m)
 				} else {
 					ok[ix] = true
 				}
