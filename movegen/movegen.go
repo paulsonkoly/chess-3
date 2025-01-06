@@ -414,7 +414,7 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			if b.STM == White {
 				bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
 			} else {
-				bb = ((piece & ^board.AFile) >> 7) | ((piece & ^board.HFile) >> 9)
+				bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
 			}
 
 			for toBB := range (bb & target & them).All() {
@@ -434,7 +434,7 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			if b.STM == White {
 				bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
 			} else {
-				bb = ((piece & ^board.AFile) >> 7) | ((piece & ^board.HFile) >> 9)
+				bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
 			}
 
 			for toBB := range (bb & target & them).All() {

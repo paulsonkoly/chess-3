@@ -299,6 +299,16 @@ func TestMoves(t *testing.T) {
 				R(A8, A6), R(A8, A7),
 			},
 		},
+		{
+			name:   "regression #4",
+			b:      board.FromFEN("rnbqkbnr/1ppppppp/p7/1N6/8/8/PPPPPPPP/R1BQKBNR b - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+				P(A6, A5), P(B7, B6), P(C7, C6), P(D7, D6), P(E7, E6), P(F7, F6), P(G7, G6), P(H7, H6),
+				P(C7, C5), P(D7, D5), P(E7, E5), P(F7, F5), P(G7, G5), P(H7, H5), P(A6, B5),
+				N(B8, C6), N(G8, F6), N(G8, H6), R(A8, A7),
+			},
+		},
 	}
 
 	for _, tt := range tests {
