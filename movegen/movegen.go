@@ -361,16 +361,16 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 		if b.STM == White {
 			occ1 = occ >> 8
 			tgt1 = target >> 8
-			occ1l = (them &^ board.AFile) >> 7
-			occ1r = (them &^ board.HFile) >> 9
+			occ1l = (them &^ board.HFile) >> 7
+			occ1r = (them &^ board.AFile) >> 9
 			occ2 = occ >> 16
 			tgt2 = target >> 16
 			shift = 8
 		} else {
 			occ1 = (occ | ^target) << 8
 			tgt1 = target << 8
-			occ1l = (them &^ board.AFile) << 7
-			occ1r = (them &^ board.HFile) << 9
+			occ1l = (them &^ board.HFile) << 7
+			occ1r = (them &^ board.AFile) << 9
 			occ2 = occ << 16
 			tgt2 = target << 16
 			shift = -8
