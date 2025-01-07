@@ -103,7 +103,6 @@ func MatchPerft(b *board.Board, depth int) {
 
 			kingBB := b.Pieces[King] & b.Colors[me]
 			if !movegen.IsAttacked(b, me.Flip(), kingBB) {
-				fmt.Println(b.FEN(), m)
 				MatchPerft(b, depth-1)
 			}
 			b.UndoMove(&m)

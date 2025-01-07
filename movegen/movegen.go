@@ -292,9 +292,10 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			piece := self & b.Pieces[King]
 			from := piece.LowestSet()
 
-			for to := range (kingMoves[from] & ^self & target).All() {
-				newC := b.CRights & ^kingCRightsUpd[b.STM]
-				if !yield(move.Move{Piece: King, From: from, To: to.LowestSet(), CRights: newC ^ b.CRights}) {
+			for toBB := range (kingMoves[from] & ^self & target).All() {
+				to := toBB.LowestSet()
+				newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
+				if !yield(move.Move{Piece: King, From: from, To: to, CRights: newC ^ b.CRights}) {
 					return
 				}
 			}
@@ -304,8 +305,10 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 		for piece := range (self & b.Pieces[Knight]).All() {
 			from := piece.LowestSet()
 
-			for to := range (knightMoves[from] & ^self & target).All() {
-				if !yield(move.Move{Piece: Knight, From: from, To: to.LowestSet()}) {
+			for toBB := range (knightMoves[from] & ^self & target).All() {
+				to := toBB.LowestSet()
+				newC := b.CRights & ^(rookCRightsUpd[to])
+				if !yield(move.Move{Piece: Knight, From: from, To: to, CRights: newC ^ b.CRights}) {
 					return
 				}
 			}
@@ -322,8 +325,10 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 
 			bb := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
 
-			for to := range bb.All() {
-				if !yield(move.Move{Piece: Bishop, From: from, To: to.LowestSet()}) {
+			for toBB := range bb.All() {
+				to := toBB.LowestSet()
+				newC := b.CRights & ^(rookCRightsUpd[to])
+				if !yield(move.Move{Piece: Bishop, From: from, To: to, CRights: newC ^ b.CRights}) {
 					return
 				}
 			}
@@ -338,9 +343,13 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 
 			bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
 
-			for to := range bb.All() {
-				newC := b.CRights & ^rookCRightsUpd[from]
-				if !yield(move.Move{Piece: Rook, From: from, To: to.LowestSet(), CRights: newC ^ b.CRights}) {
+			for toBB := range bb.All() {
+				to := toBB.LowestSet()
+				// this accounts for flipping the castling rights for the moving side
+				// if the rook moves away from castling position and also for the
+				// opponent when a rook is capturing a rook in castling position
+				newC := b.CRights & ^(rookCRightsUpd[from] | rookCRightsUpd[to])
+				if !yield(move.Move{Piece: Rook, From: from, To: to, CRights: newC ^ b.CRights}) {
 					return
 				}
 			}
@@ -362,8 +371,10 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			bb |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
 			bb &= ^self & target
 
-			for to := range bb.All() {
-				if !yield(move.Move{Piece: Queen, From: from, To: to.LowestSet()}) {
+			for toBB := range bb.All() {
+				to := toBB.LowestSet()
+				cNew := b.CRights &^ rookCRightsUpd[to]
+				if !yield(move.Move{Piece: Queen, From: from, To: to, CRights: cNew ^ b.CRights}) {
 					return
 				}
 			}
@@ -460,9 +471,10 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 
 			for toBB := range (bb & target & them).All() {
 				to := toBB.LowestSet()
+				cNew := b.CRights &^ rookCRightsUpd[to]
 
 				for promo := Queen; promo > Pawn; promo-- {
-					if !yield(move.Move{Piece: Pawn, From: from, To: to, Promo: promo}) {
+					if !yield(move.Move{Piece: Pawn, From: from, To: to, Promo: promo, CRights: cNew ^ b.CRights}) {
 						return
 					}
 				}
