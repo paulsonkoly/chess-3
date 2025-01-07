@@ -568,7 +568,7 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 			var bb board.BitBoard
 
 			if by == White {
-				bb = ((t & ^board.AFile) >> 7) | ((t & ^board.HFile) >> 9)
+				bb = ((t & ^board.HFile) >> 7) | ((t & ^board.AFile) >> 9)
 			} else {
 				bb = ((t & ^board.AFile) << 7) | ((t & ^board.HFile) << 9)
 			}

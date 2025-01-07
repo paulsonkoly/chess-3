@@ -147,7 +147,7 @@ func TestMoves(t *testing.T) {
 				Q(C2, B1), Q(C2, C1), Q(C2, D1), Q(C2, A2), Q(C2, B2), Q(C2, D2), Q(C2, E2),
 				Q(C2, F2), Q(C2, G2), Q(C2, H2), Q(C2, B3), Q(C2, D3), Q(C2, A4), Q(C2, E4),
 				Q(C2, F5), Q(C2, G6), Q(C2, H7),
-				K(C3, B2), K(C3, D2), K(C3, B3), K(C3, D3), K(C3, B4), K(C3, C4), K(C3, D4),
+				K(C3, B2), K(C3, D2), K(C3, B3), K(C3, D3), 
 			},
 		},
 		{
@@ -234,7 +234,7 @@ func TestMoves(t *testing.T) {
 			target: board.Full,
 			want: []move.Move{
 				P(A3, A4), P(A3, B4),
-				K(A1, B1), K(A1, B2), K(A1, A2),
+				K(A1, B1), K(A1, B2),
 			},
 		},
 		{
@@ -267,10 +267,10 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name:   "en passant",
-			b:      board.FromFEN("7k/8/8/2Pp4/8/8/8/K7 w - d6 0 1"), 
+			b:      board.FromFEN("7k/8/8/2Pp4/8/8/8/K7 w - d6 0 1"),
 			target: board.Full,
 			want: []move.Move{
-        P(C5, C6), P(C5, D6),
+				P(C5, C6), P(C5, D6),
 				K(A1, B1), K(A1, B2), K(A1, A2),
 			},
 		},
@@ -318,16 +318,45 @@ func TestMoves(t *testing.T) {
 				N(B8, C6), N(G8, F6), N(G8, H6), R(A8, A7),
 			},
 		},
+		{
+			name:   "regression #5",
+			b:      board.FromFEN("rnbq3r/pp1Pbpkp/2p3p1/6P1/2B5/8/PPP1Nn1P/RNBQ1K1R b - - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+				P(C6, C5), P(A7, A6), P(B7, B6), P(F7, F6), P(H7, H6), P(A7, A5), P(B7, B5), P(F7, F5), P(H7, H5),
+				N(F2, D1), N(F2, H1), N(F2, D3), N(F2, H3), N(F2, E4), N(F2, G4), N(B8, A6), N(B8, D7),
+				B(E7, A3), B(E7, B4), B(E7, C5), B(E7, G5), B(E7, D6), B(E7, F6), B(E7, F8), B(C8, D7),
+				R(H8, E8), R(H8, F8), R(H8, G8),
+				Q(D8, A5), Q(D8, B6), Q(D8, C7), Q(D8, D7), Q(D8, E8), Q(D8, F8), Q(D8, G8),
+				K(G7, G8), K(G7, F8),
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			want := tt.want
 			ok := make([]bool, len(want))
+			b := tt.b
 
-			for m := range movegen.Moves(tt.b, tt.target) {
+			for m := range movegen.Moves(b, tt.target) {
+				b.MakeMove(&m)
+
+				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+
+				if movegen.IsAttacked(b, b.STM, king) {
+					// illegal (pseudo-leagal) move, skip
+					b.UndoMove(&m)
+					continue
+				}
+
+				b.UndoMove(&m)
+
+				m.Captured = 0
 				m.EPP = 0
 				m.EPSq = 0
+				m.Castle = 0
+				m.CRights = 0
 				ix := slices.Index(want, m)
 				if ix == -1 {
 					t.Errorf("unexpected move %s%s generated", m.Piece, m)
