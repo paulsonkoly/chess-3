@@ -95,9 +95,12 @@ var pieceMask = [...]BitBoard{
 }
 
 func (b *Board) MakeMove(m *move.Move) {
+  epMask := pieceMask[m.EPP]  
+  ep := Piece(epMask & 1)
 
-	b.Pieces[m.EPP] &= ^((1 << b.EnPassant) & pieceMask[m.EPP])
-	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & pieceMask[m.EPP])
+  b.SquaresToPiece[b.EnPassant] -= Pawn * ep
+	b.Pieces[m.EPP] &= ^((1 << b.EnPassant) & epMask)
+	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & epMask)
 
 	m.Captured = b.SquaresToPiece[m.To]
 	m.EPSq, b.EnPassant = b.EnPassant, m.To&m.EPSq // m.EnPassant is 0xff for double pawn pushes
@@ -144,8 +147,12 @@ func (b *Board) UndoMove(m *move.Move) {
 
 	b.EnPassant = m.EPSq
 
-	b.Pieces[Pawn] |= (1 << b.EnPassant) & pieceMask[m.EPP]
-	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & pieceMask[m.EPP]
+  epMask := pieceMask[m.EPP]  
+  ep := Piece(epMask & 1)
+
+  b.SquaresToPiece[b.EnPassant] += Pawn * ep
+	b.Pieces[Pawn] |= (1 << b.EnPassant) & epMask
+	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & epMask
 
 	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	panic("board inconsistency")
