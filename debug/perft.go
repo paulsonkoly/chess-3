@@ -71,7 +71,7 @@ func StockfishPerft(b *board.Board, depth int) int {
 			break // Exit loop on EOF or error
 		}
 		if strings.HasPrefix(line, "Nodes searched: ") {
-      line := strings.TrimSpace(line)
+			line := strings.TrimSpace(line)
 			result, err = strconv.Atoi(strings.TrimPrefix(line, "Nodes searched: "))
 			if err != nil {
 				panic(err)
@@ -80,20 +80,6 @@ func StockfishPerft(b *board.Board, depth int) int {
 		}
 	}
 
-	// scanner := bufio.NewScanner(sfOut)
-	// for scanner.Scan() {
-	// 	if strings.HasPrefix(scanner.Text(), "Nodes searched: ") {
-	// 		result, err = strconv.Atoi(strings.TrimPrefix(scanner.Text(), "Nodes searched: "))
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		break
-	// 	}
-	// 	// if strings.HasPrefix(scanner.Text(), "info") {
-	// 	//   continue
-	// 	// }
-	// }
-	//
 	err = sf.Wait()
 	if err != nil {
 		panic(err)
@@ -102,9 +88,9 @@ func StockfishPerft(b *board.Board, depth int) int {
 }
 
 func MatchPerft(b *board.Board, depth int) {
-  if depth <= 0 {
-    return
-  }
+	if depth <= 0 {
+		return
+	}
 
 	sfs, own := StockfishPerft(b, depth), Perft(b, depth)
 
@@ -117,6 +103,7 @@ func MatchPerft(b *board.Board, depth int) {
 
 			kingBB := b.Pieces[King] & b.Colors[me]
 			if !movegen.IsAttacked(b, me.Flip(), kingBB) {
+				fmt.Println(b.FEN(), m)
 				MatchPerft(b, depth-1)
 			}
 			b.UndoMove(&m)

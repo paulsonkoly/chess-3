@@ -265,6 +265,21 @@ func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 var (
 	sndRank    = [...]board.BitBoard{board.SecondRank, board.SeventhRank}
 	fourthRank = [...]board.BitBoard{board.FourthRank, board.FifthRank}
+	castleMask = [2][2]board.BitBoard{
+		{(1 << E1) | (1 << F1) | (1 << G1), (1 << E1) | (1 << D1) | (1 << C1)},
+		{(1 << E8) | (1 << F8) | (1 << G8), (1 << E8) | (1 << D8) | (1 << C8)},
+	}
+	kingCRightsUpd = [2]CastlingRights{CRights(ShortWhite, LongWhite), CRights(ShortBlack, LongBlack)}
+	rookCRightsUpd = [64]CastlingRights{
+		CRights(LongWhite), 0, 0, 0, 0, 0, 0, CRights(ShortWhite),
+		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
+		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
+		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
+		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
+		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
+		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
+		CRights(LongBlack), 0, 0, 0, 0, 0, 0, CRights(ShortBlack),
+	}
 )
 
 func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
@@ -278,7 +293,8 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			from := piece.LowestSet()
 
 			for to := range (kingMoves[from] & ^self & target).All() {
-				if !yield(move.Move{Piece: King, From: from, To: to.LowestSet()}) {
+				newC := b.CRights & ^kingCRightsUpd[b.STM]
+				if !yield(move.Move{Piece: King, From: from, To: to.LowestSet(), CRights: newC ^ b.CRights}) {
 					return
 				}
 			}
@@ -323,7 +339,8 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
 
 			for to := range bb.All() {
-				if !yield(move.Move{Piece: Rook, From: from, To: to.LowestSet()}) {
+				newC := b.CRights & ^rookCRightsUpd[from]
+				if !yield(move.Move{Piece: Rook, From: from, To: to.LowestSet(), CRights: newC ^ b.CRights}) {
 					return
 				}
 			}
@@ -457,10 +474,33 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 		for piece := range (ep & self & b.Pieces[Pawn]).All() {
 			from := piece.LowestSet()
 
-			if yield(move.Move{Piece: Pawn, From: from, To: Square(int(b.EnPassant) + shift), EPP: Pawn}) {
+			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(b.EnPassant) + shift), EPP: Pawn}) {
 				return
 			}
 		}
+
+		// castling short
+		if b.CRights&CRights(C(b.STM, Short)) != 0 && occ&castleMask[b.STM][Short] == self&b.Pieces[King] {
+			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Short]) {
+				from := (self & b.Pieces[King]).LowestSet()
+				newC := b.CRights & ^kingCRightsUpd[b.STM]
+				if !yield(move.Move{Piece: King, From: from, To: from + 2, Castle: C(b.STM, Short), CRights: b.CRights ^ newC}) {
+					return
+				}
+			}
+		}
+
+		// castle long
+		if b.CRights&CRights(C(b.STM, Long)) != 0 && occ&(castleMask[b.STM][Long]>>1) == 0 {
+			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Long]) {
+				from := (self & b.Pieces[King]).LowestSet()
+				newC := b.CRights & ^kingCRightsUpd[b.STM]
+				if !yield(move.Move{Piece: King, From: from, To: from - 2, Castle: C(b.STM, Short), CRights: b.CRights ^ newC}) {
+					return
+				}
+			}
+		}
+
 	}
 }
 

@@ -27,11 +27,10 @@ func TestFENConversion(t *testing.T) {
 			name: "Multiple Pieces",
 			fen:  "rnbqkbnr/pppppppp/8/8/4N3/8/PPPPPPPP/RNBQKBNR w - - 0 1",
 		},
-		// TODO implement me
-		// {
-		// 	name: "Complex Position",
-		// 	fen:  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2",
-		// },
+		{
+			name: "Complex Position",
+			fen:  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 1",
+		},
 		{
 			name: "Checkmate Position",
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - 0 1",

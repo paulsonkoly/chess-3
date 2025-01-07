@@ -7,9 +7,11 @@ type Move struct {
 	Promo    Piece
 	Captured Piece
 	Piece    Piece
+	EPP      Piece
 	From, To Square
 	EPSq     Square
-	EPP      Piece
+	Castle   Castle
+	CRights  CastlingRights
 }
 
 func (m Move) String() string {

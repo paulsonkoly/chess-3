@@ -71,7 +71,18 @@ out:
 	}
 
 	for fen[ix] != ' ' {
-		ix++ // castle
+		switch fen[ix] {
+		case 'K':
+			b.CRights |= CRights(ShortWhite)
+		case 'Q':
+			b.CRights |= CRights(LongWhite)
+		case 'k':
+			b.CRights |= CRights(ShortBlack)
+		case 'q':
+			b.CRights |= CRights(LongBlack)
+		}
+
+		ix++
 	}
 
 	for fen[ix] == ' ' {
@@ -89,30 +100,6 @@ out:
 		b.EnPassant = Square(rank*8 + file)
 	}
 
-	// for (; *ptr == ' '; ++ptr);
-
-	// switch (*ptr++) {
-	//   case 'w': board->next = WHITE; break;
-	//   case 'b': board->next = BLACK; break;
-	// }
-	// for (; *ptr == ' '; ++ptr);
-	//
-	// for (; *ptr != ' '; ++ptr) {
-	//   switch (*ptr) {
-	//     case 'K': board->castle |= CALC_CASTLE(WHITE, SHORT_CASTLE); break;
-	//     case 'Q': board->castle |= CALC_CASTLE(WHITE, LONG_CASTLE); break;
-	//     case 'k': board->castle |= CALC_CASTLE(BLACK, SHORT_CASTLE); break;
-	//     case 'q': board->castle |= CALC_CASTLE(BLACK, LONG_CASTLE); break;
-	//   }
-	// }
-	// for (; *ptr == ' '; ++ptr);
-	//
-	// if (*ptr != '-') {
-	//   f = *ptr++ - 'a';
-	//   r = *ptr - '1';
-	//   board->en_passant = 1ULL << (r * 8 + f);
-	// }
-	//
 	// /* TODO: move counter */
 	// board->halfmovecnt = 0;
 	// board->history[0].hash = calculate_hash(board);
@@ -159,14 +146,28 @@ func (b Board) FEN() string {
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf(" %c - ", "wb"[b.STM]))
+	sb.WriteString(fmt.Sprintf(" %c ", "wb"[b.STM]))
 
-	// if (board->castle & CALC_CASTLE(WHITE, SHORT_CASTLE)) printf("K");
-	// if (board->castle & CALC_CASTLE(WHITE, LONG_CASTLE)) printf("Q");
-	// if (board->castle & CALC_CASTLE(BLACK, SHORT_CASTLE)) printf("k");
-	// if (board->castle & CALC_CASTLE(BLACK, LONG_CASTLE)) printf("q");
-	// if (board->castle == 0) printf("-");
-	//
+	if b.CRights&CRights(ShortWhite) != 0 {
+		sb.WriteString("K")
+	}
+
+	if b.CRights&CRights(LongWhite) != 0 {
+		sb.WriteString("Q")
+	}
+
+	if b.CRights&CRights(ShortBlack) != 0 {
+		sb.WriteString("k")
+	}
+
+	if b.CRights&CRights(LongBlack) != 0 {
+		sb.WriteString("q")
+	}
+	if b.CRights == 0 {
+		sb.WriteString("-")
+	}
+	sb.WriteString(" ")
+
 	if b.EnPassant == 0 {
 		sb.WriteString("- 0 1")
 	} else {

@@ -64,44 +64,36 @@ type Board struct {
 	Colors         [2]BitBoard
 	STM            Color
 	EnPassant      Square
+	CRights        CastlingRights
 }
 
-//	func New() *Board {
-//		sqTP := [64]Piece{}
-//		sqTP[B1] = Knight
-//		sqTP[G1] = Knight
-//		sqTP[B8] = Knight
-//		sqTP[G8] = Knight
-//
-//		sqTP[E1] = King
-//		sqTP[E8] = King
-//
-//		return &Board{
-//			SquaresToPiece: sqTP,
-//			Pieces: [7]BitBoard{
-//				Full,
-//				BitBoardFromSquares(E1, E8),
-//				BitBoardFromSquares(B1, G1, B8, G8),
-//			},
-//			Colors: [2]BitBoard{
-//				BitBoardFromSquares(B1, E1, G1),
-//				BitBoardFromSquares(B8, E8, G8),
-//			},
-//		}
-//	}
-
-var pieceMask = [...]BitBoard{
-	0, Full, Full, Full, Full, Full, Full,
+type castle struct {
+	piece Piece
+	swap  BitBoard
+	up    Square
+	down  Square
 }
+
+var (
+	pieceMask = [...]BitBoard{0, Full, Full, Full, Full, Full, Full}
+	castles   = [5]castle{
+		{piece: 0, swap: 0, up: 0, down: 0},
+		{piece: Rook, swap: (1 << F1) | (1 << H1), up: F1, down: H1},
+		{piece: Rook, swap: (1 << A1) | (1 << D1), up: D1, down: A1},
+		{piece: Rook, swap: (1 << F8) | (1 << H8), up: F8, down: H8},
+		{piece: Rook, swap: (1 << A8) | (1 << D8), up: D8, down: A8},
+	}
+)
 
 func (b *Board) MakeMove(m *move.Move) {
-  epMask := pieceMask[m.EPP]  
-  ep := Piece(epMask & 1)
+	epMask := pieceMask[m.EPP]
+	ep := Piece(epMask & 1)
 
-  b.SquaresToPiece[b.EnPassant] -= Pawn * ep
+	b.SquaresToPiece[b.EnPassant] -= Pawn * ep
 	b.Pieces[m.EPP] &= ^((1 << b.EnPassant) & epMask)
 	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & epMask)
 
+	m.CRights, b.CRights = b.CRights, m.CRights ^ b.CRights
 	m.Captured = b.SquaresToPiece[m.To]
 	m.EPSq, b.EnPassant = b.EnPassant, m.To&m.EPSq // m.EnPassant is 0xff for double pawn pushes
 
@@ -118,6 +110,12 @@ func (b *Board) MakeMove(m *move.Move) {
 	promo := Piece(pm & 1)
 	b.SquaresToPiece[m.To] = (1-promo)*m.Piece + promo*m.Promo
 
+	castle := castles[m.Castle]
+	b.SquaresToPiece[castle.down] -= castle.piece
+	b.SquaresToPiece[castle.up] += castle.piece
+	b.Pieces[Rook] ^= castle.swap
+	b.Colors[b.STM] ^= castle.swap
+
 	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	b.Print(*ansi.NewWriter(os.Stdout))
 	// 	fmt.Println(*b)
@@ -130,31 +128,32 @@ func (b *Board) MakeMove(m *move.Move) {
 func (b *Board) UndoMove(m *move.Move) {
 	b.STM = b.STM.Flip()
 
+	castle := castles[m.Castle]
+	b.Pieces[Rook] ^= castle.swap
+	b.Colors[b.STM] ^= castle.swap
+	b.SquaresToPiece[castle.down] += castle.piece
+	b.SquaresToPiece[castle.up] -= castle.piece
+
 	pm := pieceMask[m.Promo]
 
 	b.Pieces[m.Piece] ^= (1 << m.From) | ((1 << m.To) & ^pm)
 	b.Pieces[m.Promo] ^= (1 << m.To) & pm
 	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
 
-	//b.SquaresToPiece[m.To] = NoPiece
 	b.SquaresToPiece[m.From] = m.Piece
-
 	b.SquaresToPiece[m.To] = m.Captured
 
 	cm := (1 << m.To) & pieceMask[m.Captured]
 	b.Pieces[m.Captured] ^= cm
 	b.Colors[b.STM.Flip()] ^= cm
 
+	b.CRights = m.CRights
 	b.EnPassant = m.EPSq
 
-  epMask := pieceMask[m.EPP]  
-  ep := Piece(epMask & 1)
+	epMask := pieceMask[m.EPP]
+	ep := Piece(epMask & 1)
 
-  b.SquaresToPiece[b.EnPassant] += Pawn * ep
+	b.SquaresToPiece[b.EnPassant] += Pawn * ep
 	b.Pieces[Pawn] |= (1 << b.EnPassant) & epMask
 	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & epMask
-
-	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
-	// 	panic("board inconsistency")
-	// }
 }
