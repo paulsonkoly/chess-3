@@ -507,7 +507,7 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Long]) {
 				from := (self & b.Pieces[King]).LowestSet()
 				newC := b.CRights & ^kingCRightsUpd[b.STM]
-				if !yield(move.Move{Piece: King, From: from, To: from - 2, Castle: C(b.STM, Short), CRights: b.CRights ^ newC}) {
+				if !yield(move.Move{Piece: King, From: from, To: from - 2, Castle: C(b.STM, Long), CRights: b.CRights ^ newC}) {
 					return
 				}
 			}

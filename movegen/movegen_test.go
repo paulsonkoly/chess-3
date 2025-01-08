@@ -147,7 +147,7 @@ func TestMoves(t *testing.T) {
 				Q(C2, B1), Q(C2, C1), Q(C2, D1), Q(C2, A2), Q(C2, B2), Q(C2, D2), Q(C2, E2),
 				Q(C2, F2), Q(C2, G2), Q(C2, H2), Q(C2, B3), Q(C2, D3), Q(C2, A4), Q(C2, E4),
 				Q(C2, F5), Q(C2, G6), Q(C2, H7),
-				K(C3, B2), K(C3, D2), K(C3, B3), K(C3, D3), 
+				K(C3, B2), K(C3, D2), K(C3, B3), K(C3, D3),
 			},
 		},
 		{
@@ -331,6 +331,20 @@ func TestMoves(t *testing.T) {
 				K(G7, G8), K(G7, F8),
 			},
 		},
+		{
+			name:   "regression #6",
+			b:      board.FromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPPBN1PP/R3KN1n w Q - 0 1"),
+			target: board.Full,
+			want: []move.Move{
+				P(A2, A3), P(B2, B3), P(C2, C3), P(G2, G3), P(H2, H3), P(A2, A4), P(B2, B4), P(G2, G4), P(H2, H4),
+				PP(D7, C8, Queen), PP(D7, C8, Rook), PP(D7, C8, Bishop), PP(D7, C8, Knight),
+				N(F1, E3), N(F1, G3), N(E2, C1), N(E2, G1), N(E2, C3), N(E2, G3), N(E2, D4), N(E2, F4),
+				B(D2, C1), B(D2, C3), B(D2, E3), B(D2, B4), B(D2, F4), B(D2, A5), B(D2, G5), B(D2, H6),
+				B(C4, B3), B(C4, D3), B(C4, B5), B(C4, D5), B(C4, A6), B(C4, E6), B(C4, F7),
+				R(A1, B1), R(A1, C1), R(A1, D1),
+				K(E1, D1), K(E1, C1),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -346,6 +360,7 @@ func TestMoves(t *testing.T) {
 
 				if movegen.IsAttacked(b, b.STM, king) {
 					// illegal (pseudo-leagal) move, skip
+movegen.IsAttacked(b, b.STM, king)
 					b.UndoMove(&m)
 					continue
 				}
