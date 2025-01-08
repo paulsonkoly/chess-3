@@ -36,6 +36,10 @@ func BitBoardFromSquares(squares ...Square) BitBoard {
 	return bb
 }
 
+func (bb BitBoard) Count() int {
+	return bits.OnesCount64(uint64(bb))
+}
+
 const (
 	AFile = BitBoard(0x0101010101010101)
 	BFile = BitBoard(0x0202020202020202)
@@ -93,7 +97,7 @@ func (b *Board) MakeMove(m *move.Move) {
 	b.Pieces[m.EPP] &= ^((1 << b.EnPassant) & epMask)
 	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & epMask)
 
-	m.CRights, b.CRights = b.CRights, m.CRights ^ b.CRights
+	m.CRights, b.CRights = b.CRights, m.CRights^b.CRights
 	m.Captured = b.SquaresToPiece[m.To]
 	m.EPSq, b.EnPassant = b.EnPassant, m.To&m.EPSq // m.EnPassant is 0xff for double pawn pushes
 
