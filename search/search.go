@@ -36,29 +36,27 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int) (score int, moves []m
 
 		if b.STM.Flip() == White {
 			value, curr := AlphaBeta(b, alpha, beta, depth-1)
+			b.UndoMove(&m)
 			if value > score {
 				score = value
 				moves = append(curr, m)
 			}
 			if score > beta {
-				b.UndoMove(&m)
 				return
 			}
 			alpha = max(alpha, score)
 		} else {
 			value, curr := AlphaBeta(b, alpha, beta, depth-1)
+			b.UndoMove(&m)
 			if value < score {
 				score = value
 				moves = append(curr, m)
 			}
 			if score < alpha {
-				b.UndoMove(&m)
 				return
 			}
 			beta = min(beta, score)
 		}
-
-		b.UndoMove(&m)
 	}
 
 	if !hasLegal {
@@ -98,24 +96,21 @@ func Quiescence(b *board.Board, alpha, beta int) (score int) {
 		}
 
 		curr := Quiescence(b, alpha, beta)
+		b.UndoMove(&m)
 
-		if b.STM.Flip() == White {
+		if b.STM == White {
 			if curr >= beta {
-				b.UndoMove(&m)
 				return curr
 			}
 			score = max(score, curr)
 			alpha = min(alpha, curr)
 		} else {
 			if curr <= alpha {
-				b.UndoMove(&m)
 				return curr
 			}
 			score = min(score, curr)
 			beta = max(beta, curr)
 		}
-
-		b.UndoMove(&m)
 	}
 
 	return

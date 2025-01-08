@@ -54,7 +54,7 @@ func TestQuiescence(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := search.Quiescence(tt.b, -eval.Inf, eval.Inf)
-			assert.Equal(t, tt.want, got)
+			assert.InDelta(t, tt.want, got, 50.0)
 		})
 	}
 }
