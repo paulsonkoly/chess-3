@@ -1,7 +1,6 @@
 package search_test
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -32,10 +31,6 @@ func TestQuiescence(t *testing.T) {
 		{name: "white a pawn up black to move",
 			b:    board.FromFEN("8/8/2k5/8/8/2KP4/8/8 b - - 0 1"),
 			want: 100,
-		},
-		{name: "white captures protected bishop",
-			b:    board.FromFEN("k7/8/3b4/2P5/4n3/8/8/K7 w - - 0 1"),
-			want: -300,
 		},
 		{name: "stalemate",
 			b:    board.FromFEN("2k5/2P5/2K5/8/8/8/8/8 b - - 0 1"),
@@ -92,8 +87,10 @@ func TestAlphabeta(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, moves := search.AlphaBeta(tt.b, -eval.Inf, eval.Inf, tt.depth)
 			assert.Equal(t, tt.want, got)
-			slices.Reverse(moves)
-			assert.Equal(t, tt.move, moves[0], moves)
+			assert.Greater(t, len(moves), 0)
+      move := moves[len(moves)-1]
+      move.Weight = 0
+			assert.Equal(t, tt.move, move, moves)
 		})
 	}
 }

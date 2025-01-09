@@ -582,3 +582,41 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 
 	return false
 }
+
+func UCIMove(b *board.Board, from, to Square, promo Piece) move.Move {
+	pType := b.SquaresToPiece[from]
+	result := move.Move{Piece: pType, From: from, To: to, Promo: promo}
+
+	switch pType {
+
+	case King:
+		if from-to == 2 || to-from == 2 {
+			newC := b.CRights & ^kingCRightsUpd[b.STM]
+			result.CRights = newC ^ b.CRights
+      result.Castle = C(b.STM, int(((from - to) + 2) / 4))
+		} else {
+			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
+			result.CRights = newC ^ b.CRights
+		}
+
+	case Knight, Bishop, Queen:
+		newC := b.CRights & ^(rookCRightsUpd[to])
+		result.CRights = newC ^ b.CRights
+
+	case Rook:
+		newC := b.CRights & ^(rookCRightsUpd[from] | rookCRightsUpd[to])
+		result.CRights = newC ^ b.CRights
+
+	case Pawn:
+		if from-to == 16 || to-from == 16 {
+			result.EPSq = 0xff
+		}
+    if (from - to) & 1 != 0 && b.SquaresToPiece[to] == NoPiece { // en-passant capture
+      result.EPP = Pawn
+    }
+		newC := b.CRights &^ rookCRightsUpd[to]
+		result.CRights = newC ^ b.CRights
+	}
+
+	return result
+}
