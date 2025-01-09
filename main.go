@@ -41,8 +41,9 @@ func main() {
 
 	b := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-	for depth := range 5 {
-		eval, moves := search.AlphaBeta(b, -eval.Inf, eval.Inf, depth)
+	for depth := range 10 {
+		eval, moves := search.AlphaBeta(b, -eval.Inf, eval.Inf, depth+1)
+		fmt.Println(search.QDepth)
 		slices.Reverse(moves)
 		fmt.Println(eval, moves)
 	}

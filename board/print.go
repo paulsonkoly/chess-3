@@ -7,7 +7,7 @@ import (
 	"github.com/pborman/ansi"
 )
 
-const PString = " KN kn"
+const PString = " PNBRQK pnbrqk"
 
 func (b Board) Print(w ansi.Writer) {
 	if _, err := w.Write([]byte(" abcdefgh\n")); err != nil {
@@ -38,9 +38,9 @@ func (b Board) Print(w ansi.Writer) {
 				cix = 1
 			}
 
-      p := int(b.SquaresToPiece[sq])
+			p := int(b.SquaresToPiece[sq])
 
-			if _, err := color.Write([]byte{PString[cix*3+p]}); err != nil {
+			if _, err := color.Write([]byte{PString[cix*7+p]}); err != nil {
 				panic(err)
 			}
 		}

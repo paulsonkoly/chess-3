@@ -12,6 +12,7 @@ type Move struct {
 	EPSq     Square
 	Castle   Castle
 	CRights  CastlingRights
+	Weight   int
 }
 
 func (m Move) String() string {

@@ -9,7 +9,7 @@ import (
 
 const Inf = 100000
 
-var PieceValues = [...]int{100, 300, 300, 500, 900, Inf}
+var PieceValues = [...]int{0, 100, 300, 300, 500, 900, Inf}
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
 var Psqt = [...][64]int{
@@ -114,14 +114,14 @@ func eval(b *board.Board, color Color) int {
 	for pType := Pawn; pType <= King; pType++ {
 		for piece := range (b.Pieces[pType] & b.Colors[color]).All() {
 			sq := piece.LowestSet()
-			if color == Black {
+			if color == White {
 				file := sq % 8
 				rank := sq / 8
 
 				sq = file + (7-rank)*8
 			}
 
-			score += PieceValues[pType-1] + Psqt[pType-1][sq]
+			score += PieceValues[pType] + Psqt[pType-1][sq]
 		}
 	}
 
