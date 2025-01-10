@@ -14,14 +14,11 @@ import (
 
 func AlphaBeta(b *board.Board, alpha, beta int, depth int) (score int, moves []move.Move) {
 	if depth == 0 {
-		return Quiescence(b, alpha, beta), []move.Move{}
+		return Quiescence(b, alpha, beta, 0), []move.Move{}
+		// return eval.Eval(b), []move.Move{}
 	}
 
-	if b.STM == White {
-		score = -eval.Inf
-	} else {
-		score = eval.Inf
-	}
+	score = -eval.Inf
 
 	hasLegal := false
 
@@ -38,29 +35,16 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int) (score int, moves []m
 
 		hasLegal = true
 
-		if b.STM.Flip() == White {
-			value, curr := AlphaBeta(b, alpha, beta, depth-1)
-			b.UndoMove(&m)
-			if value > score {
-				score = value
-				moves = append(curr, m)
-				alpha = max(alpha, score)
-			}
-			if score >= beta {
-				return
-			}
-		} else {
-			value, curr := AlphaBeta(b, alpha, beta, depth-1)
-			b.UndoMove(&m)
-			if value < score {
-				score = value
-				moves = append(curr, m)
-				beta = min(beta, score)
-			}
-
-			if score <= alpha {
-				return
-			}
+		value, curr := AlphaBeta(b, -beta, -alpha, depth-1)
+		value *= -1
+		b.UndoMove(&m)
+		if value > score {
+			score = value
+			moves = append(curr, m)
+			alpha = max(alpha, score)
+		}
+		if score >= beta {
+			return
 		}
 	}
 
@@ -74,60 +58,73 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int) (score int, moves []m
 	return
 }
 
-func Quiescence(b *board.Board, alpha, beta int) (score int) {
-	score = eval.Eval(b)
+var (
+	QDepth  int
+	QDelta  int
+	QWeight int
+)
 
-	if b.STM == White {
-		if score >= beta {
-			return
-		}
-
-		alpha = max(alpha, score)
-	} else {
-		if score <= alpha {
-			return
-		}
-
-		beta = min(beta, score)
+func Quiescence(b *board.Board, alpha, beta int, d int) int {
+	if d > QDepth {
+		QDepth = d
 	}
+	standPat := eval.Eval(b)
+
+	if standPat >= beta {
+		return beta
+	}
+
+	delta := standPat + 110 // we only have psqt atm, which doesn't have bigger values than 50
+	alpha = max(alpha, standPat)
 
 	moveList := sortedMoves(b)
 
 	for _, m := range moveList {
-		if m.Weight < 0 {
-			return
+		captured := b.SquaresToPiece[m.To]
+		if m.EPP == Pawn {
+			captured = Pawn
 		}
-		if (1<<m.To)&b.Colors[b.STM.Flip()] == 0 {
+
+		if eval.PieceValues[captured]+delta < alpha {
+			QDelta++
 			continue
 		}
-
+		//
+		// if m.Weight < 0 {
+		//   QWeight++ // this should be SSE
+		//   continue
+		// }
+		//
 		b.MakeMove(&m)
 
-		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+		check := false
+		king := b.Colors[b.STM] & b.Pieces[King]
+		if movegen.IsAttacked(b, b.STM.Flip(), king) {
+			check = true
+		}
+
+		// legality check
+		king = b.Colors[b.STM.Flip()] & b.Pieces[King]
 		if movegen.IsAttacked(b, b.STM, king) {
 			b.UndoMove(&m)
 			continue
 		}
 
-		curr := Quiescence(b, alpha, beta)
+		if !check && captured == NoPiece {
+			b.UndoMove(&m)
+			continue
+		}
+
+		curr := -Quiescence(b, -beta, -alpha, d+1)
 		b.UndoMove(&m)
 
-		if b.STM == White {
-			if curr >= beta {
-				return curr
-			}
-			score = max(score, curr)
-			alpha = max(alpha, curr)
-		} else {
-			if curr <= alpha {
-				return curr
-			}
-			score = min(score, curr)
-			beta = min(beta, curr)
+		if curr >= beta {
+			return curr
 		}
+		alpha = max(alpha, curr)
 	}
 
-	return
+	return alpha
 }
 
 func sortedMoves(b *board.Board) []move.Move {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/pprof"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -133,8 +134,14 @@ func (e *UciEngine) handleGo(args []string) {
 			defer wg.Done()
 			for d := 1; ; d++ {
 				s, moves := search.AlphaBeta(e.board, -eval.Inf, eval.Inf, d)
+        fmt.Printf("info qdepth %d qdelta %d qweight %d\n", search.QDepth, search.QDelta, search.QWeight)
+        search.QDelta = 0
+        search.QDepth = 0
+        search.QWeight = 0
+				slices.Reverse(moves)
+				fmt.Printf("info score cp %d depth %d pv %s\n", s, d, moves)
 				if len(moves) > 0 {
-					bestMove = moves[len(moves)-1]
+					bestMove = moves[0]
 					score = s
 				}
 				select {

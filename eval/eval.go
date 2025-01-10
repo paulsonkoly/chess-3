@@ -83,6 +83,7 @@ var Psqt = [...][64]int{
 
 func Eval(b *board.Board) int {
 	hasLegal := false
+  perp := [...]int{1, -1}
 	for m := range movegen.Moves(b, board.Full) {
 		b.MakeMove(&m)
 
@@ -98,15 +99,12 @@ func Eval(b *board.Board) int {
 	if !hasLegal {
 		king := b.Colors[b.STM] & b.Pieces[King]
 		if movegen.IsAttacked(b, b.STM.Flip(), king) {
-			if b.STM == White {
-				return -Inf
-			}
-			return Inf
+      return -Inf
 		}
 		return 0
 	}
 
-	return eval(b, White) - eval(b, Black)
+	return perp[b.STM] * (eval(b, White) - eval(b, Black))
 }
 
 func eval(b *board.Board, color Color) int {
