@@ -30,7 +30,7 @@ func TestQuiescence(t *testing.T) {
 		},
 		{name: "white a pawn up black to move",
 			b:    board.FromFEN("8/8/2k5/8/8/2KP4/8/8 b - - 0 1"),
-			want: 100,
+			want: -100,
 		},
 		{name: "stalemate",
 			b:    board.FromFEN("2k5/2P5/2K5/8/8/8/8/8 b - - 0 1"),
@@ -38,7 +38,7 @@ func TestQuiescence(t *testing.T) {
 		},
 		{name: "white checkmating",
 			b:    board.FromFEN("2k5/1PP5/2K5/8/8/8/8/8 b - - 0 1"),
-			want: eval.Inf,
+			want: -eval.Inf,
 		},
 		{name: "black checkmating",
 			b:    board.FromFEN("8/8/8/8/8/5k2/6pP/6BK w - - 0 1"),
@@ -48,7 +48,7 @@ func TestQuiescence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := search.Quiescence(tt.b, -eval.Inf, eval.Inf)
+			got := search.Quiescence(tt.b, -eval.Inf, eval.Inf, 0)
 			assert.InDelta(t, tt.want, got, 50.0)
 		})
 	}
@@ -78,7 +78,7 @@ func TestAlphabeta(t *testing.T) {
 		{name: "mate in 3 (Ra6, Ra8, Qxa8#)",
 			b:     board.FromFEN("1k6/1P1p4/3r4/3P4/6p1/6Pp/7P/q5BK b - - 0 1"),
 			depth: 5,
-			want:  -eval.Inf,
+			want:  eval.Inf,
 			move:  R(D6, A6),
 		},
 	}

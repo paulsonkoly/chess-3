@@ -5,6 +5,7 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
+	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 
@@ -59,9 +60,9 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int) (score int, moves []m
 }
 
 var (
-	QDepth  int
-	QDelta  int
-	QWeight int
+	QDepth int
+	QDelta int
+	QSEE   int
 )
 
 func Quiescence(b *board.Board, alpha, beta int, d int) int {
@@ -84,17 +85,8 @@ func Quiescence(b *board.Board, alpha, beta int, d int) int {
 		if m.EPP == Pawn {
 			captured = Pawn
 		}
+		see := heur.SEE(b, &m)
 
-		if eval.PieceValues[captured]+delta < alpha {
-			QDelta++
-			continue
-		}
-		//
-		// if m.Weight < 0 {
-		//   QWeight++ // this should be SSE
-		//   continue
-		// }
-		//
 		b.MakeMove(&m)
 
 		check := false
@@ -108,6 +100,20 @@ func Quiescence(b *board.Board, alpha, beta int, d int) int {
 		if movegen.IsAttacked(b, b.STM, king) {
 			b.UndoMove(&m)
 			continue
+		}
+
+		if !check {
+			if eval.PieceValues[captured]+delta < alpha {
+				QDelta++
+				b.UndoMove(&m)
+				continue
+			}
+
+			if see < 0 {
+				QSEE++
+				b.UndoMove(&m)
+				continue
+			}
 		}
 
 		if !check && captured == NoPiece {
@@ -145,7 +151,7 @@ func sortedMoves(b *board.Board) []move.Move {
 		m.Weight = eval.Psqt[m.Piece-1][sqTo] - eval.Psqt[m.Piece-1][sqFrom]
 
 		if b.SquaresToPiece[m.To] != NoPiece {
-			m.Weight += eval.PieceValues[b.SquaresToPiece[m.To]] - eval.PieceValues[m.Piece]
+			m.Weight += heur.SEE(b, &m)
 		}
 		result = append(result, m)
 	}

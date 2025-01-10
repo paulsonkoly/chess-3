@@ -28,6 +28,8 @@ var kingMoves = [64]board.BitBoard{
 	0x2838000000000000, 0x5070000000000000, 0xa0e0000000000000, 0x40c0000000000000,
 }
 
+func KingMoves(from Square) board.BitBoard { return kingMoves[from] }
+
 var knightMoves = [64]board.BitBoard{
 	0x0000000000020400, 0x0000000000050800, 0x00000000000a1100, 0x0000000000142200,
 	0x0000000000284400, 0x0000000000508800, 0x0000000000a01000, 0x0000000000402000,
@@ -46,6 +48,8 @@ var knightMoves = [64]board.BitBoard{
 	0x0004020000000000, 0x0008050000000000, 0x00110a0000000000, 0x0022140000000000,
 	0x0044280000000000, 0x0088500000000000, 0x0010a00000000000, 0x0020400000000000,
 }
+
+func KnightMoves(from Square) board.BitBoard { return knightMoves[from] }
 
 var bishopMasks = [64]board.BitBoard{
 	0x0040201008040200, 0x0000402010080400, 0x0000004020100a00, 0x0000000040221400,
@@ -147,6 +151,22 @@ var rookMagics = [64]board.BitBoard{
 
 var bishopAttacks [64][512]board.BitBoard
 var rookAttacks [64][4096]board.BitBoard
+
+func BishopMoves(from Square, occ board.BitBoard) board.BitBoard {
+	mask := bishopMasks[from]
+	magic := bishopMagics[from]
+	shift := bishopShifts[from]
+
+	return bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
+}
+
+func RookMoves(from Square, occ board.BitBoard) board.BitBoard {
+	mask := rookMasks[from]
+	magic := rookMagics[from]
+	shift := rookShifts[from]
+
+	return rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
+}
 
 func init() {
 	for sq := Square(0); sq < 64; sq++ {
@@ -260,6 +280,15 @@ func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 	}
 
 	return result
+}
+
+func PawnCaptureMoves(from Square, color Color) board.BitBoard {
+	bb := board.BitBoard(1) << from
+
+	if color == White {
+		return ((bb & ^board.AFile) << 7) | ((bb & ^board.HFile) << 9)
+	}
+	return ((bb & ^board.HFile) >> 7) | ((bb & ^board.AFile) >> 9)
 }
 
 var (
@@ -520,63 +549,40 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 	other := b.Colors[by]
 	occ := b.Colors[White] | b.Colors[Black]
 
+	// pawn capture
+	{
+		var bb board.BitBoard
+
+		if by == White {
+			bb = ((target & ^board.HFile) >> 7) | ((target & ^board.AFile) >> 9)
+		} else {
+			bb = ((target & ^board.AFile) << 7) | ((target & ^board.HFile) << 9)
+		}
+
+		if bb&b.Pieces[Pawn]&other != 0 {
+			return true
+		}
+	}
+
 	for t := range target.All() {
 		tsq := t.LowestSet()
 
-		// king moves
-		{
-			hit := kingMoves[tsq] & b.Pieces[King] & other
-			if hit != 0 {
-				return true
-			}
+		if KingMoves(tsq)&b.Pieces[King]&other != 0 {
+			return true
 		}
 
-		// knight moves
-		{
-			hit := knightMoves[tsq] & b.Pieces[Knight] & other
-			if hit != 0 {
-				return true
-			}
+		if KnightMoves(tsq)&b.Pieces[Knight]&other != 0 {
+			return true
 		}
 
 		// bishop or queen moves
-		{
-			mask := bishopMasks[tsq]
-			magic := bishopMagics[tsq]
-			shift := bishopShifts[tsq]
-
-			hit := bishopAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & (b.Pieces[Queen] | b.Pieces[Bishop]) & other
-			if hit != 0 {
-				return true
-			}
+		if BishopMoves(tsq, occ)&(b.Pieces[Queen]|b.Pieces[Bishop])&other != 0 {
+			return true
 		}
 
 		// rook or queen moves
-		{
-			mask := rookMasks[tsq]
-			magic := rookMagics[tsq]
-			shift := rookShifts[tsq]
-
-			hit := rookAttacks[tsq][((occ&mask)*magic)>>(64-shift)] & (b.Pieces[Rook] | b.Pieces[Queen]) & other
-			if hit != 0 {
-				return true
-			}
-		}
-
-		// pawn capture
-		{
-			var bb board.BitBoard
-
-			if by == White {
-				bb = ((t & ^board.HFile) >> 7) | ((t & ^board.AFile) >> 9)
-			} else {
-				bb = ((t & ^board.AFile) << 7) | ((t & ^board.HFile) << 9)
-			}
-
-			hit := bb & b.Pieces[Pawn] & other
-			if hit != 0 {
-				return true
-			}
+		if RookMoves(tsq, occ)&(b.Pieces[Rook]|b.Pieces[Queen])&other != 0 {
+			return true
 		}
 	}
 
@@ -593,7 +599,7 @@ func UCIMove(b *board.Board, from, to Square, promo Piece) move.Move {
 		if from-to == 2 || to-from == 2 {
 			newC := b.CRights & ^kingCRightsUpd[b.STM]
 			result.CRights = newC ^ b.CRights
-      result.Castle = C(b.STM, int(((from - to) + 2) / 4))
+			result.Castle = C(b.STM, int(((from-to)+2)/4))
 		} else {
 			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
 			result.CRights = newC ^ b.CRights
@@ -611,9 +617,9 @@ func UCIMove(b *board.Board, from, to Square, promo Piece) move.Move {
 		if from-to == 16 || to-from == 16 {
 			result.EPSq = 0xff
 		}
-    if (from - to) & 1 != 0 && b.SquaresToPiece[to] == NoPiece { // en-passant capture
-      result.EPP = Pawn
-    }
+		if (from-to)&1 != 0 && b.SquaresToPiece[to] == NoPiece { // en-passant capture
+			result.EPP = Pawn
+		}
 		newC := b.CRights &^ rookCRightsUpd[to]
 		result.CRights = newC ^ b.CRights
 	}
