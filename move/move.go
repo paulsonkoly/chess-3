@@ -16,5 +16,5 @@ type Move struct {
 }
 
 func (m Move) String() string {
-	return m.From.String() + m.To.String()
+	return m.From.String() + m.To.String() + m.Promo.String()
 }

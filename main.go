@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"runtime/pprof"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -106,10 +106,8 @@ func (e *UciEngine) handleGo(args []string) {
 		switch args[i] {
 		case "wtime":
 			e.timeControl.wtime = parseMilliseconds(args[i+1])
-			timeAllowed = parseMilliseconds(args[i+1]) / 10
 		case "btime":
 			e.timeControl.btime = parseMilliseconds(args[i+1])
-			timeAllowed = parseMilliseconds(args[i+1]) / 10
 		case "winc":
 			e.timeControl.winc = parseMilliseconds(args[i+1])
 		case "binc":
@@ -117,9 +115,11 @@ func (e *UciEngine) handleGo(args []string) {
 		case "depth":
 			depth = parseInt(args[i+1])
 		case "movetime":
-			timeAllowed = parseMilliseconds(args[i+1])
+			timeAllowed = parseMilliseconds(args[i+1]) - 30 // safety margin
 		}
 	}
+
+	timeAllowed = e.TimeControl(timeAllowed)
 
 	if timeAllowed > 0 {
 		// Timeout handling with iterative deepening
@@ -132,23 +132,16 @@ func (e *UciEngine) handleGo(args []string) {
 		score := 0
 		go func() {
 			defer wg.Done()
-			for d := 1; ; d++ {
-				s, moves := search.AlphaBeta(e.board, -eval.Inf, eval.Inf, d)
-				fmt.Printf("info qdepth %d qdelta %d qsee %d\n", search.QDepth, search.QDelta, search.QSEE)
-				search.QDelta = 0
-				search.QDepth = 0
-				search.QSEE = 0
-				slices.Reverse(moves)
-				fmt.Printf("info score cp %d depth %d pv %s\n", s, d, moves)
-				if len(moves) > 0 {
-					bestMove = moves[0]
-					score = s
-				}
-				select {
-				case <-stop:
-					return
-				default:
-				}
+			s, moves := search.Search(e.board, 100, stop)
+			fmt.Printf("info awfail %d ableaf %d qdepth %d qdelta %d qsee %d\n", search.AWFail, search.ABLeaf, search.QDepth, search.QDelta, search.QSEE)
+			search.AWFail = 0
+			search.ABLeaf = 0
+			search.QDelta = 0
+			search.QDepth = 0
+			search.QSEE = 0
+			if len(moves) > 0 {
+				bestMove = moves[0]
+				score = s
 			}
 		}()
 
@@ -159,16 +152,63 @@ func (e *UciEngine) handleGo(args []string) {
 	} else {
 		// Fixed depth search
 		start := time.Now()
-		score, moves := search.AlphaBeta(e.board, -eval.Inf, eval.Inf, depth)
+		score, moves := search.Search(e.board, depth, nil)
 
 		if len(moves) > 0 {
-			bestMove := moves[len(moves)-1]
+			bestMove := moves[0]
 			elapsed := time.Since(start).Milliseconds()
 			fmt.Printf("bestmove %s info score cp %d time %d\n", bestMove, score, elapsed)
 		} else {
 			fmt.Println("bestmove 0000") // No legal move
 		}
 	}
+}
+
+// 7800 that factors 39 * 200
+var initialMatCount = 16*eval.PieceValues[Pawn] +
+	4*eval.PieceValues[Knight] +
+	4*eval.PieceValues[Bishop] +
+	4*eval.PieceValues[Rook] +
+	2*eval.PieceValues[Queen]
+
+func (e *UciEngine) TimeControl(timeAllowed int) int {
+	if timeAllowed != 0 {
+		return timeAllowed
+	}
+
+	if e.board.STM == White {
+		if e.timeControl.wtime == 0 {
+			return timeAllowed
+		}
+		timeAllowed = e.timeControl.wtime
+	}
+
+	if e.board.STM == Black {
+		if e.timeControl.btime == 0 {
+			return timeAllowed
+		}
+		timeAllowed = e.timeControl.btime
+	}
+
+	matCount := e.board.Pieces[Queen].Count()*eval.PieceValues[Queen] +
+		e.board.Pieces[Rook].Count()*eval.PieceValues[Rook] +
+		e.board.Pieces[Bishop].Count()*eval.PieceValues[Bishop] +
+		e.board.Pieces[Knight].Count()*eval.PieceValues[Knight] +
+		e.board.Pieces[Pawn].Count()*eval.PieceValues[Pawn]
+
+	matCount = min(matCount, initialMatCount)
+
+	// linear interpolate initialMatCount -> 44 .. 0 -> 5 moves left
+	movesLeft := (matCount / 200) + 5
+
+	complexity := float64(matCount) / float64(initialMatCount)
+	complexity = 1 - complexity // 1-(1-x)**2 tapers off around 1 (d = 0) and steep around 0
+	complexity *= complexity
+	complexity = 1 - complexity
+	complexity *= 3.0 // scale up
+	complexity += 0.2 // safety margin
+
+	return int(math.Floor((complexity * float64(timeAllowed)) / float64(movesLeft)))
 }
 
 func parseUCIMove(move string) (Square, Square, Piece) {

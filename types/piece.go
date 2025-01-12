@@ -25,5 +25,5 @@ func AllPieces() iter.Seq[Piece] {
 }
 
 func (p Piece) String() string {
-	return string(" PKBRQK"[p])
+	return string(" pnbrqk"[p])
 }

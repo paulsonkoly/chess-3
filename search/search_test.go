@@ -48,7 +48,7 @@ func TestQuiescence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := search.Quiescence(tt.b, -eval.Inf, eval.Inf, 0)
+			got := search.Quiescence(tt.b, -eval.Inf, eval.Inf, 0, nil)
 			assert.InDelta(t, tt.want, got, 50.0)
 		})
 	}
@@ -85,11 +85,11 @@ func TestAlphabeta(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, moves := search.AlphaBeta(tt.b, -eval.Inf, eval.Inf, tt.depth)
+			got, moves := search.AlphaBeta(tt.b, -eval.Inf, eval.Inf, tt.depth, nil)
 			assert.Equal(t, tt.want, got)
 			assert.Greater(t, len(moves), 0)
-      move := moves[len(moves)-1]
-      move.Weight = 0
+			move := moves[len(moves)-1]
+			move.Weight = 0
 			assert.Equal(t, tt.move, move, moves)
 		})
 	}
