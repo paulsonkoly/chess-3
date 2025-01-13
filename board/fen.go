@@ -100,6 +100,8 @@ out:
 		b.EnPassant = Square(rank*8 + file)
 	}
 
+  b.Hashes = append(b.Hashes, b.Hash())
+
 	// /* TODO: move counter */
 	// board->halfmovecnt = 0;
 	// board->history[0].hash = calculate_hash(board);

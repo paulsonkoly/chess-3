@@ -502,3 +502,35 @@ func TestIsAttacked(t *testing.T) {
 		})
 	}
 }
+
+func TestRepetation(t *testing.T) {
+  b := board.FromFEN("5r1k/8/8/7p/7P/8/8/2R4K w - - 0 1")
+
+  m := R(C1, D1)
+  b.MakeMove(&m)
+  m = R(F8, E8)
+  b.MakeMove(&m)
+
+  m = R(D1, C1)
+  b.MakeMove(&m)
+  m = R(E8, F8)
+  b.MakeMove(&m)
+
+  m = R(C1, D1)
+  b.MakeMove(&m)
+  m = R(F8, E8)
+  b.MakeMove(&m)
+
+  m = R(D1, C1)
+  b.MakeMove(&m)
+  m = R(E8, F8)
+  b.MakeMove(&m)
+
+
+  cnt := 0
+  for range movegen.Moves(b, board.Full) {
+    cnt++
+  }
+
+  assert.Equal(t, 0, cnt)
+}

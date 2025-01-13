@@ -316,6 +316,19 @@ func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
 		self := b.Colors[b.STM]
 		them := b.Colors[b.STM.Flip()]
 
+		if len(b.Hashes) > 0 {
+			hash := b.Hashes[len(b.Hashes)-1]
+      cnt := 0
+			for ix := len(b.Hashes) - 3; ix >= 0; ix -= 2 {
+        if b.Hashes[ix] == hash {
+          cnt++
+          if cnt >= 2 {
+            return
+          }
+        }
+			}
+		}
+
 		// king moves
 		{
 			piece := self & b.Pieces[King]

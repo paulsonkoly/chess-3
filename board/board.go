@@ -3,6 +3,7 @@ package board
 import (
 	"iter"
 	"math/bits"
+	"math/rand/v2"
 
 	"github.com/paulsonkoly/chess-3/move"
 
@@ -69,6 +70,7 @@ type Board struct {
 	STM            Color
 	EnPassant      Square
 	CRights        CastlingRights
+	Hashes         []Hash
 }
 
 type castle struct {
@@ -127,6 +129,9 @@ func (b *Board) MakeMove(m *move.Move) {
 	// 	panic("board inconsistency")
 	// }
 	b.STM = b.STM.Flip()
+
+  // TODO: optimise thise
+  b.Hashes = append(b.Hashes, b.Hash())
 }
 
 func (b *Board) UndoMove(m *move.Move) {
@@ -160,4 +165,62 @@ func (b *Board) UndoMove(m *move.Move) {
 	b.SquaresToPiece[b.EnPassant] += Pawn * ep
 	b.Pieces[Pawn] |= (1 << b.EnPassant) & epMask
 	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & epMask
+
+  b.Hashes = b.Hashes[:len(b.Hashes)-1]
+}
+
+type Hash uint64
+
+// zobrist hashes
+var (
+	piecesRand   [2][6][64]Hash
+	stmRand      Hash
+	castlingRand [4]Hash
+	epFileRand   [8]Hash
+)
+
+func init() {
+	for i := range piecesRand {
+		for j := range piecesRand[i] {
+			for k := range piecesRand[i][j] {
+				piecesRand[i][j][k] = Hash(rand.Uint64())
+			}
+		}
+	}
+	stmRand = Hash(rand.Uint64())
+	for i := range castlingRand {
+		castlingRand[i] = Hash(rand.Uint64())
+	}
+	for i := range epFileRand {
+		epFileRand[i] = Hash(rand.Uint64())
+	}
+}
+
+func (b *Board) Hash() Hash {
+	var hash Hash
+
+	for color := White; color <= Black; color++ {
+		occ := b.Colors[color]
+		for piece := range occ.All() {
+			sq := piece.LowestSet()
+
+			hash ^= piecesRand[color][b.SquaresToPiece[sq]-1][sq]
+		}
+	}
+
+  if b.STM == Black {
+    hash ^= stmRand
+  }
+
+  for i, r := range castlingRand {
+    if b.CRights & (1<<i) != 0  {
+      hash ^= r
+    }
+  }
+  
+  if b.EnPassant != 0 {
+    hash ^= epFileRand[b.EnPassant % 8]
+  }
+
+	return hash
 }
