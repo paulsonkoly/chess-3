@@ -71,6 +71,7 @@ type Board struct {
 	EnPassant      Square
 	CRights        CastlingRights
 	Hashes         []Hash
+	FiftyCnt       int
 }
 
 type castle struct {
@@ -92,6 +93,13 @@ var (
 )
 
 func (b *Board) MakeMove(m *move.Move) {
+	m.FiftyCnt = b.FiftyCnt
+	if m.Piece == Pawn || m.CRights != 0 || b.SquaresToPiece[m.To] != NoPiece {
+		b.FiftyCnt = 0
+	} else {
+		b.FiftyCnt++
+	}
+
 	epMask := pieceMask[m.EPP]
 	ep := Piece(epMask & 1)
 
@@ -130,11 +138,12 @@ func (b *Board) MakeMove(m *move.Move) {
 	// }
 	b.STM = b.STM.Flip()
 
-  // TODO: optimise thise
-  b.Hashes = append(b.Hashes, b.Hash())
+	// TODO: optimise thise
+	b.Hashes = append(b.Hashes, b.Hash())
 }
 
 func (b *Board) UndoMove(m *move.Move) {
+	b.FiftyCnt = m.FiftyCnt
 	b.STM = b.STM.Flip()
 
 	castle := castles[m.Castle]
@@ -166,7 +175,7 @@ func (b *Board) UndoMove(m *move.Move) {
 	b.Pieces[Pawn] |= (1 << b.EnPassant) & epMask
 	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & epMask
 
-  b.Hashes = b.Hashes[:len(b.Hashes)-1]
+	b.Hashes = b.Hashes[:len(b.Hashes)-1]
 }
 
 type Hash uint64
@@ -208,19 +217,19 @@ func (b *Board) Hash() Hash {
 		}
 	}
 
-  if b.STM == Black {
-    hash ^= stmRand
-  }
+	if b.STM == Black {
+		hash ^= stmRand
+	}
 
-  for i, r := range castlingRand {
-    if b.CRights & (1<<i) != 0  {
-      hash ^= r
-    }
-  }
-  
-  if b.EnPassant != 0 {
-    hash ^= epFileRand[b.EnPassant % 8]
-  }
+	for i, r := range castlingRand {
+		if b.CRights&(1<<i) != 0 {
+			hash ^= r
+		}
+	}
+
+	if b.EnPassant != 0 {
+		hash ^= epFileRand[b.EnPassant%8]
+	}
 
 	return hash
 }

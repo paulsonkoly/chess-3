@@ -98,9 +98,24 @@ out:
 			rank = 4
 		}
 		b.EnPassant = Square(rank*8 + file)
+		ix++
+	}
+	ix++
+
+	for fen[ix] == ' ' {
+		ix++
 	}
 
-  b.Hashes = append(b.Hashes, b.Hash())
+	cnt := 0
+	for fen[ix] != ' ' {
+		cnt *= 10
+		cnt += int(fen[ix] - '0')
+		ix++
+	}
+
+	b.FiftyCnt = cnt
+
+	b.Hashes = append(b.Hashes, b.Hash())
 
 	// /* TODO: move counter */
 	// board->halfmovecnt = 0;
@@ -171,7 +186,7 @@ func (b Board) FEN() string {
 	sb.WriteString(" ")
 
 	if b.EnPassant == 0 {
-		sb.WriteString("- 0 1")
+		sb.WriteString("-")
 	} else {
 		var ep Square
 		if b.EnPassant <= 31 {
@@ -179,8 +194,11 @@ func (b Board) FEN() string {
 		} else {
 			ep = b.EnPassant + 8
 		}
-		sb.WriteString(fmt.Sprintf("%s 0 1", ep))
+		sb.WriteString(ep.String())
 	}
+	sb.WriteString(" ")
+	sb.WriteString(fmt.Sprintf("%d 1", b.FiftyCnt))
+
 	// if (board->en_passant) {
 	//   SQUARE ep = __builtin_ctzll(board->en_passant);
 	//   SQUARE f = (ep & 7), r = (ep >> 3);

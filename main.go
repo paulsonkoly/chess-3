@@ -60,6 +60,8 @@ func (e *UciEngine) handleCommand(command string) {
 		e.handlePosition(parts[1:])
 	case "go":
 		e.handleGo(parts[1:])
+	case "fen":
+		fmt.Println(e.board.FEN())
 	case "quit":
 		os.Exit(0)
 	}

@@ -360,7 +360,7 @@ func TestMoves(t *testing.T) {
 
 				if movegen.IsAttacked(b, b.STM, king) {
 					// illegal (pseudo-leagal) move, skip
-movegen.IsAttacked(b, b.STM, king)
+					movegen.IsAttacked(b, b.STM, king)
 					b.UndoMove(&m)
 					continue
 				}
@@ -372,6 +372,7 @@ movegen.IsAttacked(b, b.STM, king)
 				m.EPSq = 0
 				m.Castle = 0
 				m.CRights = 0
+				m.FiftyCnt = 0
 				ix := slices.Index(want, m)
 				if ix == -1 {
 					t.Errorf("unexpected move %s%s generated", m.Piece, m)
@@ -504,33 +505,50 @@ func TestIsAttacked(t *testing.T) {
 }
 
 func TestRepetation(t *testing.T) {
-  b := board.FromFEN("5r1k/8/8/7p/7P/8/8/2R4K w - - 0 1")
+	b := board.FromFEN("5r1k/8/8/7p/7P/8/8/2R4K w - - 0 1")
 
-  m := R(C1, D1)
-  b.MakeMove(&m)
-  m = R(F8, E8)
-  b.MakeMove(&m)
+	m := R(C1, D1)
+	b.MakeMove(&m)
+	m = R(F8, E8)
+	b.MakeMove(&m)
 
-  m = R(D1, C1)
-  b.MakeMove(&m)
-  m = R(E8, F8)
-  b.MakeMove(&m)
+	m = R(D1, C1)
+	b.MakeMove(&m)
+	m = R(E8, F8)
+	b.MakeMove(&m)
 
-  m = R(C1, D1)
-  b.MakeMove(&m)
-  m = R(F8, E8)
-  b.MakeMove(&m)
+	m = R(C1, D1)
+	b.MakeMove(&m)
+	m = R(F8, E8)
+	b.MakeMove(&m)
 
-  m = R(D1, C1)
-  b.MakeMove(&m)
-  m = R(E8, F8)
-  b.MakeMove(&m)
+	m = R(D1, C1)
+	b.MakeMove(&m)
+	m = R(E8, F8)
+	b.MakeMove(&m)
 
+	cnt := 0
+	for range movegen.Moves(b, board.Full) {
+		cnt++
+	}
 
-  cnt := 0
-  for range movegen.Moves(b, board.Full) {
-    cnt++
-  }
+	assert.Equal(t, 0, cnt)
+}
 
-  assert.Equal(t, 0, cnt)
+func TestFifty(t *testing.T) {
+	b := board.FromFEN("8/5R1P/8/3Q4/7k/8/1P6/6K1 b - - 98 161")
+
+	m := K(H4, H3)
+	b.MakeMove(&m)
+	m = Q(D5, D3)
+	b.MakeMove(&m)
+
+	assert.Equal(t, 100, b.FiftyCnt)
+
+	cnt := 0
+	for range movegen.Moves(b, board.Full) {
+		cnt++
+	}
+
+	assert.Equal(t, 0, cnt)
 }
