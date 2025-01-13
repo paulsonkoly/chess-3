@@ -92,6 +92,8 @@ var (
 	}
 )
 
+var hashEnable = [2]Hash{0, 0xffffffffffffffff}
+
 func (b *Board) MakeMove(m *move.Move) {
 	m.FiftyCnt = b.FiftyCnt
 	if m.Piece == Pawn || m.CRights != 0 || b.SquaresToPiece[m.To] != NoPiece {
@@ -100,22 +102,35 @@ func (b *Board) MakeMove(m *move.Move) {
 		b.FiftyCnt++
 	}
 
+	hash := b.Hashes[len(b.Hashes)-1]
+
 	epMask := pieceMask[m.EPP]
 	ep := Piece(epMask & 1)
 
 	b.SquaresToPiece[b.EnPassant] -= Pawn * ep
 	b.Pieces[m.EPP] &= ^((1 << b.EnPassant) & epMask)
 	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & epMask)
+	hash ^= (piecesRand[b.STM.Flip()][Pawn][b.EnPassant] & Hash(epMask))
+
+	hash ^=castlingRand[0]&hashEnable[(m.CRights>>0)&1]
+	hash ^=castlingRand[1]&hashEnable[(m.CRights>>1)&1]
+	hash ^=castlingRand[2]&hashEnable[(m.CRights>>2)&1]
+	hash ^=castlingRand[3]&hashEnable[(m.CRights>>3)&1]
 
 	m.CRights, b.CRights = b.CRights, m.CRights^b.CRights
 	m.Captured = b.SquaresToPiece[m.To]
+	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
 	m.EPSq, b.EnPassant = b.EnPassant, m.To&m.EPSq // m.EnPassant is 0xff for double pawn pushes
+	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
 
 	pm := pieceMask[m.Promo]
 
 	b.Pieces[m.Captured] &= ^(1 << m.To)
+	hash ^= piecesRand[b.STM.Flip()][m.Captured][m.To]
 	b.Pieces[m.Piece] ^= (1 << m.From) | ((1 << m.To) & ^pm)
+	hash ^= piecesRand[b.STM][m.Piece][m.From] ^ (piecesRand[b.STM][m.Piece][m.To] & ^Hash(pm))
 	b.Pieces[m.Promo] ^= (1 << m.To) & pm
+	hash ^= (piecesRand[b.STM][m.Promo][m.To] & Hash(pm))
 
 	b.Colors[b.STM.Flip()] &= ^(1 << m.To)
 	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
@@ -125,6 +140,8 @@ func (b *Board) MakeMove(m *move.Move) {
 	b.SquaresToPiece[m.To] = (1-promo)*m.Piece + promo*m.Promo
 
 	castle := castles[m.Castle]
+  hash ^= piecesRand[b.STM][Rook][castle.down] & hashEnable[castle.piece>>2]
+  hash ^= piecesRand[b.STM][Rook][castle.up] & hashEnable[castle.piece>>2]
 	b.SquaresToPiece[castle.down] -= castle.piece
 	b.SquaresToPiece[castle.up] += castle.piece
 	b.Pieces[Rook] ^= castle.swap
@@ -138,8 +155,10 @@ func (b *Board) MakeMove(m *move.Move) {
 	// }
 	b.STM = b.STM.Flip()
 
+	hash ^= stmRand
+
 	// TODO: optimise thise
-	b.Hashes = append(b.Hashes, b.Hash())
+	b.Hashes = append(b.Hashes, hash)
 }
 
 func (b *Board) UndoMove(m *move.Move) {
@@ -182,7 +201,7 @@ type Hash uint64
 
 // zobrist hashes
 var (
-	piecesRand   [2][6][64]Hash
+	piecesRand   [2][7][64]Hash
 	stmRand      Hash
 	castlingRand [4]Hash
 	epFileRand   [8]Hash
@@ -192,7 +211,11 @@ func init() {
 	for i := range piecesRand {
 		for j := range piecesRand[i] {
 			for k := range piecesRand[i][j] {
-				piecesRand[i][j][k] = Hash(rand.Uint64())
+				if j == int(NoPiece) {
+					piecesRand[i][j][k] = 0
+				} else {
+					piecesRand[i][j][k] = Hash(rand.Uint64())
+				}
 			}
 		}
 	}
@@ -213,7 +236,7 @@ func (b *Board) Hash() Hash {
 		for piece := range occ.All() {
 			sq := piece.LowestSet()
 
-			hash ^= piecesRand[color][b.SquaresToPiece[sq]-1][sq]
+			hash ^= piecesRand[color][b.SquaresToPiece[sq]][sq]
 		}
 	}
 

@@ -360,7 +360,6 @@ func TestMoves(t *testing.T) {
 
 				if movegen.IsAttacked(b, b.STM, king) {
 					// illegal (pseudo-leagal) move, skip
-					movegen.IsAttacked(b, b.STM, king)
 					b.UndoMove(&m)
 					continue
 				}

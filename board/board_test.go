@@ -5,6 +5,7 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/movegen"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -50,4 +51,40 @@ func TestCastle(t *testing.T) {
 	b.UndoMove(&m)
 
 	assert.Equal(t, CRights(ShortWhite, LongWhite), b.CRights)
+}
+
+func TestZobrist(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		b *board.Board
+	}{
+		{
+			name: "castle / en-passant / capture",
+			b:    board.FromFEN("r3k3/8/8/4p1Pp/8/1p6/3P4/3BK2R w Kq h6 0 1"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+      b := tt.b
+
+			for m := range movegen.Moves(b, board.Full) {
+				b.MakeMove(&m)
+
+				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+
+				if movegen.IsAttacked(b, b.STM, king) {
+					// illegal (pseudo-leagal) move, skip
+					b.UndoMove(&m)
+					continue
+				}
+
+        assert.Greater(t, len(b.Hashes), 0)
+        assert.Equal(t, b.Hash(), b.Hashes[len(b.Hashes)-1], "move", m)
+
+        b.UndoMove(&m)
+			}
+		})
+	}
 }

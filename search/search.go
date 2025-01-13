@@ -33,7 +33,7 @@ func Search(b *board.Board, depth int, stop <-chan struct{}) (score int, moves [
 		)
 
 		for !awOk {
-      scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, stop)
+			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, stop)
 
 			switch {
 
@@ -55,9 +55,9 @@ func Search(b *board.Board, depth int, stop <-chan struct{}) (score int, moves [
 				return
 			}
 		}
-    score, moves = scoreSample, movesSample
-    slices.Reverse(moves)
-    fmt.Printf("info depth %d score cp %d pv %s\n", d, score, pvInfo(moves))
+		score, moves = scoreSample, movesSample
+		slices.Reverse(moves)
+		fmt.Printf("info depth %d score cp %d pv %s\n", d, score, pvInfo(moves))
 
 		alpha = score - WindowSize
 		beta = score + WindowSize
@@ -241,7 +241,6 @@ func sortedMoves(b *board.Board) []move.Move {
 		m.Weight = eval.Psqt[m.Piece-1][sqTo] - eval.Psqt[m.Piece-1][sqFrom]
 
 		if b.SquaresToPiece[m.To] != NoPiece {
-      // m.Weight += eval.PieceValues[b.SquaresToPiece[m.To]] - eval.PieceValues[m.Piece]
 			m.Weight += heur.SEE(b, &m)
 		}
 		result = append(result, m)
