@@ -280,6 +280,13 @@ func sortMoves(b *board.Board, moves []move.Move, d int, sst *searchSt) {
 			}
 		}
 		weight += heur.SEE(b, &m)
+    toSq := m.To
+    fromSq := m.From
+    if b.STM == White {
+      toSq ^= 56
+      fromSq ^= 56
+    }
+    weight += eval.PSqT[(m.Piece-1)*2][toSq] - eval.PSqT[(m.Piece-1)*2][fromSq]
 		moves[ix].Weight = weight
 	}
 	slices.SortFunc(moves, func(a, b move.Move) int { return b.Weight - a.Weight })
