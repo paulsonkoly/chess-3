@@ -85,7 +85,7 @@ func TestAlphabeta(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, moves := search.AlphaBeta(tt.b, -eval.Inf, eval.Inf, tt.depth, nil)
+			got, moves := search.AlphaBeta(tt.b, -eval.Inf, eval.Inf, tt.depth, nil, nil)
 			assert.Equal(t, tt.want, got)
 			assert.Greater(t, len(moves), 0)
 			move := moves[len(moves)-1]

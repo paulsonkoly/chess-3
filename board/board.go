@@ -117,10 +117,10 @@ func (b *Board) MakeMove(m *move.Move) {
 	hash ^= castlingRand[2] & hashEnable[(m.CRights>>2)&1]
 	hash ^= castlingRand[3] & hashEnable[(m.CRights>>3)&1]
 
-	m.CRights, b.CRights = b.CRights, m.CRights^b.CRights
+	b.CRights = m.CRights ^ b.CRights
 	m.Captured = b.SquaresToPiece[m.To]
 	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
-	m.EPSq, b.EnPassant = b.EnPassant, m.To&m.EPSq // m.EnPassant is 0xff for double pawn pushes
+	b.EnPassant ^= m.EPSq
 	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
 
 	pm := pieceMask[m.Promo]
@@ -184,8 +184,8 @@ func (b *Board) UndoMove(m *move.Move) {
 	b.Pieces[m.Captured] ^= cm
 	b.Colors[b.STM.Flip()] ^= cm
 
-	b.CRights = m.CRights
-	b.EnPassant = m.EPSq
+	b.CRights ^= m.CRights
+	b.EnPassant ^= m.EPSq
 
 	epMask := pieceMask[m.EPP]
 	ep := Piece(epMask & 1)
@@ -193,6 +193,8 @@ func (b *Board) UndoMove(m *move.Move) {
 	b.SquaresToPiece[b.EnPassant] += Pawn * ep
 	b.Pieces[Pawn] |= (1 << b.EnPassant) & epMask
 	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & epMask
+
+	m.Captured = 0
 
 	b.Hashes = b.Hashes[:len(b.Hashes)-1]
 }

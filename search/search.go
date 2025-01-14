@@ -17,26 +17,39 @@ import (
 )
 
 const WindowSize = 50 // half a pawn left and right around score
+const MaxPlies = 64
 
 var AWFail int
 
 var ms = mstore.New()
 
+type pvEntry struct {
+	from, to Square
+	hsh      board.Hash
+}
+
+type searchSt struct {
+	pvMap    []pvEntry
+	maxDepth int
+}
+
 func Search(b *board.Board, depth int, stop <-chan struct{}) (score int, moves []move.Move) {
 	alpha := -eval.Inf
 	beta := eval.Inf
 	aborting = false
+	searchSt := searchSt{pvMap: make([]pvEntry, MaxPlies)}
 
 	for d := range depth + 1 { // +1 for 0 depth search (quiesence eval)
 		awOk := false // aspiration window succeeded
 		factor := 1
+		searchSt.maxDepth = d
 		var (
 			scoreSample int
 			movesSample []move.Move
 		)
 
 		for !awOk {
-			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, stop)
+			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, stop, &searchSt)
 
 			switch {
 
@@ -62,10 +75,29 @@ func Search(b *board.Board, depth int, stop <-chan struct{}) (score int, moves [
 		slices.Reverse(moves)
 		fmt.Printf("info depth %d score cp %d pv %s\n", d, score, pvInfo(moves))
 
+		fillPVMap(b, moves, &searchSt)
+
 		alpha = score - WindowSize
 		beta = score + WindowSize
 	}
 	return
+}
+
+func fillPVMap(b *board.Board, moves []move.Move, sst *searchSt) {
+	sst.pvMap = sst.pvMap[:len(moves)]
+
+	undo := make([]move.Move, len(moves))
+
+	for ix, m := range moves {
+		sst.pvMap[ix] = pvEntry{from: m.From, to: m.To, hsh: b.Hashes[len(b.Hashes)-1]}
+
+		b.MakeMove(&m)
+		undo[len(undo)-ix-1] = m
+	}
+
+	for _, m := range undo {
+		b.UndoMove(&m)
+	}
 }
 
 var aborting = false
@@ -97,7 +129,7 @@ var (
 	ABLeaf int
 )
 
-func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{}) (score int, pv []move.Move) {
+func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{}, sst *searchSt) (score int, pv []move.Move) {
 	if depth == 0 {
 		ABLeaf++
 		return Quiescence(b, alpha, beta, 0, stop), []move.Move{}
@@ -112,7 +144,7 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{})
 
 	movegen.GenMoves(ms, b, board.Full)
 	moves := ms.Frame()
-	sortMoves(b, moves)
+	sortMoves(b, moves, depth, sst)
 
 	for _, m := range moves {
 		b.MakeMove(&m)
@@ -123,7 +155,7 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{})
 			continue
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, depth-1, stop)
+		value, curr := AlphaBeta(b, -beta, -alpha, depth-1, stop, sst)
 		value *= -1
 		b.UndoMove(&m)
 		if value > score || value == score && !hasLegal {
@@ -179,7 +211,7 @@ func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) in
 	alpha = max(alpha, standPat)
 
 	moves := ms.Frame()
-	sortMoves(b, moves)
+	sortMoves(b, moves, 0, nil)
 
 	for _, m := range moves {
 		captured := b.SquaresToPiece[m.To]
@@ -238,9 +270,17 @@ func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) in
 	return alpha
 }
 
-func sortMoves(b *board.Board, moves []move.Move) {
+func sortMoves(b *board.Board, moves []move.Move, d int, sst *searchSt) {
 	for ix, m := range moves {
-		moves[ix].Weight = heur.SEE(b, &m)
+		weight := 0
+		if sst != nil && len(sst.pvMap) > sst.maxDepth-d {
+			pvMapE := sst.pvMap[sst.maxDepth-d]
+			if pvMapE.from == m.From && pvMapE.to == m.To && pvMapE.hsh == b.Hashes[len(b.Hashes)-1] {
+				weight += 5000
+			}
+		}
+		weight += heur.SEE(b, &m)
+		moves[ix].Weight = weight
 	}
 	slices.SortFunc(moves, func(a, b move.Move) int { return b.Weight - a.Weight })
 }

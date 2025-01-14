@@ -349,7 +349,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.Castle = 0
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -368,7 +368,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.Castle = 0
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -394,7 +394,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.Castle = 0
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -421,7 +421,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.Castle = 0
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -452,7 +452,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.Castle = 0
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -498,7 +498,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 		m.Castle = 0
 		m.Promo = 0
 		m.EPP = 0
-		m.EPSq = 0
+		m.EPSq = b.EnPassant
 	}
 
 	// promotions pushes
@@ -513,7 +513,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.Promo = promo
 			m.Castle = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -526,7 +526,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 		m.From = from
 		m.To = Square(int(from) + 2*shift)
 		m.CRights = 0
-		m.EPSq = 0xff
+		m.EPSq = m.To ^ b.EnPassant
 		m.Castle = 0
 		m.Promo = 0
 		m.EPP = 0
@@ -554,7 +554,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.Castle = 0
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -582,7 +582,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 				m.CRights = cNew ^ b.CRights
 				m.Castle = 0
 				m.EPP = 0
-				m.EPSq = 0
+				m.EPSq = b.EnPassant
 			}
 		}
 	}
@@ -600,7 +600,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 		m.CRights = 0
 		m.Castle = 0
 		m.Promo = 0
-		m.EPSq = 0
+		m.EPSq = b.EnPassant
 	}
 
 	// castling short
@@ -616,7 +616,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.CRights = b.CRights ^ newC
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -633,7 +633,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 			m.CRights = b.CRights ^ newC
 			m.Promo = 0
 			m.EPP = 0
-			m.EPSq = 0
+			m.EPSq = b.EnPassant
 		}
 	}
 
@@ -685,7 +685,7 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 
 func UCIMove(b *board.Board, from, to Square, promo Piece) move.Move {
 	pType := b.SquaresToPiece[from]
-	result := move.Move{Piece: pType, From: from, To: to, Promo: promo}
+	result := move.Move{Piece: pType, From: from, To: to, Promo: promo, EPSq: b.EnPassant }
 
 	switch pType {
 
@@ -709,7 +709,7 @@ func UCIMove(b *board.Board, from, to Square, promo Piece) move.Move {
 
 	case Pawn:
 		if from-to == 16 || to-from == 16 {
-			result.EPSq = 0xff
+			result.EPSq ^= to
 		}
 		if (from-to)&1 != 0 && b.SquaresToPiece[to] == NoPiece { // en-passant capture
 			result.EPP = Pawn

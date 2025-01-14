@@ -74,6 +74,7 @@ func TestZobrist(t *testing.T) {
 			movegen.GenMoves(ms, b, board.Full)
 
 			for _, m := range ms.Frame() {
+				mOld := m
 				b.MakeMove(&m)
 
 				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
@@ -88,6 +89,9 @@ func TestZobrist(t *testing.T) {
 				assert.Equal(t, b.Hash(), b.Hashes[len(b.Hashes)-1], "move", m)
 
 				b.UndoMove(&m)
+
+        assert.Equal(t, tt.b, b)
+				assert.Equal(t, mOld, m, mOld)
 			}
 		})
 	}
