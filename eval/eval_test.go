@@ -5,6 +5,7 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
+	"github.com/paulsonkoly/chess-3/move"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +24,7 @@ func TestEval(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := eval.Eval(tt.b)
+			got := eval.Eval(tt.b, []move.Move{})
 			assert.Equal(t, tt.want, got)
 		})
 	}

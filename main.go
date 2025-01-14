@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ import (
 var debugFEN = flag.String("debugFEN", "", "Debug a given fen to a given depth using stockfish perft")
 var debugDepth = flag.Int("debugDepth", 3, "Debug a given depth")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
+var memProf = flag.String("memProf", "", "mem profile file name")
+var bench = flag.Bool("bench", false, "run benchmark instead of UCI")
 
 type UciEngine struct {
 	board       *board.Board
@@ -271,9 +274,27 @@ func main() {
 		return
 	}
 
-	e := NewUciEngine()
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		e.handleCommand(scanner.Text())
+	if *bench {
+		b := board.FromFEN("rnbqk2r/ppp1ppbp/3p1np1/8/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 1")
+
+		search.Search(b, 7, nil)
+	} else {
+		e := NewUciEngine()
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			e.handleCommand(scanner.Text())
+		}
+	}
+
+	if *memProf != "" {
+		f, err := os.Create(*memProf)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close() // error handling omitted for example
+		runtime.GC()    // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			panic(err)
+		}
 	}
 }

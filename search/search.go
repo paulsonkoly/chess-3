@@ -10,6 +10,7 @@ import (
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/mstore"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -18,6 +19,8 @@ import (
 const WindowSize = 50 // half a pawn left and right around score
 
 var AWFail int
+
+var ms = mstore.New()
 
 func Search(b *board.Board, depth int, stop <-chan struct{}) (score int, moves []move.Move) {
 	alpha := -eval.Inf
@@ -94,19 +97,24 @@ var (
 	ABLeaf int
 )
 
-func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{}) (score int, moves []move.Move) {
+func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{}) (score int, pv []move.Move) {
 	if depth == 0 {
 		ABLeaf++
 		return Quiescence(b, alpha, beta, 0, stop), []move.Move{}
 	}
 
-	score = -eval.Inf // this is so that if we are checkmated we add the moves to pv
+	score = -eval.Inf
 
 	hasLegal := false
 
-	moveList := sortedMoves(b)
+	ms.Push()
+	defer ms.Pop()
 
-	for _, m := range moveList {
+	movegen.GenMoves(ms, b, board.Full)
+	moves := ms.Frame()
+	sortMoves(b, moves)
+
+	for _, m := range moves {
 		b.MakeMove(&m)
 
 		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
@@ -120,7 +128,7 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{})
 		b.UndoMove(&m)
 		if value > score || value == score && !hasLegal {
 			score = value
-			moves = append(curr, m)
+			pv = append(curr, m)
 			alpha = max(alpha, score)
 		}
 
@@ -155,7 +163,13 @@ func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) in
 	if d > QDepth {
 		QDepth = d
 	}
-	standPat := eval.Eval(b)
+
+	ms.Push()
+	defer ms.Pop()
+
+	movegen.GenMoves(ms, b, board.Full)
+
+	standPat := eval.Eval(b, ms.Frame())
 
 	if standPat >= beta {
 		return beta
@@ -164,9 +178,10 @@ func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) in
 	delta := standPat + 110 // we only have psqt atm, which doesn't have bigger values than 50
 	alpha = max(alpha, standPat)
 
-	moveList := sortedMoves(b)
+	moves := ms.Frame()
+	sortMoves(b, moves)
 
-	for _, m := range moveList {
+	for _, m := range moves {
 		captured := b.SquaresToPiece[m.To]
 		if m.EPP == Pawn {
 			captured = Pawn
@@ -223,9 +238,8 @@ func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) in
 	return alpha
 }
 
-func sortedMoves(b *board.Board) []move.Move {
-	result := make([]move.Move, 0, 30)
-	for m := range movegen.Moves(b, board.Full) {
+func sortMoves(b *board.Board, moves []move.Move) {
+	for ix, m := range moves {
 		sqFrom := m.From
 		sqTo := m.To
 		if b.STM == White {
@@ -238,13 +252,12 @@ func sortedMoves(b *board.Board) []move.Move {
 			sqTo = file + (7-rank)*8
 		}
 
-		m.Weight = eval.Psqt[m.Piece-1][sqTo] - eval.Psqt[m.Piece-1][sqFrom]
+		weight := eval.Psqt[m.Piece-1][sqTo] - eval.Psqt[m.Piece-1][sqFrom]
 
 		if b.SquaresToPiece[m.To] != NoPiece {
-			m.Weight += heur.SEE(b, &m)
+			weight += heur.SEE(b, &m)
 		}
-		result = append(result, m)
+		moves[ix].Weight = weight
 	}
-	slices.SortFunc(result, func(a, b move.Move) int { return b.Weight - a.Weight })
-	return result
+	slices.SortFunc(moves, func(a, b move.Move) int { return b.Weight - a.Weight })
 }

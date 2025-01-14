@@ -6,6 +6,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/mstore"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -67,9 +68,12 @@ func TestZobrist(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-      b := tt.b
+			b := tt.b
 
-			for m := range movegen.Moves(b, board.Full) {
+			ms := mstore.New()
+			movegen.GenMoves(ms, b, board.Full)
+
+			for _, m := range ms.Frame() {
 				b.MakeMove(&m)
 
 				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
@@ -80,10 +84,10 @@ func TestZobrist(t *testing.T) {
 					continue
 				}
 
-        assert.Greater(t, len(b.Hashes), 0)
-        assert.Equal(t, b.Hash(), b.Hashes[len(b.Hashes)-1], "move", m)
+				assert.Greater(t, len(b.Hashes), 0)
+				assert.Equal(t, b.Hash(), b.Hashes[len(b.Hashes)-1], "move", m)
 
-        b.UndoMove(&m)
+				b.UndoMove(&m)
 			}
 		})
 	}

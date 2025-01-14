@@ -2,7 +2,9 @@ package eval
 
 import (
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
@@ -81,11 +83,11 @@ var Psqt = [...][64]int{
 	},
 }
 
-func Eval(b *board.Board) int {
+func Eval(b *board.Board, moves []move.Move) int {
 	hasLegal := false
 	perp := [...]int{1, -1}
 
-	for m := range movegen.Moves(b, board.Full) {
+	for _, m := range moves {
 		b.MakeMove(&m)
 
 		king := b.Colors[b.STM.Flip()] & b.Pieces[King]

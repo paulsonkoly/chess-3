@@ -1,10 +1,10 @@
 package movegen
 
 import (
-	"iter"
-
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/mstore"
+
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
@@ -311,255 +311,332 @@ var (
 	}
 )
 
-func Moves(b *board.Board, target board.BitBoard) iter.Seq[move.Move] {
-	return func(yield func(move.Move) bool) {
-		self := b.Colors[b.STM]
-		them := b.Colors[b.STM.Flip()]
+func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 
-		if b.FiftyCnt >= 100 {
-			return
-		}
+	self := b.Colors[b.STM]
+	them := b.Colors[b.STM.Flip()]
 
-		if len(b.Hashes) > 0 {
-			hash := b.Hashes[len(b.Hashes)-1]
-			cnt := 0
-			for ix := len(b.Hashes) - 3; ix >= 0; ix -= 2 {
-				if b.Hashes[ix] == hash {
-					cnt++
-					if cnt >= 2 {
-						return
-					}
-				}
-			}
-		}
-
-		// king moves
-		{
-			piece := self & b.Pieces[King]
-			from := piece.LowestSet()
-
-			for toBB := range (kingMoves[from] & ^self & target).All() {
-				to := toBB.LowestSet()
-				newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
-				if !yield(move.Move{Piece: King, From: from, To: to, CRights: newC ^ b.CRights}) {
-					return
-				}
-			}
-		}
-
-		// knight moves
-		for piece := range (self & b.Pieces[Knight]).All() {
-			from := piece.LowestSet()
-
-			for toBB := range (knightMoves[from] & ^self & target).All() {
-				to := toBB.LowestSet()
-				newC := b.CRights & ^(rookCRightsUpd[to])
-				if !yield(move.Move{Piece: Knight, From: from, To: to, CRights: newC ^ b.CRights}) {
-					return
-				}
-			}
-		}
-
-		occ := b.Colors[White] | b.Colors[Black]
-
-		// bishop moves
-		for piece := range (self & b.Pieces[Bishop]).All() {
-			from := piece.LowestSet()
-			mask := bishopMasks[from]
-			magic := bishopMagics[from]
-			shift := bishopShifts[from]
-
-			bb := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
-
-			for toBB := range bb.All() {
-				to := toBB.LowestSet()
-				newC := b.CRights & ^(rookCRightsUpd[to])
-				if !yield(move.Move{Piece: Bishop, From: from, To: to, CRights: newC ^ b.CRights}) {
-					return
-				}
-			}
-		}
-
-		// rook moves
-		for piece := range (self & b.Pieces[Rook]).All() {
-			from := piece.LowestSet()
-			mask := rookMasks[from]
-			magic := rookMagics[from]
-			shift := rookShifts[from]
-
-			bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
-
-			for toBB := range bb.All() {
-				to := toBB.LowestSet()
-				// this accounts for flipping the castling rights for the moving side
-				// if the rook moves away from castling position and also for the
-				// opponent when a rook is capturing a rook in castling position
-				newC := b.CRights & ^(rookCRightsUpd[from] | rookCRightsUpd[to])
-				if !yield(move.Move{Piece: Rook, From: from, To: to, CRights: newC ^ b.CRights}) {
-					return
-				}
-			}
-		}
-
-		// queen moves
-		for piece := range (self & b.Pieces[Queen]).All() {
-			from := piece.LowestSet()
-			mask := rookMasks[from]
-			magic := rookMagics[from]
-			shift := rookShifts[from]
-
-			bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
-
-			mask = bishopMasks[from]
-			magic = bishopMagics[from]
-			shift = bishopShifts[from]
-
-			bb |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
-			bb &= ^self & target
-
-			for toBB := range bb.All() {
-				to := toBB.LowestSet()
-				cNew := b.CRights &^ rookCRightsUpd[to]
-				if !yield(move.Move{Piece: Queen, From: from, To: to, CRights: cNew ^ b.CRights}) {
-					return
-				}
-			}
-		}
-
-		mySndRank := sndRank[b.STM]
-		theirSndRank := sndRank[b.STM.Flip()]
-
-		// since shifting by negative is illegal, I bite the bullet and branch on STM
-		var (
-			occ1, occ2   board.BitBoard
-			occ1l, occ1r board.BitBoard
-			tgt1, tgt2   board.BitBoard
-			shift        int
-		)
-		if b.STM == White {
-			occ1 = occ >> 8
-			tgt1 = target >> 8
-			occ1l = (them &^ board.HFile) >> 7
-			occ1r = (them &^ board.AFile) >> 9
-			occ2 = occ >> 16
-			tgt2 = target >> 16
-			shift = 8
-		} else {
-			occ1 = (occ | ^target) << 8
-			tgt1 = target << 8
-			occ1l = (them &^ board.AFile) << 7
-			occ1r = (them &^ board.HFile) << 9
-			occ2 = occ << 16
-			tgt2 = target << 16
-			shift = -8
-		}
-
-		pushable := self & b.Pieces[Pawn] & ^occ1
-
-		// single pawn pushes (no promotions)
-		for piece := range (pushable & tgt1 & ^theirSndRank).All() {
-			from := piece.LowestSet()
-
-			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + shift)}) {
-				return
-			}
-		}
-
-		// promotions pushes
-		for piece := range (pushable & tgt1 & theirSndRank).All() {
-			from := piece.LowestSet()
-			for promo := Queen; promo > Pawn; promo-- {
-				if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + shift), Promo: promo}) {
-					return
-				}
-			}
-		}
-
-		// double pawn pushes
-		for piece := range (pushable & tgt2 & mySndRank & ^occ2).All() {
-			from := piece.LowestSet()
-
-			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(from) + 2*shift), EPSq: 0xff}) {
-				return
-			}
-		}
-
-		// pawn captures (no promotions)
-		for piece := range (self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r)).All() {
-			from := piece.LowestSet()
-			var bb board.BitBoard
-
-			if b.STM == White {
-				bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
-			} else {
-				bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
-			}
-
-			for toBB := range (bb & target & them).All() {
-				to := toBB.LowestSet()
-
-				if !yield(move.Move{Piece: Pawn, From: from, To: to}) {
-					return
-				}
-			}
-		}
-
-		// pawn captures with promotions
-		for piece := range (self & b.Pieces[Pawn] & theirSndRank & (occ1l | occ1r)).All() {
-			from := piece.LowestSet()
-			var bb board.BitBoard
-
-			if b.STM == White {
-				bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
-			} else {
-				bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
-			}
-
-			for toBB := range (bb & target & them).All() {
-				to := toBB.LowestSet()
-				cNew := b.CRights &^ rookCRightsUpd[to]
-
-				for promo := Queen; promo > Pawn; promo-- {
-					if !yield(move.Move{Piece: Pawn, From: from, To: to, Promo: promo, CRights: cNew ^ b.CRights}) {
-						return
-					}
-				}
-			}
-		}
-
-		// en-passant
-		ep := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & fourthRank[b.STM.Flip()]
-		for piece := range (ep & self & b.Pieces[Pawn]).All() {
-			from := piece.LowestSet()
-
-			if !yield(move.Move{Piece: Pawn, From: from, To: Square(int(b.EnPassant) + shift), EPP: Pawn}) {
-				return
-			}
-		}
-
-		// castling short
-		if b.CRights&CRights(C(b.STM, Short)) != 0 && occ&castleMask[b.STM][Short] == self&b.Pieces[King] {
-			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Short]) {
-				from := (self & b.Pieces[King]).LowestSet()
-				newC := b.CRights & ^kingCRightsUpd[b.STM]
-				if !yield(move.Move{Piece: King, From: from, To: from + 2, Castle: C(b.STM, Short), CRights: b.CRights ^ newC}) {
-					return
-				}
-			}
-		}
-
-		// castle long
-		if b.CRights&CRights(C(b.STM, Long)) != 0 && occ&(castleMask[b.STM][Long]>>1) == 0 {
-			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Long]) {
-				from := (self & b.Pieces[King]).LowestSet()
-				newC := b.CRights & ^kingCRightsUpd[b.STM]
-				if !yield(move.Move{Piece: King, From: from, To: from - 2, Castle: C(b.STM, Long), CRights: b.CRights ^ newC}) {
-					return
-				}
-			}
-		}
-
+	if b.FiftyCnt >= 100 {
+		return
 	}
+
+	if len(b.Hashes) > 0 {
+		hash := b.Hashes[len(b.Hashes)-1]
+		cnt := 0
+		for ix := len(b.Hashes) - 3; ix >= 0; ix -= 2 {
+			if b.Hashes[ix] == hash {
+				cnt++
+				if cnt >= 2 {
+					return
+				}
+			}
+		}
+	}
+
+	// king moves
+	{
+		piece := self & b.Pieces[King]
+		from := piece.LowestSet()
+
+		for toBB := range (kingMoves[from] & ^self & target).All() {
+			to := toBB.LowestSet()
+			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
+			m := ms.Alloc()
+			m.Piece = King
+			m.From = from
+			m.To = to
+			m.CRights = newC ^ b.CRights
+			m.Castle = 0
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	// knight moves
+	for piece := range (self & b.Pieces[Knight]).All() {
+		from := piece.LowestSet()
+
+		for toBB := range (knightMoves[from] & ^self & target).All() {
+			to := toBB.LowestSet()
+			newC := b.CRights & ^(rookCRightsUpd[to])
+			m := ms.Alloc()
+			m.Piece = Knight
+			m.From = from
+			m.To = to
+			m.CRights = newC ^ b.CRights
+			m.Castle = 0
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	occ := b.Colors[White] | b.Colors[Black]
+
+	// bishop moves
+	for piece := range (self & b.Pieces[Bishop]).All() {
+		from := piece.LowestSet()
+		mask := bishopMasks[from]
+		magic := bishopMagics[from]
+		shift := bishopShifts[from]
+
+		bb := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
+
+		for toBB := range bb.All() {
+			to := toBB.LowestSet()
+			newC := b.CRights & ^(rookCRightsUpd[to])
+			m := ms.Alloc()
+			m.Piece = Bishop
+			m.From = from
+			m.To = to
+			m.CRights = newC ^ b.CRights
+			m.Castle = 0
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	// rook moves
+	for piece := range (self & b.Pieces[Rook]).All() {
+		from := piece.LowestSet()
+		mask := rookMasks[from]
+		magic := rookMagics[from]
+		shift := rookShifts[from]
+
+		bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
+
+		for toBB := range bb.All() {
+			to := toBB.LowestSet()
+			// this accounts for flipping the castling rights for the moving side
+			// if the rook moves away from castling position and also for the
+			// opponent when a rook is capturing a rook in castling position
+			newC := b.CRights & ^(rookCRightsUpd[from] | rookCRightsUpd[to])
+			m := ms.Alloc()
+			m.Piece = Rook
+			m.From = from
+			m.To = to
+			m.CRights = newC ^ b.CRights
+			m.Castle = 0
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	// queen moves
+	for piece := range (self & b.Pieces[Queen]).All() {
+		from := piece.LowestSet()
+		mask := rookMasks[from]
+		magic := rookMagics[from]
+		shift := rookShifts[from]
+
+		bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
+
+		mask = bishopMasks[from]
+		magic = bishopMagics[from]
+		shift = bishopShifts[from]
+
+		bb |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
+		bb &= ^self & target
+
+		for toBB := range bb.All() {
+			to := toBB.LowestSet()
+			cNew := b.CRights &^ rookCRightsUpd[to]
+			m := ms.Alloc()
+			m.Piece = Queen
+			m.From = from
+			m.To = to
+			m.CRights = cNew ^ b.CRights
+			m.Castle = 0
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	mySndRank := sndRank[b.STM]
+	theirSndRank := sndRank[b.STM.Flip()]
+
+	// since shifting by negative is illegal, I bite the bullet and branch on STM
+	var (
+		occ1, occ2   board.BitBoard
+		occ1l, occ1r board.BitBoard
+		tgt1, tgt2   board.BitBoard
+		shift        int
+	)
+	if b.STM == White {
+		occ1 = occ >> 8
+		tgt1 = target >> 8
+		occ1l = (them &^ board.HFile) >> 7
+		occ1r = (them &^ board.AFile) >> 9
+		occ2 = occ >> 16
+		tgt2 = target >> 16
+		shift = 8
+	} else {
+		occ1 = (occ | ^target) << 8
+		tgt1 = target << 8
+		occ1l = (them &^ board.AFile) << 7
+		occ1r = (them &^ board.HFile) << 9
+		occ2 = occ << 16
+		tgt2 = target << 16
+		shift = -8
+	}
+
+	pushable := self & b.Pieces[Pawn] & ^occ1
+
+	// single pawn pushes (no promotions)
+	for piece := range (pushable & tgt1 & ^theirSndRank).All() {
+		from := piece.LowestSet()
+
+		m := ms.Alloc()
+		m.Piece = Pawn
+		m.From = from
+		m.To = Square(int(from) + shift)
+		m.CRights = 0
+		m.Castle = 0
+		m.Promo = 0
+		m.EPP = 0
+		m.EPSq = 0
+	}
+
+	// promotions pushes
+	for piece := range (pushable & tgt1 & theirSndRank).All() {
+		from := piece.LowestSet()
+		for promo := Queen; promo > Pawn; promo-- {
+			m := ms.Alloc()
+			m.Piece = Pawn
+			m.From = from
+			m.To = Square(int(from) + shift)
+			m.CRights = 0
+			m.Promo = promo
+			m.Castle = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	// double pawn pushes
+	for piece := range (pushable & tgt2 & mySndRank & ^occ2).All() {
+		from := piece.LowestSet()
+
+		m := ms.Alloc()
+		m.Piece = Pawn
+		m.From = from
+		m.To = Square(int(from) + 2*shift)
+		m.CRights = 0
+		m.EPSq = 0xff
+		m.Castle = 0
+		m.Promo = 0
+		m.EPP = 0
+	}
+
+	// pawn captures (no promotions)
+	for piece := range (self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r)).All() {
+		from := piece.LowestSet()
+		var bb board.BitBoard
+
+		if b.STM == White {
+			bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
+		} else {
+			bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
+		}
+
+		for toBB := range (bb & target & them).All() {
+			to := toBB.LowestSet()
+
+			m := ms.Alloc()
+			m.Piece = Pawn
+			m.From = from
+			m.To = to
+			m.CRights = 0
+			m.Castle = 0
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	// pawn captures with promotions
+	for piece := range (self & b.Pieces[Pawn] & theirSndRank & (occ1l | occ1r)).All() {
+		from := piece.LowestSet()
+		var bb board.BitBoard
+
+		if b.STM == White {
+			bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
+		} else {
+			bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
+		}
+
+		for toBB := range (bb & target & them).All() {
+			to := toBB.LowestSet()
+			cNew := b.CRights &^ rookCRightsUpd[to]
+
+			for promo := Queen; promo > Pawn; promo-- {
+				m := ms.Alloc()
+				m.Piece = Pawn
+				m.From = from
+				m.To = to
+				m.Promo = promo
+				m.CRights = cNew ^ b.CRights
+				m.Castle = 0
+				m.EPP = 0
+				m.EPSq = 0
+			}
+		}
+	}
+
+	// en-passant
+	ep := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & fourthRank[b.STM.Flip()]
+	for piece := range (ep & self & b.Pieces[Pawn]).All() {
+		from := piece.LowestSet()
+
+		m := ms.Alloc()
+		m.Piece = Pawn
+		m.From = from
+		m.To = Square(int(b.EnPassant) + shift)
+		m.EPP = Pawn
+		m.CRights = 0
+		m.Castle = 0
+		m.Promo = 0
+		m.EPSq = 0
+	}
+
+	// castling short
+	if b.CRights&CRights(C(b.STM, Short)) != 0 && occ&castleMask[b.STM][Short] == self&b.Pieces[King] {
+		if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Short]) {
+			from := (self & b.Pieces[King]).LowestSet()
+			newC := b.CRights & ^kingCRightsUpd[b.STM]
+			m := ms.Alloc()
+			m.Piece = King
+			m.From = from
+			m.To = from + 2
+			m.Castle = C(b.STM, Short)
+			m.CRights = b.CRights ^ newC
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
+	// castle long
+	if b.CRights&CRights(C(b.STM, Long)) != 0 && occ&(castleMask[b.STM][Long]>>1) == 0 {
+		if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Long]) {
+			from := (self & b.Pieces[King]).LowestSet()
+			newC := b.CRights & ^kingCRightsUpd[b.STM]
+			m := ms.Alloc()
+			m.Piece = King
+			m.From = from
+			m.To = from - 2
+			m.Castle = C(b.STM, Long)
+			m.CRights = b.CRights ^ newC
+			m.Promo = 0
+			m.EPP = 0
+			m.EPSq = 0
+		}
+	}
+
 }
 
 func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {

@@ -112,10 +112,10 @@ func (b *Board) MakeMove(m *move.Move) {
 	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & epMask)
 	hash ^= (piecesRand[b.STM.Flip()][Pawn][b.EnPassant] & Hash(epMask))
 
-	hash ^=castlingRand[0]&hashEnable[(m.CRights>>0)&1]
-	hash ^=castlingRand[1]&hashEnable[(m.CRights>>1)&1]
-	hash ^=castlingRand[2]&hashEnable[(m.CRights>>2)&1]
-	hash ^=castlingRand[3]&hashEnable[(m.CRights>>3)&1]
+	hash ^= castlingRand[0] & hashEnable[(m.CRights>>0)&1]
+	hash ^= castlingRand[1] & hashEnable[(m.CRights>>1)&1]
+	hash ^= castlingRand[2] & hashEnable[(m.CRights>>2)&1]
+	hash ^= castlingRand[3] & hashEnable[(m.CRights>>3)&1]
 
 	m.CRights, b.CRights = b.CRights, m.CRights^b.CRights
 	m.Captured = b.SquaresToPiece[m.To]
@@ -140,12 +140,20 @@ func (b *Board) MakeMove(m *move.Move) {
 	b.SquaresToPiece[m.To] = (1-promo)*m.Piece + promo*m.Promo
 
 	castle := castles[m.Castle]
-  hash ^= piecesRand[b.STM][Rook][castle.down] & hashEnable[castle.piece>>2]
-  hash ^= piecesRand[b.STM][Rook][castle.up] & hashEnable[castle.piece>>2]
+	hash ^= piecesRand[b.STM][Rook][castle.down] & hashEnable[castle.piece>>2]
+	hash ^= piecesRand[b.STM][Rook][castle.up] & hashEnable[castle.piece>>2]
 	b.SquaresToPiece[castle.down] -= castle.piece
 	b.SquaresToPiece[castle.up] += castle.piece
 	b.Pieces[Rook] ^= castle.swap
 	b.Colors[b.STM] ^= castle.swap
+
+	if b.SquaresToPiece[castle.up] > King {
+		panic("oops")
+	}
+
+	if b.SquaresToPiece[castle.down] > King {
+		panic("oops")
+	}
 
 	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	b.Print(*ansi.NewWriter(os.Stdout))

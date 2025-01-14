@@ -7,6 +7,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/mstore"
 	"github.com/stretchr/testify/assert"
 
 	// revive:disable-next-line
@@ -353,7 +354,11 @@ func TestMoves(t *testing.T) {
 			ok := make([]bool, len(want))
 			b := tt.b
 
-			for m := range movegen.Moves(b, tt.target) {
+			ms := mstore.New()
+
+			movegen.GenMoves(ms, b, tt.target)
+
+			for _, m := range ms.Frame() {
 				b.MakeMove(&m)
 
 				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
@@ -526,12 +531,10 @@ func TestRepetation(t *testing.T) {
 	m = R(E8, F8)
 	b.MakeMove(&m)
 
-	cnt := 0
-	for range movegen.Moves(b, board.Full) {
-		cnt++
-	}
+	ms := mstore.New()
+	movegen.GenMoves(ms, b, board.Full)
 
-	assert.Equal(t, 0, cnt)
+	assert.Equal(t, len(ms.Frame()), 0)
 }
 
 func TestFifty(t *testing.T) {
@@ -544,10 +547,8 @@ func TestFifty(t *testing.T) {
 
 	assert.Equal(t, 100, b.FiftyCnt)
 
-	cnt := 0
-	for range movegen.Moves(b, board.Full) {
-		cnt++
-	}
+	ms := mstore.New()
+	movegen.GenMoves(ms, b, board.Full)
 
-	assert.Equal(t, 0, cnt)
+	assert.Equal(t, len(ms.Frame()), 0)
 }

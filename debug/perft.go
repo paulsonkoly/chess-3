@@ -9,19 +9,31 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/mstore"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
 func Perft(b *board.Board, depth int) int {
+	ms := mstore.New()
+	return perft(ms, b, depth)
+}
+
+func perft(ms *mstore.MStore, b *board.Board, depth int) int {
 	if depth == 0 {
 		return 1
 	}
 
 	perft := 0
 	me := b.STM
-	for m := range movegen.Moves(b, board.Full) {
+
+	ms.Push()
+	defer ms.Pop()
+
+	movegen.GenMoves(ms, b, board.Full)
+
+	for _, m := range ms.Frame() {
 		b.MakeMove(&m)
 
 		kingBB := b.Pieces[King] & b.Colors[me]
@@ -88,17 +100,28 @@ func StockfishPerft(b *board.Board, depth int) int {
 }
 
 func MatchPerft(b *board.Board, depth int) {
+	ms := mstore.New()
+
+	matchPerft(ms, b, depth)
+}
+
+func matchPerft(ms *mstore.MStore, b *board.Board, depth int) {
 	if depth <= 0 {
 		return
 	}
 
-	sfs, own := StockfishPerft(b, depth), Perft(b, depth)
+	sfs, own := StockfishPerft(b, depth), perft(ms, b, depth)
 
 	if own != sfs {
 		fmt.Printf("%s at depth %d stockfish %d own %d\n", b.FEN(), depth, sfs, own)
 
+		ms.Push()
+		defer ms.Pop()
+
+		movegen.GenMoves(ms, b, board.Full)
+
 		me := b.STM
-		for m := range movegen.Moves(b, board.Full) {
+		for _, m := range ms.Frame() {
 			b.MakeMove(&m)
 
 			kingBB := b.Pieces[King] & b.Colors[me]
