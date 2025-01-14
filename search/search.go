@@ -240,24 +240,7 @@ func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) in
 
 func sortMoves(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
-		sqFrom := m.From
-		sqTo := m.To
-		if b.STM == White {
-			file := sqFrom % 8
-			rank := sqFrom / 8
-			sqFrom = file + (7-rank)*8
-
-			file = sqTo % 8
-			rank = sqTo / 8
-			sqTo = file + (7-rank)*8
-		}
-
-		weight := eval.Psqt[m.Piece-1][sqTo] - eval.Psqt[m.Piece-1][sqFrom]
-
-		if b.SquaresToPiece[m.To] != NoPiece {
-			weight += heur.SEE(b, &m)
-		}
-		moves[ix].Weight = weight
+		moves[ix].Weight = heur.SEE(b, &m)
 	}
 	slices.SortFunc(moves, func(a, b move.Move) int { return b.Weight - a.Weight })
 }

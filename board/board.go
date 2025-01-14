@@ -147,14 +147,6 @@ func (b *Board) MakeMove(m *move.Move) {
 	b.Pieces[Rook] ^= castle.swap
 	b.Colors[b.STM] ^= castle.swap
 
-	if b.SquaresToPiece[castle.up] > King {
-		panic("oops")
-	}
-
-	if b.SquaresToPiece[castle.down] > King {
-		panic("oops")
-	}
-
 	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
 	// 	b.Print(*ansi.NewWriter(os.Stdout))
 	// 	fmt.Println(*b)

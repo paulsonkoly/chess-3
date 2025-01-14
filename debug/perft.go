@@ -36,6 +36,10 @@ func perft(ms *mstore.MStore, b *board.Board, depth int) int {
 	for _, m := range ms.Frame() {
 		b.MakeMove(&m)
 
+		if b.Hashes[len(b.Hashes)-1] != b.Hash() {
+			panic("oops")
+		}
+
 		kingBB := b.Pieces[King] & b.Colors[me]
 		if !movegen.IsAttacked(b, me.Flip(), kingBB) {
 			perft += Perft(b, depth-1)
