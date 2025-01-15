@@ -9,23 +9,21 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const Inf = 100000
-
 // https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 // This code is in many simple engines. Tapered eval based on psqt and piece
 // values only.
 
 // PieceValues is the simple non-tapered value, not for evaluation, but can be
 // used for instance in SEE just to see what piece is more valueable.
-var PieceValues = [...]int{0, 100, 300, 300, 500, 900, Inf}
+var PieceValues = [...]Score{0, 100, 300, 300, 500, 900, 10000}
 
 // TPieceValues is tapered piece values
-var TPieceValues = [...][7]int{
+var TPieceValues = [...][7]Score{
 	{0, 82, 337, 365, 477, 1025, Inf},
 	{0, 94, 281, 297, 512, 936, Inf},
 }
 
-var PSqT = [...][64]int{
+var PSqT = [...][64]Score{
 	// pawn middle game
 	{
 		0, 0, 0, 0, 0, 0, 0, 0,
@@ -163,7 +161,7 @@ var PSqT = [...][64]int{
 // Phase is game phase
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
-func Eval(b *board.Board, moves []move.Move) int {
+func Eval(b *board.Board, moves []move.Move) Score {
 	hasLegal := false
 
 	for _, m := range moves {
@@ -186,8 +184,8 @@ func Eval(b *board.Board, moves []move.Move) int {
 		return 0
 	}
 
-	mg := [2]int{}
-	eg := [2]int{}
+	mg := [2]Score{}
+	eg := [2]Score{}
 
 	phase := 0
 
@@ -217,5 +215,5 @@ func Eval(b *board.Board, moves []move.Move) int {
 	}
 	egPhase := 24 - mgPhase
 
-	return (mgScore*mgPhase + egScore*egPhase) / 24
+	return Score((int(mgScore)*mgPhase + int(egScore)*egPhase) / 24)
 }

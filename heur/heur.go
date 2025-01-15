@@ -11,7 +11,7 @@ import (
 )
 
 // SEE is static exchange evaluation of m.
-func SEE(b *board.Board, m *move.Move) int {
+func SEE(b *board.Board, m *move.Move) Score {
 	fromBB, to := board.BitBoard(1)<<m.From, m.To
 
 	// attackers of square "to"
@@ -128,7 +128,7 @@ func SEE(b *board.Board, m *move.Move) int {
 			fallthrough
 
 		default:
-			value := 0
+			value := Score(0)
 
 			// ignore the last piece that's not captured
 			for ply := len(captures) - 2; ply >= 0; ply-- {

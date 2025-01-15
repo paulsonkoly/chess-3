@@ -11,6 +11,7 @@ import (
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/mstore"
+	"github.com/paulsonkoly/chess-3/transp"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -30,21 +31,24 @@ type pvEntry struct {
 
 type searchSt struct {
 	pvMap    []pvEntry
-	maxDepth int
+	maxDepth Depth
+
+	transpT *transp.Table
 }
 
-func Search(b *board.Board, depth int, stop <-chan struct{}) (score int, moves []move.Move) {
-	alpha := -eval.Inf
-	beta := eval.Inf
+func Search(b *board.Board, d Depth, stop <-chan struct{}) (score Score, moves []move.Move) {
+	// otherwise a checkmate score would always fail high
+	alpha := -Inf - 1
+	beta := Inf + 1
 	aborting = false
-	searchSt := searchSt{pvMap: make([]pvEntry, MaxPlies)}
+	searchSt := searchSt{pvMap: make([]pvEntry, MaxPlies), transpT: transp.NewTable()}
 
-	for d := range depth + 1 { // +1 for 0 depth search (quiesence eval)
+	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
 		awOk := false // aspiration window succeeded
-		factor := 1
+		factor := Score(1)
 		searchSt.maxDepth = d
 		var (
-			scoreSample int
+			scoreSample Score
 			movesSample []move.Move
 		)
 
@@ -127,24 +131,74 @@ func pvInfo(moves []move.Move) string {
 
 var (
 	ABLeaf int
+	TTHit  int
 )
 
-func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{}, sst *searchSt) (score int, pv []move.Move) {
-	if depth == 0 {
-		ABLeaf++
-		return Quiescence(b, alpha, beta, 0, stop), []move.Move{}
+func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{}, sst *searchSt) (Score, []move.Move) {
+
+	transpT := sst.transpT
+	pv := []move.Move{}
+
+	TTHit++
+
+	if transpE, ok := transpT.LookUp(b.Hashes[len(b.Hashes)-1]); ok {
+		if transpE.Depth >= d {
+			switch transpE.Type {
+
+			case transp.PVNode:
+				// transpE.Age = ABLeaf
+				if transpE.Value < alpha {
+					transpE.Type = transp.AllNode
+				}
+				if transpE.Value >= beta {
+					transpE.Type = transp.CutNode
+				}
+
+				if transpE.From|transpE.To != 0 {
+					ms.Push()
+					defer ms.Pop()
+
+					movegen.GenMoves(ms, b, board.BitBoard(1<<transpE.To))
+
+					for _, m := range ms.Frame() {
+						if m.From == transpE.From && m.Promo == transpE.Promo {
+							pv = []move.Move{m}
+						}
+					}
+				}
+				return transpE.Value, pv
+
+			case transp.CutNode:
+				if transpE.Value >= beta {
+					// transpE.Age = ABLeaf
+					return transpE.Value, pv
+				}
+
+			case transp.AllNode:
+				if transpE.Value < alpha { // should this ever happen?
+					// transpE.Age = ABLeaf
+					return transpE.Value, pv
+				}
+			}
+		}
 	}
 
-	score = -eval.Inf
+	TTHit--
+
+	if d == 0 {
+		ABLeaf++
+		return Quiescence(b, alpha, beta, 0, stop), pv
+	}
 
 	hasLegal := false
+	failLow := true
 
 	ms.Push()
 	defer ms.Pop()
 
 	movegen.GenMoves(ms, b, board.Full)
 	moves := ms.Frame()
-	sortMoves(b, moves, depth, sst)
+	sortMoves(b, moves, d, sst)
 
 	for _, m := range moves {
 		b.MakeMove(&m)
@@ -155,34 +209,65 @@ func AlphaBeta(b *board.Board, alpha, beta int, depth int, stop <-chan struct{},
 			continue
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, depth-1, stop, sst)
-		value *= -1
-		b.UndoMove(&m)
-		if value > score || value == score && !hasLegal {
-			score = value
-			pv = append(curr, m)
-			alpha = max(alpha, score)
-		}
-
 		hasLegal = true
 
-		if score >= beta {
-			return
+		value, curr := AlphaBeta(b, -beta, -alpha, d-1, stop, sst)
+		value *= -1
+		b.UndoMove(&m)
+
+		if value > alpha {
+			failLow = false
+			alpha = value
+			pv = append(curr, m)
+		}
+
+		if value >= beta {
+			// store node as fail high (cut-node)
+			transpT.Insert(b.Hashes[len(b.Hashes)-1], d, m.From, m.To, m.Promo, value, transp.CutNode)
+
+			return value, nil
 		}
 
 		if abort(stop) {
-			return
+			return alpha, pv
 		}
 	}
 
 	if !hasLegal {
+		// checkmate score
+		value := -Inf
+
 		king := b.Colors[b.STM] & b.Pieces[King]
 		if !movegen.IsAttacked(b, b.STM.Flip(), king) {
-			score = 0
+			// draw score
+			value = 0
+		}
+
+		if value > alpha {
+			failLow = false
+			alpha = value
 		}
 	}
 
-	return
+	if failLow {
+		// store node as fail low (All-node)
+		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, 0, 0, NoPiece, alpha, transp.AllNode)
+	} else {
+		// store node as exact (PV-node)
+		// there might not be a move in case of !hasLegal
+		var from, to Square
+		var promo Piece
+		if len(pv) > 0 {
+			m := pv[len(pv)-1]
+			from = m.From
+			to = m.To
+			promo = m.Promo
+		}
+
+		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, from, to, promo, alpha, transp.PVNode)
+	}
+
+	return alpha, pv
 }
 
 var (
@@ -191,7 +276,7 @@ var (
 	QSEE   int
 )
 
-func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) int {
+func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) Score {
 	if d > QDepth {
 		QDepth = d
 	}
@@ -270,24 +355,24 @@ func Quiescence(b *board.Board, alpha, beta int, d int, stop <-chan struct{}) in
 	return alpha
 }
 
-func sortMoves(b *board.Board, moves []move.Move, d int, sst *searchSt) {
+func sortMoves(b *board.Board, moves []move.Move, d Depth, sst *searchSt) {
 	for ix, m := range moves {
-		weight := 0
-		if sst != nil && len(sst.pvMap) > sst.maxDepth-d {
+		weight := Score(0)
+		if sst != nil && Depth(len(sst.pvMap)) > sst.maxDepth-d {
 			pvMapE := sst.pvMap[sst.maxDepth-d]
 			if pvMapE.from == m.From && pvMapE.to == m.To && pvMapE.hsh == b.Hashes[len(b.Hashes)-1] {
 				weight += 5000
 			}
 		}
 		weight += heur.SEE(b, &m)
-    toSq := m.To
-    fromSq := m.From
-    if b.STM == White {
-      toSq ^= 56
-      fromSq ^= 56
-    }
-    weight += eval.PSqT[(m.Piece-1)*2][toSq] - eval.PSqT[(m.Piece-1)*2][fromSq]
+		toSq := m.To
+		fromSq := m.From
+		if b.STM == White {
+			toSq ^= 56
+			fromSq ^= 56
+		}
+		weight += eval.PSqT[(m.Piece-1)*2][toSq] - eval.PSqT[(m.Piece-1)*2][fromSq]
 		moves[ix].Weight = weight
 	}
-	slices.SortFunc(moves, func(a, b move.Move) int { return b.Weight - a.Weight })
+	slices.SortFunc(moves, func(a, b move.Move) int { return int(b.Weight - a.Weight) })
 }

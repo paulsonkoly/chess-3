@@ -18,7 +18,7 @@ func TestSEE(t *testing.T) {
 		// Named input parameters for target function.
 		b    *board.Board
 		m    move.Move
-		want int
+		want Score
 	}{
 		{name: "3Q4/3q4/1B2N3/5N2/2KPk3/3r4/2n1nb2/3R4 b - - 0 1",
 			b:    board.FromFEN("3Q4/3q4/1B2N3/5N2/2KPk3/3r4/2n1nb2/3R4 b - - 0 1"),

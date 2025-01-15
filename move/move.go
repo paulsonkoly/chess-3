@@ -12,7 +12,7 @@ type Move struct {
 	EPSq     Square
 	Castle   Castle
 	CRights  CastlingRights
-	Weight   int
+	Weight   Score
 	FiftyCnt int
 }
 

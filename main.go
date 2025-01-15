@@ -104,7 +104,7 @@ func (e *UciEngine) applyMoves(moves []string) {
 }
 
 func (e *UciEngine) handleGo(args []string) {
-	depth := 10 // Default depth if none is specified
+	depth := Depth(10) // Default depth if none is specified
 	timeAllowed := 0
 
 	for i := 0; i < len(args); i++ {
@@ -118,7 +118,7 @@ func (e *UciEngine) handleGo(args []string) {
 		case "binc":
 			e.timeControl.binc = parseMilliseconds(args[i+1])
 		case "depth":
-			depth = parseInt(args[i+1])
+			depth = Depth(parseInt(args[i+1]))
 		case "movetime":
 			timeAllowed = parseMilliseconds(args[i+1]) - 30 // safety margin
 		}
@@ -134,16 +134,18 @@ func (e *UciEngine) handleGo(args []string) {
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 
-		score := 0
+		score := Score(0)
 		go func() {
 			defer wg.Done()
 			s, moves := search.Search(e.board, 100, stop)
-			fmt.Printf("info awfail %d ableaf %d qdepth %d qdelta %d qsee %d\n", search.AWFail, search.ABLeaf, search.QDepth, search.QDelta, search.QSEE)
+			fmt.Printf("info awfail %d ableaf %d tthits %d qdepth %d qdelta %d qsee %d\n",
+				search.AWFail, search.ABLeaf, search.TTHit, search.QDepth, search.QDelta, search.QSEE)
 			search.AWFail = 0
 			search.ABLeaf = 0
 			search.QDelta = 0
 			search.QDepth = 0
 			search.QSEE = 0
+			search.TTHit = 0
 			if len(moves) > 0 {
 				bestMove = moves[0]
 				score = s
@@ -170,11 +172,11 @@ func (e *UciEngine) handleGo(args []string) {
 }
 
 // 7800 that factors 39 * 200
-var initialMatCount = 16*eval.PieceValues[Pawn] +
+var initialMatCount = int(16*eval.PieceValues[Pawn] +
 	4*eval.PieceValues[Knight] +
 	4*eval.PieceValues[Bishop] +
 	4*eval.PieceValues[Rook] +
-	2*eval.PieceValues[Queen]
+	2*eval.PieceValues[Queen])
 
 func (e *UciEngine) TimeControl(timeAllowed int) int {
 	if timeAllowed != 0 {
@@ -195,11 +197,13 @@ func (e *UciEngine) TimeControl(timeAllowed int) int {
 		timeAllowed = e.timeControl.btime
 	}
 
-	matCount := e.board.Pieces[Queen].Count()*eval.PieceValues[Queen] +
-		e.board.Pieces[Rook].Count()*eval.PieceValues[Rook] +
-		e.board.Pieces[Bishop].Count()*eval.PieceValues[Bishop] +
-		e.board.Pieces[Knight].Count()*eval.PieceValues[Knight] +
-		e.board.Pieces[Pawn].Count()*eval.PieceValues[Pawn]
+  // TODO use the same functionality from eval
+
+	matCount := e.board.Pieces[Queen].Count()*int(eval.PieceValues[Queen]) +
+		e.board.Pieces[Rook].Count()*int(eval.PieceValues[Rook]) +
+		e.board.Pieces[Bishop].Count()*int(eval.PieceValues[Bishop]) +
+		e.board.Pieces[Knight].Count()*int(eval.PieceValues[Knight]) +
+		e.board.Pieces[Pawn].Count()*int(eval.PieceValues[Pawn])
 
 	matCount = min(matCount, initialMatCount)
 
@@ -278,6 +282,9 @@ func main() {
 		b := board.FromFEN("rnbqk2r/ppp1ppbp/3p1np1/8/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 1")
 
 		search.Search(b, 7, nil)
+
+		fmt.Printf("info awfail %d ableaf %d qdepth %d qdelta %d qsee %d tthit %d\n",
+			search.AWFail, search.ABLeaf, search.QDepth, search.QDelta, search.QSEE, search.TTHit)
 	} else {
 		e := NewUciEngine()
 		scanner := bufio.NewScanner(os.Stdin)

@@ -147,18 +147,13 @@ func (b *Board) MakeMove(m *move.Move) {
 	b.Pieces[Rook] ^= castle.swap
 	b.Colors[b.STM] ^= castle.swap
 
-	// if b.Pieces[Knight]|b.Pieces[King] != b.Colors[White]|b.Colors[Black] {
-	// 	b.Print(*ansi.NewWriter(os.Stdout))
-	// 	fmt.Println(*b)
-	// 	fmt.Println(*m)
-	// 	panic("board inconsistency")
-	// }
 	b.STM = b.STM.Flip()
 
 	hash ^= stmRand
 
-	// TODO: optimise thise
 	b.Hashes = append(b.Hashes, hash)
+
+  // b.consistencyCheck()
 }
 
 func (b *Board) UndoMove(m *move.Move) {
@@ -197,7 +192,33 @@ func (b *Board) UndoMove(m *move.Move) {
 	m.Captured = 0
 
 	b.Hashes = b.Hashes[:len(b.Hashes)-1]
+
+	// b.consistencyCheck()
 }
+
+// func (b *Board) consistencyCheck() {
+//   if b.Hashes[len(b.Hashes)-1]!= b.Hash() {
+//     panic("inconsistent hash")
+//   }
+//
+//   if b.Pieces[Pawn] | b.Pieces[Rook] | b.Pieces[Knight] | b.Pieces[Bishop] | b.Pieces[Queen] | b.Pieces[King] != 
+//      b.Colors[White] | b.Colors[Black] {
+//     panic("inconsistent pieces")
+//   }
+//
+//   for piece := Pawn; piece <= King; piece++ {
+//     bb := BitBoard(0)
+//     for sq := A1; sq <= H8 ; sq ++ {
+//       if b.SquaresToPiece[sq] == piece {
+//         bb |= 1 << sq
+//       }
+//     }
+//
+//     if bb != b.Pieces[piece] {
+//       panic("inconsistent bitboard")
+//     }
+//   }
+// }
 
 type Hash uint64
 

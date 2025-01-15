@@ -25,7 +25,7 @@ func perft(ms *mstore.MStore, b *board.Board, depth int) int {
 		return 1
 	}
 
-	perft := 0
+	cnt := 0
 	me := b.STM
 
 	ms.Push()
@@ -42,13 +42,13 @@ func perft(ms *mstore.MStore, b *board.Board, depth int) int {
 
 		kingBB := b.Pieces[King] & b.Colors[me]
 		if !movegen.IsAttacked(b, me.Flip(), kingBB) {
-			perft += Perft(b, depth-1)
+			cnt += perft(ms, b, depth-1)
 		}
 
 		b.UndoMove(&m)
 	}
 
-	return perft
+	return cnt
 }
 
 func StockfishPerft(b *board.Board, depth int) int {
