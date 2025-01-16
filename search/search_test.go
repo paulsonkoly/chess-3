@@ -70,7 +70,7 @@ func TestSearch(t *testing.T) {
 		},
 		{name: "mate in 2 (morphy)",
 			b:     board.FromFEN("kbK5/pp6/1P6/8/8/8/8/R7 w - - 0 1"),
-			depth: 3,
+			depth: 15,
 			want:  Inf,
 			move:  R(A1, A6),
 		},

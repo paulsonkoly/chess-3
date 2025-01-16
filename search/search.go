@@ -111,9 +111,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	transpT := sst.transpT
 	pv := []move.Move{}
 
-	TTHit++
-
 	if transpE, ok := transpT.LookUp(b.Hashes[len(b.Hashes)-1]); ok {
+		TTHit++
 		if transpE.Depth >= d {
 			switch transpE.Type {
 
@@ -143,9 +142,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 				}
 			}
 		}
+		TTHit--
 	}
-
-	TTHit--
 
 	if d == 0 {
 		ABLeaf++
@@ -166,7 +164,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 
 		b.MakeNullMove()
 
-		rd := max(0, d-4)
+		rd := max(0, d-3)
 
 		value, _ := AlphaBeta(b, -beta, -beta+1, rd, stop, sst)
 		value *= -1
@@ -185,7 +183,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	moves := ms.Frame()
 	sortMoves(b, moves, d, sst)
 
-	for _, m := range moves {
+	for ix, m := range moves {
 		b.MakeMove(&m)
 
 		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
@@ -195,6 +193,18 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		}
 
 		hasLegal = true
+
+		// late move reduction
+		rd := lmr(d, ix)
+		if rd < d-1 && !inCheck {
+			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, stop, sst)
+			value *= -1
+
+			if value <= alpha {
+				b.UndoMove(&m)
+				continue
+			}
+		}
 
 		value, curr := AlphaBeta(b, -beta, -alpha, d-1, stop, sst)
 		value *= -1
@@ -253,6 +263,26 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	}
 
 	return alpha, pv
+}
+
+var log = [...]int{
+	0,
+	0, 69, 109, 138, 160, 179, 194, 207, 219, 230,
+	239, 248, 256, 263, 270, 277, 283, 289, 294, 299,
+	304, 309, 313, 317, 321, 325, 329, 333, 336, 340,
+	343, 346, 349, 352, 355, 358, 361, 363, 366, 368,
+	371, 373, 376, 378, 380, 382, 385, 387, 389, 391,
+	393, 395, 397, 398, 400, 402, 404, 406, 407, 409,
+	411, 412, 414, 415, 417, 418, 420, 421, 423, 424,
+	426, 427, 429, 430, 431, 433, 434, 435, 436, 438,
+	439, 440, 441, 443, 444, 445, 446, 447, 448, 449,
+	451, 452, 453, 454, 455, 456, 457, 458, 459, 460,
+}
+
+func lmr(d Depth, mCount int) Depth {
+	value := (log[int(d)] * log[mCount] / 19500)
+
+	return max(0, d-Depth(value))
 }
 
 var (
