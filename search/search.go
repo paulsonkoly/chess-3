@@ -118,14 +118,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 			switch transpE.Type {
 
 			case transp.PVNode:
-				// transpE.Age = ABLeaf
-				if transpE.Value < alpha {
-					transpE.Type = transp.AllNode
-				}
-				if transpE.Value >= beta {
-					transpE.Type = transp.CutNode
-				}
-
 				if transpE.From|transpE.To != 0 {
 					ms.Push()
 					defer ms.Pop()
@@ -142,13 +134,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 
 			case transp.CutNode:
 				if transpE.Value >= beta {
-					// transpE.Age = ABLeaf
 					return transpE.Value, pv
 				}
 
 			case transp.AllNode:
-				if transpE.Value < alpha { // should this ever happen?
-					// transpE.Age = ABLeaf
+				if transpE.Value <= alpha {
 					return transpE.Value, pv
 				}
 			}
