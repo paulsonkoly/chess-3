@@ -2,7 +2,7 @@ package types
 
 import "iter"
 
-type Depth byte
+type Depth int8
 
 type Score int16
 

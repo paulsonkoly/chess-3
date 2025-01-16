@@ -183,6 +183,18 @@ func (b *Board) UndoMove(m *move.Move) {
 	// b.consistencyCheck()
 }
 
+func (b *Board) MakeNullMove() {
+	hash := b.Hashes[len(b.Hashes)-1]
+	b.STM = b.STM.Flip()
+	hash ^= stmRand
+	b.Hashes = append(b.Hashes, hash)
+}
+
+func (b * Board) UndoNullMove() {
+	b.STM = b.STM.Flip()
+	b.Hashes = b.Hashes[:len(b.Hashes)-1]
+}
+
 // func (b *Board) consistencyCheck() {
 //   if b.Hashes[len(b.Hashes)-1]!= b.Hash() {
 //     panic("inconsistent hash")

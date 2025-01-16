@@ -334,8 +334,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// king moves
-	{
-		piece := self & b.Pieces[King]
+  if piece := self & b.Pieces[King]; piece != 0 {
 		from := piece.LowestSet()
 
 		tSqrs := kingMoves[from] & ^self & target

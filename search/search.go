@@ -155,6 +155,29 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	hasLegal := false
 	failLow := true
 
+	inCheck := false
+	king := b.Colors[b.STM] & b.Pieces[King]
+	if movegen.IsAttacked(b, b.STM.Flip(), king) {
+		inCheck = true
+	}
+
+	// null move pruning
+	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+
+		b.MakeNullMove()
+
+		rd := max(0, d-4)
+
+		value, _ := AlphaBeta(b, -beta, -beta+1, rd, stop, sst)
+		value *= -1
+
+		b.UndoNullMove()
+
+		if value >= beta {
+			return value, pv
+		}
+	}
+
 	ms.Push()
 	defer ms.Pop()
 
