@@ -24,15 +24,7 @@ var AWFail int
 
 var ms = mstore.New()
 
-type pvEntry struct {
-	from, to Square
-	hsh      board.Hash
-}
-
 type searchSt struct {
-	pvMap    []pvEntry
-	maxDepth Depth
-
 	transpT *transp.Table
 }
 
@@ -41,12 +33,11 @@ func Search(b *board.Board, d Depth, stop <-chan struct{}) (score Score, moves [
 	alpha := -Inf - 1
 	beta := Inf + 1
 	aborting = false
-	searchSt := searchSt{pvMap: make([]pvEntry, MaxPlies), transpT: transp.NewTable()}
+	searchSt := searchSt{transpT: transp.NewTable()}
 
 	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
-		searchSt.maxDepth = d
 		var (
 			scoreSample Score
 			movesSample []move.Move
@@ -79,29 +70,10 @@ func Search(b *board.Board, d Depth, stop <-chan struct{}) (score Score, moves [
 		slices.Reverse(moves)
 		fmt.Printf("info depth %d score cp %d pv %s\n", d, score, pvInfo(moves))
 
-		fillPVMap(b, moves, &searchSt)
-
 		alpha = score - WindowSize
 		beta = score + WindowSize
 	}
 	return
-}
-
-func fillPVMap(b *board.Board, moves []move.Move, sst *searchSt) {
-	sst.pvMap = sst.pvMap[:len(moves)]
-
-	undo := make([]move.Move, len(moves))
-
-	for ix, m := range moves {
-		sst.pvMap[ix] = pvEntry{from: m.From, to: m.To, hsh: b.Hashes[len(b.Hashes)-1]}
-
-		b.MakeMove(&m)
-		undo[len(undo)-ix-1] = m
-	}
-
-	for _, m := range undo {
-		b.UndoMove(&m)
-	}
 }
 
 var aborting = false
@@ -355,16 +327,25 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 	return alpha
 }
 
-func sortMoves(b *board.Board, moves []move.Move, d Depth, sst *searchSt) {
+func sortMoves(b *board.Board, moves []move.Move, _ Depth, sst *searchSt) {
+	var transPE *transp.Entry
+
+	if sst != nil {
+		transPE, _ = sst.transpT.LookUp(b.Hashes[len(b.Hashes)-1])
+		if transPE != nil && transPE.Type == transp.AllNode {
+			transPE = nil
+		}
+	}
+
 	for ix, m := range moves {
 		weight := Score(0)
-		if sst != nil && Depth(len(sst.pvMap)) > sst.maxDepth-d {
-			pvMapE := sst.pvMap[sst.maxDepth-d]
-			if pvMapE.from == m.From && pvMapE.to == m.To && pvMapE.hsh == b.Hashes[len(b.Hashes)-1] {
-				weight += 5000
-			}
-		}
+
 		weight += heur.SEE(b, &m)
+
+		if transPE != nil && m.From == transPE.From && m.To == transPE.To && m.Promo == transPE.Promo {
+			weight += 5000
+		}
+
 		toSq := m.To
 		fromSq := m.From
 		if b.STM == White {

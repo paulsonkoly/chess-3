@@ -197,7 +197,7 @@ func (e *UciEngine) TimeControl(timeAllowed int) int {
 		timeAllowed = e.timeControl.btime
 	}
 
-  // TODO use the same functionality from eval
+	// TODO use the same functionality from eval
 
 	matCount := e.board.Pieces[Queen].Count()*int(eval.PieceValues[Queen]) +
 		e.board.Pieces[Rook].Count()*int(eval.PieceValues[Rook]) +
