@@ -338,8 +338,11 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 		piece := self & b.Pieces[King]
 		from := piece.LowestSet()
 
-		for toBB := range (kingMoves[from] & ^self & target).All() {
-			to := toBB.LowestSet()
+		tSqrs := kingMoves[from] & ^self & target
+
+		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+			tSqr = tSqrs & -tSqrs
+			to := tSqr.LowestSet()
 			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
 			m := ms.Alloc()
 			m.Piece = King
@@ -354,11 +357,16 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// knight moves
-	for piece := range (self & b.Pieces[Knight]).All() {
-		from := piece.LowestSet()
+	knights := self & b.Pieces[Knight]
+	for knight := board.BitBoard(0); knights != 0; knights ^= knight {
+		knight = knights & -knights
+		from := knight.LowestSet()
 
-		for toBB := range (knightMoves[from] & ^self & target).All() {
-			to := toBB.LowestSet()
+		tSqrs := knightMoves[from] & ^self & target
+
+		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+			tSqr = tSqrs & -tSqrs
+			to := tSqr.LowestSet()
 			newC := b.CRights & ^(rookCRightsUpd[to])
 			m := ms.Alloc()
 			m.Piece = Knight
@@ -375,16 +383,19 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	occ := b.Colors[White] | b.Colors[Black]
 
 	// bishop moves
-	for piece := range (self & b.Pieces[Bishop]).All() {
-		from := piece.LowestSet()
+	bishops := self & b.Pieces[Bishop]
+	for bishop := board.BitBoard(0); bishops != 0; bishops ^= bishop {
+		bishop = bishops & -bishops
+		from := bishop.LowestSet()
 		mask := bishopMasks[from]
 		magic := bishopMagics[from]
 		shift := bishopShifts[from]
 
-		bb := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
+		tSqrs := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
 
-		for toBB := range bb.All() {
-			to := toBB.LowestSet()
+		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+			tSqr = tSqrs & -tSqrs
+			to := tSqr.LowestSet()
 			newC := b.CRights & ^(rookCRightsUpd[to])
 			m := ms.Alloc()
 			m.Piece = Bishop
@@ -399,16 +410,19 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// rook moves
-	for piece := range (self & b.Pieces[Rook]).All() {
-		from := piece.LowestSet()
+	rooks := self & b.Pieces[Rook]
+	for rook := board.BitBoard(0); rooks != 0; rooks ^= rook {
+		rook = rooks & -rooks
+		from := rook.LowestSet()
 		mask := rookMasks[from]
 		magic := rookMagics[from]
 		shift := rookShifts[from]
 
-		bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
+		tSqrs := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
 
-		for toBB := range bb.All() {
-			to := toBB.LowestSet()
+		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+			tSqr = tSqrs & -tSqrs
+			to := tSqr.LowestSet()
 			// this accounts for flipping the castling rights for the moving side
 			// if the rook moves away from castling position and also for the
 			// opponent when a rook is capturing a rook in castling position
@@ -426,23 +440,26 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// queen moves
-	for piece := range (self & b.Pieces[Queen]).All() {
-		from := piece.LowestSet()
+	queens := self & b.Pieces[Queen]
+	for queen := board.BitBoard(0); queens != 0; queens ^= queen {
+    queen = queens & -queens
+		from := queen.LowestSet()
 		mask := rookMasks[from]
 		magic := rookMagics[from]
 		shift := rookShifts[from]
 
-		bb := rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
+		tSqrs := rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
 
 		mask = bishopMasks[from]
 		magic = bishopMagics[from]
 		shift = bishopShifts[from]
 
-		bb |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
-		bb &= ^self & target
+		tSqrs |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
+		tSqrs &= ^self & target
 
-		for toBB := range bb.All() {
-			to := toBB.LowestSet()
+		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+			tSqr = tSqrs & -tSqrs
+			to := tSqr.LowestSet()
 			cNew := b.CRights &^ rookCRightsUpd[to]
 			m := ms.Alloc()
 			m.Piece = Queen
@@ -487,8 +504,9 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	pushable := self & b.Pieces[Pawn] & ^occ1
 
 	// single pawn pushes (no promotions)
-	for piece := range (pushable & tgt1 & ^theirSndRank).All() {
-		from := piece.LowestSet()
+	for pawns, pawn := pushable&tgt1 & ^theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+		pawn = pawns & -pawns
+		from := pawn.LowestSet()
 
 		m := ms.Alloc()
 		m.Piece = Pawn
@@ -502,8 +520,9 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// promotions pushes
-	for piece := range (pushable & tgt1 & theirSndRank).All() {
-		from := piece.LowestSet()
+	for pawns, pawn := pushable&tgt1 & theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+		pawn = pawns & -pawns
+		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
 			m := ms.Alloc()
 			m.Piece = Pawn
@@ -518,8 +537,9 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// double pawn pushes
-	for piece := range (pushable & tgt2 & mySndRank & ^occ2).All() {
-		from := piece.LowestSet()
+	for pawns, pawn := pushable & tgt2 & mySndRank & ^occ2, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+		pawn = pawns & -pawns
+		from := pawn.LowestSet()
 
 		m := ms.Alloc()
 		m.Piece = Pawn
@@ -533,18 +553,22 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// pawn captures (no promotions)
-	for piece := range (self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r)).All() {
-		from := piece.LowestSet()
+	for pawns, pawn := self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+		pawn = pawns & -pawns
+		from := pawn.LowestSet()
 		var bb board.BitBoard
 
 		if b.STM == White {
-			bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
+			bb = ((pawn & ^board.AFile) << 7) | ((pawn & ^board.HFile) << 9)
 		} else {
-			bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
+			bb = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
 		}
 
-		for toBB := range (bb & target & them).All() {
-			to := toBB.LowestSet()
+    tSqrs := bb & target & them
+
+		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+			tSqr = tSqrs & -tSqrs
+			to := tSqr.LowestSet()
 
 			m := ms.Alloc()
 			m.Piece = Pawn
@@ -559,18 +583,23 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	}
 
 	// pawn captures with promotions
-	for piece := range (self & b.Pieces[Pawn] & theirSndRank & (occ1l | occ1r)).All() {
-		from := piece.LowestSet()
+	for pawns, pawn := self & b.Pieces[Pawn] & theirSndRank & (occ1l | occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+		pawn = pawns & -pawns
+		from := pawn.LowestSet()
 		var bb board.BitBoard
 
 		if b.STM == White {
-			bb = ((piece & ^board.AFile) << 7) | ((piece & ^board.HFile) << 9)
+			bb = ((pawn & ^board.AFile) << 7) | ((pawn & ^board.HFile) << 9)
 		} else {
-			bb = ((piece & ^board.HFile) >> 7) | ((piece & ^board.AFile) >> 9)
+			bb = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
 		}
 
-		for toBB := range (bb & target & them).All() {
-			to := toBB.LowestSet()
+
+    tSqrs := bb & target & them
+
+		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+			tSqr = tSqrs & -tSqrs
+			to := tSqr.LowestSet()
 			cNew := b.CRights &^ rookCRightsUpd[to]
 
 			for promo := Queen; promo > Pawn; promo-- {
@@ -589,8 +618,9 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 
 	// en-passant
 	ep := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & fourthRank[b.STM.Flip()]
-	for piece := range (ep & self & b.Pieces[Pawn]).All() {
-		from := piece.LowestSet()
+	for pawns, pawn := ep & self & b.Pieces[Pawn], board.BitBoard(0); pawns != 0; pawns ^= pawn {
+		pawn = pawns & -pawns
+		from := pawn.LowestSet()
 
 		m := ms.Alloc()
 		m.Piece = Pawn
@@ -658,24 +688,26 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 		}
 	}
 
-	for t := range target.All() {
-		tsq := t.LowestSet()
 
-		if KingMoves(tsq)&b.Pieces[King]&other != 0 {
+  for tSqr := board.BitBoard(0); target != 0; target ^= tSqr {
+    tSqr = target & - target
+		sq := tSqr.LowestSet()
+
+		if KingMoves(sq)&b.Pieces[King]&other != 0 {
 			return true
 		}
 
-		if KnightMoves(tsq)&b.Pieces[Knight]&other != 0 {
+		if KnightMoves(sq)&b.Pieces[Knight]&other != 0 {
 			return true
 		}
 
 		// bishop or queen moves
-		if BishopMoves(tsq, occ)&(b.Pieces[Queen]|b.Pieces[Bishop])&other != 0 {
+		if BishopMoves(sq, occ)&(b.Pieces[Queen]|b.Pieces[Bishop])&other != 0 {
 			return true
 		}
 
 		// rook or queen moves
-		if RookMoves(tsq, occ)&(b.Pieces[Rook]|b.Pieces[Queen])&other != 0 {
+		if RookMoves(sq, occ)&(b.Pieces[Rook]|b.Pieces[Queen])&other != 0 {
 			return true
 		}
 	}
@@ -685,7 +717,7 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 
 func UCIMove(b *board.Board, from, to Square, promo Piece) move.Move {
 	pType := b.SquaresToPiece[from]
-	result := move.Move{Piece: pType, From: from, To: to, Promo: promo, EPSq: b.EnPassant }
+	result := move.Move{Piece: pType, From: from, To: to, Promo: promo, EPSq: b.EnPassant}
 
 	switch pType {
 

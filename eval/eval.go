@@ -191,7 +191,9 @@ func Eval(b *board.Board, moves []move.Move) Score {
 
 	for pType := Pawn; pType <= King; pType++ {
 		for color := White; color <= Black; color++ {
-			for piece := range (b.Pieces[pType] & b.Colors[color]).All() {
+      pieces := b.Pieces[pType] & b.Colors[color]
+      for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+        piece = pieces & -pieces
 				sq := piece.LowestSet()
 
 				if color == White {

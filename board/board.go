@@ -1,7 +1,6 @@
 package board
 
 import (
-	"iter"
 	"math/bits"
 	"math/rand/v2"
 
@@ -12,18 +11,6 @@ import (
 )
 
 type BitBoard uint64
-
-func (bb BitBoard) All() iter.Seq[BitBoard] {
-	return func(yield func(BitBoard) bool) {
-		for bb != 0 {
-			single := bb & -bb
-			if !yield(single) {
-				return
-			}
-			bb ^= single
-		}
-	}
-}
 
 func (bb BitBoard) LowestSet() Square {
 	return Square(bits.TrailingZeros64(uint64(bb)))
@@ -256,7 +243,10 @@ func (b *Board) Hash() Hash {
 
 	for color := White; color <= Black; color++ {
 		occ := b.Colors[color]
-		for piece := range occ.All() {
+
+    for piece := BitBoard(0); occ != 0; occ = occ ^ piece {
+      piece = occ & -occ
+
 			sq := piece.LowestSet()
 
 			hash ^= piecesRand[color][b.SquaresToPiece[sq]][sq]
