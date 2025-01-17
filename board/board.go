@@ -281,3 +281,19 @@ func (b *Board) Hash() Hash {
 
 	return hash
 }
+
+func (b *Board) Threefold() bool {
+	if len(b.Hashes) > 0 {
+		hash := b.Hashes[len(b.Hashes)-1]
+		cnt := 0
+		for ix := len(b.Hashes) - 3; ix >= 0; ix -= 2 {
+			if b.Hashes[ix] == hash {
+				cnt++
+				if cnt >= 2 {
+					return true
+				}
+			}
+		}
+	}
+  return false
+}

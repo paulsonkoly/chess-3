@@ -232,10 +232,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		// checkmate score
 		value := -Inf
 
-		king := b.Colors[b.STM] & b.Pieces[King]
-		if !movegen.IsAttacked(b, b.STM.Flip(), king) {
-			// draw score
-			value = 0
+    if b.FiftyCnt >= 100 || b.Threefold() {
+      value = 0
+    } else {
+			king := b.Colors[b.STM] & b.Pieces[King]
+			if !movegen.IsAttacked(b, b.STM.Flip(), king) {
+				// draw score
+				value = 0
+			}
 		}
 
 		if value > alpha {

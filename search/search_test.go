@@ -53,6 +53,33 @@ func TestQuiescence(t *testing.T) {
 	}
 }
 
+func TestThreefold(t *testing.T) {
+	tests := []struct {
+		name  string
+		b     *board.Board
+		moves []move.Move
+		want  int
+	}{
+		{name: "threefold",
+			b:    board.FromFEN("r5k1/p1R5/1p5R/2p5/8/2P4P/P1P3PK/r7 w - - 3 36"),
+      moves: []move.Move { R(H6, G6), K(G8, F8), R(G6, F6), K(F8, G8), R(F6, G6), K(G8, F8), R(G6, H6), K(F8, G8)},
+			want: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+      for _, m := range tt.moves {
+        tt.b.MakeMove(&m)
+      }
+
+      score, _ := search.Search(tt.b, 3, nil)
+
+      assert.InDelta(t, tt.want, int(score), 200)
+		})
+	}
+}
+
 func K(f, t Square) move.Move {
 	return move.Move{From: f, To: t, Piece: King}
 }
