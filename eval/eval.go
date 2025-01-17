@@ -184,6 +184,10 @@ func Eval(b *board.Board, moves []move.Move) Score {
 		return 0
 	}
 
+	if drawn(b) {
+		return 0
+	}
+
 	mg := [2]Score{}
 	eg := [2]Score{}
 
@@ -191,9 +195,9 @@ func Eval(b *board.Board, moves []move.Move) Score {
 
 	for pType := Pawn; pType <= King; pType++ {
 		for color := White; color <= Black; color++ {
-      pieces := b.Pieces[pType] & b.Colors[color]
-      for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
-        piece = pieces & -pieces
+			pieces := b.Pieces[pType] & b.Colors[color]
+			for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+				piece = pieces & -pieces
 				sq := piece.LowestSet()
 
 				if color == White {
@@ -218,4 +222,26 @@ func Eval(b *board.Board, moves []move.Move) Score {
 	egPhase := 24 - mgPhase
 
 	return Score((int(mgScore)*mgPhase + int(egScore)*egPhase) / 24)
+}
+
+func drawn(b *board.Board) bool {
+	if b.Pieces[Pawn]|b.Pieces[Queen]|b.Pieces[Rook] != 0 {
+		return false
+	}
+
+	wN := (b.Colors[White] & b.Pieces[Knight]).Count()
+	bN := (b.Colors[Black] & b.Pieces[Knight]).Count()
+	wB := (b.Colors[White] & b.Pieces[Bishop]).Count()
+	bB := (b.Colors[Black] & b.Pieces[Bishop]).Count()
+
+	if wN+bN+wB+bB <= 3 { // draw cases
+		wScr := wN + 3*wB
+		bScr := bN + 3*bB
+
+		if max(wScr-bScr, bScr-wScr) <= 3 {
+			return true
+		}
+	}
+
+	return false
 }
