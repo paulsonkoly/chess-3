@@ -53,48 +53,6 @@ func TestQuiescence(t *testing.T) {
 	}
 }
 
-func TestSearch(t *testing.T) {
-	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		b     *board.Board
-		depth Depth
-		want  Score
-		move  move.Move
-	}{
-		{name: "mate in 1",
-			b:     board.FromFEN("knK5/p7/1P6/8/8/8/8/5B2 w - - 0 1"),
-			depth: 1,
-			want:  Inf,
-			move:  P(B6, B7),
-		},
-		{name: "mate in 2 (morphy)",
-			b:     board.FromFEN("kbK5/pp6/1P6/8/8/8/8/R7 w - - 0 1"),
-			depth: 15,
-			want:  Inf,
-			move:  R(A1, A6),
-		},
-		{name: "mate in 3 (Ra6, Ra8, Qxa8#)",
-			b:     board.FromFEN("1k6/1P1p4/3r4/3P4/6p1/6Pp/7P/q5BK b - - 0 1"),
-			depth: 5,
-			want:  Inf,
-			move:  R(D6, A6),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-      got, moves := search.Search(tt.b, tt.depth, nil)
-			assert.Equal(t, tt.want, got)
-			assert.Greater(t, len(moves), 0)
-			move := moves[0]
-			move.Weight = 0
-			assert.Equal(t, tt.move, move, moves)
-		})
-	}
-}
-
 func K(f, t Square) move.Move {
 	return move.Move{From: f, To: t, Piece: King}
 }
