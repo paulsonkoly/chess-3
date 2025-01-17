@@ -281,7 +281,7 @@ func main() {
 	if *bench {
 		b := board.FromFEN("rnbqk2r/ppp1ppbp/3p1np1/8/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 1")
 
-		search.Search(b, 7, nil)
+		search.Search(b, 9, nil)
 
 		fmt.Printf("info awfail %d ableaf %d qdepth %d qdelta %d qsee %d tthit %d\n",
 			search.AWFail, search.ABLeaf, search.QDepth, search.QDelta, search.QSEE, search.TTHit)

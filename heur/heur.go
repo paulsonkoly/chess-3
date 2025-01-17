@@ -10,6 +10,8 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+var capturesStore = [64]Piece{}
+
 // SEE is static exchange evaluation of m.
 func SEE(b *board.Board, m *move.Move) Score {
 	fromBB, to := board.BitBoard(1)<<m.From, m.To
@@ -38,7 +40,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 		},
 	}
 
-	captures := make([]Piece, 0)
+  captures := capturesStore[:0]
 
 	// piece type of least valueable attacker per side
 	start := [2]Piece{Pawn, Pawn}
