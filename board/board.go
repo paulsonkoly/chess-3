@@ -140,7 +140,7 @@ func (b *Board) MakeMove(m *move.Move) {
 
 	b.Hashes = append(b.Hashes, hash)
 
-  // b.consistencyCheck()
+	// b.consistencyCheck()
 }
 
 func (b *Board) UndoMove(m *move.Move) {
@@ -183,16 +183,22 @@ func (b *Board) UndoMove(m *move.Move) {
 	// b.consistencyCheck()
 }
 
-func (b *Board) MakeNullMove() {
+func (b *Board) MakeNullMove() (enP Square) {
+	enP, b.EnPassant = b.EnPassant, 0
 	hash := b.Hashes[len(b.Hashes)-1]
 	b.STM = b.STM.Flip()
+	hash ^= epFileRand[enP%8] & hashEnable[1&(enP>>3|enP>>5)]
 	hash ^= stmRand
 	b.Hashes = append(b.Hashes, hash)
+	// b.consistencyCheck()
+	return
 }
 
-func (b * Board) UndoNullMove() {
+func (b *Board) UndoNullMove(enP Square) {
 	b.STM = b.STM.Flip()
+	b.EnPassant = enP
 	b.Hashes = b.Hashes[:len(b.Hashes)-1]
+	// b.consistencyCheck()
 }
 
 // func (b *Board) consistencyCheck() {
@@ -200,7 +206,7 @@ func (b * Board) UndoNullMove() {
 //     panic("inconsistent hash")
 //   }
 //
-//   if b.Pieces[Pawn] | b.Pieces[Rook] | b.Pieces[Knight] | b.Pieces[Bishop] | b.Pieces[Queen] | b.Pieces[King] != 
+//   if b.Pieces[Pawn] | b.Pieces[Rook] | b.Pieces[Knight] | b.Pieces[Bishop] | b.Pieces[Queen] | b.Pieces[King] !=
 //      b.Colors[White] | b.Colors[Black] {
 //     panic("inconsistent pieces")
 //   }
@@ -256,8 +262,8 @@ func (b *Board) Hash() Hash {
 	for color := White; color <= Black; color++ {
 		occ := b.Colors[color]
 
-    for piece := BitBoard(0); occ != 0; occ = occ ^ piece {
-      piece = occ & -occ
+		for piece := BitBoard(0); occ != 0; occ = occ ^ piece {
+			piece = occ & -occ
 
 			sq := piece.LowestSet()
 
@@ -295,5 +301,5 @@ func (b *Board) Threefold() bool {
 			}
 		}
 	}
-  return false
+	return false
 }

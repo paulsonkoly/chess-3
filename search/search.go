@@ -162,14 +162,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	// null move pruning
 	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
-		b.MakeNullMove()
+		enP := b.MakeNullMove()
 
 		rd := max(0, d-3)
 
 		value, _ := AlphaBeta(b, -beta, -beta+1, rd, stop, sst)
 		value *= -1
 
-		b.UndoNullMove()
+		b.UndoNullMove(enP)
 
 		if value >= beta {
 			return value, pv
@@ -232,9 +232,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		// checkmate score
 		value := -Inf
 
-    if b.FiftyCnt >= 100 || b.Threefold() {
-      value = 0
-    } else {
+		if b.FiftyCnt >= 100 || b.Threefold() {
+			value = 0
+		} else {
 			king := b.Colors[b.STM] & b.Pieces[King]
 			if !movegen.IsAttacked(b, b.STM.Flip(), king) {
 				// draw score
