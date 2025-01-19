@@ -17,6 +17,9 @@ type Move struct {
 }
 
 func (m Move) String() string {
+  if m.From | m.To == 0 {
+    return "0000"
+  }
   promo := ""
   if m.Promo != NoPiece {
     promo = m.Promo.String()
