@@ -185,14 +185,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 
 	movegen.GenMoves(ms, b, board.Full)
 	moves := ms.Frame()
-	sortMoves(b, moves, d, sst)
 
-	for ix, m := range moves {
-		b.MakeMove(&m)
+  rankMoves(b, moves, sst)
+
+  ix := 0
+	for m := getNextMove(moves); m != nil; ix, m = ix+1, getNextMove(moves) {
+		b.MakeMove(m)
 
 		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
 		if movegen.IsAttacked(b, b.STM, king) {
-			b.UndoMove(&m)
+			b.UndoMove(m)
 			continue
 		}
 
@@ -205,19 +207,19 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 			value *= -1
 
 			if value <= alpha {
-				b.UndoMove(&m)
+				b.UndoMove(m)
 				continue
 			}
 		}
 
 		value, curr := AlphaBeta(b, -beta, -alpha, d-1, stop, sst)
 		value *= -1
-		b.UndoMove(&m)
+		b.UndoMove(m)
 
 		if value > alpha {
 			failLow = false
 			alpha = value
-			pv = append(curr, m)
+			pv = append(curr, *m)
 		}
 
 		if value >= beta {
@@ -234,7 +236,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		}
 	}
 
-  ABBreadth += len(moves)
+  ABBreadth += ix
 
 	if !hasLegal {
 		// checkmate score
@@ -323,16 +325,17 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 	alpha = max(alpha, standPat)
 
 	moves := ms.Frame()
-	sortMoves(b, moves, 0, nil)
 
-	for _, m := range moves {
+  rankMoves(b, moves, nil)
+
+  for m := getNextMove(moves); m != nil; m = getNextMove(moves) {
 		captured := b.SquaresToPiece[m.To]
 		if m.EPP == Pawn {
 			captured = Pawn
 		}
-		see := heur.SEE(b, &m)
+		see := heur.SEE(b, m)
 
-		b.MakeMove(&m)
+		b.MakeMove(m)
 
 		check := false
 		king := b.Colors[b.STM] & b.Pieces[King]
@@ -343,31 +346,31 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 		// legality check
 		king = b.Colors[b.STM.Flip()] & b.Pieces[King]
 		if movegen.IsAttacked(b, b.STM, king) {
-			b.UndoMove(&m)
+			b.UndoMove(m)
 			continue
 		}
 
 		if !check {
 			if eval.PieceValues[captured]+delta < alpha {
 				QDelta++
-				b.UndoMove(&m)
+				b.UndoMove(m)
 				continue
 			}
 
 			if see < 0 {
 				QSEE++
-				b.UndoMove(&m)
+				b.UndoMove(m)
 				continue
 			}
 		}
 
 		if !check && captured == NoPiece {
-			b.UndoMove(&m)
+			b.UndoMove(m)
 			continue
 		}
 
 		curr := -Quiescence(b, -beta, -alpha, d+1, stop)
-		b.UndoMove(&m)
+		b.UndoMove(m)
 
 		if curr >= beta {
 			return curr
@@ -382,7 +385,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 	return alpha
 }
 
-func sortMoves(b *board.Board, moves []move.Move, _ Depth, sst *searchSt) {
+func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 	var transPE *transp.Entry
 
 	if sst != nil {
@@ -410,5 +413,22 @@ func sortMoves(b *board.Board, moves []move.Move, _ Depth, sst *searchSt) {
 		weight += eval.PSqT[(m.Piece-1)*2][toSq] - eval.PSqT[(m.Piece-1)*2][fromSq]
 		moves[ix].Weight = weight
 	}
-	slices.SortFunc(moves, func(a, b move.Move) int { return int(b.Weight - a.Weight) })
+}
+
+func getNextMove(moves []move.Move) *move.Move {
+  maxim := -Inf-1
+  best := -1
+  for ix := range moves {
+    if maxim < moves[ix].Weight {
+      maxim = moves[ix].Weight
+      best = ix
+    }
+  }
+
+  if best == -1 {
+    return nil
+  }
+
+  moves[best].Weight = -Inf-1
+  return & moves[best]
 }
