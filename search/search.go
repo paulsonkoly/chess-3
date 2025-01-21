@@ -102,8 +102,10 @@ func pvInfo(moves []move.Move) string {
 }
 
 var (
-	ABLeaf int
-	TTHit  int
+	ABLeaf    int
+	ABBreadth int
+	ABCnt     int
+	TTHit     int
 )
 
 func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{}, sst *searchSt) (Score, []move.Move) {
@@ -149,6 +151,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		ABLeaf++
 		return Quiescence(b, alpha, beta, 0, stop), pv
 	}
+
+  ABCnt++
 
 	hasLegal := false
 	failLow := true
@@ -220,6 +224,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 			// store node as fail high (cut-node)
 			transpT.Insert(b.Hashes[len(b.Hashes)-1], d, m.From, m.To, m.Promo, value, transp.CutNode)
 
+      ABBreadth += ix
+
 			return value, nil
 		}
 
@@ -227,6 +233,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 			return alpha, pv
 		}
 	}
+
+  ABBreadth += len(moves)
 
 	if !hasLegal {
 		// checkmate score

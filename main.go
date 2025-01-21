@@ -137,15 +137,9 @@ func (e *UciEngine) handleGo(args []string) {
 		score := Score(0)
 		go func() {
 			defer wg.Done()
-			s, moves := search.Search(e.board, 100, stop)
-			fmt.Printf("info awfail %d ableaf %d tthits %d qdepth %d qdelta %d qsee %d\n",
-				search.AWFail, search.ABLeaf, search.TTHit, search.QDepth, search.QDelta, search.QSEE)
-			search.AWFail = 0
-			search.ABLeaf = 0
-			search.QDelta = 0
-			search.QDepth = 0
-			search.QSEE = 0
-			search.TTHit = 0
+
+			s, moves := Search(e.board, 100, stop)
+
 			if len(moves) > 0 {
 				bestMove = moves[0]
 				score = s
@@ -159,7 +153,8 @@ func (e *UciEngine) handleGo(args []string) {
 	} else {
 		// Fixed depth search
 		start := time.Now()
-		score, moves := search.Search(e.board, depth, nil)
+    
+		score, moves := Search(e.board, depth, nil)
 
 		if len(moves) > 0 {
 			bestMove := moves[0]
@@ -169,6 +164,25 @@ func (e *UciEngine) handleGo(args []string) {
 			fmt.Println("bestmove 0000") // No legal move
 		}
 	}
+}
+
+func Search(b *board.Board, d Depth, stop <-chan struct{}) (Score, []move.Move) {
+	s, moves := search.Search(b, d, stop)
+
+	ABBF := float64(search.ABBreadth) / float64(search.ABCnt)
+
+	fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d qdelta %d qsee %d\n",
+		search.AWFail, search.ABLeaf, ABBF, search.TTHit, search.QDepth, search.QDelta, search.QSEE)
+	search.AWFail = 0
+	search.ABLeaf = 0
+	search.ABBreadth = 0
+	search.ABCnt = 0
+	search.QDelta = 0
+	search.QDepth = 0
+	search.QSEE = 0
+	search.TTHit = 0
+
+	return s, moves
 }
 
 // 7800 that factors 39 * 200
@@ -281,10 +295,7 @@ func main() {
 	if *bench {
 		b := board.FromFEN("rnbqk2r/ppp1ppbp/3p1np1/8/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 1")
 
-		search.Search(b, 9, nil)
-
-		fmt.Printf("info awfail %d ableaf %d qdepth %d qdelta %d qsee %d tthit %d\n",
-			search.AWFail, search.ABLeaf, search.QDepth, search.QDelta, search.QSEE, search.TTHit)
+		Search(b, 9, nil)
 	} else {
 		e := NewUciEngine()
 		scanner := bufio.NewScanner(os.Stdin)
