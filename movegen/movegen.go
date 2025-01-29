@@ -316,7 +316,7 @@ func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
 	self := b.Colors[b.STM]
 	them := b.Colors[b.STM.Flip()]
 
-	if b.FiftyCnt >= 100 || b.Threefold() {
+	if b.FiftyCnt >= 100 {
 		return
 	}
 

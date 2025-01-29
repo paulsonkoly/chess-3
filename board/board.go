@@ -288,18 +288,18 @@ func (b *Board) Hash() Hash {
 	return hash
 }
 
-func (b *Board) Threefold() bool {
+func (b *Board) Threefold() Depth {
+	cnt := Depth(1)
 	if len(b.Hashes) > 0 {
 		hash := b.Hashes[len(b.Hashes)-1]
-		cnt := 0
-		for ix := len(b.Hashes) - 3; ix >= 0; ix -= 2 {
+		for ix := len(b.Hashes) - 5; ix >= 0; ix -= 2 {
 			if b.Hashes[ix] == hash {
 				cnt++
-				if cnt >= 2 {
-					return true
+				if cnt >= 3 {
+					return cnt
 				}
 			}
 		}
 	}
-	return false
+	return cnt
 }

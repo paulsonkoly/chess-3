@@ -27,11 +27,12 @@ const (
 
 // Entry is a transposition table entry.
 //
-// We use up 16 bytes, and have a spare byte atm.
+// We use up 16 bytes
 type Entry struct {
 	Hash  board.Hash
 	Value Score
 	Depth Depth
+  TFCnt Depth
 	From  Square
 	To    Square
 	Promo Piece
@@ -44,7 +45,7 @@ func NewTable() *Table {
 	}
 }
 
-func (t *Table) Insert(hash board.Hash, d Depth, from, to Square, promo Piece, value Score, typ NodeT) {
+func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, from, to Square, promo Piece, value Score, typ NodeT) {
 	ix := hash % TableSize
 
 	if t.data[ix].Depth > d {
@@ -59,6 +60,7 @@ func (t *Table) Insert(hash board.Hash, d Depth, from, to Square, promo Piece, v
 		Value: value,
 		Type:  typ,
 		Depth: d,
+    TFCnt: tfCnt,
 	}
 }
 

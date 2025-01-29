@@ -113,35 +113,38 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	transpT := sst.transpT
 	pv := []move.Move{}
 
-	if transpE, ok := transpT.LookUp(b.Hashes[len(b.Hashes)-1]); ok {
+	tfCnt := b.Threefold()
+	if tfCnt >= 3 {
+		return 0, pv
+	}
+
+	if transpE, ok := transpT.LookUp(b.Hashes[len(b.Hashes)-1]); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		TTHit++
-		if transpE.Depth >= d {
-			switch transpE.Type {
+		switch transpE.Type {
 
-			case transp.PVNode:
-				if transpE.From|transpE.To != 0 {
-					ms.Push()
-					defer ms.Pop()
+		case transp.PVNode:
+			if transpE.From|transpE.To != 0 {
+				ms.Push()
+				defer ms.Pop()
 
-					movegen.GenMoves(ms, b, board.BitBoard(1<<transpE.To))
+				movegen.GenMoves(ms, b, board.BitBoard(1<<transpE.To))
 
-					for _, m := range ms.Frame() {
-						if m.From == transpE.From && m.Promo == transpE.Promo {
-							pv = []move.Move{m}
-						}
+				for _, m := range ms.Frame() {
+					if m.From == transpE.From && m.Promo == transpE.Promo {
+						pv = []move.Move{m}
 					}
 				}
+			}
+			return transpE.Value, pv
+
+		case transp.CutNode:
+			if transpE.Value >= beta {
 				return transpE.Value, pv
+			}
 
-			case transp.CutNode:
-				if transpE.Value >= beta {
-					return transpE.Value, pv
-				}
-
-			case transp.AllNode:
-				if transpE.Value <= alpha {
-					return transpE.Value, pv
-				}
+		case transp.AllNode:
+			if transpE.Value <= alpha {
+				return transpE.Value, pv
 			}
 		}
 		TTHit--
@@ -152,7 +155,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		return Quiescence(b, alpha, beta, 0, stop), pv
 	}
 
-  ABCnt++
+	ABCnt++
 
 	hasLegal := false
 	failLow := true
@@ -186,9 +189,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	movegen.GenMoves(ms, b, board.Full)
 	moves := ms.Frame()
 
-  rankMoves(b, moves, sst)
+	rankMoves(b, moves, sst)
 
-  ix := 0
+	ix := 0
 	for m := getNextMove(moves); m != nil; ix, m = ix+1, getNextMove(moves) {
 		b.MakeMove(m)
 
@@ -224,9 +227,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 
 		if value >= beta {
 			// store node as fail high (cut-node)
-			transpT.Insert(b.Hashes[len(b.Hashes)-1], d, m.From, m.To, m.Promo, value, transp.CutNode)
+			transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, m.From, m.To, m.Promo, value, transp.CutNode)
 
-      ABBreadth += ix
+			ABBreadth += ix
 
 			return value, nil
 		}
@@ -236,13 +239,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		}
 	}
 
-  ABBreadth += ix
+	ABBreadth += ix
 
 	if !hasLegal {
 		// checkmate score
 		value := -Inf
 
-		if b.FiftyCnt >= 100 || b.Threefold() {
+		if b.FiftyCnt >= 100 {
 			value = 0
 		} else {
 			king := b.Colors[b.STM] & b.Pieces[King]
@@ -260,7 +263,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, 0, 0, NoPiece, alpha, transp.AllNode)
+		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, 0, 0, NoPiece, alpha, transp.AllNode)
 	} else {
 		// store node as exact (PV-node)
 		// there might not be a move in case of !hasLegal
@@ -273,7 +276,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 			promo = m.Promo
 		}
 
-		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, from, to, promo, alpha, transp.PVNode)
+		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, from, to, promo, alpha, transp.PVNode)
 	}
 
 	return alpha, pv
@@ -310,6 +313,10 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 		QDepth = d
 	}
 
+	if b.Threefold() >= 3 {
+		return 0
+	}
+
 	ms.Push()
 	defer ms.Pop()
 
@@ -326,9 +333,9 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 
 	moves := ms.Frame()
 
-  rankMoves(b, moves, nil)
+	rankMoves(b, moves, nil)
 
-  for m := getNextMove(moves); m != nil; m = getNextMove(moves) {
+	for m := getNextMove(moves); m != nil; m = getNextMove(moves) {
 		captured := b.SquaresToPiece[m.To]
 		if m.EPP == Pawn {
 			captured = Pawn
@@ -416,19 +423,19 @@ func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 }
 
 func getNextMove(moves []move.Move) *move.Move {
-  maxim := -Inf-1
-  best := -1
-  for ix := range moves {
-    if maxim < moves[ix].Weight {
-      maxim = moves[ix].Weight
-      best = ix
-    }
-  }
+	maxim := -Inf - 1
+	best := -1
+	for ix := range moves {
+		if maxim < moves[ix].Weight {
+			maxim = moves[ix].Weight
+			best = ix
+		}
+	}
 
-  if best == -1 {
-    return nil
-  }
+	if best == -1 {
+		return nil
+	}
 
-  moves[best].Weight = -Inf-1
-  return & moves[best]
+	moves[best].Weight = -Inf - 1
+	return &moves[best]
 }

@@ -508,35 +508,6 @@ func TestIsAttacked(t *testing.T) {
 	}
 }
 
-func TestRepetation(t *testing.T) {
-	b := board.FromFEN("5r1k/8/8/7p/7P/8/8/2R4K w - - 0 1")
-
-	m := R(C1, D1)
-	b.MakeMove(&m)
-	m = R(F8, E8)
-	b.MakeMove(&m)
-
-	m = R(D1, C1)
-	b.MakeMove(&m)
-	m = R(E8, F8)
-	b.MakeMove(&m)
-
-	m = R(C1, D1)
-	b.MakeMove(&m)
-	m = R(F8, E8)
-	b.MakeMove(&m)
-
-	m = R(D1, C1)
-	b.MakeMove(&m)
-	m = R(E8, F8)
-	b.MakeMove(&m)
-
-	ms := mstore.New()
-	movegen.GenMoves(ms, b, board.Full)
-
-	assert.Equal(t, len(ms.Frame()), 0)
-}
-
 func TestFifty(t *testing.T) {
 	b := board.FromFEN("8/5R1P/8/3Q4/7k/8/1P6/6K1 b - - 98 161")
 
