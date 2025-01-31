@@ -340,19 +340,23 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 		if m.EPP == Pawn {
 			captured = Pawn
 		}
-		see := heur.SEE(b, m)
 
 		b.MakeMove(m)
 
+		// legality check
+    king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+		if movegen.IsAttacked(b, b.STM, king) {
+			b.UndoMove(m)
+			continue
+		}
+
 		check := false
-		king := b.Colors[b.STM] & b.Pieces[King]
+		king = b.Colors[b.STM] & b.Pieces[King]
 		if movegen.IsAttacked(b, b.STM.Flip(), king) {
 			check = true
 		}
 
-		// legality check
-		king = b.Colors[b.STM.Flip()] & b.Pieces[King]
-		if movegen.IsAttacked(b, b.STM, king) {
+		if !check && captured == NoPiece {
 			b.UndoMove(m)
 			continue
 		}
@@ -364,16 +368,11 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 				continue
 			}
 
-			if see < 0 {
+			if m.SEE < 0 {
 				QSEE++
 				b.UndoMove(m)
 				continue
 			}
-		}
-
-		if !check && captured == NoPiece {
-			b.UndoMove(m)
-			continue
 		}
 
 		curr := -Quiescence(b, -beta, -alpha, d+1, stop)
@@ -404,8 +403,9 @@ func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 
 	for ix, m := range moves {
 		weight := Score(0)
+    see := heur.SEE(b, &m)
 
-		weight += heur.SEE(b, &m)
+		weight += see 
 
 		if transPE != nil && m.From == transPE.From && m.To == transPE.To && m.Promo == transPE.Promo {
 			weight += 5000
@@ -419,6 +419,7 @@ func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 		}
 		weight += eval.PSqT[(m.Piece-1)*2][toSq] - eval.PSqT[(m.Piece-1)*2][fromSq]
 		moves[ix].Weight = weight
+    moves[ix].SEE = see
 	}
 }
 
