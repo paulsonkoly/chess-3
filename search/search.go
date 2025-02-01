@@ -19,6 +19,7 @@ import (
 
 const WindowSize = 50 // half a pawn left and right around score
 const MaxPlies = 64
+const MaxHistoryScore = 1023
 
 var AWFail int
 
@@ -26,6 +27,7 @@ var ms = mstore.New()
 
 type searchSt struct {
 	transpT *transp.Table
+	history [2][64][64]Score
 }
 
 func Search(b *board.Board, d Depth, stop <-chan struct{}) (score Score, moves []move.Move) {
@@ -183,6 +185,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		}
 	}
 
+	// deflate history
+	if ABCnt%10_000 == 0 {
+		for color := White; color <= Black; color++ {
+			for sqFrom := A1; sqFrom <= H8; sqFrom++ {
+				for sqTo := A1; sqTo <= H8; sqTo++ {
+					sst.history[color][sqFrom][sqTo] >>= 1
+				}
+			}
+		}
+	}
+
 	ms.Push()
 	defer ms.Pop()
 
@@ -232,6 +245,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		if value >= beta {
 			// store node as fail high (cut-node)
 			transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, m.From, m.To, m.Promo, value, transp.CutNode)
+
+			if m.Captured == NoPiece {
+				hist := sst.history[b.STM][m.From][m.To] + Score(d)*Score(d)
+				if hist <= MaxHistoryScore {
+					sst.history[b.STM][m.From][m.To] = hist
+				}
+			}
 
 			ABBreadth += ix
 
@@ -406,24 +426,25 @@ func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 	}
 
 	for ix, m := range moves {
-		weight := Score(0)
-		see := heur.SEE(b, &m)
 
-		weight += see
+		switch {
+		case transPE != nil && m.From == transPE.From && m.To == transPE.To && m.Promo == transPE.Promo:
+			moves[ix].Weight = 5000
 
-		if transPE != nil && m.From == transPE.From && m.To == transPE.To && m.Promo == transPE.Promo {
-			weight += 5000
+		case b.SquaresToPiece[m.To] != NoPiece:
+			see := heur.SEE(b, &m)
+			if see < 0 {
+				moves[ix].Weight = see - MaxHistoryScore
+			} else {
+				moves[ix].Weight = see + MaxHistoryScore
+			}
+			moves[ix].SEE = see
+
+		default:
+			if sst != nil {
+				moves[ix].Weight = sst.history[b.STM][m.From][m.To]
+			}
 		}
-
-		toSq := m.To
-		fromSq := m.From
-		if b.STM == White {
-			toSq ^= 56
-			fromSq ^= 56
-		}
-		weight += eval.PSqT[(m.Piece-1)*2][toSq] - eval.PSqT[(m.Piece-1)*2][fromSq]
-		moves[ix].Weight = weight
-		moves[ix].SEE = see
 	}
 }
 
