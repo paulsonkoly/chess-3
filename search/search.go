@@ -438,7 +438,7 @@ func getNextMove(moves []move.Move, ix int) (*move.Move, int) {
 	}
 
 	if best == -1 {
-		return nil, 0
+		return nil, ix
 	}
 	ix++
 
