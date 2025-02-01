@@ -191,8 +191,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 
 	rankMoves(b, moves, sst)
 
-	ix := 0
-	for m := getNextMove(moves); m != nil; ix, m = ix+1, getNextMove(moves) {
+	var (
+		m  *move.Move
+		ix int
+	)
+
+	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 		b.MakeMove(m)
 
 		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
@@ -335,7 +339,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 
 	rankMoves(b, moves, nil)
 
-	for m := getNextMove(moves); m != nil; m = getNextMove(moves) {
+	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 		captured := b.SquaresToPiece[m.To]
 		if m.EPP == Pawn {
 			captured = Pawn
@@ -344,7 +348,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 		b.MakeMove(m)
 
 		// legality check
-    king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
 		if movegen.IsAttacked(b, b.STM, king) {
 			b.UndoMove(m)
 			continue
@@ -403,9 +407,9 @@ func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 
 	for ix, m := range moves {
 		weight := Score(0)
-    see := heur.SEE(b, &m)
+		see := heur.SEE(b, &m)
 
-		weight += see 
+		weight += see
 
 		if transPE != nil && m.From == transPE.From && m.To == transPE.To && m.Promo == transPE.Promo {
 			weight += 5000
@@ -419,24 +423,26 @@ func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 		}
 		weight += eval.PSqT[(m.Piece-1)*2][toSq] - eval.PSqT[(m.Piece-1)*2][fromSq]
 		moves[ix].Weight = weight
-    moves[ix].SEE = see
+		moves[ix].SEE = see
 	}
 }
 
-func getNextMove(moves []move.Move) *move.Move {
+func getNextMove(moves []move.Move, ix int) (*move.Move, int) {
 	maxim := -Inf - 1
 	best := -1
-	for ix := range moves {
-		if maxim < moves[ix].Weight {
-			maxim = moves[ix].Weight
-			best = ix
+	for jx := ix + 1; jx < len(moves); jx++ {
+		if maxim < moves[jx].Weight {
+			maxim = moves[jx].Weight
+			best = jx
 		}
 	}
 
 	if best == -1 {
-		return nil
+		return nil, 0
 	}
+	ix++
 
-	moves[best].Weight = -Inf - 1
-	return &moves[best]
+	moves[ix], moves[best] = moves[best], moves[ix]
+
+	return &moves[ix], ix
 }
