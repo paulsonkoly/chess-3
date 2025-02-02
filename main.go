@@ -32,6 +32,7 @@ var bench = flag.Bool("bench", false, "run benchmark instead of UCI")
 
 type UciEngine struct {
 	board       *board.Board
+	sst         *search.State
 	timeControl struct {
 		wtime int // White time in milliseconds
 		btime int // Black time in milliseconds
@@ -43,6 +44,7 @@ type UciEngine struct {
 func NewUciEngine() *UciEngine {
 	return &UciEngine{
 		board: board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+		sst:   search.NewState(),
 	}
 }
 
@@ -128,7 +130,7 @@ func (e *UciEngine) handleGo(args []string) {
 
 	if timeAllowed > 0 {
 		// Timeout handling with iterative deepening
-		stop := make(chan struct{})
+    e.sst.Stop = make(chan struct{})
 		var bestMove move.Move
 
 		wg := sync.WaitGroup{}
@@ -138,7 +140,7 @@ func (e *UciEngine) handleGo(args []string) {
 		go func() {
 			defer wg.Done()
 
-			s, moves := Search(e.board, 100, stop)
+			s, moves := e.Search(100)
 
 			if len(moves) > 0 {
 				bestMove = moves[0]
@@ -147,14 +149,14 @@ func (e *UciEngine) handleGo(args []string) {
 		}()
 
 		time.Sleep(time.Duration(timeAllowed) * time.Millisecond)
-		close(stop)
+		close(e.sst.Stop)
 		wg.Wait()
 		fmt.Printf("bestmove %s info score cp %d\n", bestMove, score)
 	} else {
 		// Fixed depth search
 		start := time.Now()
-    
-		score, moves := Search(e.board, depth, nil)
+
+		score, moves := e.Search(depth)
 
 		if len(moves) > 0 {
 			bestMove := moves[0]
@@ -166,21 +168,13 @@ func (e *UciEngine) handleGo(args []string) {
 	}
 }
 
-func Search(b *board.Board, d Depth, stop <-chan struct{}) (Score, []move.Move) {
-	s, moves := search.Search(b, d, stop)
+func (e *UciEngine) Search(d Depth) (Score, []move.Move) {
+	s, moves := search.Search(e.board, d, e.sst)
 
-	ABBF := float64(search.ABBreadth) / float64(search.ABCnt)
+	ABBF := float64(e.sst.ABBreadth) / float64(e.sst.ABCnt)
 
 	fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d qdelta %d qsee %d\n",
-		search.AWFail, search.ABLeaf, ABBF, search.TTHit, search.QDepth, search.QDelta, search.QSEE)
-	search.AWFail = 0
-	search.ABLeaf = 0
-	search.ABBreadth = 0
-	search.ABCnt = 0
-	search.QDelta = 0
-	search.QDepth = 0
-	search.QSEE = 0
-	search.TTHit = 0
+		e.sst.AWFail, e.sst.ABLeaf, ABBF, e.sst.TTHit, e.sst.QDepth, e.sst.QDelta, e.sst.QSEE)
 
 	return s, moves
 }
@@ -292,12 +286,13 @@ func main() {
 		return
 	}
 
-	if *bench {
-		b := board.FromFEN("rnbqk2r/ppp1ppbp/3p1np1/8/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 1")
+	e := NewUciEngine()
 
-		Search(b, 9, nil)
+	if *bench {
+		e.board = board.FromFEN("rnbqk2r/ppp1ppbp/3p1np1/8/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 1")
+
+		e.Search(9)
 	} else {
-		e := NewUciEngine()
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			e.handleCommand(scanner.Text())

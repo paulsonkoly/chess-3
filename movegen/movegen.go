@@ -3,7 +3,6 @@ package movegen
 import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/mstore"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -311,7 +310,7 @@ var (
 	}
 )
 
-func GenMoves(ms *mstore.MStore, b *board.Board, target board.BitBoard) {
+func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 
 	self := b.Colors[b.STM]
 	them := b.Colors[b.STM.Flip()]

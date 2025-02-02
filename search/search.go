@@ -8,34 +8,72 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/heur"
+	"github.com/paulsonkoly/chess-3/hist"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
-	"github.com/paulsonkoly/chess-3/mstore"
 	"github.com/paulsonkoly/chess-3/transp"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const WindowSize = 50 // half a pawn left and right around score
-const MaxPlies = 64
-const MaxHistoryScore = 1023
+const (
+	WindowSize = 50 // half a pawn left and right around score
+	MaxPlies   = 64
+)
 
-var AWFail int
+// State is a persistent state storage between searches.
+type State struct {
+	tt   *transp.Table
+	hist *hist.Store
+	ms   *move.Store
 
-var ms = mstore.New()
+	// Stop channel signals an immediate Stop requiest to the search. Current
+	// depth will be abandoned.
+	Stop chan struct{}
 
-type searchSt struct {
-	transpT *transp.Table
-	history [2][64][64]Score
+	AWFail int // AwFail is the count of times the score fell outside of the aspiration window.
+	ABLeaf int // ABLeaf is the count of alpha-beta leafs.
+	// ABBreadth is the total count of explored moves in alpha-beta. Thus
+	// (ABBreadth / ABCnt) is the average alpha-beta branching factor.
+	ABBreadth int
+	ABCnt     int // ABCnt is the inner node count in alpha-beta.
+	TTHit     int // TThit is the transposition table hit-count.
+	QDepth    int // QDepth is the maximal quiesence search depth.
+	QDelta    int // QDelta is the count of times a delta pruning happened in quiesence search.
+	QSEE      int // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
 }
 
-func Search(b *board.Board, d Depth, stop <-chan struct{}) (score Score, moves []move.Move) {
+// NewState creates a new search state. It's supposed to be called once, and
+// re-used between Search() calls.
+func NewState() *State {
+	return &State{tt: transp.New(), ms: move.NewStore(), hist: hist.New()}
+}
+
+// Clear resets the counters, and various stores for the search, assuming a new
+// position.
+func (s *State) Clear() {
+	s.tt.Clear()
+	s.ms.Clear()
+	s.AWFail = 0
+	s.ABLeaf = 0
+	s.ABBreadth = 0
+	s.ABCnt = 0
+	s.TTHit = 0
+	s.QDepth = 0
+	s.QDelta = 0
+	s.QSEE = 0
+}
+
+// Search is the main entry point to the engine. It performs and
+// iterative-deepened alpha-beta with aspiration window.
+func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Move) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
 	aborting = false
-	searchSt := searchSt{transpT: transp.NewTable()}
+
+	sst.Clear()
 
 	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
 		awOk := false // aspiration window succeeded
@@ -46,17 +84,17 @@ func Search(b *board.Board, d Depth, stop <-chan struct{}) (score Score, moves [
 		)
 
 		for !awOk {
-			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, stop, &searchSt)
+			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, sst)
 
 			switch {
 
 			case scoreSample <= alpha:
-				AWFail++
+				sst.AWFail++
 				alpha -= factor * WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
-				AWFail++
+				sst.AWFail++
 				beta += factor * WindowSize
 				factor *= 2
 
@@ -64,7 +102,7 @@ func Search(b *board.Board, d Depth, stop <-chan struct{}) (score Score, moves [
 				awOk = true
 			}
 
-			if abort(stop) {
+			if abort(sst.Stop) {
 				return
 			}
 		}
@@ -103,16 +141,11 @@ func pvInfo(moves []move.Move) string {
 	return sb.String()
 }
 
-var (
-	ABLeaf    int
-	ABBreadth int
-	ABCnt     int
-	TTHit     int
-)
+// AlphaBeta performs an alpha beta search to depth d, and then transitions
+// into Quiesence() search.
+func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, []move.Move) {
 
-func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{}, sst *searchSt) (Score, []move.Move) {
-
-	transpT := sst.transpT
+	transpT := sst.tt
 	pv := []move.Move{}
 
 	tfCnt := b.Threefold()
@@ -121,17 +154,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	}
 
 	if transpE, ok := transpT.LookUp(b.Hashes[len(b.Hashes)-1]); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
-		TTHit++
+		sst.TTHit++
 		switch transpE.Type {
 
 		case transp.PVNode:
 			if transpE.From|transpE.To != 0 {
-				ms.Push()
-				defer ms.Pop()
+				sst.ms.Push()
+				defer sst.ms.Pop()
 
-				movegen.GenMoves(ms, b, board.BitBoard(1<<transpE.To))
+				movegen.GenMoves(sst.ms, b, board.BitBoard(1<<transpE.To))
 
-				for _, m := range ms.Frame() {
+				for _, m := range sst.ms.Frame() {
 					if m.From == transpE.From && m.Promo == transpE.Promo {
 						pv = []move.Move{m}
 					}
@@ -149,15 +182,15 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 				return transpE.Value, pv
 			}
 		}
-		TTHit--
+		sst.TTHit--
 	}
 
 	if d == 0 {
-		ABLeaf++
-		return Quiescence(b, alpha, beta, 0, stop), pv
+		sst.ABLeaf++
+		return Quiescence(b, alpha, beta, 0, sst), pv
 	}
 
-	ABCnt++
+	sst.ABCnt++
 
 	hasLegal := false
 	failLow := true
@@ -175,7 +208,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 
 		rd := max(0, d-3)
 
-		value, _ := AlphaBeta(b, -beta, -beta+1, rd, stop, sst)
+		value, _ := AlphaBeta(b, -beta, -beta+1, rd, sst)
 		value *= -1
 
 		b.UndoNullMove(enP)
@@ -186,23 +219,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 	}
 
 	// deflate history
-	if ABCnt%10_000 == 0 {
-		for color := White; color <= Black; color++ {
-			for sqFrom := A1; sqFrom <= H8; sqFrom++ {
-				for sqTo := A1; sqTo <= H8; sqTo++ {
-					sst.history[color][sqFrom][sqTo] >>= 1
-				}
-			}
-		}
+	if sst.ABCnt%10_000 == 0 {
+		sst.hist.Deflate()
 	}
 
-	ms.Push()
-	defer ms.Pop()
+	sst.ms.Push()
+	defer sst.ms.Pop()
 
-	movegen.GenMoves(ms, b, board.Full)
-	moves := ms.Frame()
+	movegen.GenMoves(sst.ms, b, board.Full)
+	moves := sst.ms.Frame()
 
-	rankMoves(b, moves, sst)
+	rankMovesAB(b, moves, sst)
 
 	var (
 		m  *move.Move
@@ -223,7 +250,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 		// late move reduction
 		rd := lmr(d, ix)
 		if rd < d-1 && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, stop, sst)
+			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
 
 			if value <= alpha {
@@ -232,7 +259,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 			}
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, d-1, stop, sst)
+		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
 		value *= -1
 		b.UndoMove(m)
 
@@ -247,23 +274,20 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, stop <-chan struct{},
 			transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, m.From, m.To, m.Promo, value, transp.CutNode)
 
 			if m.Captured == NoPiece {
-				hist := sst.history[b.STM][m.From][m.To] + Score(d)*Score(d)
-				if hist <= MaxHistoryScore {
-					sst.history[b.STM][m.From][m.To] = hist
-				}
+				sst.hist.Add(b.STM, m.From, m.To, d)
 			}
 
-			ABBreadth += ix
+			sst.ABBreadth += ix
 
 			return value, nil
 		}
 
-		if abort(stop) {
+		if abort(sst.Stop) {
 			return alpha, pv
 		}
 	}
 
-	ABBreadth += ix
+	sst.ABBreadth += ix
 
 	if !hasLegal {
 		// checkmate score
@@ -326,27 +350,22 @@ func lmr(d Depth, mCount int) Depth {
 	return max(0, d-Depth(value))
 }
 
-var (
-	QDepth int
-	QDelta int
-	QSEE   int
-)
-
-func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) Score {
-	if d > QDepth {
-		QDepth = d
+// Quiescence resolves the position to a quiet one, and then evaluates.
+func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
+	if d > sst.QDepth {
+		sst.QDepth = d
 	}
 
 	if b.Threefold() >= 3 {
 		return 0
 	}
 
-	ms.Push()
-	defer ms.Pop()
+	sst.ms.Push()
+	defer sst.ms.Pop()
 
-	movegen.GenMoves(ms, b, board.Full)
+	movegen.GenMoves(sst.ms, b, board.Full)
 
-	standPat := eval.Eval(b, ms.Frame())
+	standPat := eval.Eval(b, sst.ms.Frame())
 
 	if standPat >= beta {
 		return beta
@@ -355,9 +374,9 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 	delta := standPat + 110 // we only have psqt atm, which doesn't have bigger values than 50
 	alpha = max(alpha, standPat)
 
-	moves := ms.Frame()
+	moves := sst.ms.Frame()
 
-	rankMoves(b, moves, nil)
+	rankMovesQ(b, moves)
 
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 		captured := b.SquaresToPiece[m.To]
@@ -387,19 +406,19 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 
 		if !check {
 			if eval.PieceValues[captured]+delta < alpha {
-				QDelta++
+				sst.QDelta++
 				b.UndoMove(m)
 				continue
 			}
 
 			if m.SEE < 0 {
-				QSEE++
+				sst.QSEE++
 				b.UndoMove(m)
 				continue
 			}
 		}
 
-		curr := -Quiescence(b, -beta, -alpha, d+1, stop)
+		curr := -Quiescence(b, -beta, -alpha, d+1, sst)
 		b.UndoMove(m)
 
 		if curr >= beta {
@@ -407,7 +426,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 		}
 		alpha = max(alpha, curr)
 
-		if abort(stop) {
+		if abort(sst.Stop) {
 			return alpha
 		}
 	}
@@ -415,14 +434,12 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, stop <-chan struct{}) 
 	return alpha
 }
 
-func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
+func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	var transPE *transp.Entry
 
-	if sst != nil {
-		transPE, _ = sst.transpT.LookUp(b.Hashes[len(b.Hashes)-1])
-		if transPE != nil && transPE.Type == transp.AllNode {
-			transPE = nil
-		}
+	transPE, _ = sst.tt.LookUp(b.Hashes[len(b.Hashes)-1])
+	if transPE != nil && transPE.Type == transp.AllNode {
+		transPE = nil
 	}
 
 	for ix, m := range moves {
@@ -434,16 +451,24 @@ func rankMoves(b *board.Board, moves []move.Move, sst *searchSt) {
 		case b.SquaresToPiece[m.To] != NoPiece:
 			see := heur.SEE(b, &m)
 			if see < 0 {
-				moves[ix].Weight = see - MaxHistoryScore
+				moves[ix].Weight = see - hist.MaxHistoryScore
 			} else {
-				moves[ix].Weight = see + MaxHistoryScore
+				moves[ix].Weight = see + hist.MaxHistoryScore
 			}
 			moves[ix].SEE = see
 
 		default:
-			if sst != nil {
-				moves[ix].Weight = sst.history[b.STM][m.From][m.To]
-			}
+			moves[ix].Weight = sst.hist.Probe(b.STM, m.From, m.To)
+		}
+	}
+}
+
+func rankMovesQ(b *board.Board, moves []move.Move) {
+	for ix, m := range moves {
+		if b.SquaresToPiece[m.To] != NoPiece {
+			see := heur.SEE(b, &m)
+			moves[ix].SEE = see
+			moves[ix].Weight = see
 		}
 	}
 }

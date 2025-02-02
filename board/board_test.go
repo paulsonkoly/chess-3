@@ -6,7 +6,6 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
-	"github.com/paulsonkoly/chess-3/mstore"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -70,7 +69,7 @@ func TestZobrist(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := tt.b
 
-			ms := mstore.New()
+			ms := move.NewStore()
 			movegen.GenMoves(ms, b, board.Full)
 
 			for _, m := range ms.Frame() {

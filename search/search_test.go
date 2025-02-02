@@ -45,9 +45,11 @@ func TestQuiescence(t *testing.T) {
 		},
 	}
 
+  sst := search.NewState()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := search.Quiescence(tt.b, -Inf-1, Inf+1, 0, nil)
+      sst.Clear()
+			got := search.Quiescence(tt.b, -Inf-1, Inf+1, 0, sst)
 			assert.InDelta(t, int(tt.want), int(got), 50.0)
 		})
 	}
@@ -67,13 +69,17 @@ func TestThreefold(t *testing.T) {
 		},
 	}
 
+  sst := search.NewState()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
       for _, m := range tt.moves {
         tt.b.MakeMove(&m)
       }
 
-      score, _ := search.Search(tt.b, 3, nil)
+      sst.Clear()
+
+      score, _ := search.Search(tt.b, 3, sst)
 
       assert.InDelta(t, tt.want, int(score), 200)
 		})

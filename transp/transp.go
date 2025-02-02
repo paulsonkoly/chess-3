@@ -39,10 +39,16 @@ type Entry struct {
 	Type  NodeT
 }
 
-func NewTable() *Table {
+func New() *Table {
 	return &Table{
 		data: make([]Entry, TableSize),
 	}
+}
+
+func (t *Table)Clear() {
+  for ix := range t.data {
+    t.data[ix].Depth = 0
+  }
 }
 
 func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, from, to Square, promo Piece, value Score, typ NodeT) {

@@ -8,19 +8,19 @@ import (
 	"strings"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
-	"github.com/paulsonkoly/chess-3/mstore"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
 func Perft(b *board.Board, depth int) int {
-	ms := mstore.New()
+	ms := move.NewStore()
 	return perft(ms, b, depth)
 }
 
-func perft(ms *mstore.MStore, b *board.Board, depth int) int {
+func perft(ms *move.Store, b *board.Board, depth int) int {
 	if depth == 0 {
 		return 1
 	}
@@ -104,12 +104,12 @@ func StockfishPerft(b *board.Board, depth int) int {
 }
 
 func MatchPerft(b *board.Board, depth int) {
-	ms := mstore.New()
+	ms := move.NewStore()
 
 	matchPerft(ms, b, depth)
 }
 
-func matchPerft(ms *mstore.MStore, b *board.Board, depth int) {
+func matchPerft(ms *move.Store, b *board.Board, depth int) {
 	if depth <= 0 {
 		return
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
-	"github.com/paulsonkoly/chess-3/mstore"
 	"github.com/stretchr/testify/assert"
 
 	// revive:disable-next-line
@@ -354,7 +353,7 @@ func TestMoves(t *testing.T) {
 			ok := make([]bool, len(want))
 			b := tt.b
 
-			ms := mstore.New()
+			ms := move.NewStore()
 
 			movegen.GenMoves(ms, b, tt.target)
 
@@ -518,7 +517,7 @@ func TestFifty(t *testing.T) {
 
 	assert.Equal(t, 100, b.FiftyCnt)
 
-	ms := mstore.New()
+	ms := move.NewStore()
 	movegen.GenMoves(ms, b, board.Full)
 
 	assert.Equal(t, len(ms.Frame()), 0)
