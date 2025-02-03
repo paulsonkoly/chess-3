@@ -365,7 +365,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 	movegen.GenMoves(sst.ms, b, board.Full)
 
-	standPat := eval.Eval(b, sst.ms.Frame())
+	standPat := eval.Eval(b, alpha, beta, sst.ms.Frame())
 
 	if standPat >= beta {
 		return beta

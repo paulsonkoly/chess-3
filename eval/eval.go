@@ -1,3 +1,4 @@
+// package eval gives position evaluation measuerd in centipawns.
 package eval
 
 import (
@@ -9,20 +10,26 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+// Some of this code is derived from
 // https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-// This code is in many simple engines. Tapered eval based on psqt and piece
-// values only.
+// which is used in many simple engines. This gives a base evaluation with
+// piece values and PSQT with tapered evaluation support between middle game
+// and end game.
+//
+// Other aspects of the evaluation are additions on the PESTO values.
 
-// PieceValues is the simple non-tapered value, not for evaluation, but can be
-// used for instance in SEE just to see what piece is more valueable.
+// PieceValues approximates the value of each piece type for SEE and heuristic
+// purposes.
 var PieceValues = [...]Score{0, 100, 300, 300, 500, 900, 10000}
 
-// TPieceValues is tapered piece values
+// TPieceValues is tapered piece values between middle game and end game.
+// (PESTO)
 var TPieceValues = [...][7]Score{
 	{0, 82, 337, 365, 477, 1025, Inf},
 	{0, 94, 281, 297, 512, 936, Inf},
 }
 
+// PSqT is tapered piece square tables. (PESTO)
 var PSqT = [...][64]Score{
 	// pawn middle game
 	{
@@ -158,10 +165,26 @@ var PSqT = [...][64]Score{
 	},
 }
 
-// Phase is game phase
+// KingAttackSquares is the bonus for the number of squares attacked in the
+// enemy king's neighborhood.
+var KingAttackSquares = [2][5]Score{ // per game phase, per square count
+	{29, -1, 32, 55, 147},
+	{32, 7, 17, 1, -13},
+}
+
+// KingAttackPieces is the bonus for the number of pieces attacking a square in
+// the enemy king's neighborhood.
+var KingAttackPieces = [2][5]Score{ // per game phase, per piece count
+	{-6, 29, 25, 39, 50},
+	{-2, 12, 8, 51, 50},
+}
+
+// Phase is game phase.
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
-func Eval(b *board.Board, moves []move.Move) Score {
+var LazyMargin = [...]Score{700, 200, 350, 400, 500, 700, 700}
+
+func Eval(b *board.Board, alpha, beta Score, moves []move.Move) Score {
 	hasLegal := false
 
 	for _, m := range moves {
@@ -195,26 +218,65 @@ func Eval(b *board.Board, moves []move.Move) Score {
 
 	for pType := Pawn; pType <= King; pType++ {
 		for color := White; color <= Black; color++ {
+			cnt := (b.Pieces[pType] & b.Colors[color]).Count()
+
+			phase += cnt * Phase[pType]
+
+			mg[color] += Score(cnt) * TPieceValues[0][pType]
+			eg[color] += Score(cnt) * TPieceValues[1][pType]
+		}
+	}
+
+	score := TaperedScore(b, phase, mg, eg)
+
+	if score > beta+LazyMargin[0] {
+		return beta
+	}
+
+	pWise := newPieceWise(b)
+
+	// This loop is going down in piece value for lazy return.
+	for pType := King; pType >= Pawn; pType-- {
+		for color := White; color <= Black; color++ {
+
 			pieces := b.Pieces[pType] & b.Colors[color]
 			for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
 				piece = pieces & -pieces
 				sq := piece.LowestSet()
+				sqIx := sq
 
 				if color == White {
-					sq ^= 56 // upside down
+					sqIx ^= 56 // upside down
 				}
 
 				ix := pType - 1
 
-				mg[color] += PSqT[2*ix][sq] + TPieceValues[0][pType]
-				eg[color] += PSqT[2*ix+1][sq] + TPieceValues[1][pType]
-				phase += Phase[pType]
+				mg[color] += PSqT[2*ix][sqIx]
+				eg[color] += PSqT[2*ix+1][sqIx]
+
+				pWise.Eval(pType, color, sq)
 			}
+		}
+		score = TaperedScore(b, phase, mg, eg)
+		if score > beta+LazyMargin[pType] {
+			return beta
 		}
 	}
 
+	for color := White; color <= Black; color++ {
+		sqCnt := min(len(KingAttackSquares[0])-1, pWise.kingASq[color])
+		pCnt := min(len(KingAttackPieces[0])-1, pWise.kingAP[color])
+		mg[color] += /*pWise.mobScore[color] +*/ KingAttackSquares[0][sqCnt] + KingAttackPieces[0][pCnt]
+		eg[color] += /*pWise.mobScore[color] +*/ KingAttackSquares[1][sqCnt] + KingAttackPieces[1][pCnt]
+	}
+
+	return TaperedScore(b, phase, mg, eg)
+}
+
+func TaperedScore(b *board.Board, phase int, mg, eg [2]Score) Score {
 	mgScore := mg[b.STM] - mg[b.STM.Flip()]
 	egScore := eg[b.STM] - eg[b.STM.Flip()]
+
 	mgPhase := phase
 	if mgPhase > 24 {
 		mgPhase = 24 // in case of early promotion
@@ -222,6 +284,76 @@ func Eval(b *board.Board, moves []move.Move) Score {
 	egPhase := 24 - mgPhase
 
 	return Score((int(mgScore)*mgPhase + int(egScore)*egPhase) / 24)
+}
+
+type pieceWise struct {
+	b        *board.Board
+	occ      board.BitBoard
+	kingNb   [2]board.BitBoard
+	mobScore [2]Score
+	kingASq  [2]int
+	kingAP   [2]int
+}
+
+func newPieceWise(b *board.Board) pieceWise {
+	result := pieceWise{}
+	result.b = b
+	result.occ = b.Colors[White] | b.Colors[Black]
+
+	for color := White; color <= Black; color++ {
+		king := b.Colors[color] & b.Pieces[King]
+		kingSq := king.LowestSet()
+		kingA := movegen.KingMoves(kingSq)
+
+		var kingNb board.BitBoard
+		switch color {
+		case White:
+			kingNb = king | kingA | (kingA >> 8)
+		case Black:
+			kingNb = king | kingA | (kingA << 8)
+		}
+
+		result.kingNb[color] = kingNb
+	}
+
+	return result
+}
+
+func (p *pieceWise) Eval(pType Piece, color Color, sq Square) {
+
+	occ := p.occ
+
+	var kingA board.BitBoard
+
+	switch pType {
+
+	case Queen:
+		attack := movegen.BishopMoves(sq, occ) | movegen.RookMoves(sq, occ)
+
+		kingA = attack & p.kingNb[color.Flip()]
+
+	case Rook:
+		attack := movegen.RookMoves(sq, occ)
+
+		kingA = attack & p.kingNb[color.Flip()]
+
+	case Bishop:
+		attack := movegen.BishopMoves(sq, occ)
+
+		kingA = attack & p.kingNb[color.Flip()]
+
+
+	case Knight:
+		attack := movegen.KnightMoves(sq)
+
+		kingA = attack & p.kingNb[color.Flip()]
+
+	}
+
+	if kingA != 0 {
+		p.kingASq[color] += kingA.Count()
+		p.kingAP[color]++
+	}
 }
 
 func drawn(b *board.Board) bool {
@@ -245,3 +377,4 @@ func drawn(b *board.Board) bool {
 
 	return false
 }
+
