@@ -8,7 +8,6 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/heur"
-	"github.com/paulsonkoly/chess-3/hist"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/transp"
@@ -25,7 +24,7 @@ const (
 // State is a persistent state storage between searches.
 type State struct {
 	tt   *transp.Table
-	hist *hist.Store
+	hist *heur.History
 	ms   *move.Store
 
 	// Stop channel signals an immediate Stop requiest to the search. Current
@@ -47,7 +46,7 @@ type State struct {
 // NewState creates a new search state. It's supposed to be called once, and
 // re-used between Search() calls.
 func NewState() *State {
-	return &State{tt: transp.New(), ms: move.NewStore(), hist: hist.New()}
+	return &State{tt: transp.New(), ms: move.NewStore(), hist: heur.NewHistory()}
 }
 
 // Clear resets the counters, and various stores for the search, assuming a new
@@ -451,9 +450,9 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 		case b.SquaresToPiece[m.To] != NoPiece:
 			see := heur.SEE(b, &m)
 			if see < 0 {
-				moves[ix].Weight = see - hist.MaxHistoryScore
+				moves[ix].Weight = see - heur.MaxHistoryScore
 			} else {
-				moves[ix].Weight = see + hist.MaxHistoryScore
+				moves[ix].Weight = see + heur.MaxHistoryScore
 			}
 			moves[ix].SEE = see
 
