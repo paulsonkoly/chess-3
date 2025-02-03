@@ -165,18 +165,23 @@ var PSqT = [...][64]Score{
 	},
 }
 
+// KingAttackSquares, [[43 22 38 51 126] [45 22 16 20 0]]
+// KingAttackPieces, [[-9 14 19 35 50] [-2 13 1 49 50]]
+// KingAttackSquares, [[43 22 38 50 126] [45 22 16 20 0]]
+// KingAttackPieces, [[-9 13 19 31 99] [-2 13 1 45 73]]
+
 // KingAttackSquares is the bonus for the number of squares attacked in the
 // enemy king's neighborhood.
 var KingAttackSquares = [2][5]Score{ // per game phase, per square count
-	{29, -1, 32, 55, 147},
-	{32, 7, 17, 1, -13},
+	{43, 22, 38, 51, 126},
+	{45, 22, 16, 20, 0},
 }
 
 // KingAttackPieces is the bonus for the number of pieces attacking a square in
 // the enemy king's neighborhood.
 var KingAttackPieces = [2][5]Score{ // per game phase, per piece count
-	{-6, 29, 25, 39, 50},
-	{-2, 12, 8, 51, 50},
+	{-9, 13, 19, 31, 99},
+	{-2, 13, 1, 45, 73},
 }
 
 // Phase is game phase.
