@@ -27,7 +27,7 @@ func TestEval(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := eval.Eval(tt.b, -Inf-1, Inf+1, []move.Move{})
+			got := eval.Eval(tt.b, -Inf-1, Inf+1, []move.Move{}, &eval.Coefficients)
 			assert.Equal(t, tt.want, got)
 		})
 	}

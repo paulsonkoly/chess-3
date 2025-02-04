@@ -2,7 +2,6 @@ package heur
 
 import (
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 
@@ -135,7 +134,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 			// ignore the last piece that's not captured
 			for ply := len(captures) - 2; ply >= 0; ply-- {
 				value = max(value, 0)
-				value = eval.PieceValues[captures[ply]] - value
+				value = PieceValues[captures[ply]] - value
 			}
 
 			return value

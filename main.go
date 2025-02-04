@@ -15,7 +15,7 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/debug"
-	"github.com/paulsonkoly/chess-3/eval"
+	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
@@ -180,11 +180,11 @@ func (e *UciEngine) Search(d Depth) (Score, []move.Move) {
 }
 
 // 7800 that factors 39 * 200
-var initialMatCount = int(16*eval.PieceValues[Pawn] +
-	4*eval.PieceValues[Knight] +
-	4*eval.PieceValues[Bishop] +
-	4*eval.PieceValues[Rook] +
-	2*eval.PieceValues[Queen])
+var initialMatCount = int(16*heur.PieceValues[Pawn] +
+	4*heur.PieceValues[Knight] +
+	4*heur.PieceValues[Bishop] +
+	4*heur.PieceValues[Rook] +
+	2*heur.PieceValues[Queen])
 
 func (e *UciEngine) TimeControl(timeAllowed int) int {
 	if timeAllowed != 0 {
@@ -207,11 +207,11 @@ func (e *UciEngine) TimeControl(timeAllowed int) int {
 
 	// TODO use the same functionality from eval
 
-	matCount := e.board.Pieces[Queen].Count()*int(eval.PieceValues[Queen]) +
-		e.board.Pieces[Rook].Count()*int(eval.PieceValues[Rook]) +
-		e.board.Pieces[Bishop].Count()*int(eval.PieceValues[Bishop]) +
-		e.board.Pieces[Knight].Count()*int(eval.PieceValues[Knight]) +
-		e.board.Pieces[Pawn].Count()*int(eval.PieceValues[Pawn])
+	matCount := e.board.Pieces[Queen].Count()*int(heur.PieceValues[Queen]) +
+		e.board.Pieces[Rook].Count()*int(heur.PieceValues[Rook]) +
+		e.board.Pieces[Bishop].Count()*int(heur.PieceValues[Bishop]) +
+		e.board.Pieces[Knight].Count()*int(heur.PieceValues[Knight]) +
+		e.board.Pieces[Pawn].Count()*int(heur.PieceValues[Pawn])
 
 	matCount = min(matCount, initialMatCount)
 

@@ -364,7 +364,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 	movegen.GenMoves(sst.ms, b, board.Full)
 
-	standPat := eval.Eval(b, alpha, beta, sst.ms.Frame())
+	standPat := eval.Eval(b, alpha, beta, sst.ms.Frame(), &eval.Coefficients)
 
 	if standPat >= beta {
 		return beta
@@ -404,7 +404,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 		}
 
 		if !check {
-			if eval.PieceValues[captured]+delta < alpha {
+			if heur.PieceValues[captured]+delta < alpha {
 				sst.QDelta++
 				b.UndoMove(m)
 				continue
