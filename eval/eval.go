@@ -182,12 +182,12 @@ var Coefficients = CoeffSet[Score]{
 		{0, 94, 281, 297, 512, 936, Inf},
 	},
 	KingAttackSquares: [2][5]Score{ // per game phase, per square count
-		{43, 22, 38, 51, 126},
-		{45, 22, 16, 20, 0},
+		{60, 54, 57, 63, 91},
+		{46, 24, 20, 28, 20},
 	},
 	KingAttackPieces: [2][5]Score{ // per game phase, per piece count
-		{-9, 13, 19, 31, 99},
-		{-2, 13, 1, 45, 73},
+		{8, 17, 14, 17, 73},
+		{-1, 12, 10, 49, 69},
 	},
 	LazyMargin: [...]Score{700, 200, 350, 400, 500, 700, 700},
 }
@@ -294,7 +294,11 @@ func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg [2]T) T {
 	}
 	egPhase := 24 - mgPhase
 
-	return T((int(mgScore)*mgPhase + int(egScore)*egPhase) / 24)
+	if _, ok := (any(mgScore)).(Score); ok {
+		return T((int(mgScore)*mgPhase+int(egScore)*egPhase) / 24)
+	}
+
+	return T((mgScore*T(mgPhase) + egScore*T(egPhase)) / 24)
 }
 
 type pieceWise struct {
@@ -319,9 +323,9 @@ func newPieceWise(b *board.Board) pieceWise {
 		var kingNb board.BitBoard
 		switch color {
 		case White:
-			kingNb = king | kingA | (kingA >> 8)
-		case Black:
 			kingNb = king | kingA | (kingA << 8)
+		case Black:
+			kingNb = king | kingA | (kingA >> 8)
 		}
 
 		result.kingNb[color] = kingNb
