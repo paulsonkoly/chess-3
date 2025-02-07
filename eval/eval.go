@@ -31,15 +31,13 @@ type CoeffSet[T ScoreType] struct {
 	// (PESTO)
 	TPieceValues [2][7]T
 
-	// KingAttackSquares is the bonus for the number of squares attacked in the
-	// enemy king's neighborhood.
-	KingAttackSquares [2][5]T
+  TempoBonus [2]T
 
-	// KingAttackPieces is the bonus for the number of pieces attacking a square
-	// in the enemy king's neighborhood.
-	KingAttackPieces [2][5]T
+  // KingAttackPieces is the bonus squares attacked around the enemy king by
+  // piece type.
+	KingAttackPieces [2][6]T
 
-  LazyMargin [7]T
+	LazyMargin [7]T
 }
 
 var Coefficients = CoeffSet[Score]{
@@ -181,13 +179,10 @@ var Coefficients = CoeffSet[Score]{
 		{0, 82, 337, 365, 477, 1025, Inf},
 		{0, 94, 281, 297, 512, 936, Inf},
 	},
-	KingAttackSquares: [2][5]Score{ // per game phase, per square count
-		{60, 54, 57, 63, 91},
-		{46, 24, 20, 28, 20},
-	},
-	KingAttackPieces: [2][5]Score{ // per game phase, per piece count
-		{8, 17, 14, 17, 73},
-		{-1, 12, 10, 49, 69},
+  TempoBonus: [2]Score{ 28, 25 },
+	KingAttackPieces: [2][6]Score{ // per game phase, per piece count
+		{0, 0, 1, 4, 7, 3},
+		{0, 0, -2, -2, -2, 0},
 	},
 	LazyMargin: [...]Score{700, 200, 350, 400, 500, 700, 700},
 }
@@ -195,7 +190,7 @@ var Coefficients = CoeffSet[Score]{
 // Phase is game phase.
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
-func Eval[T ScoreType](b *board.Board, alpha, beta T, moves []move.Move, c *CoeffSet[T]) T {
+func Eval[T ScoreType](b *board.Board, _, beta T, moves []move.Move, c *CoeffSet[T]) T {
 	hasLegal := false
 
 	for _, m := range moves {
@@ -225,9 +220,12 @@ func Eval[T ScoreType](b *board.Board, alpha, beta T, moves []move.Move, c *Coef
 	mg := [2]T{}
 	eg := [2]T{}
 
+  mg[b.STM] += c.TempoBonus[0]
+  eg[b.STM] += c.TempoBonus[1]
+
 	phase := 0
 
-	for pType := Pawn; pType <= King; pType++ {
+	for pType := Pawn; pType <= Queen; pType++ {
 		for color := White; color <= Black; color++ {
 			cnt := (b.Pieces[pType] & b.Colors[color]).Count()
 
@@ -243,7 +241,7 @@ func Eval[T ScoreType](b *board.Board, alpha, beta T, moves []move.Move, c *Coef
 		return beta
 	}
 
-	pWise := newPieceWise(b)
+	pWise := newPieceWise(b, c)
 
 	// This loop is going down in piece value for lazy return.
 	for pType := King; pType >= Pawn; pType-- {
@@ -264,7 +262,7 @@ func Eval[T ScoreType](b *board.Board, alpha, beta T, moves []move.Move, c *Coef
 				mg[color] += c.PSqT[2*ix][sqIx]
 				eg[color] += c.PSqT[2*ix+1][sqIx]
 
-				pWise.Eval(pType, color, sq)
+				pWise.Eval(pType, color, sq, mg[:], eg[:])
 			}
 		}
 
@@ -274,14 +272,15 @@ func Eval[T ScoreType](b *board.Board, alpha, beta T, moves []move.Move, c *Coef
 		}
 	}
 
-	for color := White; color <= Black; color++ {
-		sqCnt := min(len(c.KingAttackSquares[0])-1, pWise.kingASq[color])
-		pCnt := min(len(c.KingAttackPieces[0])-1, pWise.kingAP[color])
-		mg[color] += /*pWise.mobScore[color] +*/ c.KingAttackSquares[0][sqCnt] + c.KingAttackPieces[0][pCnt]
-		eg[color] += /*pWise.mobScore[color] +*/ c.KingAttackSquares[1][sqCnt] + c.KingAttackPieces[1][pCnt]
-	}
+	// for color := White; color <= Black; color++ {
+	// 	// sqCnt := min(len(c.KingAttackSquares[0])-1, pWise.kingASq[color])
+	// 	// pCnt := min(len(c.KingAttackPieces[0])-1, pWise.kingAP[color])
+	// 	mg[color] += /*pWise.mobScore[color] +*/ pWise.kingAScore[0] //c.KingAttackSquares[0][sqCnt] + c.KingAttackPieces[0][pCnt]
+	// 	eg[color] += /*pWise.mobScore[color] +*/ pWise.kingAScore[1] // c.KingAttackSquares[1][sqCnt] + c.KingAttackPieces[1][pCnt]
+	// }
+	score = TaperedScore(b, phase, mg, eg)
 
-	return TaperedScore(b, phase, mg, eg)
+	return score
 }
 
 func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg [2]T) T {
@@ -295,24 +294,25 @@ func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg [2]T) T {
 	egPhase := 24 - mgPhase
 
 	if _, ok := (any(mgScore)).(Score); ok {
-		return T((int(mgScore)*mgPhase+int(egScore)*egPhase) / 24)
+		return T((int(mgScore)*mgPhase + int(egScore)*egPhase) / 24)
 	}
 
 	return T((mgScore*T(mgPhase) + egScore*T(egPhase)) / 24)
 }
 
-type pieceWise struct {
-	b        *board.Board
-	occ      board.BitBoard
-	kingNb   [2]board.BitBoard
-	mobScore [2]Score
-	kingASq  [2]int
-	kingAP   [2]int
+type pieceWise[T ScoreType] struct {
+	c      *CoeffSet[T]
+	b      *board.Board
+	occ    board.BitBoard
+	kingNb [2]board.BitBoard
+	// mobScore [2]Score
+	// kingAScore [2]T
+	// kingASq  [2]int
+	// kingAP   [2]int
 }
 
-func newPieceWise(b *board.Board) pieceWise {
-	result := pieceWise{}
-	result.b = b
+func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
+	result := pieceWise[T]{b: b, c: c}
 	result.occ = b.Colors[White] | b.Colors[Black]
 
 	for color := White; color <= Black; color++ {
@@ -334,40 +334,35 @@ func newPieceWise(b *board.Board) pieceWise {
 	return result
 }
 
-func (p *pieceWise) Eval(pType Piece, color Color, sq Square) {
+func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 
 	occ := p.occ
 
-	var kingA board.BitBoard
+	kingA := p.kingNb[color.Flip()]
 
 	switch pType {
 
 	case Queen:
-		attack := movegen.BishopMoves(sq, occ) | movegen.RookMoves(sq, occ)
-
-		kingA = attack & p.kingNb[color.Flip()]
+		kingA &= movegen.BishopMoves(sq, occ) | movegen.RookMoves(sq, occ)
 
 	case Rook:
-		attack := movegen.RookMoves(sq, occ)
-
-		kingA = attack & p.kingNb[color.Flip()]
+		kingA &= movegen.RookMoves(sq, occ)
 
 	case Bishop:
-		attack := movegen.BishopMoves(sq, occ)
-
-		kingA = attack & p.kingNb[color.Flip()]
+		kingA &= movegen.BishopMoves(sq, occ)
 
 	case Knight:
-		attack := movegen.KnightMoves(sq)
+		kingA &= movegen.KnightMoves(sq)
 
-		kingA = attack & p.kingNb[color.Flip()]
-
+	default:
+		return
 	}
 
-	if kingA != 0 {
-		p.kingASq[color] += kingA.Count()
-		p.kingAP[color]++
-	}
+	count := T(kingA.Count())
+	count *= count
+
+	mg[color] += count * p.c.KingAttackPieces[0][pType]
+	eg[color] += count * p.c.KingAttackPieces[1][pType]
 }
 
 func insuffientMat(b *board.Board) bool {
