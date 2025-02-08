@@ -18,7 +18,6 @@ import (
 
 const (
 	WindowSize = 50 // half a pawn left and right around score
-	MaxPlies   = 64
 )
 
 // State is a persistent state storage between searches.
@@ -364,13 +363,36 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 	movegen.GenMoves(sst.ms, b, board.Full)
 
-	standPat := eval.Eval(b, alpha, beta, sst.ms.Frame(), &eval.Coefficients)
+  // TODO do this better.
+	hasLegal := false
+
+	for _, m := range sst.ms.Frame() {
+		b.MakeMove(&m)
+
+		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+		hasLegal = hasLegal || !movegen.IsAttacked(b, b.STM, king)
+		b.UndoMove(&m)
+
+		if hasLegal {
+			break
+		}
+	}
+
+	if !hasLegal {
+		king := b.Colors[b.STM] & b.Pieces[King]
+		if movegen.IsAttacked(b, b.STM.Flip(), king) {
+			return -Inf
+		}
+		return 0
+	}
+
+	standPat := eval.Eval(b, alpha, beta, &eval.Coefficients)
 
 	if standPat >= beta {
 		return beta
 	}
 
-	delta := standPat + 110 // we only have psqt atm, which doesn't have bigger values than 50
+	delta := standPat + 110
 	alpha = max(alpha, standPat)
 
 	moves := sst.ms.Frame()

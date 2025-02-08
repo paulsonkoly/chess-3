@@ -3,7 +3,6 @@ package eval
 
 import (
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 
 	//revive:disable-next-line
@@ -31,11 +30,17 @@ type CoeffSet[T ScoreType] struct {
 	// (PESTO)
 	TPieceValues [2][7]T
 
-  TempoBonus [2]T
+	// TempoBonus is the advantage of the side to move.
+	TempoBonus [2]T
 
-  // KingAttackPieces is the bonus squares attacked around the enemy king by
-  // piece type.
-	KingAttackPieces [2][6]T
+	// KingAttackPieces is the bonus squares attacked around the enemy king by
+	// piece type.
+	KingAttackPieces  [2][4]T
+
+	// MobilityBonus is per piece mobility bonus.
+	MobilityKnight [2][9]T
+	MobilityBishop [2][14]T
+	MobilityRook   [2][11]T
 
 	LazyMargin [7]T
 }
@@ -179,10 +184,22 @@ var Coefficients = CoeffSet[Score]{
 		{0, 82, 337, 365, 477, 1025, Inf},
 		{0, 94, 281, 297, 512, 936, Inf},
 	},
-  TempoBonus: [2]Score{ 28, 25 },
-	KingAttackPieces: [2][6]Score{ // per game phase, per piece count
-		{0, 0, 1, 4, 7, 3},
-		{0, 0, -2, -2, -2, 0},
+	TempoBonus: [2]Score{28, 25},
+  KingAttackPieces: [2][4]Score {
+    {2, 1, 7, 5},
+    {-2, -2, -2, 6},
+  },
+	MobilityKnight: [2][9]Score{
+		{-15, 5, 8, 7, 10, 12, 15, 16, 15},
+		{-30, -19, 2, 3, -2, 0, -2, -2, 3},
+	},
+	MobilityBishop: [2][14]Score{
+		{6, 7, 11, 10, 15, 20, 16, 16, 16, 13, 15, 19, 20, 12},
+		{-45, -23, -35, -23, -18, -8, -6, 3, 3, 3, -1, -3, 2, -5},
+	},
+	MobilityRook: [2][11]Score{
+		{-1, -2, -1, 0, 2, 9, 7, 11, 13, 21, 39},
+		{-17, -15, -11, -13, -11, -11, -7, -6, 1, 4, -8},
 	},
 	LazyMargin: [...]Score{700, 200, 350, 400, 500, 700, 700},
 }
@@ -190,29 +207,7 @@ var Coefficients = CoeffSet[Score]{
 // Phase is game phase.
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
-func Eval[T ScoreType](b *board.Board, _, beta T, moves []move.Move, c *CoeffSet[T]) T {
-	hasLegal := false
-
-	for _, m := range moves {
-		b.MakeMove(&m)
-
-		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
-		hasLegal = hasLegal || !movegen.IsAttacked(b, b.STM, king)
-		b.UndoMove(&m)
-
-		if hasLegal {
-			break
-		}
-	}
-
-	if !hasLegal {
-		king := b.Colors[b.STM] & b.Pieces[King]
-		if movegen.IsAttacked(b, b.STM.Flip(), king) {
-			return -T(Inf)
-		}
-		return 0
-	}
-
+func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 	if insuffientMat(b) {
 		return 0
 	}
@@ -220,8 +215,8 @@ func Eval[T ScoreType](b *board.Board, _, beta T, moves []move.Move, c *CoeffSet
 	mg := [2]T{}
 	eg := [2]T{}
 
-  mg[b.STM] += c.TempoBonus[0]
-  eg[b.STM] += c.TempoBonus[1]
+	mg[b.STM] += c.TempoBonus[0]
+	eg[b.STM] += c.TempoBonus[1]
 
 	phase := 0
 
@@ -236,10 +231,10 @@ func Eval[T ScoreType](b *board.Board, _, beta T, moves []move.Move, c *CoeffSet
 		}
 	}
 
-	score := TaperedScore(b, phase, mg, eg)
-	if score > beta+c.LazyMargin[0] {
-		return beta
-	}
+	// score := TaperedScore(b, phase, mg, eg)
+	// if score > beta+c.LazyMargin[0] {
+	// 	return beta
+	// }
 
 	pWise := newPieceWise(b, c)
 
@@ -266,19 +261,18 @@ func Eval[T ScoreType](b *board.Board, _, beta T, moves []move.Move, c *CoeffSet
 			}
 		}
 
-		score = TaperedScore(b, phase, mg, eg)
-		if score > beta+c.LazyMargin[pType] {
-			return beta
-		}
+		// score = TaperedScore(b, phase, mg, eg)
+		// if score > beta+c.LazyMargin[pType] {
+		// 	return beta
+		// }
 	}
 
-	// for color := White; color <= Black; color++ {
-	// 	// sqCnt := min(len(c.KingAttackSquares[0])-1, pWise.kingASq[color])
-	// 	// pCnt := min(len(c.KingAttackPieces[0])-1, pWise.kingAP[color])
-	// 	mg[color] += /*pWise.mobScore[color] +*/ pWise.kingAScore[0] //c.KingAttackSquares[0][sqCnt] + c.KingAttackPieces[0][pCnt]
-	// 	eg[color] += /*pWise.mobScore[color] +*/ pWise.kingAScore[1] // c.KingAttackSquares[1][sqCnt] + c.KingAttackPieces[1][pCnt]
-	// }
-	score = TaperedScore(b, phase, mg, eg)
+	for color := White; color <= Black; color++ {
+		mg[color] += pWise.kingAScore[0][color] * T(pWise.kingASquares[color])
+		eg[color] += pWise.kingAScore[1][color] * T(pWise.kingASquares[color])
+	}
+
+	score := TaperedScore(b, phase, mg, eg)
 
 	return score
 }
@@ -301,14 +295,13 @@ func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg [2]T) T {
 }
 
 type pieceWise[T ScoreType] struct {
-	c      *CoeffSet[T]
-	b      *board.Board
-	occ    board.BitBoard
-	kingNb [2]board.BitBoard
-	// mobScore [2]Score
-	// kingAScore [2]T
-	// kingASq  [2]int
-	// kingAP   [2]int
+	c            *CoeffSet[T]
+	b            *board.Board
+	occ          board.BitBoard
+	kingNb       [2]board.BitBoard
+	pawnCover    [2]board.BitBoard
+	kingASquares [2]int
+  kingAScore   [2][2]T
 }
 
 func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
@@ -331,6 +324,11 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 		result.kingNb[color] = kingNb
 	}
 
+	wP := b.Pieces[Pawn] & b.Colors[White]
+	result.pawnCover[White] = ((wP & ^board.AFile) << 7) | ((wP & ^board.HFile) << 9)
+	bP := b.Pieces[Pawn] & b.Colors[Black]
+	result.pawnCover[Black] = ((bP & ^board.HFile) >> 7) | ((bP & ^board.AFile) >> 9)
+
 	return result
 }
 
@@ -338,31 +336,52 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 
 	occ := p.occ
 
-	kingA := p.kingNb[color.Flip()]
+	var attack board.BitBoard
 
 	switch pType {
 
 	case Queen:
-		kingA &= movegen.BishopMoves(sq, occ) | movegen.RookMoves(sq, occ)
+		attack = movegen.BishopMoves(sq, occ) | movegen.RookMoves(sq, occ)
 
 	case Rook:
-		kingA &= movegen.RookMoves(sq, occ)
+		attack = movegen.RookMoves(sq, occ)
+
+		rank := board.BitBoard(0xff) << (sq & 56)
+		hmob := (attack & rank & ^p.b.Colors[color]).Count()
+		vmob := (attack & ^rank & ^p.b.Colors[color]).Count()
+
+		// count vertical mobility 2x compared to horizontal mobility
+		mobCnt := (2*vmob + hmob) / 2
+
+		mg[color] += p.c.MobilityRook[0][mobCnt]
+		eg[color] += p.c.MobilityRook[1][mobCnt]
 
 	case Bishop:
-		kingA &= movegen.BishopMoves(sq, occ)
+		attack = movegen.BishopMoves(sq, occ)
+
+		mobCnt := (attack & ^p.b.Colors[color]).Count()
+		mg[color] += p.c.MobilityBishop[0][mobCnt]
+		eg[color] += p.c.MobilityBishop[1][mobCnt]
 
 	case Knight:
-		kingA &= movegen.KnightMoves(sq)
+		attack = movegen.KnightMoves(sq)
+
+		mobCnt := (attack & ^p.b.Colors[color] & ^p.pawnCover[color.Flip()]).Count()
+		mg[color] += p.c.MobilityKnight[0][mobCnt]
+		eg[color] += p.c.MobilityKnight[1][mobCnt]
 
 	default:
 		return
 	}
 
-	count := T(kingA.Count())
-	count *= count
+	kingA := (p.kingNb[color.Flip()] & attack).Count()
 
-	mg[color] += count * p.c.KingAttackPieces[0][pType]
-	eg[color] += count * p.c.KingAttackPieces[1][pType]
+	if kingA != 0 {
+    p.kingAScore[0][color] += p.c.KingAttackPieces[0][pType - Knight]
+    p.kingAScore[1][color] += p.c.KingAttackPieces[1][pType - Knight]
+	}
+
+	p.kingASquares[color] += kingA
 }
 
 func insuffientMat(b *board.Board) bool {
