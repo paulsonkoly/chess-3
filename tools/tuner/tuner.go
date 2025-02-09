@@ -13,11 +13,15 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
+	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 	"github.com/paulsonkoly/chess-3/types"
 )
 
 var epdF = flag.String("epd", "", "epd file name")
+var misEval = flag.Bool("misEval", false, "print top 10 misevaluated positions")
+var filter = flag.Bool("filter", false, "filter out non-quiet or terminal node entries")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
 
 // var memProf = flag.String("memProf", "", "mem profile file name")
@@ -58,7 +62,6 @@ func main() {
 
 	scn := bufio.NewScanner(f)
 	cnt := 0
-	fmt.Println("Reading data...")
 	for scn.Scan() {
 		line := scn.Text()
 
@@ -69,6 +72,7 @@ func main() {
 		}
 
 		b := board.FromFEN(splits[0])
+		// fmt.Println(b.FEN())
 		r, err := strconv.ParseFloat(splits[1], 64)
 		if err != nil {
 			panic(err)
@@ -77,7 +81,12 @@ func main() {
 		data = append(data, EPDEntry{b, r})
 		cnt++
 	}
-	fmt.Printf("%d lines read\n", cnt)
+	// return
+
+	if *filter {
+		doFilter(data)
+		return
+	}
 
 	fmt.Println("initial coefficients:")
 	coeffs := tuning.InitialCoeffs()
@@ -112,6 +121,11 @@ func main() {
 		}
 		step /= 10.0
 		improved = true
+	}
+
+	if *misEval {
+		printMisEval(data, k, coeffs)
+		return
 	}
 
 	fmt.Println("bestE ", bestE)
@@ -215,4 +229,85 @@ func evalCoeffs(b *board.Board, coeffs *tuning.Coeffs) float64 {
 
 func sigmoid(v, k float64) float64 {
 	return 1 / (1 + math.Exp(-k*v/400))
+}
+
+func printMisEval(data []EPDEntry, k float64, coeffs *tuning.Coeffs) {
+	evals := make([]float64, len(data))
+
+	for i, epdE := range data {
+		b := epdE.b
+		r := epdE.r
+
+		score := evalCoeffs(b, coeffs)
+
+		sgm := 1 / (1 + math.Exp(-k*float64(score)/400))
+
+		err := math.Abs(r - sgm)
+		evals[i] = err
+	}
+
+	for range 10 {
+		mx := math.Inf(-1)
+		mi := -1
+		for i, e := range evals {
+			if e > mx {
+				mx = e
+				mi = i
+			}
+		}
+
+		fmt.Printf("%s error %f.4 result %.1f eval %4f\n", data[mi].b.FEN(), mx, data[mi].r, evalCoeffs(data[mi].b, coeffs))
+		evals[mi] = math.Inf(-1)
+	}
+}
+
+func doFilter(data []EPDEntry) {
+	ms := move.NewStore()
+
+	for _, epdE := range data {
+		b := epdE.b
+
+		// if we are in check it's not a quiet position
+		king := b.Colors[b.STM] & b.Pieces[types.King]
+		if movegen.IsAttacked(b, b.STM.Flip(), king) {
+			continue
+		}
+
+		movegen.GenMoves(ms, b, board.Full)
+
+		hasLegal := false
+		hasForcing := false
+
+		for _, m := range ms.Frame() {
+			b.MakeMove(&m)
+
+			king = b.Colors[b.STM.Flip()] & b.Pieces[types.King]
+			if movegen.IsAttacked(b, b.STM, king) { // move not legal
+				b.UndoMove(&m)
+				continue
+			}
+			hasLegal = true
+
+			if m.Captured != types.NoPiece {
+				b.UndoMove(&m)
+				hasForcing = true
+				break
+			}
+
+			king = b.Colors[b.STM] & b.Pieces[types.King]
+
+			if movegen.IsAttacked(b, b.STM.Flip(), king) { // move is check, therefore forcing
+				b.UndoMove(&m)
+				hasForcing = true
+				break
+			}
+			b.UndoMove(&m)
+		}
+
+		if hasLegal && !hasForcing {
+			fmt.Printf("%s; %.1f\n", b.FEN(), epdE.r)
+		}
+
+		ms.Clear()
+	}
 }

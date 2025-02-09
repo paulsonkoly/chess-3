@@ -1,0 +1,6 @@
+WhiteElo >= "2600" 
+BlackElo >= "2600"
+Date >= "2000.01.01"
+Variant <> "Chess960"
+Variant <> "chess 960"
+Result <> "*"
