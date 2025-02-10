@@ -23,6 +23,7 @@ var epdF = flag.String("epd", "", "epd file name")
 var misEval = flag.Bool("misEval", false, "print top 10 misevaluated positions")
 var filter = flag.Bool("filter", false, "filter out non-quiet or terminal node entries")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
+var diff = flag.String("diff", "", "output positions from this file not present in epd (result label ignored)")
 
 // var memProf = flag.String("memProf", "", "mem profile file name")
 
@@ -81,7 +82,11 @@ func main() {
 		data = append(data, EPDEntry{b, r})
 		cnt++
 	}
-	// return
+
+	if *diff != "" {
+		doDiff(data, diff)
+		return
+	}
 
 	if *filter {
 		doFilter(data)
@@ -215,7 +220,7 @@ func computeE(data []EPDEntry, k float64, coeffs *tuning.Coeffs) float64 {
 		count++
 	}
 
-	return sum
+	return sum/float64(count)
 }
 
 func evalCoeffs(b *board.Board, coeffs *tuning.Coeffs) float64 {
@@ -309,5 +314,37 @@ func doFilter(data []EPDEntry) {
 		}
 
 		ms.Clear()
+	}
+}
+
+func doDiff(data []EPDEntry, diff *string) {
+	hsh := make(map[board.Hash]struct{})
+
+	for _, d := range data {
+		hsh[d.b.Hashes[0]] = struct{}{}
+	}
+
+	f, err := os.Open(*diff)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	scn := bufio.NewScanner(f)
+	for scn.Scan() {
+		line := scn.Text()
+
+		splits := strings.Split(line, "; ")
+
+		if len(splits) != 2 {
+			panic("epd line error " + line)
+		}
+
+		b := board.FromFEN(splits[0])
+
+    bHsh := b.Hashes[0]
+    if _, ok := hsh[bHsh]; !ok {
+      fmt.Println(line)
+    }
 	}
 }
