@@ -15,7 +15,8 @@ import (
 var Targets = [...]string{
 	"TempoBonus",
 	"MobilityKnight", "MobilityBishop", "MobilityRook",
-	"KingAttackPieces", "KingAttackSquares",
+	"KingAttackPieces", "KingAttackCount",
+	"ProtectedPasser", "PasserKingDist", "PasserRank",
 }
 
 type Coeffs eval.CoeffSet[float64]
@@ -201,4 +202,3 @@ func recurseAt(ixs []int, v reflect.Value) *float64 {
 	}
 	panic("unreachable")
 }
-

@@ -213,7 +213,7 @@ func computeE(data []EPDEntry, k float64, coeffs *tuning.Coeffs) float64 {
 
 		score := evalCoeffs(b, coeffs)
 
-		sgm := 1 / (1 + math.Exp(-k*float64(score)/400))
+		sgm := sigmoid(score, k)
 
 		sum += (r - sgm) * (r - sgm)
 
@@ -245,7 +245,7 @@ func printMisEval(data []EPDEntry, k float64, coeffs *tuning.Coeffs) {
 
 		score := evalCoeffs(b, coeffs)
 
-		sgm := 1 / (1 + math.Exp(-k*float64(score)/400))
+		sgm := sigmoid(score, k)
 
 		err := math.Abs(r - sgm)
 		evals[i] = err

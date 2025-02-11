@@ -17,8 +17,8 @@ import (
 //
 // Other aspects of the evaluation are additions on the PESTO values.
 
-// The engine uses int16 for score type, as defined in types. The tuner uses
-// float64.
+// ScoreType defines the evaluation result type. The engine uses int16 for
+// score type, as defined in types. The tuner uses float64.
 type ScoreType interface{ Score | float64 }
 
 type CoeffSet[T ScoreType] struct {
@@ -33,15 +33,31 @@ type CoeffSet[T ScoreType] struct {
 	// TempoBonus is the advantage of the side to move.
 	TempoBonus [2]T
 
-	// KingAttackPieces is the bonus squares attacked around the enemy king by
-	// piece type.
-	KingAttackPieces  [2][4]T
+	// KingAttackPieces is the bonus per piece type if piece is attacking a square in the enemy king's neighborhood.
+	KingAttackPieces [2][4]T
+	// KingAttackSquares is the bonus per attacked squares count in the enemy neighborhood.
+	KingAttackCount [2][7]T
 
-	// MobilityBonus is per piece mobility bonus.
+	// Mobility* is per piece mobility bonus.
 	MobilityKnight [2][9]T
 	MobilityBishop [2][14]T
 	MobilityRook   [2][11]T
 
+	// ProtectedPasser is the bonus for each protected passed pawn.
+	ProtectedPasser [2]T
+	// PasserKingDist is the bonus for our king being close / enemy king being far from passed pawn.
+	PasserKingDist [2]T
+	// PasserRank is the bonus for the passed pawn being on a specific rank.
+	PasserRank [2][6]T
+
+	// LazyMargin determines the early return margins at various points in the
+	// evaluation. It's not tunable. Every time a new term is added to evaluation
+	// one has to recompute the lazy margins. Modify the evaluation so that
+	// instead of returning early, it records the partial score for the given
+	// return point, then once the complete score is calculated, take the
+	// difference between the final score and the partial score and across many
+	// test positions store the maximal difference. This plus some safety margin
+	// would be the lazy margin.
 	LazyMargin [7]T
 }
 
@@ -184,24 +200,34 @@ var Coefficients = CoeffSet[Score]{
 		{0, 82, 337, 365, 477, 1025, Inf},
 		{0, 94, 281, 297, 512, 936, Inf},
 	},
-	TempoBonus: [2]Score{28, 25},
-  KingAttackPieces: [2][4]Score {
-    {2, 1, 7, 5},
-    {-2, -2, -2, 6},
-  },
+	TempoBonus: [2]Score{29, 27},
+	KingAttackPieces: [2][4]Score{
+		{3, 2, 17, 15},
+		{-1, -1, -5, 24},
+	},
+	KingAttackCount: [2][7]Score{
+		{0, 5, 10, 20, 26, 68, 45},
+		{0, 8, 15, 21, 28, -11, 15},
+	},
 	MobilityKnight: [2][9]Score{
-		{-15, 5, 8, 7, 10, 12, 15, 16, 15},
-		{-30, -19, 2, 3, -2, 0, -2, -2, 3},
+		{23, 43, 48, 50, 53, 56, 58, 60, 72},
+		{-40, -22, 2, 4, -1, 1, 1, 0, -16},
 	},
 	MobilityBishop: [2][14]Score{
-		{6, 7, 11, 10, 15, 20, 16, 16, 16, 13, 15, 19, 20, 12},
-		{-45, -23, -35, -23, -18, -8, -6, 3, 3, 3, -1, -3, 2, -5},
+		{49, 50, 55, 55, 60, 64, 62, 60, 62, 59, 62, 66, 80, 64},
+		{-46, -24, -35, -22, -16, -5, -2, 8, 7, 9, 3, 1, 1, -3},
 	},
 	MobilityRook: [2][11]Score{
-		{-1, -2, -1, 0, 2, 9, 7, 11, 13, 21, 39},
-		{-17, -15, -11, -13, -11, -11, -7, -6, 1, 4, -8},
+		{50, 48, 49, 51, 53, 61, 58, 61, 63, 72, 86},
+		{-3, 1, 6, 4, 6, 8, 15, 18, 25, 26, 16},
 	},
-	LazyMargin: [...]Score{700, 200, 350, 400, 500, 700, 700},
+	ProtectedPasser: [2]Score{36, 13},
+	PasserKingDist:  [2]Score{-4, 12},
+	PasserRank: [2][6]Score{
+		{22, -4, -11, -2, -7, -35},
+		{-29, -15, 11, 32, 46, 35},
+	},
+	LazyMargin: [...]Score{918, 704, 711, 711, 770, 842, 880},
 }
 
 // Phase is game phase.
@@ -231,10 +257,14 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 		}
 	}
 
-	// score := TaperedScore(b, phase, mg, eg)
-	// if score > beta+c.LazyMargin[0] {
-	// 	return beta
-	// }
+  // see comment on LazyMargin
+	// scoreHist := [7]T{}
+
+	score := TaperedScore(b, phase, mg[:], eg[:])
+	// scoreHist[0] = score
+	if score > beta+c.LazyMargin[0] {
+		return beta
+	}
 
 	pWise := newPieceWise(b, c)
 
@@ -261,23 +291,35 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 			}
 		}
 
-		// score = TaperedScore(b, phase, mg, eg)
-		// if score > beta+c.LazyMargin[pType] {
-		// 	return beta
-		// }
+    score = TaperedScore(b, phase, mg[:], eg[:])
+		// scoreHist[pType] = score
+
+		if score > beta+c.LazyMargin[pType] {
+			return beta
+		}
+
+		if pType == Knight {
+			pWise.Passers()
+		}
 	}
 
 	for color := White; color <= Black; color++ {
-		mg[color] += pWise.kingAScore[0][color] * T(pWise.kingASquares[color])
-		eg[color] += pWise.kingAScore[1][color] * T(pWise.kingASquares[color])
+		kingACnt := min(len(c.KingAttackCount[0])-1, pWise.kingACount[color])
+		mg[color] += pWise.kingAScore[0][color] * c.KingAttackCount[0][kingACnt] / 16
+		eg[color] += pWise.kingAScore[1][color] * c.KingAttackCount[1][kingACnt] / 16
 	}
 
-	score := TaperedScore(b, phase, mg, eg)
+	score = TaperedScore(b, phase, mg[:], eg[:])
+
+	// for i, v := range scoreHist {
+	// 	c.LazyMargin[i] = max(c.LazyMargin[i], score-v)
+	// }
+	//
 
 	return score
 }
 
-func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg [2]T) T {
+func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg []T) T {
 	mgScore := mg[b.STM] - mg[b.STM.Flip()]
 	egScore := eg[b.STM] - eg[b.STM.Flip()]
 
@@ -295,13 +337,15 @@ func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg [2]T) T {
 }
 
 type pieceWise[T ScoreType] struct {
-	c            *CoeffSet[T]
-	b            *board.Board
-	occ          board.BitBoard
-	kingNb       [2]board.BitBoard
-	pawnCover    [2]board.BitBoard
-	kingASquares [2]int
-  kingAScore   [2][2]T
+	c          *CoeffSet[T]
+	b          *board.Board
+	occ        board.BitBoard
+	passers    board.BitBoard
+	kingNb     [2]board.BitBoard
+	pawnCover  [2]board.BitBoard
+	kingACount [2]int
+	kingAScore [2][2]T
+	kingSq     [2]Square
 }
 
 func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
@@ -312,6 +356,8 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 		king := b.Colors[color] & b.Pieces[King]
 		kingSq := king.LowestSet()
 		kingA := movegen.KingMoves(kingSq)
+
+		result.kingSq[color] = kingSq
 
 		var kingNb board.BitBoard
 		switch color {
@@ -330,6 +376,54 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 	result.pawnCover[Black] = ((bP & ^board.HFile) >> 7) | ((bP & ^board.AFile) >> 9)
 
 	return result
+}
+
+func (p *pieceWise[T]) Passers() {
+	b := p.b
+
+	for color := White; color <= Black; color++ {
+		myPawns := b.Pieces[Pawn] & b.Colors[color]
+		theirPawns := b.Pieces[Pawn] & b.Colors[color.Flip()]
+
+		myRearFill := frontFill(myPawns, color.Flip())
+		theirFrontFill := frontFill(theirPawns, color.Flip())
+
+		var (
+			myRearSpan     board.BitBoard
+			theirFrontSpan board.BitBoard
+		)
+		switch color {
+		case White:
+			myRearSpan = myRearFill >> 8
+			theirFrontSpan = theirFrontFill >> 8
+
+		case Black:
+			myRearSpan = myRearFill << 8
+			theirFrontSpan = theirFrontFill << 8
+		}
+
+		frontLine := ^myRearSpan & myPawns
+
+		enemyCover := theirFrontSpan | ((theirFrontSpan & ^board.AFile) >> 1) | ((theirFrontSpan & ^board.HFile) << 1)
+
+		p.passers |= frontLine & ^enemyCover
+	}
+}
+
+func frontFill(b board.BitBoard, color Color) board.BitBoard {
+	switch color {
+	case White:
+		b |= b << 8
+		b |= b << 16
+		b |= b << 32
+
+	case Black:
+		b |= b >> 8
+		b |= b >> 16
+		b |= b >> 32
+	}
+
+	return b
 }
 
 func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
@@ -370,6 +464,37 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 		mg[color] += p.c.MobilityKnight[0][mobCnt]
 		eg[color] += p.c.MobilityKnight[1][mobCnt]
 
+	case Pawn:
+		pawn := board.BitBoard(1) << sq
+		if p.passers&pawn != 0 {
+			// if protected passers add protection bonus
+			var support board.BitBoard
+			rank := sq / 8
+
+			switch color {
+			case White:
+				support = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
+			case Black:
+				support = ((pawn & ^board.AFile) << 7) | ((pawn & ^board.HFile) << 9)
+				rank ^= 7
+			}
+
+			if support&p.b.Pieces[Pawn]&p.b.Colors[color] != 0 {
+				mg[color] += p.c.ProtectedPasser[0]
+				eg[color] += p.c.ProtectedPasser[1]
+			}
+
+			mg[color] += p.c.PasserRank[0][rank-1]
+			eg[color] += p.c.PasserRank[1][rank-1]
+
+			kingDist := Manhattan(sq, p.kingSq[color.Flip()]) - Manhattan(sq, p.kingSq[color])
+
+			mg[color] += p.c.PasserKingDist[0] * T(kingDist)
+			eg[color] += p.c.PasserKingDist[1] * T(kingDist)
+
+		}
+		return
+
 	default:
 		return
 	}
@@ -377,11 +502,23 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 	kingA := (p.kingNb[color.Flip()] & attack).Count()
 
 	if kingA != 0 {
-    p.kingAScore[0][color] += p.c.KingAttackPieces[0][pType - Knight]
-    p.kingAScore[1][color] += p.c.KingAttackPieces[1][pType - Knight]
+		p.kingAScore[0][color] += p.c.KingAttackPieces[0][pType-Knight] * T(kingA)
+		p.kingAScore[1][color] += p.c.KingAttackPieces[1][pType-Knight] * T(kingA)
+		p.kingACount[color]++
 	}
 
-	p.kingASquares[color] += kingA
+}
+
+func Manhattan(a, b Square) int {
+	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
+	return max(abs(ax-bx), abs(ay-by))
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func insuffientMat(b *board.Board) bool {
