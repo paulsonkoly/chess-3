@@ -10,6 +10,7 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
@@ -32,7 +33,11 @@ type EPDEntry struct {
 	r float64
 }
 
-const BatchSize = 100_000
+const (
+	BatchSize  = 100_000
+	Epsilon    = 0.001
+	NumThreads = 4
+)
 
 func main() {
 	flag.Parse()
@@ -140,8 +145,7 @@ func main() {
 
 	beta1 := 0.9
 	beta2 := 0.999
-	learningRate := 0.1
-	epsilon := 0.001
+	learningRate := 1.0
 
 	bStart := 0
 	for epoch := 1; true; { // epochs
@@ -149,24 +153,26 @@ func main() {
 
 		// calculate the gradients
 		grad := tuning.Coeffs{}
-		for _, e := range batch {
-			score := evalCoeffs(e.b, coeffs)
-			sigm := sigmoid(score, k)
-			loss := (e.r - sigm) * (e.r - sigm)
+		gradS := [NumThreads]tuning.Coeffs{}
+		wg := sync.WaitGroup{}
+		wg.Add(NumThreads)
+		tSize := len(batch) / NumThreads
+
+		for ix := range NumThreads {
+			tData := batch[ix*tSize : min((ix+1)*tSize, len(batch))]
+      coeffsS := * coeffs
+
+			go func() {
+				calcGradients(tData, &gradS[ix], &coeffsS, k)
+				wg.Done()
+			}()
+		}
+
+		wg.Wait()
+
+		for ix := range NumThreads {
 			for ixs := range grad.Loop() {
-				c := coeffs.At(ixs)
-				o := *c
-
-				*c += epsilon
-				score2 := evalCoeffs(e.b, coeffs)
-				*c = o
-
-				sigm2 := sigmoid(score2, k)
-				loss2 := (e.r - sigm2) * (e.r - sigm2)
-
-				g := (loss2 - loss) / epsilon
-
-				*grad.At(ixs) += g
+				*grad.At(ixs) += *gradS[ix].At(ixs)
 			}
 		}
 
@@ -188,8 +194,13 @@ func main() {
 		if bStart >= len(data) {
 			fmt.Printf("epoch %d finished\n", epoch)
 
-			bestE = computeE(data, k, coeffs)
-			fmt.Println("bestE ", bestE)
+			newE := computeE(data, k, coeffs)
+			fmt.Printf("error drop %.10f , bestE %.10f\n", bestE-newE, newE)
+			if newE > bestE {
+				fmt.Printf("drop negative, LR %.4f -> %.4f\n", learningRate, learningRate/2.0)
+				learningRate /= 2
+			}
+			bestE = newE
 
 			coeffs.Print()
 
@@ -199,6 +210,29 @@ func main() {
 
 			epoch++
 			bStart = 0
+		}
+	}
+}
+
+func calcGradients(data []EPDEntry, grad *tuning.Coeffs, coeffs *tuning.Coeffs, k float64) {
+	for _, e := range data {
+		score := evalCoeffs(e.b, coeffs)
+		sigm := sigmoid(score, k)
+		loss := (e.r - sigm) * (e.r - sigm)
+		for ixs := range grad.Loop() {
+			c := coeffs.At(ixs)
+			o := *c
+
+			*c += Epsilon
+			score2 := evalCoeffs(e.b, coeffs)
+			*c = o
+
+			sigm2 := sigmoid(score2, k)
+			loss2 := (e.r - sigm2) * (e.r - sigm2)
+
+			g := (loss2 - loss) / Epsilon
+
+			*grad.At(ixs) += g
 		}
 	}
 }
@@ -220,7 +254,7 @@ func computeE(data []EPDEntry, k float64, coeffs *tuning.Coeffs) float64 {
 		count++
 	}
 
-	return sum/float64(count)
+	return sum / float64(count)
 }
 
 func evalCoeffs(b *board.Board, coeffs *tuning.Coeffs) float64 {
@@ -250,6 +284,8 @@ func printMisEval(data []EPDEntry, k float64, coeffs *tuning.Coeffs) {
 		err := math.Abs(r - sgm)
 		evals[i] = err
 	}
+
+  fmt.Println("LazyMargin ", coeffs.LazyMargin)
 
 	for range 10 {
 		mx := math.Inf(-1)
@@ -342,9 +378,9 @@ func doDiff(data []EPDEntry, diff *string) {
 
 		b := board.FromFEN(splits[0])
 
-    bHsh := b.Hashes[0]
-    if _, ok := hsh[bHsh]; !ok {
-      fmt.Println(line)
-    }
+		bHsh := b.Hashes[0]
+		if _, ok := hsh[bHsh]; !ok {
+			fmt.Println(line)
+		}
 	}
 }

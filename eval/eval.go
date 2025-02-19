@@ -9,26 +9,17 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-// Some of this code is derived from
-// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-// which is used in many simple engines. This gives a base evaluation with
-// piece values and PSQT with tapered evaluation support between middle game
-// and end game.
-//
-// Other aspects of the evaluation are additions on the PESTO values.
-
 // ScoreType defines the evaluation result type. The engine uses int16 for
 // score type, as defined in types. The tuner uses float64.
 type ScoreType interface{ Score | float64 }
 
 type CoeffSet[T ScoreType] struct {
 
-	// PSqT is tapered piece square tables. (PESTO)
+	// PSqT is tapered piece square tables.
 	PSqT [12][64]T
 
-	// TPieceValues is tapered piece values between middle game and end game.
-	// (PESTO)
-	TPieceValues [2][7]T
+	// PieceValues is tapered piece values between middle game and end game.
+	PieceValues [2][7]T
 
 	// TempoBonus is the advantage of the side to move.
 	TempoBonus [2]T
@@ -42,6 +33,16 @@ type CoeffSet[T ScoreType] struct {
 	MobilityKnight [2][9]T
 	MobilityBishop [2][14]T
 	MobilityRook   [2][11]T
+
+	// KnightOutpost is a per square bonus for a knight being on an outpost, only
+	// counting the 5 ranks covering sideOfBoard.
+	KnightOutpost [2][40]T
+
+	// ConnectedRooks is a bonus if rooks are connected.
+	ConnectedRooks [2]T
+
+	// BishopPair is the bonus for bishop pairs.
+	BishopPair [2]T
 
 	// ProtectedPasser is the bonus for each protected passed pawn.
 	ProtectedPasser [2]T
@@ -63,171 +64,177 @@ type CoeffSet[T ScoreType] struct {
 
 var Coefficients = CoeffSet[Score]{
 	PSqT: [12][64]Score{
-		// pawn middle game
 		{
 			0, 0, 0, 0, 0, 0, 0, 0,
-			98, 134, 61, 95, 68, 126, 34, -11,
-			-6, 7, 26, 31, 65, 56, 25, -20,
-			-14, 13, 6, 21, 23, 12, 17, -23,
-			-27, -2, -5, 12, 17, 6, 10, -25,
-			-26, -4, -4, -10, 3, 3, 33, -12,
-			-35, -1, -20, -23, -15, 24, 38, -22,
+			26, 58, 29, 56, 87, 60, 0, -54,
+			9, 38, 63, 59, 72, 114, 41, 19,
+			4, 26, 19, 45, 57, 34, 45, 10,
+			-10, 18, 15, 40, 40, 37, 41, 9,
+			-8, 12, 15, 16, 35, 16, 69, 24,
+			-8, 25, 2, 15, 23, 57, 85, 21,
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
-		// pawn end game
 		{
 			0, 0, 0, 0, 0, 0, 0, 0,
-			178, 173, 158, 134, 147, 132, 165, 187,
-			94, 100, 85, 67, 56, 53, 82, 84,
-			32, 24, 13, 5, -2, 4, 17, 17,
-			13, 9, -3, -7, -7, -8, 3, -1,
-			4, 7, -6, 1, 0, -5, -1, -8,
-			13, 8, 8, 10, 13, 0, 2, -7,
+			110, 106, 86, 52, 43, 56, 102, 101,
+			23, 10, -9, -39, -46, -41, -11, -2,
+			6, -1, -17, -39, -40, -27, -14, -12,
+			-8, -10, -27, -34, -31, -29, -20, -22,
+			-12, -12, -24, -24, -24, -20, -28, -28,
+			-7, -14, -12, -14, -13, -21, -29, -28,
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
-		// knight middle game
 		{
-			-167, -89, -34, -49, 61, -97, -15, -107,
-			-73, -41, 72, 36, 23, 62, 7, -17,
-			-47, 60, 37, 65, 84, 129, 73, 44,
-			-9, 17, 19, 53, 37, 69, 18, 22,
-			-13, 4, 16, 13, 28, 19, 21, -8,
-			-23, -9, 12, 10, 19, 17, 25, -16,
-			-29, -53, -12, -3, -1, 18, -14, -19,
-			-105, -21, -58, -33, -17, -28, -19, -23,
+			-242, -30, -40, -101, 2, -181, -92, -128,
+			-49, -22, 95, 12, 88, 62, 22, -11,
+			24, 34, 21, 52, 92, 107, 60, 19,
+			17, 11, -6, 37, 3, 22, -9, 26,
+			3, 1, 17, 12, 13, 28, 4, -5,
+			-11, 3, 14, 18, 33, 14, 31, 1,
+			-5, -21, 0, 22, 23, 24, 15, 16,
+			-41, -14, -28, 1, 0, 1, -13, -43,
 		},
-		// knight end game
 		{
-			-58, -38, -13, -28, -31, -27, -63, -99,
-			-25, -8, -25, -2, -9, -25, -24, -52,
-			-24, -20, 10, 9, -1, -9, -19, -41,
-			-17, 3, 22, 22, 22, 11, 8, -18,
-			-18, -6, 16, 25, 16, 17, 4, -18,
-			-23, -3, -1, 15, 10, -3, -20, -22,
-			-42, -20, -10, -5, -2, -20, -23, -44,
-			-29, -51, -23, -15, -22, -18, -50, -64,
+			29, -40, -13, 4, -24, -7, -16, -73,
+			0, 7, -28, -3, -24, -24, -20, -17,
+			-26, -19, 15, 9, -13, -8, -25, -14,
+			-1, 19, 27, 26, 24, 20, 7, -1,
+			-3, 9, 25, 21, 29, 12, 3, 11,
+			-15, 0, -5, 18, 15, -2, -9, -11,
+			-13, -3, -4, -6, -7, -5, -5, -8,
+			-21, -14, 6, 6, -8, -6, -22, -1,
 		},
-		// bishop middle game
 		{
-			-29, 4, -82, -37, -25, -42, 7, -8,
-			-26, 16, -18, -13, 30, 59, 18, -47,
-			-16, 37, 43, 40, 35, 50, 37, -2,
-			-4, 5, 19, 50, 37, 37, 7, -2,
-			-6, 13, 13, 26, 34, 12, 10, 4,
-			0, 15, 15, 15, 14, 27, 18, 10,
-			4, 15, 16, 0, 7, 21, 33, 1,
-			-33, -3, -14, -21, -13, -12, -39, -21,
+			-37, -43, -52, -89, -121, -97, -74, -72,
+			-34, 13, -18, -27, 6, 50, 0, -1,
+			-18, 4, 60, 19, 63, 30, 37, 16,
+			-23, -6, 5, 15, 11, -10, -4, -23,
+			-6, 4, -10, 23, 18, -6, -1, -32,
+			13, 10, 17, -7, 7, 18, 9, 3,
+			-4, 28, 5, 8, 9, 41, 40, 21,
+			10, -8, 1, -7, 3, -13, -17, 1,
 		},
-		// bishop end game
 		{
-			-14, -21, -11, -8, -7, -9, -17, -24,
-			-8, -4, 7, -12, -3, -13, -4, -14,
-			2, -8, 0, -1, -2, 6, 0, 4,
-			-3, 9, 12, 9, 14, 10, 3, 2,
-			-6, 3, 13, 19, 7, 10, -3, -9,
-			-12, -3, 8, 10, 13, 3, -7, -15,
-			-14, -18, -7, -1, 4, -9, -15, -27,
-			-23, -9, -23, -5, -9, -16, -5, -17,
+			1, 3, -1, 16, 9, 7, 1, 9,
+			-4, -4, 5, -4, 1, -19, 3, -32,
+			6, 2, -11, 4, -11, 8, -5, -7,
+			9, 10, 6, 11, 13, 2, -1, -7,
+			-3, -5, 8, 4, 4, 8, -6, 1,
+			-10, 1, 0, 6, 10, -3, -4, -5,
+			5, -19, -12, -4, -5, -12, -12, -19,
+			-14, 1, -7, 4, 1, 3, -11, -12,
 		},
-		// rook middle game
 		{
-			32, 42, 32, 51, 63, 9, 31, 43,
-			27, 32, 58, 62, 80, 67, 26, 44,
-			-5, 19, 26, 36, 17, 45, 61, 16,
-			-24, -11, 7, 26, 24, 35, -8, -20,
-			-36, -26, -12, -1, 9, -7, 6, -23,
-			-45, -25, -16, -17, 3, 0, -5, -33,
-			-44, -16, -20, -9, -1, 11, -6, -71,
-			-19, -13, 1, 17, 16, 7, -37, -26,
+			34, 44, 36, 34, 62, 73, 22, 42,
+			0, -19, 26, 50, 8, 34, 45, 17,
+			-20, -8, 0, 9, 34, 30, 75, 19,
+			-23, -17, 6, 17, 14, 5, 4, 28,
+			-32, -24, -9, -9, 5, -14, -9, -8,
+			-27, -18, -5, 10, 9, -12, 18, 23,
+			-25, -20, -9, 8, 1, 5, 18, -41,
+			-8, -3, 10, 18, 27, 13, -12, 2,
 		},
-		// rook end game
 		{
-			13, 10, 18, 15, 12, 12, 8, 5,
-			11, 13, 13, 11, -3, 3, 8, 3,
-			7, 7, 7, 5, 4, -3, -5, -3,
-			4, 3, 13, 1, 2, 1, -1, 2,
-			3, 5, 8, 4, -5, -6, -8, -11,
-			-4, 0, -5, -1, -7, -12, -8, -16,
-			-6, -6, 0, 2, -9, -9, -11, -3,
-			-9, 2, 3, -1, -5, -13, 4, -20,
+			11, 4, 5, 5, -2, -6, 9, 6,
+			8, 23, 11, -3, 6, 8, 2, 1,
+			14, 10, 9, 6, -4, 1, -6, -6,
+			8, 8, 4, 1, -3, 5, 3, -8,
+			9, 6, 5, 8, 2, 2, 0, -4,
+			-1, 1, -2, -4, -4, -1, -24, -18,
+			3, 3, 8, 1, -6, -1, -9, -2,
+			5, 1, -1, -3, -14, -5, -4, -27,
 		},
-		// queen middle game
 		{
-			-28, 0, 29, 12, 59, 44, 43, 45,
-			-24, -39, -5, 1, -16, 57, 28, 54,
-			-13, -17, 7, 8, 29, 56, 47, 57,
-			-27, -27, -16, -16, -1, 17, -2, 1,
-			-9, -26, -9, -10, -2, -4, 3, -3,
-			-14, 2, -11, -2, -5, 2, 14, 5,
-			-35, -8, 11, 2, 8, 15, -3, 1,
-			-1, -18, -9, 10, -15, -25, -31, -50,
+			-51, 12, -3, -16, -4, -19, -32, -15,
+			-28, -35, -36, -52, -75, 22, -39, 25,
+			-16, -4, 15, -7, 42, 57, 84, 42,
+			-20, -9, -9, -21, -12, -33, -18, -10,
+			-3, -1, -1, -15, -2, -2, -1, -17,
+			-12, 15, 4, 2, 8, 4, 6, -14,
+			-13, 8, 16, 25, 27, 53, 41, 16,
+			7, -3, 12, 21, 6, -18, -2, -9,
 		},
-		// gueen end game
 		{
-			-9, 22, 22, 27, 27, 19, 10, 20,
-			-17, 20, 32, 41, 58, 25, 30, 0,
-			-20, 6, 9, 49, 47, 35, 19, 9,
-			3, 22, 24, 45, 57, 40, 57, 36,
-			-18, 28, 19, 47, 31, 34, 39, 23,
-			-16, -27, 15, 6, 9, 17, 10, 5,
-			-22, -23, -30, -16, -16, -23, -36, -32,
-			-33, -28, -22, -43, -5, -32, -20, -41,
+			21, 2, 14, 31, 10, 25, 4, 19,
+			7, 24, 41, 76, 76, 51, 22, -40,
+			-17, 6, 16, 28, 45, -11, -38, -48,
+			1, 15, 28, 58, 48, 68, 31, -3,
+			-8, 7, 12, 45, 31, 8, 13, -6,
+			-23, -31, 5, 8, 10, 13, -4, -18,
+			-9, -15, -25, -25, -21, -74, -76, -51,
+			-38, -29, -38, -48, -11, -29, -62, -50,
 		},
-		// king middle game
 		{
-			-65, 23, 16, -15, -56, -34, 2, 13,
-			29, -1, -20, -7, -8, -4, -38, -29,
-			-9, 24, 2, -16, -20, 6, 22, -22,
-			-17, -20, -12, -27, -30, -25, -14, -36,
-			-49, -1, -27, -39, -46, -44, -33, -51,
-			-14, -14, -22, -46, -44, -30, -15, -27,
-			1, 7, -8, -64, -43, -16, 9, 8,
-			-15, 36, 12, -54, 8, -28, 24, 14,
+			100, 91, 57, 65, 94, 75, 37, 63,
+			79, 100, 77, 45, 47, 34, -37, 2,
+			65, 132, 24, 45, -12, 34, 65, -24,
+			13, 33, 36, -29, -38, -28, 16, -21,
+			38, 29, -6, -68, -64, -75, -32, -72,
+			-7, 24, -53, -70, -78, -48, -7, -30,
+			9, -15, -31, -67, -52, -24, 24, 19,
+			-35, 19, -1, -81, -17, -43, 34, 21,
 		},
-		// king end game
 		{
-			-74, -35, -18, -18, -11, 15, 4, -17,
-			-12, 17, 14, 17, 17, 38, 23, 11,
-			10, 17, 23, 15, 20, 45, 44, 13,
-			-8, 22, 24, 27, 26, 33, 26, 3,
-			-18, -4, 21, 24, 27, 23, 9, -11,
-			-19, -3, 11, 21, 23, 16, 7, -9,
-			-27, -11, 4, 13, 14, 4, -5, -17,
-			-53, -34, -21, -11, -28, -14, -24, -43,
+			-66, -33, -34, -19, -27, -10, 0, -38,
+			-35, -13, -10, -4, -1, 21, 34, 7,
+			-22, -8, 8, 1, 15, 21, 27, 18,
+			-28, -6, 5, 20, 22, 30, 20, 14,
+			-33, -9, 12, 29, 32, 33, 19, 13,
+			-23, -5, 19, 30, 35, 29, 11, 5,
+			-23, 2, 16, 27, 27, 21, 3, -12,
+			-11, -14, -4, 7, -12, 3, -24, -40,
 		},
 	},
-	TPieceValues: [2][7]Score{
-		{0, 82, 337, 365, 477, 1025, Inf},
-		{0, 94, 281, 297, 512, 936, Inf},
+	PieceValues: [2][7]Score{
+		{0, 80, 468, 513, 649, 1377, 0},
+		{0, 101, 247, 262, 483, 892, 0},
 	},
-	TempoBonus: [2]Score{29, 27},
+	TempoBonus: [2]Score{37, 26},
 	KingAttackPieces: [2][4]Score{
-		{3, 2, 17, 15},
-		{-1, -1, -5, 24},
+		{3, 2, 3, 3},
+		{-2, -2, -2, 5},
 	},
 	KingAttackCount: [2][7]Score{
-		{0, 5, 10, 20, 26, 68, 45},
-		{0, 8, 15, 21, 28, -11, 15},
+		{0, 3, 4, 6, 7, 11, 22},
+		{0, 1, 2, 3, 3, 4, 7},
 	},
 	MobilityKnight: [2][9]Score{
-		{23, 43, 48, 50, 53, 56, 58, 60, 72},
-		{-40, -22, 2, 4, -1, 1, 1, 0, -16},
+		{-41, -10, 0, 5, 14, 20, 25, 29, 32},
+		{-58, -32, -8, -2, 5, 11, 10, 7, -4},
 	},
 	MobilityBishop: [2][14]Score{
-		{49, 50, 55, 55, 60, 64, 62, 60, 62, 59, 62, 66, 80, 64},
-		{-46, -24, -35, -22, -16, -5, -2, 8, 7, 9, 3, 1, 1, -3},
+		{-19, -6, 3, 6, 11, 14, 19, 20, 23, 24, 31, 31, 27, 14},
+		{-42, -29, -27, -15, -6, 2, 7, 14, 19, 19, 18, 19, 29, 24},
 	},
 	MobilityRook: [2][11]Score{
-		{50, 48, 49, 51, 53, 61, 58, 61, 63, 72, 86},
-		{-3, 1, 6, 4, 6, 8, 15, 18, 25, 26, 16},
+		{-15, -8, -3, 4, 7, 13, 9, 17, 24, 34, 49},
+		{-20, -17, -11, -9, -2, 2, 8, 10, 13, 15, 8},
 	},
-	ProtectedPasser: [2]Score{36, 13},
-	PasserKingDist:  [2]Score{-4, 12},
+	KnightOutpost: [2][40]Score{
+		{
+			-13, -26, -102, -18, 64, 7, 25, 5,
+			-2, -5, -26, 75, 15, 30, -34, 0,
+			-25, 5, 79, 23, -80, 18, 38, 80,
+			24, 35, 54, 29, 34, 62, 106, 72,
+			0, 0, 0, 42, 44, 0, 0, 0,
+		},
+		{
+			-23, 48, -53, -82, 44, -15, 4, 39,
+			-1, 6, 1, -38, -30, -10, 25, 74,
+			20, 15, -2, 24, 55, 20, 11, 14,
+			24, -20, 10, 26, 21, 6, -3, -13,
+			0, 0, 0, 20, -1, 0, 0, 0,
+		},
+	},
+	ConnectedRooks:  [2]Score{-1, 3},
+	BishopPair:      [2]Score{-25, 46},
+	ProtectedPasser: [2]Score{37, 11},
+	PasserKingDist:  [2]Score{17, 3},
 	PasserRank: [2][6]Score{
-		{22, -4, -11, -2, -7, -35},
-		{-29, -15, 11, 32, 46, 35},
+		{-6, -28, -32, -11, -10, 36},
+		{2, 10, 29, 55, 120, 95},
 	},
-	LazyMargin: [...]Score{918, 704, 711, 711, 770, 842, 880},
+	LazyMargin: [...]Score{658, 445, 552, 565, 565, 573, 576},
 }
 
 // Phase is game phase.
@@ -246,21 +253,35 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 
 	phase := 0
 
+	bishopCnt := [2]int{}
+
 	for pType := Pawn; pType <= Queen; pType++ {
 		for color := White; color <= Black; color++ {
 			cnt := (b.Pieces[pType] & b.Colors[color]).Count()
 
+			if pType == Bishop {
+				bishopCnt[color] = cnt
+			}
+
 			phase += cnt * Phase[pType]
 
-			mg[color] += T(cnt) * c.TPieceValues[0][pType]
-			eg[color] += T(cnt) * c.TPieceValues[1][pType]
+			mg[color] += T(cnt) * c.PieceValues[0][pType]
+			eg[color] += T(cnt) * c.PieceValues[1][pType]
 		}
 	}
 
-  // see comment on LazyMargin
+	for color := White; color <= Black; color++ {
+		if bishopCnt[color] >= 2 && bishopCnt[color.Flip()] == 0 {
+			mg[color] += c.BishopPair[0]
+			eg[color] += c.BishopPair[1]
+		}
+	}
+
+	// see comment on LazyMargin
 	// scoreHist := [7]T{}
 
 	score := TaperedScore(b, phase, mg[:], eg[:])
+
 	// scoreHist[0] = score
 	if score > beta+c.LazyMargin[0] {
 		return beta
@@ -291,7 +312,7 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 			}
 		}
 
-    score = TaperedScore(b, phase, mg[:], eg[:])
+		score = TaperedScore(b, phase, mg[:], eg[:])
 		// scoreHist[pType] = score
 
 		if score > beta+c.LazyMargin[pType] {
@@ -305,8 +326,8 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 
 	for color := White; color <= Black; color++ {
 		kingACnt := min(len(c.KingAttackCount[0])-1, pWise.kingACount[color])
-		mg[color] += pWise.kingAScore[0][color] * c.KingAttackCount[0][kingACnt] / 16
-		eg[color] += pWise.kingAScore[1][color] * c.KingAttackCount[1][kingACnt] / 16
+		mg[color] += pWise.kingAScore[0][color] * c.KingAttackCount[0][kingACnt]
+		eg[color] += pWise.kingAScore[1][color] * c.KingAttackCount[1][kingACnt]
 	}
 
 	score = TaperedScore(b, phase, mg[:], eg[:])
@@ -314,7 +335,6 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 	// for i, v := range scoreHist {
 	// 	c.LazyMargin[i] = max(c.LazyMargin[i], score-v)
 	// }
-	//
 
 	return score
 }
@@ -343,10 +363,16 @@ type pieceWise[T ScoreType] struct {
 	passers    board.BitBoard
 	kingNb     [2]board.BitBoard
 	pawnCover  [2]board.BitBoard
+	frontSpan  [2]board.BitBoard
+	holes      [2]board.BitBoard
 	kingACount [2]int
 	kingAScore [2][2]T
 	kingSq     [2]Square
 }
+
+// the player's side of the board with the extra 2 central squares included at
+// enemy side.
+var sideOfBoard = [2]board.BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
 
 func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 	result := pieceWise[T]{b: b, c: c}
@@ -375,6 +401,20 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 	bP := b.Pieces[Pawn] & b.Colors[Black]
 	result.pawnCover[Black] = ((bP & ^board.HFile) >> 7) | ((bP & ^board.AFile) >> 9)
 
+	// various useful pawn bitboards
+	wFrontSpan := frontFill(wP, White) << 8
+	bFrontSpan := frontFill(bP, Black) >> 8
+
+	result.frontSpan[White] = wFrontSpan
+	result.frontSpan[Black] = bFrontSpan
+
+	// calculate holes in our position, squares that cannot be protected by one
+	// of our pawns.
+	wCover := ((wFrontSpan & ^board.AFile) >> 1) | ((wFrontSpan & ^board.HFile) << 1)
+	bCover := ((bFrontSpan & ^board.HFile) << 1) | ((bFrontSpan & ^board.AFile) >> 1)
+	result.holes[White] = sideOfBoard[White] & ^wCover
+	result.holes[Black] = sideOfBoard[Black] & ^bCover
+
 	return result
 }
 
@@ -383,23 +423,16 @@ func (p *pieceWise[T]) Passers() {
 
 	for color := White; color <= Black; color++ {
 		myPawns := b.Pieces[Pawn] & b.Colors[color]
-		theirPawns := b.Pieces[Pawn] & b.Colors[color.Flip()]
-
 		myRearFill := frontFill(myPawns, color.Flip())
-		theirFrontFill := frontFill(theirPawns, color.Flip())
+		theirFrontSpan := p.frontSpan[color.Flip()]
 
-		var (
-			myRearSpan     board.BitBoard
-			theirFrontSpan board.BitBoard
-		)
+		var myRearSpan board.BitBoard
 		switch color {
 		case White:
 			myRearSpan = myRearFill >> 8
-			theirFrontSpan = theirFrontFill >> 8
 
 		case Black:
 			myRearSpan = myRearFill << 8
-			theirFrontSpan = theirFrontFill << 8
 		}
 
 		frontLine := ^myRearSpan & myPawns
@@ -450,6 +483,12 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 		mg[color] += p.c.MobilityRook[0][mobCnt]
 		eg[color] += p.c.MobilityRook[1][mobCnt]
 
+		// connected rooks
+		if attack&p.b.Pieces[Rook]&p.b.Colors[color] != 0 {
+			mg[color] += p.c.ConnectedRooks[0]
+			eg[color] += p.c.ConnectedRooks[1]
+		}
+
 	case Bishop:
 		attack = movegen.BishopMoves(sq, occ)
 
@@ -464,22 +503,26 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 		mg[color] += p.c.MobilityKnight[0][mobCnt]
 		eg[color] += p.c.MobilityKnight[1][mobCnt]
 
+		// calculate knight outputs
+		if (board.BitBoard(1)<<sq)&p.holes[color.Flip()]&p.pawnCover[color] != 0 {
+			// the hole square is from the enemy's perspective, white's in black's territory
+			if color == White {
+				sq ^= 56
+			}
+			mg[color] += p.c.KnightOutpost[0][sq]
+			eg[color] += p.c.KnightOutpost[1][sq]
+		}
+
 	case Pawn:
 		pawn := board.BitBoard(1) << sq
 		if p.passers&pawn != 0 {
-			// if protected passers add protection bonus
-			var support board.BitBoard
 			rank := sq / 8
-
-			switch color {
-			case White:
-				support = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
-			case Black:
-				support = ((pawn & ^board.AFile) << 7) | ((pawn & ^board.HFile) << 9)
+			if color == Black {
 				rank ^= 7
 			}
 
-			if support&p.b.Pieces[Pawn]&p.b.Colors[color] != 0 {
+			// if protected passers add protection bonus
+			if pawn&p.pawnCover[color] != 0 {
 				mg[color] += p.c.ProtectedPasser[0]
 				eg[color] += p.c.ProtectedPasser[1]
 			}
@@ -487,10 +530,20 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 			mg[color] += p.c.PasserRank[0][rank-1]
 			eg[color] += p.c.PasserRank[1][rank-1]
 
-			kingDist := Manhattan(sq, p.kingSq[color.Flip()]) - Manhattan(sq, p.kingSq[color])
+			// KPR, KPNB
+			if p.b.Pieces[Knight]|p.b.Pieces[Bishop]|p.b.Pieces[Queen] == 0 || p.b.Pieces[Rook]|p.b.Pieces[Queen] == 0 {
+				qSq := sq % 8
+				if color == White {
+					qSq += 56
+				}
+				// mid square between the pawn and its queening square
+				mSq := (qSq + sq) / 2
 
-			mg[color] += p.c.PasserKingDist[0] * T(kingDist)
-			eg[color] += p.c.PasserKingDist[1] * T(kingDist)
+				kingDist := Manhattan(mSq, p.kingSq[color.Flip()]) - Manhattan(mSq, p.kingSq[color])
+
+				mg[color] += p.c.PasserKingDist[0] * T(kingDist)
+				eg[color] += p.c.PasserKingDist[1] * T(kingDist)
+			}
 
 		}
 		return

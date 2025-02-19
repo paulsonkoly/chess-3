@@ -13,11 +13,19 @@ import (
 
 // Targets controls which fields in eval.CoeffSet are going to be tuned.
 var Targets = [...]string{
+	"PSqT",
+	"PieceValues",
 	"TempoBonus",
 	"MobilityKnight", "MobilityBishop", "MobilityRook",
 	"KingAttackPieces", "KingAttackCount",
 	"ProtectedPasser", "PasserKingDist", "PasserRank",
+	 "KnightOutpost", "ConnectedRooks", "BishopPair",
 }
+
+// Anchor is a known value in tuning, anchoring down the tuning process. We
+// skip tuning the value with this index, for example a good setting would be
+// setting a Pawn's value to 100 so we measure evalution in centipawns.
+var Anchor = Index {s : []int{1, 0, 1} }
 
 type Coeffs eval.CoeffSet[float64]
 
@@ -69,12 +77,14 @@ func (t *Coeffs) Print() {
 	typ := reflect.TypeOf(*t)
 	for ix := 0; ix < typ.NumField(); ix++ {
 		f := typ.Field(ix)
-		v := reflect.ValueOf(*t).Field(ix)
+    if slices.Contains(Targets[:], f.Name) {
+			v := reflect.ValueOf(*t).Field(ix)
 
-		fmt.Printf("%s: ", f.Name)
+			fmt.Printf("%s: ", f.Name)
 
-		printField(v, 0)
-		fmt.Printf(",\n")
+			printField(v, 0)
+			fmt.Printf(",\n")
+		}
 	}
 }
 
@@ -89,10 +99,10 @@ func printField(v reflect.Value, in int) {
 
 		switch {
 
-		case v.Len() == 64: // print 8x8 format
+		case v.Len()%8 == 0: // assume some form of square table (PSqT)
 			fmt.Print("{\n")
 			newLine := ""
-			for i := range 8 {
+			for i := range v.Len() / 8 {
 				fmt.Printf("%s%s", newLine, indent(in+1))
 				comma := ""
 				for j := range 8 {
@@ -178,6 +188,9 @@ func recurse(yield func(Index) bool, ix Index, v reflect.Value) bool {
 		}
 
 	case reflect.Float64:
+    if slices.Equal(ix.s[:], Anchor.s[:]) {
+      return true
+    }
 		return yield(ix)
 
 	}
