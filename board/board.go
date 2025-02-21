@@ -58,7 +58,7 @@ type Board struct {
 	EnPassant      Square
 	CRights        CastlingRights
 	Hashes         []Hash
-	FiftyCnt       int
+	FiftyCnt       Depth
 }
 
 type castle struct {

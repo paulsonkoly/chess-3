@@ -515,7 +515,7 @@ func TestFifty(t *testing.T) {
 	m = Q(D5, D3)
 	b.MakeMove(&m)
 
-	assert.Equal(t, 100, b.FiftyCnt)
+	assert.Equal(t, Depth(100), b.FiftyCnt)
 
 	ms := move.NewStore()
 	movegen.GenMoves(ms, b, board.Full)

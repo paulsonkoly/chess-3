@@ -5,6 +5,10 @@ import . "github.com/paulsonkoly/chess-3/types"
 
 // Move represents a chess move.
 type Move struct {
+  // SEE is the SEE score of the move for Quiessence search. (filled in by Quiessence move ranking).
+	SEE      Score
+  // Weight is the heiristic weight of the move.
+	Weight   Score
   // Promo is either NoPiece, or a non-Pawn Piece type, for pawn promotion.
 	Promo    Piece
   // Captured is the captured piece type. Filled in by making a move, value is
@@ -22,12 +26,8 @@ type Move struct {
 	Castle   Castle
   // CRights is the bit-change in the boards castling state.
 	CRights  CastlingRights
-  // SEE is the SEE score of the move for Quiessence search. (filled in by Quiessence move ranking).
-	SEE      Score
-  // Weight is the heiristic weight of the move.
-	Weight   Score
   // FiftyCnt is the board's 50 move counter. Filled in by making the move on the board. 
-	FiftyCnt int
+	FiftyCnt Depth
 }
 
 func (m Move) String() string {

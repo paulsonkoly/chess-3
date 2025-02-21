@@ -113,7 +113,7 @@ out:
 		ix++
 	}
 
-	b.FiftyCnt = cnt
+	b.FiftyCnt = Depth(cnt)
 
 	b.Hashes = append(b.Hashes, b.Hash())
 
