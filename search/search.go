@@ -26,6 +26,8 @@ type State struct {
 	hist *heur.History
 	ms   *move.Store
 
+	pm move.SimpleMove
+
 	// Stop channel signals an immediate Stop requiest to the search. Current
 	// depth will be abandoned.
 	Stop chan struct{}
@@ -65,7 +67,7 @@ func (s *State) Clear() {
 
 // Search is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window.
-func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Move) {
+func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
@@ -78,7 +80,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Move
 		factor := Score(1)
 		var (
 			scoreSample Score
-			movesSample []move.Move
+			movesSample []move.SimpleMove
 		)
 
 		for !awOk {
@@ -128,7 +130,7 @@ func abort(stop <-chan struct{}) bool {
 	return aborting
 }
 
-func pvInfo(moves []move.Move) string {
+func pvInfo(moves []move.SimpleMove) string {
 	sb := strings.Builder{}
 	space := ""
 	for _, m := range moves {
@@ -141,10 +143,10 @@ func pvInfo(moves []move.Move) string {
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, []move.Move) {
+func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, []move.SimpleMove) {
 
 	transpT := sst.tt
-	pv := []move.Move{}
+	pv := []move.SimpleMove{}
 
 	tfCnt := b.Threefold()
 	if tfCnt >= 3 {
@@ -157,16 +159,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		case transp.PVNode:
 			if transpE.From|transpE.To != 0 {
-				sst.ms.Push()
-				defer sst.ms.Pop()
-
-				movegen.GenMoves(sst.ms, b, board.BitBoard(1<<transpE.To))
-
-				for _, m := range sst.ms.Frame() {
-					if m.From == transpE.From && m.Promo == transpE.Promo {
-						pv = []move.Move{m}
-					}
-				}
+				pv = []move.SimpleMove{transpE.SimpleMove}
 			}
 			return transpE.Value, pv
 
@@ -235,6 +228,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	)
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
+
 		b.MakeMove(m)
 
 		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
@@ -264,7 +258,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		if value > alpha {
 			failLow = false
 			alpha = value
-			pv = append(curr, *m)
+			pv = append(curr, m.SimpleMove)
 		}
 
 		if value >= beta {
@@ -363,7 +357,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 	movegen.GenMoves(sst.ms, b, board.Full)
 
-  // TODO do this better.
+	// TODO do this better.
 	hasLegal := false
 
 	for _, m := range sst.ms.Frame() {
@@ -466,20 +460,22 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	for ix, m := range moves {
 
 		switch {
-		case transPE != nil && m.From == transPE.From && m.To == transPE.To && m.Promo == transPE.Promo:
-			moves[ix].Weight = 5000
+		case transPE != nil && transPE.Matches(&m):
+			moves[ix].Weight = heur.HashMove
 
 		case b.SquaresToPiece[m.To] != NoPiece:
 			see := heur.SEE(b, &m)
 			if see < 0 {
-				moves[ix].Weight = see - heur.MaxHistoryScore
+				moves[ix].Weight = see - heur.Captures
 			} else {
-				moves[ix].Weight = see + heur.MaxHistoryScore
+				moves[ix].Weight = see + heur.Captures
 			}
 			moves[ix].SEE = see
 
 		default:
-			moves[ix].Weight = sst.hist.Probe(b.STM, m.From, m.To)
+			hist := sst.hist.Probe(b.STM, m.From, m.To)
+
+			moves[ix].Weight = hist + heur.QuietHistory
 		}
 	}
 }

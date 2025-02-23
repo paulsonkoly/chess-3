@@ -320,7 +320,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 	}
 
 	// king moves
-  if piece := self & b.Pieces[King]; piece != 0 {
+	if piece := self & b.Pieces[King]; piece != 0 {
 		from := piece.LowestSet()
 
 		tSqrs := kingMoves[from] & ^self & target
@@ -427,7 +427,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 	// queen moves
 	queens := self & b.Pieces[Queen]
 	for queen := board.BitBoard(0); queens != 0; queens ^= queen {
-    queen = queens & -queens
+		queen = queens & -queens
 		from := queen.LowestSet()
 		mask := rookMasks[from]
 		magic := rookMagics[from]
@@ -505,7 +505,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 	}
 
 	// promotions pushes
-	for pawns, pawn := pushable&tgt1 & theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&tgt1&theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
@@ -522,7 +522,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 	}
 
 	// double pawn pushes
-	for pawns, pawn := pushable & tgt2 & mySndRank & ^occ2, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&tgt2&mySndRank & ^occ2, board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -538,7 +538,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 	}
 
 	// pawn captures (no promotions)
-	for pawns, pawn := self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := self&b.Pieces[Pawn] & ^theirSndRank & (occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		var bb board.BitBoard
@@ -549,7 +549,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			bb = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
 		}
 
-    tSqrs := bb & target & them
+		tSqrs := bb & target & them
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -568,7 +568,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 	}
 
 	// pawn captures with promotions
-	for pawns, pawn := self & b.Pieces[Pawn] & theirSndRank & (occ1l | occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := self&b.Pieces[Pawn]&theirSndRank&(occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		var bb board.BitBoard
@@ -579,8 +579,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			bb = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
 		}
 
-
-    tSqrs := bb & target & them
+		tSqrs := bb & target & them
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -603,7 +602,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 
 	// en-passant
 	ep := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & fourthRank[b.STM.Flip()]
-	for pawns, pawn := ep & self & b.Pieces[Pawn], board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := ep&self&b.Pieces[Pawn], board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -673,9 +672,8 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 		}
 	}
 
-
-  for tSqr := board.BitBoard(0); target != 0; target ^= tSqr {
-    tSqr = target & - target
+	for tSqr := board.BitBoard(0); target != 0; target ^= tSqr {
+		tSqr = target & -target
 		sq := tSqr.LowestSet()
 
 		if KingMoves(sq)&b.Pieces[King]&other != 0 {
@@ -702,7 +700,7 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 
 func UCIMove(b *board.Board, from, to Square, promo Piece) move.Move {
 	pType := b.SquaresToPiece[from]
-	result := move.Move{Piece: pType, From: from, To: to, Promo: promo, EPSq: b.EnPassant}
+	result := move.Move{SimpleMove: move.SimpleMove{From: from, To: to, Promo: promo}, Piece: pType, EPSq: b.EnPassant}
 
 	switch pType {
 

@@ -3,6 +3,7 @@ package transp
 
 import (
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/move"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -31,14 +32,12 @@ const (
 //
 // We use up 16 bytes
 type Entry struct {
-	Hash  board.Hash // Hash is the board Zobrist-hash.
-	Value Score      // Value is the entry score value. Not valid for nodes where the score is not established.
+  move.SimpleMove  // SimpleMove is the simplified move data.
 	Depth Depth      // Depth of the entry.
+	Value Score      // Value is the entry score value. Not valid for nodes where the score is not established.
 	TFCnt Depth      // Three-fold repetation count of the entry.
-	From  Square     // From is the move from square. Only valid for entries where a move was chosen.
-	To    Square     // To is the move to square. Only valid for entries where a move was chosen.
-	Promo Piece      // Promo is the promotion piece of the move. Only valid where a move was chosen.
 	Type  NodeT      // Type is the entry type.
+	Hash  board.Hash // Hash is the board Zobrist-hash.
 }
 
 // New creates a new transposition table.
@@ -65,10 +64,8 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, from, to Square, promo P
 	}
 
 	t.data[ix] = Entry{
+    SimpleMove: move.SimpleMove{From: from, To: to, Promo: promo},
 		Hash:  hash,
-		From:  from,
-		To:    to,
-		Promo: promo,
 		Value: value,
 		Type:  typ,
 		Depth: d,

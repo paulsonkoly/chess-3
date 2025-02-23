@@ -5,7 +5,8 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const MaxHistoryScore = 1023
+// MaxHistoryScore is the maximal score the history table can contain.
+const MaxHistoryScore = Captures - QuietHistory - 1 // this needs to be poswer of 2 - 1
 
 // History heuristics.
 //
