@@ -69,6 +69,15 @@ func (e *UciEngine) handleCommand(command string) {
 		fmt.Println(e.board.FEN())
 	case "quit":
 		os.Exit(0)
+	case "debug":
+		switch parts[1] {
+
+		case "on":
+			e.sst.Debug = true
+
+		case "off":
+			e.sst.Debug = false
+		}
 	}
 }
 
@@ -97,9 +106,9 @@ func (e *UciEngine) handlePosition(args []string) {
 func (e *UciEngine) applyMoves(moves []string) {
 	b := e.board
 	for _, ms := range moves {
-		from, to, promo := parseUCIMove(ms)
+		sm := parseUCIMove(ms)
 
-		m := movegen.UCIMove(b, from, to, promo)
+		m := movegen.FromSimple(b, sm)
 
 		b.MakeMove(&m)
 	}
@@ -136,32 +145,28 @@ func (e *UciEngine) handleGo(args []string) {
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 
-		score := Score(0)
 		go func() {
 			defer wg.Done()
 
-			s, moves := e.Search(100)
+			_, moves := e.Search(100)
 
 			if len(moves) > 0 {
 				bestMove = moves[0]
-				score = s
 			}
 		}()
 
 		time.Sleep(time.Duration(timeAllowed) * time.Millisecond)
 		close(e.sst.Stop)
 		wg.Wait()
-		fmt.Printf("bestmove %s info score cp %d\n", bestMove, score)
+		fmt.Printf("bestmove %s\n", bestMove)
 	} else {
 		// Fixed depth search
-		start := time.Now()
 
-		score, moves := e.Search(depth)
+		_, moves := e.Search(depth)
 
 		if len(moves) > 0 {
 			bestMove := moves[0]
-			elapsed := time.Since(start).Milliseconds()
-			fmt.Printf("bestmove %s info score cp %d time %d\n", bestMove, score, elapsed)
+			fmt.Printf("bestmove %s\n", bestMove)
 		} else {
 			fmt.Println("bestmove 0000") // No legal move
 		}
@@ -169,14 +174,7 @@ func (e *UciEngine) handleGo(args []string) {
 }
 
 func (e *UciEngine) Search(d Depth) (Score, []move.SimpleMove) {
-	s, moves := search.Search(e.board, d, e.sst)
-
-	ABBF := float64(e.sst.ABBreadth) / float64(e.sst.ABCnt)
-
-	fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d qdelta %d qsee %d\n",
-		e.sst.AWFail, e.sst.ABLeaf, ABBF, e.sst.TTHit, e.sst.QDepth, e.sst.QDelta, e.sst.QSEE)
-
-	return s, moves
+	return search.Search(e.board, d, e.sst)
 }
 
 // 7800 that factors 39 * 200
@@ -228,12 +226,12 @@ func (e *UciEngine) TimeControl(timeAllowed int) int {
 	return int(math.Floor((complexity * float64(timeAllowed)) / float64(movesLeft)))
 }
 
-func parseUCIMove(move string) (Square, Square, Piece) {
-	from := Square((move[0] - 'a') + (move[1]-'1')*8)
-	to := Square((move[2] - 'a') + (move[3]-'1')*8)
+func parseUCIMove(uciM string) move.SimpleMove {
+	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
+	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
 	var promo Piece
-	if len(move) == 5 {
-		switch move[4] {
+	if len(uciM) == 5 {
+		switch uciM[4] {
 		case 'q':
 			promo = Queen
 		case 'r':
@@ -244,7 +242,7 @@ func parseUCIMove(move string) (Square, Square, Piece) {
 			promo = Knight
 		}
 	}
-	return from, to, promo
+	return move.SimpleMove{From: from, To: to, Promo: promo}
 }
 
 func parseMilliseconds(value string) int {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
@@ -26,7 +27,7 @@ type State struct {
 	hist *heur.History
 	ms   *move.Store
 
-	pm move.SimpleMove
+	Debug bool // Debug determines if additional debug info output is enabled.
 
 	// Stop channel signals an immediate Stop requiest to the search. Current
 	// depth will be abandoned.
@@ -39,6 +40,7 @@ type State struct {
 	ABBreadth int
 	ABCnt     int // ABCnt is the inner node count in alpha-beta.
 	TTHit     int // TThit is the transposition table hit-count.
+	QCnt      int // Quiesence node count
 	QDepth    int // QDepth is the maximal quiesence search depth.
 	QDelta    int // QDelta is the count of times a delta pruning happened in quiesence search.
 	QSEE      int // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
@@ -60,6 +62,7 @@ func (s *State) Clear() {
 	s.ABBreadth = 0
 	s.ABCnt = 0
 	s.TTHit = 0
+	s.QCnt = 0
 	s.QDepth = 0
 	s.QDelta = 0
 	s.QSEE = 0
@@ -72,6 +75,8 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 	alpha := -Inf - 1
 	beta := Inf + 1
 	aborting = false
+
+	start := time.Now()
 
 	sst.Clear()
 
@@ -108,7 +113,17 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 		}
 		score, moves = scoreSample, movesSample
 		slices.Reverse(moves)
-		fmt.Printf("info depth %d score cp %d pv %s\n", d, score, pvInfo(moves))
+
+		elapsed := time.Since(start)
+		fmt.Printf("info depth %d score cp %d nodes %d time %d pv %s\n",
+			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, elapsed.Milliseconds(), pvInfo(moves))
+
+		if sst.Debug {
+			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
+
+			fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d qdelta %d qsee %d\n",
+				sst.AWFail, sst.ABLeaf, ABBF, sst.TTHit, sst.QDepth, sst.QDelta, sst.QSEE)
+		}
 
 		alpha = score - WindowSize
 		beta = score + WindowSize
@@ -347,6 +362,8 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 	if d > sst.QDepth {
 		sst.QDepth = d
 	}
+
+	sst.QCnt++
 
 	if b.Threefold() >= 3 {
 		return 0
