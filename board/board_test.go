@@ -14,7 +14,7 @@ import (
 
 func TestCastle(t *testing.T) {
 	b := board.FromFEN("k7/p7/8/8/8/8/8/R3K2R w KQ - 0 1")
-  m := move.Move{SimpleMove: move.SimpleMove {From: E1, To: G1}, Piece: King, Castle: ShortWhite, CRights: CRights(LongWhite, ShortWhite)}
+	m := move.Move{SimpleMove: move.SimpleMove{From: E1, To: G1}, Piece: King, Castle: ShortWhite, CRights: CRights(LongWhite, ShortWhite)}
 
 	b.MakeMove(&m)
 
@@ -32,7 +32,7 @@ func TestCastle(t *testing.T) {
 	assert.Equal(t, b.SquaresToPiece[G1], NoPiece)
 	assert.Equal(t, b.SquaresToPiece[H1], Rook)
 
-  m = move.Move{SimpleMove: move.SimpleMove {From: E1, To: F1}, Piece: King, CRights: CRights(LongWhite, ShortWhite)}
+	m = move.Move{SimpleMove: move.SimpleMove{From: E1, To: F1}, Piece: King, CRights: CRights(LongWhite, ShortWhite)}
 
 	b.MakeMove(&m)
 
@@ -42,7 +42,7 @@ func TestCastle(t *testing.T) {
 
 	assert.Equal(t, CRights(ShortWhite, LongWhite), b.CRights)
 
-  m = move.Move{SimpleMove: move.SimpleMove {From: A1, To: B1}, Piece: Rook, CRights: CRights(LongWhite)}
+	m = move.Move{SimpleMove: move.SimpleMove{From: A1, To: B1}, Piece: Rook, CRights: CRights(LongWhite)}
 
 	b.MakeMove(&m)
 
@@ -89,7 +89,7 @@ func TestZobrist(t *testing.T) {
 
 				b.UndoMove(&m)
 
-        assert.Equal(t, tt.b, b)
+				assert.Equal(t, tt.b, b)
 				assert.Equal(t, mOld, m, mOld)
 			}
 		})

@@ -160,7 +160,7 @@ func main() {
 
 		for ix := range NumThreads {
 			tData := batch[ix*tSize : min((ix+1)*tSize, len(batch))]
-      coeffsS := * coeffs
+			coeffsS := *coeffs
 
 			go func() {
 				calcGradients(tData, &gradS[ix], &coeffsS, k)
@@ -285,7 +285,7 @@ func printMisEval(data []EPDEntry, k float64, coeffs *tuning.Coeffs) {
 		evals[i] = err
 	}
 
-  fmt.Println("LazyMargin ", coeffs.LazyMargin)
+	fmt.Println("LazyMargin ", coeffs.LazyMargin)
 
 	for range 10 {
 		mx := math.Inf(-1)

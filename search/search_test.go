@@ -45,10 +45,10 @@ func TestQuiescence(t *testing.T) {
 		},
 	}
 
-  sst := search.NewState()
+	sst := search.NewState()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-      sst.Clear()
+			sst.Clear()
 			got := search.Quiescence(tt.b, -Inf-1, Inf+1, 0, sst)
 			assert.InDelta(t, int(tt.want), int(got), 50.0)
 		})
@@ -63,53 +63,53 @@ func TestThreefold(t *testing.T) {
 		want  int
 	}{
 		{name: "threefold",
-			b:    board.FromFEN("r5k1/p1R5/1p5R/2p5/8/2P4P/P1P3PK/r7 w - - 3 36"),
-      moves: []move.Move { R(H6, G6), K(G8, F8), R(G6, F6), K(F8, G8), R(F6, G6), K(G8, F8), R(G6, H6), K(F8, G8)},
-			want: 0,
+			b:     board.FromFEN("r5k1/p1R5/1p5R/2p5/8/2P4P/P1P3PK/r7 w - - 3 36"),
+			moves: []move.Move{R(H6, G6), K(G8, F8), R(G6, F6), K(F8, G8), R(F6, G6), K(G8, F8), R(G6, H6), K(F8, G8)},
+			want:  0,
 		},
 	}
 
-  sst := search.NewState()
+	sst := search.NewState()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-      for _, m := range tt.moves {
-        tt.b.MakeMove(&m)
-      }
+			for _, m := range tt.moves {
+				tt.b.MakeMove(&m)
+			}
 
-      sst.Clear()
+			sst.Clear()
 
-      score, _ := search.Search(tt.b, 3, sst)
+			score, _ := search.Search(tt.b, 3, sst)
 
-      assert.InDelta(t, tt.want, int(score), 200)
+			assert.InDelta(t, tt.want, int(score), 200)
 		})
 	}
 }
 
 func K(f, t Square) move.Move {
-  return move.Move{SimpleMove: move.SimpleMove {From: f, To: t}, Piece: King}
+	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: King}
 }
 
 func N(f, t Square) move.Move {
-  return move.Move{SimpleMove: move.SimpleMove {From: f, To: t}, Piece: Knight}
+	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Knight}
 }
 
 func B(f, t Square) move.Move {
-  return move.Move{SimpleMove: move.SimpleMove {From: f, To: t}, Piece: Bishop}
+	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Bishop}
 }
 
 func R(f, t Square) move.Move {
-  return move.Move{SimpleMove: move.SimpleMove {From: f, To: t}, Piece: Rook}
+	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Rook}
 }
 
 func Q(f, t Square) move.Move {
-  return move.Move{SimpleMove: move.SimpleMove {From: f, To: t}, Piece: Queen}
+	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Queen}
 }
 
 func P(f, t Square) move.Move {
-  return move.Move{SimpleMove: move.SimpleMove {From: f, To: t}, Piece: Pawn}
+	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Pawn}
 }
 
 func PP(f, t Square, p Piece) move.Move {
-  return move.Move{SimpleMove: move.SimpleMove {From: f, To: t, Promo: p}, Piece: Pawn}
+	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t, Promo: p}, Piece: Pawn}
 }

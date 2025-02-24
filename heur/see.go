@@ -39,7 +39,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 		},
 	}
 
-  captures := capturesStore[:0]
+	captures := capturesStore[:0]
 
 	// piece type of least valueable attacker per side
 	start := [2]Piece{Pawn, Pawn}

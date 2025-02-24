@@ -6,24 +6,24 @@ import . "github.com/paulsonkoly/chess-3/types"
 // Move represents a chess move.
 type Move struct {
 	SimpleMove
-  // Piece is the type of piece moving.
-	Piece    Piece
-  // SEE is the SEE score of the move for Quiessence search. (filled in by Quiessence move ranking).
-	SEE      Score
-  // Weight is the heiristic weight of the move.
-	Weight   Score
-  // Captured is the captured piece type. Filled in by making a move, value is
-  // not set by the move generator.
+	// Piece is the type of piece moving.
+	Piece Piece
+	// SEE is the SEE score of the move for Quiessence search. (filled in by Quiessence move ranking).
+	SEE Score
+	// Weight is the heiristic weight of the move.
+	Weight Score
+	// Captured is the captured piece type. Filled in by making a move, value is
+	// not set by the move generator.
 	Captured Piece
-  // EPP is NoPiece for non en-passant moves, Pawn otherwise.
-	EPP      Piece
-  // EPSq is the bit-change in the boards en-passant state.
-	EPSq     Square
-  // Castle is the castling type in case of a castling move.
-	Castle   Castle
-  // CRights is the bit-change in the boards castling state.
-	CRights  CastlingRights
-  // FiftyCnt is the board's 50 move counter. Filled in by making the move on the board. 
+	// EPP is NoPiece for non en-passant moves, Pawn otherwise.
+	EPP Piece
+	// EPSq is the bit-change in the boards en-passant state.
+	EPSq Square
+	// Castle is the castling type in case of a castling move.
+	Castle Castle
+	// CRights is the bit-change in the boards castling state.
+	CRights CastlingRights
+	// FiftyCnt is the board's 50 move counter. Filled in by making the move on the board.
 	FiftyCnt Depth
 }
 
@@ -37,7 +37,7 @@ type SimpleMove struct {
 
 // SimpleMove determines if a Move m matches a SimpleMove s.
 func (s SimpleMove) Matches(m *Move) bool {
-  return s == m.SimpleMove
+	return s == m.SimpleMove
 }
 
 func (s SimpleMove) String() string {

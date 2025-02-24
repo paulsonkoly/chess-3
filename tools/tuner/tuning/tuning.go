@@ -19,13 +19,13 @@ var Targets = [...]string{
 	"MobilityKnight", "MobilityBishop", "MobilityRook",
 	"KingAttackPieces", "KingAttackCount",
 	"ProtectedPasser", "PasserKingDist", "PasserRank",
-	 "KnightOutpost", "ConnectedRooks", "BishopPair",
+	"KnightOutpost", "ConnectedRooks", "BishopPair",
 }
 
 // Anchor is a known value in tuning, anchoring down the tuning process. We
 // skip tuning the value with this index, for example a good setting would be
 // setting a Pawn's value to 100 so we measure evalution in centipawns.
-var Anchor = Index {s : []int{1, 0, 1} }
+var Anchor = Index{s: []int{1, 0, 1}}
 
 type Coeffs eval.CoeffSet[float64]
 
@@ -77,7 +77,7 @@ func (t *Coeffs) Print() {
 	typ := reflect.TypeOf(*t)
 	for ix := 0; ix < typ.NumField(); ix++ {
 		f := typ.Field(ix)
-    if slices.Contains(Targets[:], f.Name) {
+		if slices.Contains(Targets[:], f.Name) {
 			v := reflect.ValueOf(*t).Field(ix)
 
 			fmt.Printf("%s: ", f.Name)
@@ -188,9 +188,9 @@ func recurse(yield func(Index) bool, ix Index, v reflect.Value) bool {
 		}
 
 	case reflect.Float64:
-    if slices.Equal(ix.s[:], Anchor.s[:]) {
-      return true
-    }
+		if slices.Equal(ix.s[:], Anchor.s[:]) {
+			return true
+		}
 		return yield(ix)
 
 	}
