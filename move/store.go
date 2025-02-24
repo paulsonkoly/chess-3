@@ -23,8 +23,8 @@ func (s *Store) Clear() {
 }
 
 func (s *Store) Alloc() *Move {
-	defer func() { s.allocIx++ }()
-	return &s.data[s.allocIx]
+	s.allocIx++ 
+	return &s.data[s.allocIx-1]
 }
 
 func (s *Store) Push() {
