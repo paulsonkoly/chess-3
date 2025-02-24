@@ -235,6 +235,8 @@ var (
 	epFileRand   [8]Hash
 )
 
+var r rand.Source = rand.NewPCG(0xdeadbeeff0dbaad, 0xbaadf00ddeadbeef)
+
 func init() {
 	for i := range piecesRand {
 		for j := range piecesRand[i] {
@@ -242,17 +244,17 @@ func init() {
 				if j == int(NoPiece) {
 					piecesRand[i][j][k] = 0
 				} else {
-					piecesRand[i][j][k] = Hash(rand.Uint64())
+					piecesRand[i][j][k] = Hash(r.Uint64())
 				}
 			}
 		}
 	}
-	stmRand = Hash(rand.Uint64())
+	stmRand = Hash(r.Uint64())
 	for i := range castlingRand {
-		castlingRand[i] = Hash(rand.Uint64())
+		castlingRand[i] = Hash(r.Uint64())
 	}
 	for i := range epFileRand {
-		epFileRand[i] = Hash(rand.Uint64())
+		epFileRand[i] = Hash(r.Uint64())
 	}
 }
 
