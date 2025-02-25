@@ -38,12 +38,13 @@ type State struct {
 	// ABBreadth is the total count of explored moves in alpha-beta. Thus
 	// (ABBreadth / ABCnt) is the average alpha-beta branching factor.
 	ABBreadth int
-	ABCnt     int // ABCnt is the inner node count in alpha-beta.
-	TTHit     int // TThit is the transposition table hit-count.
-	QCnt      int // Quiesence node count
-	QDepth    int // QDepth is the maximal quiesence search depth.
-	QDelta    int // QDelta is the count of times a delta pruning happened in quiesence search.
-	QSEE      int // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
+	ABCnt     int   // ABCnt is the inner node count in alpha-beta.
+	TTHit     int   // TThit is the transposition table hit-count.
+	QCnt      int   // Quiesence node count
+	QDepth    int   // QDepth is the maximal quiesence search depth.
+	QDelta    int   // QDelta is the count of times a delta pruning happened in quiesence search.
+	QSEE      int   // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
+	Time      int64 // Time is the search time in miliseconds.
 }
 
 // NewState creates a new search state. It's supposed to be called once, and
@@ -115,8 +116,10 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 		slices.Reverse(moves)
 
 		elapsed := time.Since(start)
+		miliSec := elapsed.Milliseconds()
+		sst.Time = miliSec
 		fmt.Printf("info depth %d score cp %d nodes %d time %d pv %s\n",
-			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, elapsed.Milliseconds(), pvInfo(moves))
+			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, pvInfo(moves))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
