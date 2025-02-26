@@ -36,7 +36,7 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 	for _, m := range ms.Frame() {
 		b.MakeMove(&m)
 
-		if b.Hashes[len(b.Hashes)-1] != b.Hash() {
+		if b.Hash() != b.CalculateHash() {
 			panic("oops")
 		}
 

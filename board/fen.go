@@ -115,7 +115,7 @@ out:
 
 	b.FiftyCnt = Depth(cnt)
 
-	b.Hashes = append(b.Hashes, b.Hash())
+	b.hashes = append(b.hashes, b.CalculateHash())
 
 	// /* TODO: move counter */
 	// board->halfmovecnt = 0;

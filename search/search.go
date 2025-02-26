@@ -33,6 +33,8 @@ type State struct {
 	// depth will be abandoned.
 	Stop chan struct{}
 
+	abort bool
+
 	AWFail int // AwFail is the count of times the score fell outside of the aspiration window.
 	ABLeaf int // ABLeaf is the count of alpha-beta leafs.
 	// ABBreadth is the total count of explored moves in alpha-beta. Thus
@@ -56,6 +58,7 @@ func NewState() *State {
 // Clear resets the counters, and various stores for the search, assuming a new
 // position.
 func (s *State) Clear() {
+	s.abort = false
 	s.tt.Clear()
 	s.ms.Clear()
 	s.AWFail = 0
@@ -75,7 +78,6 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
-	aborting = false
 
 	start := time.Now()
 
@@ -108,7 +110,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 				awOk = true
 			}
 
-			if abort(sst.Stop) {
+			if abort(sst) {
 				return
 			}
 		}
@@ -134,18 +136,16 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 	return
 }
 
-var aborting = false
-
-func abort(stop <-chan struct{}) bool {
-	if stop != nil {
+func abort(sst *State) bool {
+	if sst.Stop != nil {
 		select {
-		case <-stop:
-			aborting = true
+		case <-sst.Stop:
+			sst.abort = true
 			return true
 		default:
 		}
 	}
-	return aborting
+	return sst.abort
 }
 
 func pvInfo(moves []move.SimpleMove) string {
@@ -171,7 +171,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		return 0, pv
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hashes[len(b.Hashes)-1]); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
 		switch transpE.Type {
 
@@ -281,7 +281,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		if value >= beta {
 			// store node as fail high (cut-node)
-			transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, m.From, m.To, m.Promo, value, transp.CutNode)
+			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
 			if m.Captured == NoPiece {
 				sst.hist.Add(b.STM, m.From, m.To, d)
@@ -292,7 +292,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			return value, nil
 		}
 
-		if abort(sst.Stop) {
+		if abort(sst) {
 			return alpha, pv
 		}
 	}
@@ -321,20 +321,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, 0, 0, NoPiece, alpha, transp.AllNode)
+		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, alpha, transp.AllNode)
 	} else {
 		// store node as exact (PV-node)
 		// there might not be a move in case of !hasLegal
-		var from, to Square
-		var promo Piece
+    var sm move.SimpleMove
 		if len(pv) > 0 {
-			m := pv[len(pv)-1]
-			from = m.From
-			to = m.To
-			promo = m.Promo
+			sm = pv[len(pv)-1]
 		}
 
-		transpT.Insert(b.Hashes[len(b.Hashes)-1], d, tfCnt, from, to, promo, alpha, transp.PVNode)
+		transpT.Insert(b.Hash(), d, tfCnt, sm, alpha, transp.PVNode)
 	}
 
 	return alpha, pv
@@ -461,7 +457,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 		}
 		alpha = max(alpha, curr)
 
-		if abort(sst.Stop) {
+		if abort(sst) {
 			return alpha
 		}
 	}
@@ -472,7 +468,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	var transPE *transp.Entry
 
-	transPE, _ = sst.tt.LookUp(b.Hashes[len(b.Hashes)-1])
+	transPE, _ = sst.tt.LookUp(b.Hash())
 	if transPE != nil && transPE.Type == transp.AllNode {
 		transPE = nil
 	}

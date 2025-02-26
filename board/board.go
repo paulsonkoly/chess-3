@@ -57,8 +57,12 @@ type Board struct {
 	STM            Color
 	EnPassant      Square
 	CRights        CastlingRights
-	Hashes         []Hash
+	hashes         []Hash
 	FiftyCnt       Depth
+}
+
+func (b * Board) Hash() Hash {
+  return b.hashes[len(b.hashes) - 1]
 }
 
 type castle struct {
@@ -89,7 +93,7 @@ func (b *Board) MakeMove(m *move.Move) {
 		b.FiftyCnt++
 	}
 
-	hash := b.Hashes[len(b.Hashes)-1]
+	hash := b.hashes[len(b.hashes)-1]
 
 	epMask := pieceMask[m.EPP]
 	ep := Piece(epMask & 1)
@@ -138,7 +142,7 @@ func (b *Board) MakeMove(m *move.Move) {
 
 	hash ^= stmRand
 
-	b.Hashes = append(b.Hashes, hash)
+	b.hashes = append(b.hashes, hash)
 
 	// b.consistencyCheck()
 }
@@ -178,18 +182,18 @@ func (b *Board) UndoMove(m *move.Move) {
 
 	m.Captured = 0
 
-	b.Hashes = b.Hashes[:len(b.Hashes)-1]
+	b.hashes = b.hashes[:len(b.hashes)-1]
 
 	// b.consistencyCheck()
 }
 
 func (b *Board) MakeNullMove() (enP Square) {
 	enP, b.EnPassant = b.EnPassant, 0
-	hash := b.Hashes[len(b.Hashes)-1]
+	hash := b.hashes[len(b.hashes)-1]
 	b.STM = b.STM.Flip()
 	hash ^= epFileRand[enP%8] & hashEnable[1&(enP>>3|enP>>5)]
 	hash ^= stmRand
-	b.Hashes = append(b.Hashes, hash)
+	b.hashes = append(b.hashes, hash)
 	// b.consistencyCheck()
 	return
 }
@@ -197,12 +201,12 @@ func (b *Board) MakeNullMove() (enP Square) {
 func (b *Board) UndoNullMove(enP Square) {
 	b.STM = b.STM.Flip()
 	b.EnPassant = enP
-	b.Hashes = b.Hashes[:len(b.Hashes)-1]
+	b.hashes = b.hashes[:len(b.hashes)-1]
 	// b.consistencyCheck()
 }
 
 // func (b *Board) consistencyCheck() {
-//   if b.Hashes[len(b.Hashes)-1]!= b.Hash() {
+//   if b.hashes[len(b.hashes)-1]!= b.Hash() {
 //     panic("inconsistent hash")
 //   }
 //
@@ -258,7 +262,7 @@ func init() {
 	}
 }
 
-func (b *Board) Hash() Hash {
+func (b *Board) CalculateHash() Hash {
 	var hash Hash
 
 	for color := White; color <= Black; color++ {
@@ -292,10 +296,10 @@ func (b *Board) Hash() Hash {
 
 func (b *Board) Threefold() Depth {
 	cnt := Depth(1)
-	if len(b.Hashes) > 0 {
-		hash := b.Hashes[len(b.Hashes)-1]
-		for ix := len(b.Hashes) - 5; ix >= 0; ix -= 2 {
-			if b.Hashes[ix] == hash {
+	if len(b.hashes) > 0 {
+		hash := b.hashes[len(b.hashes)-1]
+		for ix := len(b.hashes) - 5; ix >= 0; ix -= 2 {
+			if b.hashes[ix] == hash {
 				cnt++
 				if cnt >= 3 {
 					return cnt

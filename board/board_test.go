@@ -84,8 +84,7 @@ func TestZobrist(t *testing.T) {
 					continue
 				}
 
-				assert.Greater(t, len(b.Hashes), 0)
-				assert.Equal(t, b.Hash(), b.Hashes[len(b.Hashes)-1], "move", m)
+				assert.Equal(t, b.CalculateHash(), b.Hash(), "move", m)
 
 				b.UndoMove(&m)
 

@@ -357,7 +357,7 @@ func doDiff(data []EPDEntry, diff *string) {
 	hsh := make(map[board.Hash]struct{})
 
 	for _, d := range data {
-		hsh[d.b.Hashes[0]] = struct{}{}
+		hsh[d.b.Hash()] = struct{}{}
 	}
 
 	f, err := os.Open(*diff)
@@ -378,7 +378,7 @@ func doDiff(data []EPDEntry, diff *string) {
 
 		b := board.FromFEN(splits[0])
 
-		bHsh := b.Hashes[0]
+		bHsh := b.Hash()
 		if _, ok := hsh[bHsh]; !ok {
 			fmt.Println(line)
 		}

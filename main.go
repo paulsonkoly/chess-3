@@ -353,8 +353,6 @@ func (e *UciEngine) bench() {
 
 	stats := []Stats{}
 
-  e.sst.Debug = true
-
 	for _, fen := range bratkoKopec {
 		e.board = board.FromFEN(fen)
 		e.Search(9)
