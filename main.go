@@ -60,6 +60,9 @@ func (e *UciEngine) handleCommand(command string) {
 	case "uci":
 		fmt.Println("id name chess-3")
 		fmt.Println("id author Paul Sonkoly")
+    // these are here to conform ob. we don't actually support these options.
+    fmt.Println("option name Hash type spin default 1 min 1 max 1")
+    fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		fmt.Println("uciok")
 	case "isready":
 		fmt.Println("readyok")
@@ -288,14 +291,29 @@ func main() {
 
 	e := NewUciEngine()
 
-	if *bench {
-		e.bench()
-	} else {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			e.handleCommand(scanner.Text())
-		}
-	}
+  // our normal benchmark table
+  if *bench {
+    e.bench()
+    return
+  }
+
+  // openbench compatibility bench
+  if os.Args[1] == "bench" {
+    fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
+		e.board = board.FromFEN(fen)
+    e.Search(9)
+
+    nodes := e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt
+    time := e.sst.Time
+
+    fmt.Printf("%d nodes %d nps\n", nodes, 1000 * nodes / int(time))
+    return
+  }
+
+  scanner := bufio.NewScanner(os.Stdin)
+  for scanner.Scan() {
+    e.handleCommand(scanner.Text())
+  }
 
 	if *memProf != "" {
 		f, err := os.Create(*memProf)
