@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
@@ -39,9 +40,11 @@ type State struct {
 	ABBreadth int
 	ABCnt     int // ABCnt is the inner node count in alpha-beta.
 	TTHit     int // TThit is the transposition table hit-count.
+	QCnt      int   // Quiesence node count
 	QDepth    int // QDepth is the maximal quiesence search depth.
 	QDelta    int // QDelta is the count of times a delta pruning happened in quiesence search.
 	QSEE      int // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
+	Time      int64 // Time is the search time in miliseconds.
 }
 
 // NewState creates a new search state. It's supposed to be called once, and
@@ -60,6 +63,7 @@ func (s *State) Clear() {
 	s.ABBreadth = 0
 	s.ABCnt = 0
 	s.TTHit = 0
+	s.QCnt = 0
 	s.QDepth = 0
 	s.QDelta = 0
 	s.QSEE = 0
@@ -73,6 +77,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Move
 	beta := Inf + 1
 	aborting = false
 
+	start := time.Now()
 	sst.Clear()
 
 	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
@@ -109,6 +114,10 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Move
 		score, moves = scoreSample, movesSample
 		slices.Reverse(moves)
 		fmt.Printf("info depth %d score cp %d pv %s\n", d, score, pvInfo(moves))
+
+		elapsed := time.Since(start)
+		miliSec := elapsed.Milliseconds()
+		sst.Time = miliSec
 
 		alpha = score - WindowSize
 		beta = score + WindowSize
@@ -152,6 +161,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	if tfCnt >= 3 {
 		return 0, pv
 	}
+
+	sst.QCnt++
 
 	if transpE, ok := transpT.LookUp(b.Hashes[len(b.Hashes)-1]); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++

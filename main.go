@@ -28,7 +28,6 @@ var debugFEN = flag.String("debugFEN", "", "Debug a given fen to a given depth u
 var debugDepth = flag.Int("debugDepth", 3, "Debug a given depth")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
 var memProf = flag.String("memProf", "", "mem profile file name")
-var bench = flag.Bool("bench", false, "run benchmark instead of UCI")
 
 type UciEngine struct {
 	board       *board.Board
@@ -58,6 +57,9 @@ func (e *UciEngine) handleCommand(command string) {
 	case "uci":
 		fmt.Println("id name chess-3")
 		fmt.Println("id author Paul Sonkoly")
+    // these are here to conform ob. we don't actually support these options.
+    fmt.Println("option name Hash type spin default 1 min 1 max 1")
+    fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		fmt.Println("uciok")
 	case "isready":
 		fmt.Println("readyok")
@@ -288,16 +290,23 @@ func main() {
 
 	e := NewUciEngine()
 
-	if *bench {
-		e.board = board.FromFEN("rnbqk2r/ppp1ppbp/3p1np1/8/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 1")
+  // openbench compatibility bench
+  if os.Args[1] == "bench" {
+    fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
+		e.board = board.FromFEN(fen)
+    e.Search(9)
 
-		e.Search(9)
-	} else {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			e.handleCommand(scanner.Text())
-		}
-	}
+    nodes := e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt
+    time := e.sst.Time
+
+    fmt.Printf("%d nodes %d nps\n", nodes, 1000 * nodes / int(time))
+    return
+  }
+
+  scanner := bufio.NewScanner(os.Stdin)
+  for scanner.Scan() {
+    e.handleCommand(scanner.Text())
+  }
 
 	if *memProf != "" {
 		f, err := os.Create(*memProf)
