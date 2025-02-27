@@ -291,7 +291,7 @@ func main() {
 	e := NewUciEngine()
 
   // openbench compatibility bench
-  if os.Args[1] == "bench" {
+  if len(os.Args) > 1 && os.Args[1] == "bench" {
     fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
 		e.board = board.FromFEN(fen)
     e.Search(9)
