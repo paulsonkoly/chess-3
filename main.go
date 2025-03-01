@@ -339,6 +339,7 @@ type Stats struct {
 	QDelta int
 	QSEE   int
 	Time   int64
+  KNps   int
 }
 
 func (e *UciEngine) bench() {
@@ -385,6 +386,7 @@ func (e *UciEngine) bench() {
 			e.sst.QDelta,
 			e.sst.QSEE,
 			e.sst.Time,
+      (e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt) / int(e.sst.Time),
 		})
 	}
 
@@ -400,6 +402,7 @@ func (e *UciEngine) bench() {
 		avg.QDelta += stat.QDelta
 		avg.QSEE += stat.QSEE
 		avg.Time += stat.Time
+    avg.KNps += stat.KNps
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
@@ -414,7 +417,9 @@ func (e *UciEngine) bench() {
 		qDelta := fmt.Sprintf("%d", stat.QDelta)
 		qSEE := fmt.Sprintf("%d", stat.QSEE)
 		timeMs := fmt.Sprintf("%d", stat.Time)
-		table.Append([]string{fmt.Sprintf("BK %d", ix+1), aWFail, aBCnt, abBF, tTHit, qCnt, qDepth, qDelta, qSEE, timeMs})
+		kNps := fmt.Sprintf("%d", stat.KNps)
+
+		table.Append([]string{fmt.Sprintf("BK %d", ix+1), aWFail, aBCnt, abBF, tTHit, qCnt, qDepth, qDelta, qSEE, timeMs, kNps})
 	}
 
 	table.Append([]string{"average",
@@ -427,9 +432,10 @@ func (e *UciEngine) bench() {
 		fmt.Sprintf("%.2f", float64(avg.QDelta)/float64(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float64(avg.QSEE)/float64(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float64(avg.Time)/float64(len(bratkoKopec))),
+		fmt.Sprintf("%.2f", float64(avg.KNps)/float64(len(bratkoKopec))),
 	})
 
-	table.SetHeader([]string{"Test", "AWFail", "ABCnt", "ABBF", "TTHit", "QCnt", "QDepth", "QDelta", "QSEE", "Time"})
+	table.SetHeader([]string{"Test", "AWFail", "ABCnt", "ABBF", "TTHit", "QCnt", "QDepth", "QDelta", "QSEE", "Time (ms)", "Speed (Kn/s)"})
 	table.SetAutoWrapText(false)
 	table.Render()
 }
