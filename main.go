@@ -60,9 +60,9 @@ func (e *UciEngine) handleCommand(command string) {
 	case "uci":
 		fmt.Println("id name chess-3")
 		fmt.Println("id author Paul Sonkoly")
-    // these are here to conform ob. we don't actually support these options.
-    fmt.Println("option name Hash type spin default 1 min 1 max 1")
-    fmt.Println("option name Threads type spin default 1 min 1 max 1")
+		// these are here to conform ob. we don't actually support these options.
+		fmt.Println("option name Hash type spin default 1 min 1 max 1")
+		fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		fmt.Println("uciok")
 	case "isready":
 		fmt.Println("readyok")
@@ -291,29 +291,29 @@ func main() {
 
 	e := NewUciEngine()
 
-  // our normal benchmark table
-  if *bench {
-    e.bench()
-    return
-  }
+	// our normal benchmark table
+	if *bench {
+		e.bench()
+		return
+	}
 
-  // openbench compatibility bench
-  if len(os.Args) > 1 && os.Args[1] == "bench" {
-    fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
+	// openbench compatibility bench
+	if len(os.Args) > 1 && os.Args[1] == "bench" {
+		fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
 		e.board = board.FromFEN(fen)
-    e.Search(9)
+		e.Search(9)
 
-    nodes := e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt
-    time := e.sst.Time
+		nodes := e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt
+		time := e.sst.Time
 
-    fmt.Printf("%d nodes %d nps\n", nodes, 1000 * nodes / int(time))
-    return
-  }
+		fmt.Printf("%d nodes %d nps\n", nodes, 1000*nodes/int(time))
+		return
+	}
 
-  scanner := bufio.NewScanner(os.Stdin)
-  for scanner.Scan() {
-    e.handleCommand(scanner.Text())
-  }
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		e.handleCommand(scanner.Text())
+	}
 
 	if *memProf != "" {
 		f, err := os.Create(*memProf)
@@ -339,7 +339,7 @@ type Stats struct {
 	QDelta int
 	QSEE   int
 	Time   int64
-  KNps   int
+	KNps   int
 }
 
 func (e *UciEngine) bench() {
@@ -386,7 +386,7 @@ func (e *UciEngine) bench() {
 			e.sst.QDelta,
 			e.sst.QSEE,
 			e.sst.Time,
-      (e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt) / int(e.sst.Time),
+			(e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt) / int(e.sst.Time),
 		})
 	}
 
@@ -402,7 +402,7 @@ func (e *UciEngine) bench() {
 		avg.QDelta += stat.QDelta
 		avg.QSEE += stat.QSEE
 		avg.Time += stat.Time
-    avg.KNps += stat.KNps
+		avg.KNps += stat.KNps
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
