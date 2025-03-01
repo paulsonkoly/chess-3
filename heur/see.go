@@ -21,7 +21,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 		// White
 		{
 			0, // NoPiece
-			movegen.PawnCaptureMoves(b.Pieces[Pawn]&b.Colors[White], White) & toBB,
+			movegen.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White],
 			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[White],
 			0, // bishops
 			0, // rooks
@@ -31,7 +31,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 		// Black
 		{
 			0, // NoPiece
-			movegen.PawnCaptureMoves(b.Pieces[Pawn]&b.Colors[Black], Black) & toBB,
+			movegen.PawnCaptureMoves(toBB, White) & b.Pieces[Pawn] & b.Colors[Black],
 			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[Black],
 			0, // bishops
 			0, // rooks
