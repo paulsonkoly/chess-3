@@ -55,7 +55,7 @@ func TestQuiescence(t *testing.T) {
 	}
 }
 
-func TestThreefold(t *testing.T) {
+func TestDraws(t *testing.T) {
 	tests := []struct {
 		name  string
 		b     *board.Board
@@ -65,6 +65,11 @@ func TestThreefold(t *testing.T) {
 		{name: "threefold",
 			b:     board.FromFEN("r5k1/p1R5/1p5R/2p5/8/2P4P/P1P3PK/r7 w - - 3 36"),
 			moves: []move.Move{R(H6, G6), K(G8, F8), R(G6, F6), K(F8, G8), R(F6, G6), K(G8, F8), R(G6, H6), K(F8, G8)},
+			want:  0,
+		},
+		{name: "fifty",
+			b:     board.FromFEN("8/5R1P/8/3Q4/7k/8/1P6/6K1 b - - 98 161"),
+			moves: []move.Move{K(H4, H3), Q(D5, D3)},
 			want:  0,
 		},
 	}

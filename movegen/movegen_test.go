@@ -735,18 +735,3 @@ func TestIsAttacked(t *testing.T) {
 	}
 }
 
-func TestFifty(t *testing.T) {
-	b := board.FromFEN("8/5R1P/8/3Q4/7k/8/1P6/6K1 b - - 98 161")
-
-	m := K(H4, H3)
-	b.MakeMove(&m)
-	m = Q(D5, D3)
-	b.MakeMove(&m)
-
-	assert.Equal(t, Depth(100), b.FiftyCnt)
-
-	ms := move.NewStore()
-	movegen.GenMoves(ms, b)
-
-	assert.Equal(t, len(ms.Frame()), 0)
-}
