@@ -2,7 +2,7 @@ package types
 
 import "fmt"
 
-type Square byte
+type Square int8
 
 const (
 	A1 = Square(iota)

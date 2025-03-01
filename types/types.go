@@ -1,6 +1,10 @@
 package types
 
-import "iter"
+import (
+	"iter"
+
+	"golang.org/x/exp/constraints"
+)
 
 type Depth int8
 
@@ -71,4 +75,21 @@ func AllPieces() iter.Seq[Piece] {
 
 func (p Piece) String() string {
 	return string(" pnbrqk"[p])
+}
+
+func Abs[T constraints.Signed](x T) T {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func Signum[T constraints.Signed](x T) T {
+	switch {
+	case x < 0:
+		return -1
+	case x > 0:
+		return 1
+	}
+	return 0
 }

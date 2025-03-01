@@ -314,7 +314,7 @@ func doFilter(data []EPDEntry) {
 			continue
 		}
 
-		movegen.GenMoves(ms, b, board.Full)
+		movegen.GenMoves(ms, b)
 
 		hasLegal := false
 		hasForcing := false

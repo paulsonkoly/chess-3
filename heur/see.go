@@ -14,13 +14,14 @@ var capturesStore = [64]Piece{}
 // SEE is static exchange evaluation of m.
 func SEE(b *board.Board, m *move.Move) Score {
 	fromBB, to := board.BitBoard(1)<<m.From, m.To
+	toBB := board.BitBoard(1) << m.To
 
 	// attackers of square "to"
 	attackers := [2][7]board.BitBoard{
 		// White
 		{
 			0, // NoPiece
-			movegen.PawnCaptureMoves(to, Black) & b.Pieces[Pawn] & b.Colors[White],
+			movegen.PawnCaptureMoves(b.Pieces[Pawn]&b.Colors[White], White) & toBB,
 			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[White],
 			0, // bishops
 			0, // rooks
@@ -30,7 +31,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 		// Black
 		{
 			0, // NoPiece
-			movegen.PawnCaptureMoves(to, White) & b.Pieces[Pawn] & b.Colors[Black],
+			movegen.PawnCaptureMoves(b.Pieces[Pawn]&b.Colors[Black], Black) & toBB,
 			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[Black],
 			0, // bishops
 			0, // rooks

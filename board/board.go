@@ -61,8 +61,8 @@ type Board struct {
 	FiftyCnt       Depth
 }
 
-func (b * Board) Hash() Hash {
-  return b.hashes[len(b.hashes) - 1]
+func (b *Board) Hash() Hash {
+	return b.hashes[len(b.hashes)-1]
 }
 
 type castle struct {

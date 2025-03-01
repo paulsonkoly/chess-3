@@ -31,7 +31,7 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 	ms.Push()
 	defer ms.Pop()
 
-	movegen.GenMoves(ms, b, board.Full)
+	movegen.GenMoves(ms, b)
 
 	for _, m := range ms.Frame() {
 		b.MakeMove(&m)
@@ -122,7 +122,7 @@ func matchPerft(ms *move.Store, b *board.Board, depth int) {
 		ms.Push()
 		defer ms.Pop()
 
-		movegen.GenMoves(ms, b, board.Full)
+		movegen.GenMoves(ms, b)
 
 		me := b.STM
 		for _, m := range ms.Frame() {

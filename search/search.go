@@ -235,7 +235,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	sst.ms.Push()
 	defer sst.ms.Pop()
 
-	movegen.GenMoves(sst.ms, b, board.Full)
+	movegen.GenMoves(sst.ms, b)
 	moves := sst.ms.Frame()
 
 	rankMovesAB(b, moves, sst)
@@ -368,33 +368,18 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 		return 0
 	}
 
+  if movegen.IsCheckmate(b) {
+    return -Inf
+  }
+
+  if movegen.IsStalemate(b) {
+    return 0
+  }
+
 	sst.ms.Push()
 	defer sst.ms.Pop()
 
-	movegen.GenMoves(sst.ms, b, board.Full)
-
-	// TODO do this better.
-	hasLegal := false
-
-	for _, m := range sst.ms.Frame() {
-		b.MakeMove(&m)
-
-		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
-		hasLegal = hasLegal || !movegen.IsAttacked(b, b.STM, king)
-		b.UndoMove(&m)
-
-		if hasLegal {
-			break
-		}
-	}
-
-	if !hasLegal {
-		king := b.Colors[b.STM] & b.Pieces[King]
-		if movegen.IsAttacked(b, b.STM.Flip(), king) {
-			return -Inf
-		}
-		return 0
-	}
+	movegen.GenForcing(sst.ms, b)
 
 	standPat := eval.Eval(b, alpha, beta, &eval.Coefficients)
 

@@ -70,7 +70,7 @@ func TestZobrist(t *testing.T) {
 			b := tt.b
 
 			ms := move.NewStore()
-			movegen.GenMoves(ms, b, board.Full)
+			movegen.GenMoves(ms, b)
 
 			for _, m := range ms.Frame() {
 				mOld := m

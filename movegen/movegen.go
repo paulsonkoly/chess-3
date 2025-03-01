@@ -8,149 +8,17 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-var kingMoves = [64]board.BitBoard{
-	0x0000000000000302, 0x0000000000000705, 0x0000000000000e0a, 0x0000000000001c14,
-	0x0000000000003828, 0x0000000000007050, 0x000000000000e0a0, 0x000000000000c040,
-	0x0000000000030203, 0x0000000000070507, 0x00000000000e0a0e, 0x00000000001c141c,
-	0x0000000000382838, 0x0000000000705070, 0x0000000000e0a0e0, 0x0000000000c040c0,
-	0x0000000003020300, 0x0000000007050700, 0x000000000e0a0e00, 0x000000001c141c00,
-	0x0000000038283800, 0x0000000070507000, 0x00000000e0a0e000, 0x00000000c040c000,
-	0x0000000302030000, 0x0000000705070000, 0x0000000e0a0e0000, 0x0000001c141c0000,
-	0x0000003828380000, 0x0000007050700000, 0x000000e0a0e00000, 0x000000c040c00000,
-	0x0000030203000000, 0x0000070507000000, 0x00000e0a0e000000, 0x00001c141c000000,
-	0x0000382838000000, 0x0000705070000000, 0x0000e0a0e0000000, 0x0000c040c0000000,
-	0x0003020300000000, 0x0007050700000000, 0x000e0a0e00000000, 0x001c141c00000000,
-	0x0038283800000000, 0x0070507000000000, 0x00e0a0e000000000, 0x00c040c000000000,
-	0x0302030000000000, 0x0705070000000000, 0x0e0a0e0000000000, 0x1c141c0000000000,
-	0x3828380000000000, 0x7050700000000000, 0xe0a0e00000000000, 0xc040c00000000000,
-	0x0203000000000000, 0x0507000000000000, 0x0a0e000000000000, 0x141c000000000000,
-	0x2838000000000000, 0x5070000000000000, 0xa0e0000000000000, 0x40c0000000000000,
-}
-
+// KingMoves is the bitboard set where the king can move to from from. It does
+// not take into accound occupancies or legality.
 func KingMoves(from Square) board.BitBoard { return kingMoves[from] }
 
-var knightMoves = [64]board.BitBoard{
-	0x0000000000020400, 0x0000000000050800, 0x00000000000a1100, 0x0000000000142200,
-	0x0000000000284400, 0x0000000000508800, 0x0000000000a01000, 0x0000000000402000,
-	0x0000000002040004, 0x0000000005080008, 0x000000000a110011, 0x0000000014220022,
-	0x0000000028440044, 0x0000000050880088, 0x00000000a0100010, 0x0000000040200020,
-	0x0000000204000402, 0x0000000508000805, 0x0000000a1100110a, 0x0000001422002214,
-	0x0000002844004428, 0x0000005088008850, 0x000000a0100010a0, 0x0000004020002040,
-	0x0000020400040200, 0x0000050800080500, 0x00000a1100110a00, 0x0000142200221400,
-	0x0000284400442800, 0x0000508800885000, 0x0000a0100010a000, 0x0000402000204000,
-	0x0002040004020000, 0x0005080008050000, 0x000a1100110a0000, 0x0014220022140000,
-	0x0028440044280000, 0x0050880088500000, 0x00a0100010a00000, 0x0040200020400000,
-	0x0204000402000000, 0x0508000805000000, 0x0a1100110a000000, 0x1422002214000000,
-	0x2844004428000000, 0x5088008850000000, 0xa0100010a0000000, 0x4020002040000000,
-	0x0400040200000000, 0x0800080500000000, 0x1100110a00000000, 0x2200221400000000,
-	0x4400442800000000, 0x8800885000000000, 0x100010a000000000, 0x2000204000000000,
-	0x0004020000000000, 0x0008050000000000, 0x00110a0000000000, 0x0022140000000000,
-	0x0044280000000000, 0x0088500000000000, 0x0010a00000000000, 0x0020400000000000,
-}
-
+// KnightMoves is the bitboard set where a knight can move to from from. It does
+// not take into accound occupancies or legality.
 func KnightMoves(from Square) board.BitBoard { return knightMoves[from] }
 
-var bishopMasks = [64]board.BitBoard{
-	0x0040201008040200, 0x0000402010080400, 0x0000004020100a00, 0x0000000040221400,
-	0x0000000002442800, 0x0000000204085000, 0x0000020408102000, 0x0002040810204000,
-	0x0020100804020000, 0x0040201008040000, 0x00004020100a0000, 0x0000004022140000,
-	0x0000000244280000, 0x0000020408500000, 0x0002040810200000, 0x0004081020400000,
-	0x0010080402000200, 0x0020100804000400, 0x004020100a000a00, 0x0000402214001400,
-	0x0000024428002800, 0x0002040850005000, 0x0004081020002000, 0x0008102040004000,
-	0x0008040200020400, 0x0010080400040800, 0x0020100a000a1000, 0x0040221400142200,
-	0x0002442800284400, 0x0004085000500800, 0x0008102000201000, 0x0010204000402000,
-	0x0004020002040800, 0x0008040004081000, 0x00100a000a102000, 0x0022140014224000,
-	0x0044280028440200, 0x0008500050080400, 0x0010200020100800, 0x0020400040201000,
-	0x0002000204081000, 0x0004000408102000, 0x000a000a10204000, 0x0014001422400000,
-	0x0028002844020000, 0x0050005008040200, 0x0020002010080400, 0x0040004020100800,
-	0x0000020408102000, 0x0000040810204000, 0x00000a1020400000, 0x0000142240000000,
-	0x0000284402000000, 0x0000500804020000, 0x0000201008040200, 0x0000402010080400,
-	0x0002040810204000, 0x0004081020400000, 0x000a102040000000, 0x0014224000000000,
-	0x0028440200000000, 0x0050080402000000, 0x0020100804020000, 0x0040201008040200,
-}
-
-var rookMasks = [64]board.BitBoard{
-	0x000101010101017e, 0x000202020202027c, 0x000404040404047a, 0x0008080808080876,
-	0x001010101010106e, 0x002020202020205e, 0x004040404040403e, 0x008080808080807e,
-	0x0001010101017e00, 0x0002020202027c00, 0x0004040404047a00, 0x0008080808087600,
-	0x0010101010106e00, 0x0020202020205e00, 0x0040404040403e00, 0x0080808080807e00,
-	0x00010101017e0100, 0x00020202027c0200, 0x00040404047a0400, 0x0008080808760800,
-	0x00101010106e1000, 0x00202020205e2000, 0x00404040403e4000, 0x00808080807e8000,
-	0x000101017e010100, 0x000202027c020200, 0x000404047a040400, 0x0008080876080800,
-	0x001010106e101000, 0x002020205e202000, 0x004040403e404000, 0x008080807e808000,
-	0x0001017e01010100, 0x0002027c02020200, 0x0004047a04040400, 0x0008087608080800,
-	0x0010106e10101000, 0x0020205e20202000, 0x0040403e40404000, 0x0080807e80808000,
-	0x00017e0101010100, 0x00027c0202020200, 0x00047a0404040400, 0x0008760808080800,
-	0x00106e1010101000, 0x00205e2020202000, 0x00403e4040404000, 0x00807e8080808000,
-	0x007e010101010100, 0x007c020202020200, 0x007a040404040400, 0x0076080808080800,
-	0x006e101010101000, 0x005e202020202000, 0x003e404040404000, 0x007e808080808000,
-	0x7e01010101010100, 0x7c02020202020200, 0x7a04040404040400, 0x7608080808080800,
-	0x6e10101010101000, 0x5e20202020202000, 0x3e40404040404000, 0x7e80808080808000,
-}
-
-var bishopShifts = [64]byte{
-	6, 5, 5, 5, 5, 5, 5, 6,
-	5, 5, 5, 5, 5, 5, 5, 5,
-	5, 5, 7, 7, 7, 7, 5, 5,
-	5, 5, 7, 9, 9, 7, 5, 5,
-	5, 5, 7, 9, 9, 7, 5, 5,
-	5, 5, 7, 7, 7, 7, 5, 5,
-	5, 5, 5, 5, 5, 5, 5, 5,
-	6, 5, 5, 5, 5, 5, 5, 6,
-}
-
-var rookShifts = [64]byte{
-	12, 11, 11, 11, 11, 11, 11, 12,
-	11, 10, 10, 10, 10, 10, 10, 11,
-	11, 10, 10, 10, 10, 10, 10, 11,
-	11, 10, 10, 10, 10, 10, 10, 11,
-	11, 10, 10, 10, 10, 10, 10, 11,
-	11, 10, 10, 10, 10, 10, 10, 11,
-	11, 10, 10, 10, 10, 10, 10, 11,
-	12, 11, 11, 11, 11, 11, 11, 12,
-}
-
-var bishopMagics = [64]board.BitBoard{
-	0x01442b1002020240, 0x23280a482202e891, 0x685843810202408c, 0x287820d044d95020,
-	0x5a6b1041408282c3, 0x01482c0c60008813, 0x024a43083841f042, 0x24a0460150080c00,
-	0x4602412408220640, 0x2300a00142420042, 0x0100281806408228, 0x41100405020c1c62,
-	0x03053a0210002808, 0x0400a202302c4465, 0x054504012c022018, 0x000a908405051012,
-	0x0c600c901403a800, 0x082202e018910103, 0x529000260c007160, 0x1004041824049080,
-	0x2a0400b82208020a, 0x0a42c0020100a000, 0x10070024040b5461, 0x4031011c49082111,
-	0x43d0c12408820400, 0x0844549006082810, 0x2000680230018264, 0x000a018008008042,
-	0x4481011109004000, 0x451014800c0a010a, 0x41180350408a2802, 0x1163020001028082,
-	0x1108200400281820, 0x0622312423101031, 0x4022a0f000680488, 0x0991404800018200,
-	0x280508060001a200, 0x3b821202023c4802, 0x00011e1a00040100, 0x089112020483a304,
-	0x0804211828874060, 0x14c209842428a002, 0x0042010041041822, 0x40900c2104002040,
-	0x1020441d04080609, 0x40844810010010c8, 0x2028231122042c0a, 0x40508200410428c1,
-	0x1424473011102926, 0x0518410c10064a30, 0x04b1824044501029, 0x204051c120880641,
-	0x5012f41060622031, 0x2875604722460049, 0x61a0202409829031, 0x400714080481000c,
-	0x401201041a024221, 0x62140200421e1004, 0x009b828826051057, 0x2440370004209814,
-	0x404601a741028600, 0x004fd42024091201, 0x262c888a14444400, 0x4208652400820202,
-}
-
-var rookMagics = [64]board.BitBoard{
-	0x0200128102002041, 0x64c0002002100440, 0x0100200008c05102, 0x0200120020043840,
-	0x1b00030008008410, 0x4200120054211008, 0x24000d5000880a04, 0x610000270000c886,
-	0x06ca801040022580, 0x0c0040045000a001, 0x0021001102c06000, 0x08d1001000a19b00,
-	0x2b17005800841100, 0x1206000201300894, 0x3004000813041012, 0x681a00056106008c,
-	0x2d60628002c00483, 0x0020014000505012, 0x4026848020029000, 0x010452000862c200,
-	0x1308818008002400, 0x0c1b080120104004, 0x1089240010863108, 0x0211320004008051,
-	0x2000800300210842, 0x0620810600220ac1, 0x0404420200201482, 0x0042500300096100,
-	0x2801a21200093200, 0x2c12000600043019, 0x4042000200580479, 0x40040d02000a815c,
-	0x2900804000800030, 0x0303420102002c83, 0x004200a142003084, 0x2660520062000940,
-	0x026200a00a001084, 0x3802001d42001830, 0x0808662104001088, 0x110222a52a0003a4,
-	0x00d88b2140028007, 0x735950002000400b, 0x34c5820020160040, 0x0206003820420011,
-	0x684a002830c60020, 0x405e001410a20009, 0x0440221011040008, 0x211009014096000c,
-	0x129c421502208200, 0x6a42042052850200, 0x2f09014a6002f100, 0x0a06191042012200,
-	0x58f0715500780100, 0x090201904c081200, 0x310e002528041200, 0x484da14408810200,
-	0x4d3a416133008001, 0x4406802436400101, 0x0043c17912200101, 0x1240615000890015,
-	0x4c4600302004c822, 0x0122001008410462, 0x04be821803102084, 0x5202884c0500826a,
-}
-
-var bishopAttacks [64][512]board.BitBoard
-var rookAttacks [64][4096]board.BitBoard
-
+// BishopMoves is the bitboard set where a bishop can move to from from. It
+// does not take into account occupancy for the side to move, (can have bits
+// set on STM's pieces), or legality.
 func BishopMoves(from Square, occ board.BitBoard) board.BitBoard {
 	mask := bishopMasks[from]
 	magic := bishopMagics[from]
@@ -159,6 +27,9 @@ func BishopMoves(from Square, occ board.BitBoard) board.BitBoard {
 	return bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
 }
 
+// RookMoves is the bitbord set where a rook can move to from from. It does not
+// take into account occupancy for the side to move, (can have bits set on
+// STM's pieces), or legality.
 func RookMoves(from Square, occ board.BitBoard) board.BitBoard {
 	mask := rookMasks[from]
 	magic := rookMagics[from]
@@ -167,127 +38,18 @@ func RookMoves(from Square, occ board.BitBoard) board.BitBoard {
 	return rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
 }
 
-func init() {
-	for sq := Square(0); sq < 64; sq++ {
-		mask := bishopMasks[sq]
-		magic := bishopMagics[sq]
-		shift := bishopShifts[sq]
-		occ := mask
-
-		for {
-			attacks := calcBishopAttacks(sq, occ)
-			bishopAttacks[sq][(occ*magic)>>(64-shift)] = attacks
-			occ = (occ - mask) & mask
-
-			if occ == mask {
-
-				break
-			}
-		}
-	}
-	for sq := Square(0); sq < 64; sq++ {
-		mask := rookMasks[sq]
-		magic := rookMagics[sq]
-		shift := rookShifts[sq]
-		occ := mask
-
-		for {
-			attacks := calcRookAttacks(sq, occ)
-			rookAttacks[sq][(occ*magic)>>(64-shift)] = attacks
-			occ = (occ - mask) & mask
-
-			if occ == mask {
-
-				break
-			}
-		}
-	}
+// PawnCaptureMoves is the bitboard set where the pawns of color color can
+// capture, from any of the squares set in b. It does not work for the eights
+// rank, for backwards captures.
+func PawnCaptureMoves(b board.BitBoard, color Color) board.BitBoard {
+	return ((((b & ^board.AFile) << 7) | ((b & ^board.HFile) << 9)) >> (color << 4))
 }
 
-func calcBishopAttacks(sq Square, occ board.BitBoard) board.BitBoard {
-	result := board.BitBoard(0)
-
-	r := int(sq / 8)
-	f := int(sq % 8)
-
-	for rr, ff := r+1, f+1; rr <= 7 && ff <= 7; {
-		result |= (1 << (ff + rr*8))
-		if occ&(1<<(ff+rr*8)) != 0 {
-			break
-		}
-		rr++
-		ff++
-	}
-	for rr, ff := r+1, f-1; rr <= 7 && ff >= 0; {
-		result |= (1 << (ff + rr*8))
-		if occ&(1<<(ff+rr*8)) != 0 {
-			break
-		}
-		rr++
-		ff--
-	}
-	for rr, ff := r-1, f+1; rr >= 0 && ff <= 7; {
-		result |= (1 << (ff + rr*8))
-		if occ&(1<<(ff+rr*8)) != 0 {
-			break
-		}
-		rr--
-		ff++
-	}
-
-	for rr, ff := r-1, f-1; rr >= 0 && ff >= 0; {
-		result |= 1 << (ff + rr*8)
-		if occ&(1<<(ff+rr*8)) != 0 {
-			break
-		}
-		rr--
-		ff--
-	}
-
-	return result
-}
-
-func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
-	result := board.BitBoard(0)
-
-	r := int(sq / 8)
-	f := int(sq % 8)
-
-	for rr := r + 1; rr <= 7; rr++ {
-		result |= (1 << (f + rr*8))
-		if occ&(1<<(f+rr*8)) != 0 {
-			break
-		}
-	}
-	for rr := r - 1; rr >= 0; rr-- {
-		result |= (1 << (f + rr*8))
-		if occ&(1<<(f+rr*8)) != 0 {
-			break
-		}
-	}
-	for ff := f + 1; ff <= 7; ff++ {
-		result |= (1 << (ff + r*8))
-		if occ&(1<<(ff+r*8)) != 0 {
-			break
-		}
-	}
-	for ff := f - 1; ff >= 0; ff-- {
-		result |= (1 << (ff + r*8))
-		if occ&(1<<(ff+r*8)) != 0 {
-			break
-		}
-	}
-
-	return result
-}
-
-func PawnCaptureMoves(from Square, color Color) board.BitBoard {
-	bb := board.BitBoard(1) << from
-
-	if color == White {
-		return ((bb & ^board.AFile) << 7) | ((bb & ^board.HFile) << 9)
-	}
-	return ((bb & ^board.HFile) >> 7) | ((bb & ^board.AFile) >> 9)
+// PawnSinglePushMoves is the bitboard set where the pawns of color color can
+// push a single square forward from any of the squares set in b. It does not
+// work for the eights rank for backwards pushes.
+func PawnSinglePushMoves(b board.BitBoard, color Color) board.BitBoard {
+	return ((b) << 8) >> ((color) << 4)
 }
 
 var (
@@ -310,20 +72,16 @@ var (
 	}
 )
 
-func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
+type generator struct {
+	self, them, occ board.BitBoard
+}
 
-	self := b.Colors[b.STM]
-	them := b.Colors[b.STM.Flip()]
-
-	if b.FiftyCnt >= 100 {
-		return
-	}
-
+func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	// king moves
-	if piece := self & b.Pieces[King]; piece != 0 {
+	if piece := g.self & b.Pieces[King] & fromMsk; piece != 0 {
 		from := piece.LowestSet()
 
-		tSqrs := kingMoves[from] & ^self & target
+		tSqrs := kingMoves[from] & ^g.self & toMsk
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -340,14 +98,17 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			m.EPSq = b.EnPassant
 		}
 	}
+}
 
+func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	// knight moves
-	knights := self & b.Pieces[Knight]
+	knights := g.self & b.Pieces[Knight] & fromMsk
+
 	for knight := board.BitBoard(0); knights != 0; knights ^= knight {
 		knight = knights & -knights
 		from := knight.LowestSet()
 
-		tSqrs := knightMoves[from] & ^self & target
+		tSqrs := knightMoves[from] & ^g.self & toMsk
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -364,11 +125,11 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			m.EPSq = b.EnPassant
 		}
 	}
+}
 
-	occ := b.Colors[White] | b.Colors[Black]
-
+func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	// bishop moves
-	bishops := self & b.Pieces[Bishop]
+	bishops := g.self & b.Pieces[Bishop] & fromMsk
 	for bishop := board.BitBoard(0); bishops != 0; bishops ^= bishop {
 		bishop = bishops & -bishops
 		from := bishop.LowestSet()
@@ -376,7 +137,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 		magic := bishopMagics[from]
 		shift := bishopShifts[from]
 
-		tSqrs := bishopAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
+		tSqrs := bishopAttacks[from][((g.occ&mask)*magic)>>(64-shift)] & ^g.self & toMsk
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -393,9 +154,11 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			m.EPSq = b.EnPassant
 		}
 	}
+}
 
-	// rook moves
-	rooks := self & b.Pieces[Rook]
+func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
+	rooks := g.self & b.Pieces[Rook] & fromMsk
+
 	for rook := board.BitBoard(0); rooks != 0; rooks ^= rook {
 		rook = rooks & -rooks
 		from := rook.LowestSet()
@@ -403,7 +166,7 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 		magic := rookMagics[from]
 		shift := rookShifts[from]
 
-		tSqrs := rookAttacks[from][((occ&mask)*magic)>>(64-shift)] & ^self & target
+		tSqrs := rookAttacks[from][((g.occ&mask)*magic)>>(64-shift)] & ^g.self & toMsk
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -423,9 +186,10 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			m.EPSq = b.EnPassant
 		}
 	}
+}
 
-	// queen moves
-	queens := self & b.Pieces[Queen]
+func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
+	queens := g.self & b.Pieces[Queen] & fromMsk
 	for queen := board.BitBoard(0); queens != 0; queens ^= queen {
 		queen = queens & -queens
 		from := queen.LowestSet()
@@ -433,14 +197,14 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 		magic := rookMagics[from]
 		shift := rookShifts[from]
 
-		tSqrs := rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
+		tSqrs := rookAttacks[from][((g.occ&mask)*magic)>>(64-shift)]
 
 		mask = bishopMasks[from]
 		magic = bishopMagics[from]
 		shift = bishopShifts[from]
 
-		tSqrs |= bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
-		tSqrs &= ^self & target
+		tSqrs |= bishopAttacks[from][((g.occ&mask)*magic)>>(64-shift)]
+		tSqrs &= ^g.self & toMsk
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -457,62 +221,48 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			m.EPSq = b.EnPassant
 		}
 	}
+}
 
-	mySndRank := sndRank[b.STM]
+var shifts = [2]Square{8, -8}
+
+func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
+	occ1 := (g.occ >> 8) << (b.STM << 4)
+	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	theirSndRank := sndRank[b.STM.Flip()]
-
-	// since shifting by negative is illegal, I bite the bullet and branch on STM
-	var (
-		occ1, occ2   board.BitBoard
-		occ1l, occ1r board.BitBoard
-		tgt1, tgt2   board.BitBoard
-		shift        int
-	)
-	if b.STM == White {
-		occ1 = occ >> 8
-		tgt1 = target >> 8
-		occ1l = (them &^ board.HFile) >> 7
-		occ1r = (them &^ board.AFile) >> 9
-		occ2 = occ >> 16
-		tgt2 = target >> 16
-		shift = 8
-	} else {
-		occ1 = (occ | ^target) << 8
-		tgt1 = target << 8
-		occ1l = (them &^ board.AFile) << 7
-		occ1r = (them &^ board.HFile) << 9
-		occ2 = occ << 16
-		tgt2 = target << 16
-		shift = -8
-	}
-
-	pushable := self & b.Pieces[Pawn] & ^occ1
+	shift := shifts[b.STM]
 
 	// single pawn pushes (no promotions)
-	for pawns, pawn := pushable&tgt1 & ^theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk & ^theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
 		m := ms.Alloc()
 		m.Piece = Pawn
 		m.From = from
-		m.To = Square(int(from) + shift)
+		m.To = from + shift
 		m.CRights = 0
 		m.Castle = 0
 		m.Promo = 0
 		m.EPP = 0
 		m.EPSq = b.EnPassant
 	}
+}
+
+func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
+	occ1 := ((g.occ >> 8) << (b.STM << 4)) | ((g.occ << 8) >> (b.STM.Flip() << 4))
+	pushable := g.self & b.Pieces[Pawn] & ^occ1
+	theirSndRank := sndRank[b.STM.Flip()]
+	shift := shifts[b.STM]
 
 	// promotions pushes
-	for pawns, pawn := pushable&tgt1&theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk&theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
 			m := ms.Alloc()
 			m.Piece = Pawn
 			m.From = from
-			m.To = Square(int(from) + shift)
+			m.To = from + shift
 			m.CRights = 0
 			m.Promo = promo
 			m.Castle = 0
@@ -520,36 +270,51 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			m.EPSq = b.EnPassant
 		}
 	}
+}
+
+func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
+	occ1 := (g.occ >> 8) << (b.STM << 4)
+	occ2 := (g.occ >> 16) << (b.STM << 5)
+	pushable := g.self & b.Pieces[Pawn] & ^occ1
+	mySndRank := sndRank[b.STM]
+	shift := shifts[b.STM]
 
 	// double pawn pushes
-	for pawns, pawn := pushable&tgt2&mySndRank & ^occ2, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable & ^occ2 & fromMsk & mySndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
 		m := ms.Alloc()
 		m.Piece = Pawn
 		m.From = from
-		m.To = Square(int(from) + 2*shift)
+		m.To = from + 2*shift
 		m.CRights = 0
 		m.EPSq = m.To ^ b.EnPassant
 		m.Castle = 0
 		m.Promo = 0
 		m.EPP = 0
 	}
+}
 
-	// pawn captures (no promotions)
-	for pawns, pawn := self&b.Pieces[Pawn] & ^theirSndRank & (occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
+	var (
+		occ1l, occ1r board.BitBoard
+	)
+	theirSndRank := sndRank[b.STM.Flip()]
+
+	if b.STM == White {
+		occ1l = (g.them &^ board.HFile) >> 7
+		occ1r = (g.them &^ board.AFile) >> 9
+	} else {
+		occ1l = (g.them &^ board.AFile) << 7
+		occ1r = (g.them &^ board.HFile) << 9
+	}
+
+	for pawns, pawn := g.self&b.Pieces[Pawn] & ^theirSndRank & (occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
-		var bb board.BitBoard
 
-		if b.STM == White {
-			bb = ((pawn & ^board.AFile) << 7) | ((pawn & ^board.HFile) << 9)
-		} else {
-			bb = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
-		}
-
-		tSqrs := bb & target & them
+		tSqrs := PawnCaptureMoves(pawn, b.STM) & g.them
 
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
@@ -566,21 +331,27 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			m.EPSq = b.EnPassant
 		}
 	}
+}
 
+func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
+	var (
+		occ1l, occ1r board.BitBoard
+	)
+	theirSndRank := sndRank[b.STM.Flip()]
+
+	if b.STM == White {
+		occ1l = (g.them &^ board.HFile) >> 7
+		occ1r = (g.them &^ board.AFile) >> 9
+	} else {
+		occ1l = (g.them &^ board.AFile) << 7
+		occ1r = (g.them &^ board.HFile) << 9
+	}
 	// pawn captures with promotions
-	for pawns, pawn := self&b.Pieces[Pawn]&theirSndRank&(occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := g.self&b.Pieces[Pawn]&theirSndRank&(occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
-		var bb board.BitBoard
 
-		if b.STM == White {
-			bb = ((pawn & ^board.AFile) << 7) | ((pawn & ^board.HFile) << 9)
-		} else {
-			bb = ((pawn & ^board.HFile) >> 7) | ((pawn & ^board.AFile) >> 9)
-		}
-
-		tSqrs := bb & target & them
-
+		tSqrs := PawnCaptureMoves(pawn, b.STM) & g.them
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
@@ -599,58 +370,506 @@ func GenMoves(ms *move.Store, b *board.Board, target board.BitBoard) {
 			}
 		}
 	}
+}
+
+func (g generator) enPassant(ms *move.Store, b *board.Board) {
+	shift := shifts[b.STM]
 
 	// en-passant
 	ep := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & fourthRank[b.STM.Flip()]
-	for pawns, pawn := ep&self&b.Pieces[Pawn], board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := ep&g.self&b.Pieces[Pawn], board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
 		m := ms.Alloc()
 		m.Piece = Pawn
 		m.From = from
-		m.To = Square(int(b.EnPassant) + shift)
+		m.To = b.EnPassant + shift
 		m.EPP = Pawn
 		m.CRights = 0
 		m.Castle = 0
 		m.Promo = 0
 		m.EPSq = b.EnPassant
 	}
+}
 
+func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
 	// castling short
-	if b.CRights&CRights(C(b.STM, Short)) != 0 && occ&castleMask[b.STM][Short] == self&b.Pieces[King] {
-		if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Short]) {
-			from := (self & b.Pieces[King]).LowestSet()
-			newC := b.CRights & ^kingCRightsUpd[b.STM]
-			m := ms.Alloc()
-			m.Piece = King
-			m.From = from
-			m.To = from + 2
-			m.Castle = C(b.STM, Short)
-			m.CRights = b.CRights ^ newC
-			m.Promo = 0
-			m.EPP = 0
-			m.EPSq = b.EnPassant
+	if b.CRights&CRights(C(b.STM, Short)) != 0 && g.occ&castleMask[b.STM][Short] == g.self&b.Pieces[King] {
+		// this isn't quite the right condition, we would need to properly
+		// calculate if the rook gives check this condition is simple, and would
+		// suffice most of the time
+		if castleMask[b.STM][Short]&rChkMsk != 0 {
+			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Short]) {
+				from := (g.self & b.Pieces[King]).LowestSet()
+				newC := b.CRights & ^kingCRightsUpd[b.STM]
+				m := ms.Alloc()
+				m.Piece = King
+				m.From = from
+				m.To = from + 2
+				m.Castle = C(b.STM, Short)
+				m.CRights = b.CRights ^ newC
+				m.Promo = 0
+				m.EPP = 0
+				m.EPSq = b.EnPassant
+			}
 		}
 	}
+}
 
+func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
 	// castle long
-	if b.CRights&CRights(C(b.STM, Long)) != 0 && occ&(castleMask[b.STM][Long]>>1) == 0 {
-		if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Long]) {
-			from := (self & b.Pieces[King]).LowestSet()
-			newC := b.CRights & ^kingCRightsUpd[b.STM]
-			m := ms.Alloc()
-			m.Piece = King
-			m.From = from
-			m.To = from - 2
-			m.Castle = C(b.STM, Long)
-			m.CRights = b.CRights ^ newC
-			m.Promo = 0
-			m.EPP = 0
-			m.EPSq = b.EnPassant
+	if b.CRights&CRights(C(b.STM, Long)) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
+		if castleMask[b.STM][Long]&rChkMsk != 0 {
+			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Long]) {
+				from := (g.self & b.Pieces[King]).LowestSet()
+				newC := b.CRights & ^kingCRightsUpd[b.STM]
+				m := ms.Alloc()
+				m.Piece = King
+				m.From = from
+				m.To = from - 2
+				m.Castle = C(b.STM, Long)
+				m.CRights = b.CRights ^ newC
+				m.Promo = 0
+				m.EPP = 0
+				m.EPSq = b.EnPassant
+			}
+		}
+	}
+}
+
+// GenMoves generates all pseudo-legal moves in the position.
+func GenMoves(ms *move.Store, b *board.Board) {
+
+	// TODO this shouldn't be here
+	if b.FiftyCnt >= 100 {
+		return
+	}
+
+	gen := generator{
+		self: b.Colors[b.STM],
+		them: b.Colors[b.STM.Flip()],
+		occ:  b.Colors[White] | b.Colors[Black],
+	}
+
+	gen.kingMoves(ms, b, board.Full, board.Full)
+	gen.knightMoves(ms, b, board.Full, board.Full)
+	gen.bishopMoves(ms, b, board.Full, board.Full)
+	gen.rookMoves(ms, b, board.Full, board.Full)
+	gen.queenMoves(ms, b, board.Full, board.Full)
+
+	gen.singlePushMoves(ms, b, board.Full)
+	gen.promoPushMoves(ms, b, board.Full)
+	gen.doublePushMoves(ms, b, board.Full)
+	gen.pawnCaptureMoves(ms, b)
+	gen.pawnCapturePromoMoves(ms, b)
+	gen.enPassant(ms, b)
+
+	gen.shortCastle(ms, b, board.Full)
+	gen.longCastle(ms, b, board.Full)
+}
+
+// GenForcing generates all forcing pseudo-legal moves in the position. We do
+// not guarantee that a generated move is forcing, just that all forcing moves
+// are generated. But we make our best efforts to avoid quiet moves.
+func GenForcing(ms *move.Store, b *board.Board) {
+
+	self := b.Colors[b.STM]
+	them := b.Colors[b.STM.Flip()]
+	occ := b.Colors[White] | b.Colors[Black]
+
+	// TODO remove me from here
+	if b.FiftyCnt >= 100 {
+		return
+	}
+
+	eKing := them & b.Pieces[King]
+	eKSq := eKing.LowestSet()
+	bChkMsk := BishopMoves(eKSq, occ) // squares from which a discovered bishop check might exist
+	rChkMsk := RookMoves(eKSq, occ)   // squares from which a discovered rook check might exist
+	chkMsk := bChkMsk | rChkMsk
+
+	gen := generator{
+		self: self,
+		them: them,
+		occ:  occ,
+	}
+
+	gen.kingMoves(ms, b, chkMsk, ^chkMsk|them)
+	gen.kingMoves(ms, b, ^chkMsk, them)
+
+	gen.knightMoves(ms, b, chkMsk, board.Full)
+	gen.knightMoves(ms, b, ^chkMsk, KnightMoves(eKSq)|them)
+
+	gen.bishopMoves(ms, b, rChkMsk, board.Full)
+	gen.bishopMoves(ms, b, ^rChkMsk, bChkMsk|them)
+
+	gen.rookMoves(ms, b, bChkMsk, board.Full)
+	gen.rookMoves(ms, b, ^bChkMsk, rChkMsk|them)
+
+	gen.queenMoves(ms, b, board.Full, chkMsk|them)
+
+	var (
+		pChkMsk, pChks1, pChks2 board.BitBoard
+	)
+
+	if b.STM == White {
+		pChkMsk = (((eKing & ^board.HFile) >> 7) | ((eKing & ^board.AFile) >> 9))
+		pChks1 = pChkMsk >> 8
+		pChks2 = pChkMsk >> 16
+	} else {
+		pChkMsk = (((eKing & ^board.AFile) << 7) | ((eKing & ^board.HFile) << 9))
+		pChks1 = pChkMsk << 8
+		pChks2 = pChkMsk << 16
+	}
+
+	gen.singlePushMoves(ms, b, chkMsk|pChks1)
+	gen.promoPushMoves(ms, b, board.Full)
+	gen.doublePushMoves(ms, b, chkMsk|pChks2)
+	gen.pawnCaptureMoves(ms, b)
+	gen.pawnCapturePromoMoves(ms, b)
+	gen.enPassant(ms, b)
+
+	gen.shortCastle(ms, b, rChkMsk)
+	gen.longCastle(ms, b, rChkMsk)
+}
+
+func Attackers(b *board.Board, squares board.BitBoard, occ board.BitBoard, color Color) board.BitBoard {
+	opp := b.Colors[color]
+	var res board.BitBoard
+
+	for sqrs, sqBB := squares, board.BitBoard(0); sqrs != 0; sqrs ^= sqBB {
+		sqBB = sqrs & -sqrs
+		sq := sqBB.LowestSet()
+
+		sub := KingMoves(sq) & b.Pieces[King]
+		sub |= KnightMoves(sq) & b.Pieces[Knight]
+		sub |= BishopMoves(sq, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])
+		sub |= RookMoves(sq, occ) & (b.Pieces[Rook] | b.Pieces[Queen])
+
+		res |= sub & opp
+	}
+
+	res |= PawnCaptureMoves(opp&b.Pieces[Pawn], color) & squares
+
+	return res
+}
+
+func Block(b *board.Board, squares board.BitBoard, color Color) board.BitBoard {
+	blockers := b.Colors[color]
+	res := board.BitBoard(0)
+	occ := b.Colors[White] | b.Colors[Black]
+
+	for square := board.BitBoard(0); squares != 0; squares ^= square {
+		square = squares & -squares
+		sq := square.LowestSet()
+
+		sub := board.BitBoard(0)
+
+		/* king can't block */
+		sub |= KnightMoves(sq) & b.Pieces[Knight]
+		sub |= BishopMoves(sq, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])
+		sub |= RookMoves(sq, occ) & (b.Pieces[Rook] | b.Pieces[Queen])
+
+		res |= sub & blockers
+	}
+
+	/* we are making a pawn move backwards, so ignore the pawn in occupancy, as
+	 * we are moving where the actual pawn is, but don't ignore a blocking pawn
+	 * otherwise we would jump over it. See:
+	 * 6k1/8/8/1b6/3PP3/r1PKP3/2PRB3/8 w - - 0 1
+	 */
+	occNoPawn := occ & ^(b.Pieces[Pawn] & blockers)
+
+	/* double pawn push blocking */
+	dpawn := fourthRank[color] & squares
+	dpawn = PawnSinglePushMoves(dpawn, color.Flip()) &^ occ
+	dpawn = PawnSinglePushMoves(dpawn, color.Flip()) &^ occNoPawn
+
+	res |= ((PawnSinglePushMoves(squares, color.Flip()) & ^occNoPawn) | dpawn) & blockers & b.Pieces[Pawn]
+
+	return res
+}
+
+func IsCheckmate(b *board.Board) bool {
+	king := b.Pieces[King] & b.Colors[b.STM]
+	occ := b.Colors[White] | b.Colors[Black]
+	opp := b.Colors[b.STM.Flip()]
+
+	attackers := Attackers(b, king, occ, b.STM.Flip())
+
+	if attackers == 0 {
+		return false
+	}
+
+	// making the king move first
+	kingSq := king.LowestSet()
+	kMvs := KingMoves(kingSq) & ^b.Colors[b.STM]
+
+	for to := board.BitBoard(0); kMvs != 0; kMvs ^= to {
+		to = kMvs & -kMvs
+
+		if !IsAttacked(b, b.STM.Flip(), to) {
+			return false
 		}
 	}
 
+	if attackers.Count() > 1 { // double check, and king can't move
+		return true
+	}
+
+	attacker := attackers // only 1 attacker
+
+	//  see if we can capture the attacker
+	defenders := Attackers(b, attacker, occ, b.STM)
+	// remove the king, if the king can capture the attacker it would have done
+	// in the king moves try
+	defenders &= ^king
+
+	// are all my defenders pinned in a way that they can't capture the attacker
+	for defender := board.BitBoard(0); defenders != 0; defenders ^= defender {
+		defender = defenders & -defenders
+		nocc := occ
+		pinned := false
+
+		//  dummy mk move
+		nocc &= ^defender
+		opp &= ^attacker
+
+		if (BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & opp) != 0 {
+			pinned = true
+		} else if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) != 0 {
+			pinned = true
+		}
+
+		if !pinned {
+			return false
+		}
+	}
+
+	// en passant capture
+	if b.EnPassant != 0 {
+		remove := (board.BitBoard(1) << b.EnPassant)
+
+		var up board.BitBoard
+		if b.STM == White {
+			up = remove << 8
+		} else {
+			up = remove >> 8
+		}
+
+		if remove == attacker {
+			pieces := ((remove << 1) | (remove >> 1)) & b.Pieces[Pawn] & b.Colors[b.STM]
+
+			for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+				piece = pieces & -pieces
+				nocc := (occ & ^piece & ^remove) | up
+
+				if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) == 0 {
+					return false
+				}
+			}
+		}
+	}
+
+	// block the attacker
+	aSq := attacker.LowestSet()
+	blocked := inBetween[kingSq][aSq] & ^(king | attacker)
+
+	defenders = Block(b, blocked, b.STM)
+
+	for defender := board.BitBoard(0); defenders != 0; defenders ^= defender {
+		defender = defenders & -defenders
+		nocc := occ
+		opp := b.Colors[b.STM.Flip()]
+		pinned := false
+
+		//  dummy mk move
+		nocc &= ^defender
+		// we move somewhere on the blocked squares
+		nocc |= blocked
+
+		if (BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & opp) != 0 {
+			pinned = true
+		} else if RookMoves(kingSq, nocc)&(b.Pieces[Rook]|b.Pieces[Queen])&opp != 0 {
+			pinned = true
+		}
+
+		if !pinned {
+			return false
+		}
+	}
+
+	return true
+}
+
+func IsStalemate(b *board.Board) bool {
+	me := b.Colors[b.STM]
+	opp := b.Colors[b.STM.Flip()]
+	king := b.Pieces[King] & me
+	kingSq := king.LowestSet()
+	occ := me | opp
+
+	if IsAttacked(b, b.STM.Flip(), king) {
+		return false
+	}
+
+	// look at pawns guaranteed not to be pinned first
+	maybePinned := (BishopMoves(kingSq, occ) | RookMoves(kingSq, occ)) & me
+
+	// this should give an answer 99% of the time we also don't have to bother
+	// with double pushes as if there is no single pawn push there can't be a
+	// double pawn push
+	//
+	pieces := b.Pieces[Pawn] & me & ^maybePinned
+	if b.STM == White {
+		if pieces<<8 & ^occ != 0 {
+			return false
+		}
+
+		if (((pieces & ^board.AFile)<<7)|((pieces & ^board.HFile)<<9))&opp != 0 {
+			return false
+		}
+
+	} else {
+		if pieces>>8 & ^occ != 0 {
+			return false
+		}
+
+		if (((pieces & ^board.HFile)>>7)|((pieces & ^board.AFile)>>9))&opp != 0 {
+			return false
+		}
+	}
+
+	// queens can't be pinned to the extent that they can't move, for instance
+	// they can always capture the pinner.
+	pieces = b.Pieces[Queen] & me
+	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		piece = pieces & -pieces
+		sq := piece.LowestSet()
+
+		if ((BishopMoves(sq, occ) | RookMoves(sq, occ)) & ^me) != 0 {
+			return false
+		}
+	}
+
+	// bishop can only be paralyzed by rook or queen but in case of queen not the
+	// one it can capture
+	pieces = b.Pieces[Bishop] & me
+	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		piece = pieces & -pieces
+		sq := piece.LowestSet()
+		nocc := occ & ^piece
+
+		if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) == 0 {
+			if (BishopMoves(sq, nocc) & ^me) != 0 {
+				return false
+			}
+		}
+	}
+
+	//  rooks can only be paralyzed by bishop or queen but in case of queen not the
+	//   one it can capture
+	pieces = b.Pieces[Rook] & me
+	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		piece = pieces & -pieces
+		sq := piece.LowestSet()
+		nocc := occ & ^piece
+
+		if (BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & opp) == 0 {
+			if (RookMoves(sq, nocc) & ^me) != 0 {
+				return false
+			}
+		}
+	}
+
+	//  knight move in pins cannot be legal
+	pieces = b.Pieces[Knight] & me
+	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		piece = pieces & -pieces
+		sq := piece.LowestSet()
+		nocc := occ & ^piece
+		pinned := false
+
+		if (piece & maybePinned) != 0 {
+			if BishopMoves(kingSq, nocc)&(b.Pieces[Bishop]|b.Pieces[Queen])&opp != 0 {
+				pinned = true
+			} else if RookMoves(kingSq, nocc)&(b.Pieces[Rook]|b.Pieces[Queen])&opp != 0 {
+				pinned = true
+			}
+		}
+
+		if !pinned && (KnightMoves(sq) & ^me != 0) {
+			return false
+		}
+	}
+
+	kMoves := KingMoves(kingSq) & ^me
+	for kMove := board.BitBoard(0); kMoves != 0; kMoves ^= kMove {
+		kMove = kMoves & -kMoves
+
+		if !IsAttacked(b, b.STM.Flip(), kMove) {
+			return false
+		}
+	}
+
+	//  maybe pinned pawns
+	pieces = b.Pieces[Pawn] & me & maybePinned
+	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		piece = pieces & -pieces
+
+		targets := PawnSinglePushMoves(piece, b.STM) & ^occ
+		nocc := (occ & ^piece) | targets
+		pinned := false
+
+		if (BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & opp) != 0 {
+			pinned = true
+		} else if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) != 0 {
+			pinned = true
+		}
+
+		if !pinned && targets != 0 {
+			return false
+		}
+
+		targets = PawnCaptureMoves(piece, b.STM) & opp
+		nocc = (occ & ^piece) | targets
+		pinned = false
+
+		if (BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & ^targets & opp) != 0 {
+			pinned = true
+		} else if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) != 0 {
+			pinned = true
+		}
+
+		if !pinned && targets != 0 {
+			return false
+		}
+	}
+
+	//  finally deal with en passant
+	if b.EnPassant != 0 {
+		pieces := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & b.Pieces[Pawn] & me
+		remove := board.BitBoard(1) << b.EnPassant
+
+		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+			piece = pieces & -pieces
+			nocc := (occ & ^piece & ^remove) | PawnSinglePushMoves(remove, b.STM)
+			pinned := false
+
+			if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) != 0 {
+				pinned = true
+			} else if (BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & opp) != 0 {
+				pinned = true
+			}
+
+			if !pinned {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
@@ -658,18 +877,8 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 	occ := b.Colors[White] | b.Colors[Black]
 
 	// pawn capture
-	{
-		var bb board.BitBoard
-
-		if by == White {
-			bb = ((target & ^board.HFile) >> 7) | ((target & ^board.AFile) >> 9)
-		} else {
-			bb = ((target & ^board.AFile) << 7) | ((target & ^board.HFile) << 9)
-		}
-
-		if bb&b.Pieces[Pawn]&other != 0 {
-			return true
-		}
+	if PawnCaptureMoves(b.Pieces[Pawn]&other, by)&target != 0 {
+		return true
 	}
 
 	for tSqr := board.BitBoard(0); target != 0; target ^= tSqr {
