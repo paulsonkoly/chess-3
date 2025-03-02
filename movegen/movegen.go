@@ -39,10 +39,10 @@ func RookMoves(from Square, occ board.BitBoard) board.BitBoard {
 }
 
 // PawnCaptureMoves is the bitboard set where the pawns of color color can
-// capture, from any of the squares set in b. It does not work for the eights
-// rank, for backwards captures.
+// capture, from any of the squares set in b. 
 func PawnCaptureMoves(b board.BitBoard, color Color) board.BitBoard {
-	return ((((b & ^board.AFile) << 7) | ((b & ^board.HFile) << 9)) >> (color << 4))
+	return ((((b & ^board.AFile) << 7) | ((b & ^board.HFile) << 9)) >> (color << 4)) |
+		((((b & ^board.HFile) >> 7) | ((b & ^board.AFile) >> 9)) << (color.Flip() << 4))
 }
 
 // PawnSinglePushMoves is the bitboard set where the pawns of color color can
