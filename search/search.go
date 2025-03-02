@@ -325,7 +325,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	} else {
 		// store node as exact (PV-node)
 		// there might not be a move in case of !hasLegal
-    var sm move.SimpleMove
+		var sm move.SimpleMove
 		if len(pv) > 0 {
 			sm = pv[len(pv)-1]
 		}
@@ -368,13 +368,13 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 		return 0
 	}
 
-  if movegen.IsCheckmate(b) {
-    return -Inf
-  }
+	if movegen.IsCheckmate(b) {
+		return -Inf
+	}
 
-  if movegen.IsStalemate(b) {
-    return 0
-  }
+	if movegen.IsStalemate(b) {
+		return 0
+	}
 
 	sst.ms.Push()
 	defer sst.ms.Pop()
@@ -395,10 +395,6 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 	rankMovesQ(b, moves)
 
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
-		captured := b.SquaresToPiece[m.To]
-		if m.EPP == Pawn {
-			captured = Pawn
-		}
 
 		b.MakeMove(m)
 
@@ -415,13 +411,19 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 			check = true
 		}
 
-		if !check && captured == NoPiece {
-			b.UndoMove(m)
-			continue
-		}
-
 		if !check {
-			if heur.PieceValues[captured]+delta < alpha {
+			if m.Captured == NoPiece && m.Promo == NoPiece {
+				b.UndoMove(m)
+				continue
+			}
+
+			gain := heur.PieceValues[m.Captured]
+
+      if m.Promo != NoPiece {
+        gain += heur.PieceValues[m.Promo] - heur.PieceValues[Pawn]
+      }
+
+			if gain+delta < alpha {
 				sst.QDelta++
 				b.UndoMove(m)
 				continue
