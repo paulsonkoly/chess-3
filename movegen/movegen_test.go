@@ -550,8 +550,13 @@ func TestIsStalemate(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "en-passant pinned",
+			name: "en-passant pinned (diag)",
 			b:    board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2B5/8/1K6 b - d3 0 1"),
+			want: true,
+		},
+		{
+			name: "en-passant pinned (rank)",
+			b:    board.FromFEN("1kb4q/6p1/3p2P1/r2Pp1K1/r7/8/8/8 w - e6 0 2"),
 			want: true,
 		},
 	}
@@ -607,11 +612,6 @@ func TestIsCheckMate(t *testing.T) {
 			name: "en-passant captureable",
 			b:    board.FromFEN("8/7B/2bbb3/2bkb3/2bnPp2/8/8/K7 b - e3 0 1"),
 			want: false,
-		},
-		{
-			name: "en-passant pinned",
-			b:    board.FromFEN("4bkr1/6p1/8/2B5/8/8/8/K4Q2 b - - 0 1"),
-			want: true,
 		},
 	}
 	for _, tt := range tests {

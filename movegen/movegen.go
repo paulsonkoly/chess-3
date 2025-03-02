@@ -39,7 +39,7 @@ func RookMoves(from Square, occ board.BitBoard) board.BitBoard {
 }
 
 // PawnCaptureMoves is the bitboard set where the pawns of color color can
-// capture, from any of the squares set in b. 
+// capture, from any of the squares set in b.
 func PawnCaptureMoves(b board.BitBoard, color Color) board.BitBoard {
 	return ((((b & ^board.AFile) << 7) | ((b & ^board.HFile) << 9)) >> (color << 4)) |
 		((((b & ^board.HFile) >> 7) | ((b & ^board.AFile) >> 9)) << (color.Flip() << 4))
@@ -550,7 +550,7 @@ func Attackers(b *board.Board, squares board.BitBoard, occ board.BitBoard, color
 		res |= sub & opp
 	}
 
-	res |= PawnCaptureMoves(opp&b.Pieces[Pawn], color) & squares
+	res |= PawnCaptureMoves(squares, color.Flip()) & opp & b.Pieces[Pawn]
 
 	return res
 }
@@ -649,26 +649,10 @@ func IsCheckmate(b *board.Board) bool {
 
 	// en passant capture
 	if b.EnPassant != 0 {
-		remove := (board.BitBoard(1) << b.EnPassant)
+		epPawn := (board.BitBoard(1) << b.EnPassant)
 
-		var up board.BitBoard
-		if b.STM == White {
-			up = remove << 8
-		} else {
-			up = remove >> 8
-		}
-
-		if remove == attacker {
-			pieces := ((remove << 1) | (remove >> 1)) & b.Pieces[Pawn] & b.Colors[b.STM]
-
-			for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
-				piece = pieces & -pieces
-				nocc := (occ & ^piece & ^remove) | up
-
-				if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) == 0 {
-					return false
-				}
-			}
+		if epPawn == attacker {
+			return false
 		}
 	}
 
