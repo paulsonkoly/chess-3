@@ -167,7 +167,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	pv := []move.SimpleMove{}
 
 	tfCnt := b.Threefold()
-	if tfCnt >= 3 {
+	if b.FiftyCnt >= 100 || tfCnt >= 3 {
 		return 0, pv
 	}
 
@@ -300,17 +300,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	sst.ABBreadth += ix
 
 	if !hasLegal {
-		// checkmate score
-		value := -Inf
+		value := Score(0)
 
-		if b.FiftyCnt >= 100 {
-			value = 0
-		} else {
-			king := b.Colors[b.STM] & b.Pieces[King]
-			if !movegen.IsAttacked(b, b.STM.Flip(), king) {
-				// draw score
-				value = 0
-			}
+		if inCheck {
+			value = -Inf
 		}
 
 		if value > alpha {
@@ -364,7 +357,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 	sst.QCnt++
 
-	if b.Threefold() >= 3 {
+	if b.FiftyCnt >= 100 || b.Threefold() >= 3 {
 		return 0
 	}
 

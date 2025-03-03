@@ -441,11 +441,6 @@ func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitB
 // GenMoves generates all pseudo-legal moves in the position.
 func GenMoves(ms *move.Store, b *board.Board) {
 
-	// TODO this shouldn't be here
-	if b.FiftyCnt >= 100 {
-		return
-	}
-
 	gen := generator{
 		self: b.Colors[b.STM],
 		them: b.Colors[b.STM.Flip()],
@@ -477,11 +472,6 @@ func GenForcing(ms *move.Store, b *board.Board) {
 	self := b.Colors[b.STM]
 	them := b.Colors[b.STM.Flip()]
 	occ := b.Colors[White] | b.Colors[Black]
-
-	// TODO remove me from here
-	if b.FiftyCnt >= 100 {
-		return
-	}
 
 	eKing := them & b.Pieces[King]
 	eKSq := eKing.LowestSet()
