@@ -23,7 +23,7 @@ func (s *Store) Clear() {
 }
 
 func (s *Store) Alloc() *Move {
-	s.allocIx++ 
+	s.allocIx++
 	return &s.data[s.allocIx-1]
 }
 

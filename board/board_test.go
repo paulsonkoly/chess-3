@@ -76,7 +76,7 @@ func TestZobrist(t *testing.T) {
 				mOld := m
 				b.MakeMove(&m)
 
-        if movegen.InCheck(b, b.STM.Flip()) {
+				if movegen.InCheck(b, b.STM.Flip()) {
 					// illegal (pseudo-leagal) move, skip
 					b.UndoMove(&m)
 					continue

@@ -245,10 +245,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		b.MakeMove(m)
 
-    if movegen.InCheck(b, b.STM.Flip()) {
-      b.UndoMove(m)
-      continue
-    }
+		if movegen.InCheck(b, b.STM.Flip()) {
+			b.UndoMove(m)
+			continue
+		}
 
 		hasLegal = true
 
@@ -386,12 +386,12 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 		b.MakeMove(m)
 
-    if movegen.InCheck(b, b.STM.Flip()) {
+		if movegen.InCheck(b, b.STM.Flip()) {
 			b.UndoMove(m)
 			continue
 		}
 
-    check := movegen.InCheck(b, b.STM)
+		check := movegen.InCheck(b, b.STM)
 
 		if !check {
 			if m.Captured == NoPiece && m.Promo == NoPiece {

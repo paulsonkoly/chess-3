@@ -881,7 +881,7 @@ func IsAttacked(b *board.Board, by Color, occ, target board.BitBoard) bool {
 }
 
 func InCheck(b *board.Board, who Color) bool {
-	return IsAttacked(b, who.Flip(), b.Colors[White] | b.Colors[Black], b.Colors[who] & b.Pieces[King])
+	return IsAttacked(b, who.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[who]&b.Pieces[King])
 }
 
 func FromSimple(b *board.Board, sm move.SimpleMove) move.Move {
