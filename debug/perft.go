@@ -10,9 +10,6 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
-
-	//revive:disable-next-line
-	. "github.com/paulsonkoly/chess-3/types"
 )
 
 func Perft(b *board.Board, depth int) int {
@@ -25,6 +22,10 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 		return 1
 	}
 
+	if movegen.IsCheckmate(b) || movegen.IsStalemate(b) {
+		return 0
+	}
+
 	cnt := 0
 	me := b.STM
 
@@ -33,6 +34,8 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 
 	movegen.GenMoves(ms, b)
 
+	hasLegal := false
+
 	for _, m := range ms.Frame() {
 		b.MakeMove(&m)
 
@@ -40,12 +43,16 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 			panic("oops")
 		}
 
-		kingBB := b.Pieces[King] & b.Colors[me]
-		if !movegen.IsAttacked(b, me.Flip(), kingBB) {
+		if !movegen.InCheck(b, me) {
+			hasLegal = true
 			cnt += perft(ms, b, depth-1)
 		}
 
 		b.UndoMove(&m)
+	}
+
+	if !hasLegal {
+		panic("oops")
 	}
 
 	return cnt
@@ -128,8 +135,7 @@ func matchPerft(ms *move.Store, b *board.Board, depth int) {
 		for _, m := range ms.Frame() {
 			b.MakeMove(&m)
 
-			kingBB := b.Pieces[King] & b.Colors[me]
-			if !movegen.IsAttacked(b, me.Flip(), kingBB) {
+			if !movegen.InCheck(b, me) {
 				MatchPerft(b, depth-1)
 			}
 			b.UndoMove(&m)

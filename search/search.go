@@ -204,11 +204,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	hasLegal := false
 	failLow := true
 
-	inCheck := false
-	king := b.Colors[b.STM] & b.Pieces[King]
-	if movegen.IsAttacked(b, b.STM.Flip(), king) {
-		inCheck = true
-	}
+	inCheck := movegen.InCheck(b, b.STM)
 
 	// null move pruning
 	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
@@ -249,8 +245,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		b.MakeMove(m)
 
-		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
-		if movegen.IsAttacked(b, b.STM, king) {
+		if movegen.InCheck(b, b.STM.Flip()) {
 			b.UndoMove(m)
 			continue
 		}
@@ -391,18 +386,12 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 		b.MakeMove(m)
 
-		// legality check
-		king := b.Colors[b.STM.Flip()] & b.Pieces[King]
-		if movegen.IsAttacked(b, b.STM, king) {
+		if movegen.InCheck(b, b.STM.Flip()) {
 			b.UndoMove(m)
 			continue
 		}
 
-		check := false
-		king = b.Colors[b.STM] & b.Pieces[King]
-		if movegen.IsAttacked(b, b.STM.Flip(), king) {
-			check = true
-		}
+		check := movegen.InCheck(b, b.STM)
 
 		if !check {
 			if m.Captured == NoPiece && m.Promo == NoPiece {
@@ -412,9 +401,9 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 			gain := heur.PieceValues[m.Captured]
 
-      if m.Promo != NoPiece {
-        gain += heur.PieceValues[m.Promo] - heur.PieceValues[Pawn]
-      }
+			if m.Promo != NoPiece {
+				gain += heur.PieceValues[m.Promo] - heur.PieceValues[Pawn]
+			}
 
 			if gain+delta < alpha {
 				sst.QDelta++
