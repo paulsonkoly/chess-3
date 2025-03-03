@@ -362,8 +362,9 @@ func TestMoves(t *testing.T) {
 				b.MakeMove(&m)
 
 				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+				occ := b.Colors[White] | b.Colors[Black]
 
-				if movegen.IsAttacked(b, b.STM, king) {
+				if movegen.IsAttacked(b, b.STM, occ, king) {
 					// illegal (pseudo-leagal) move, skip
 					b.UndoMove(&m)
 					continue
@@ -496,8 +497,9 @@ func TestGenForcing(t *testing.T) {
 				b.MakeMove(&m)
 
 				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
+				occ := b.Colors[White] | b.Colors[Black]
 
-				if movegen.IsAttacked(b, b.STM, king) {
+				if movegen.IsAttacked(b, b.STM, occ, king) {
 					// illegal (pseudo-leagal) move, skip
 					b.UndoMove(&m)
 					continue
@@ -612,6 +614,16 @@ func TestIsCheckMate(t *testing.T) {
 			name: "en-passant captureable",
 			b:    board.FromFEN("8/7B/2bbb3/2bkb3/2bnPp2/8/8/K7 b - e3 0 1"),
 			want: false,
+		},
+		{
+			name: "regression 1",
+			b:    board.FromFEN("1k1r4/pp3R2/6pp/4p3/2B5/7Q/PPP2B2/2Kq4 w - - 1 1"),
+			want: true,
+		},
+		{
+			name: "regression 2",
+			b:    board.FromFEN("1kbr4/Qp3R2/3q2pp/4p3/2B5/8/PPP2B2/2K5 b - - 0 1"),
+			want: true,
 		},
 	}
 	for _, tt := range tests {
@@ -730,8 +742,8 @@ func TestIsAttacked(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, movegen.IsAttacked(tt.b, tt.by, tt.target))
+			occ := tt.b.Colors[White] | tt.b.Colors[Black]
+			assert.Equal(t, tt.want, movegen.IsAttacked(tt.b, tt.by, occ, tt.target))
 		})
 	}
 }
-

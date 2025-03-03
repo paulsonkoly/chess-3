@@ -309,8 +309,7 @@ func doFilter(data []EPDEntry) {
 		b := epdE.b
 
 		// if we are in check it's not a quiet position
-		king := b.Colors[b.STM] & b.Pieces[types.King]
-		if movegen.IsAttacked(b, b.STM.Flip(), king) {
+		if movegen.InCheck(b, b.STM) {
 			continue
 		}
 
@@ -322,8 +321,7 @@ func doFilter(data []EPDEntry) {
 		for _, m := range ms.Frame() {
 			b.MakeMove(&m)
 
-			king = b.Colors[b.STM.Flip()] & b.Pieces[types.King]
-			if movegen.IsAttacked(b, b.STM, king) { // move not legal
+			if movegen.InCheck(b, b.STM.Flip()) { // move not legal
 				b.UndoMove(&m)
 				continue
 			}
@@ -335,9 +333,7 @@ func doFilter(data []EPDEntry) {
 				break
 			}
 
-			king = b.Colors[b.STM] & b.Pieces[types.King]
-
-			if movegen.IsAttacked(b, b.STM.Flip(), king) { // move is check, therefore forcing
+			if movegen.InCheck(b, b.STM) { // move is check, therefore forcing
 				b.UndoMove(&m)
 				hasForcing = true
 				break

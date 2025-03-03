@@ -76,9 +76,7 @@ func TestZobrist(t *testing.T) {
 				mOld := m
 				b.MakeMove(&m)
 
-				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
-
-				if movegen.IsAttacked(b, b.STM, king) {
+        if movegen.InCheck(b, b.STM.Flip()) {
 					// illegal (pseudo-leagal) move, skip
 					b.UndoMove(&m)
 					continue

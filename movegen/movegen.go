@@ -400,7 +400,7 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.Bit
 		// calculate if the rook gives check this condition is simple, and would
 		// suffice most of the time
 		if castleMask[b.STM][Short]&rChkMsk != 0 {
-			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Short]) {
+			if !IsAttacked(b, b.STM.Flip(), g.occ, castleMask[b.STM][Short]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
 				newC := b.CRights & ^kingCRightsUpd[b.STM]
 				m := ms.Alloc()
@@ -421,7 +421,7 @@ func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitB
 	// castle long
 	if b.CRights&CRights(C(b.STM, Long)) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
 		if castleMask[b.STM][Long]&rChkMsk != 0 {
-			if !IsAttacked(b, b.STM.Flip(), castleMask[b.STM][Long]) {
+			if !IsAttacked(b, b.STM.Flip(), g.occ, castleMask[b.STM][Long]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
 				newC := b.CRights & ^kingCRightsUpd[b.STM]
 				m := ms.Alloc()
@@ -599,7 +599,7 @@ func IsCheckmate(b *board.Board) bool {
 	for to := board.BitBoard(0); kMvs != 0; kMvs ^= to {
 		to = kMvs & -kMvs
 
-		if !IsAttacked(b, b.STM.Flip(), to) {
+		if !IsAttacked(b, b.STM.Flip(), occ&^king, to) {
 			return false
 		}
 	}
@@ -684,7 +684,7 @@ func IsStalemate(b *board.Board) bool {
 	kingSq := king.LowestSet()
 	occ := me | opp
 
-	if IsAttacked(b, b.STM.Flip(), king) {
+	if IsAttacked(b, b.STM.Flip(), occ, king) {
 		return false
 	}
 
@@ -782,7 +782,7 @@ func IsStalemate(b *board.Board) bool {
 	for kMove := board.BitBoard(0); kMoves != 0; kMoves ^= kMove {
 		kMove = kMoves & -kMoves
 
-		if !IsAttacked(b, b.STM.Flip(), kMove) {
+		if !IsAttacked(b, b.STM.Flip(), occ&^king, kMove) {
 			return false
 		}
 	}
@@ -846,9 +846,8 @@ func IsStalemate(b *board.Board) bool {
 	return true
 }
 
-func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
+func IsAttacked(b *board.Board, by Color, occ, target board.BitBoard) bool {
 	other := b.Colors[by]
-	occ := b.Colors[White] | b.Colors[Black]
 
 	// pawn capture
 	if PawnCaptureMoves(b.Pieces[Pawn]&other, by)&target != 0 {
@@ -879,6 +878,10 @@ func IsAttacked(b *board.Board, by Color, target board.BitBoard) bool {
 	}
 
 	return false
+}
+
+func InCheck(b *board.Board, who Color) bool {
+	return IsAttacked(b, who.Flip(), b.Colors[White] | b.Colors[Black], b.Colors[who] & b.Pieces[King])
 }
 
 func FromSimple(b *board.Board, sm move.SimpleMove) move.Move {

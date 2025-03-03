@@ -25,6 +25,10 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 		return 1
 	}
 
+	if movegen.IsCheckmate(b) || movegen.IsStalemate(b) {
+		return 0
+	}
+
 	cnt := 0
 	me := b.STM
 
@@ -32,6 +36,8 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 	defer ms.Pop()
 
 	movegen.GenMoves(ms, b)
+
+	hasLegal := false
 
 	for _, m := range ms.Frame() {
 		b.MakeMove(&m)
@@ -41,11 +47,16 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 		}
 
 		kingBB := b.Pieces[King] & b.Colors[me]
-		if !movegen.IsAttacked(b, me.Flip(), kingBB) {
+		if !movegen.IsAttacked(b, me.Flip(), b.Colors[White]|b.Colors[Black], kingBB) {
+			hasLegal = true
 			cnt += perft(ms, b, depth-1)
 		}
 
 		b.UndoMove(&m)
+	}
+
+	if !hasLegal {
+		panic("oops")
 	}
 
 	return cnt
@@ -129,7 +140,7 @@ func matchPerft(ms *move.Store, b *board.Board, depth int) {
 			b.MakeMove(&m)
 
 			kingBB := b.Pieces[King] & b.Colors[me]
-			if !movegen.IsAttacked(b, me.Flip(), kingBB) {
+			if !movegen.IsAttacked(b, me.Flip(), b.Colors[White]|b.Colors[Black], kingBB) {
 				MatchPerft(b, depth-1)
 			}
 			b.UndoMove(&m)
