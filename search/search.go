@@ -302,7 +302,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 				}
 			}
 
-			sst.ABBreadth += ix
+			sst.ABBreadth += ix + 1
 			sst.hstack.pop()
 
 			return value, nil
@@ -315,7 +315,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 	}
 
-	sst.ABBreadth += ix
+	sst.ABBreadth += ix + 1
 
 	if !hasLegal {
 		value := Score(0)
