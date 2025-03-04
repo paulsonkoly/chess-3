@@ -194,6 +194,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		sst.TTHit--
 	}
 
+	if movegen.IsCheckmate(b) {
+		return -Inf, pv
+	}
+
+	if movegen.IsStalemate(b) {
+		return 0, pv
+	}
+
 	if d == 0 {
 		sst.ABLeaf++
 		return Quiescence(b, alpha, beta, 0, sst), pv
@@ -201,7 +209,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	sst.ABCnt++
 
-	hasLegal := false
 	failLow := true
 
 	inCheck := movegen.InCheck(b, b.STM)
@@ -250,8 +257,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			continue
 		}
 
-		hasLegal = true
-
 		// late move reduction
 		rd := lmr(d, ix)
 		if rd < d-1 && !inCheck {
@@ -293,19 +298,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	}
 
 	sst.ABBreadth += ix
-
-	if !hasLegal {
-		value := Score(0)
-
-		if inCheck {
-			value = -Inf
-		}
-
-		if value > alpha {
-			failLow = false
-			alpha = value
-		}
-	}
 
 	if failLow {
 		// store node as fail low (All-node)
