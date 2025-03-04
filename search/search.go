@@ -26,6 +26,7 @@ type State struct {
 	tt   *transp.Table
 	hist *heur.History
 	ms   *move.Store
+	null  bool
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
@@ -207,8 +208,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	inCheck := movegen.InCheck(b, b.STM)
 
 	// null move pruning
-	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+	if !inCheck && !sst.null && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
+    sst.null = true
 		enP := b.MakeNullMove()
 
 		rd := max(0, d-3)
@@ -219,9 +221,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		b.UndoNullMove(enP)
 
 		if value >= beta {
+      sst.null = false
 			return value, pv
 		}
 	}
+  sst.null = false
 
 	// deflate history
 	if sst.ABCnt%10_000 == 0 {
