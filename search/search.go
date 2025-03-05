@@ -278,7 +278,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			// store node as fail high (cut-node)
 			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
-			if m.Captured == NoPiece {
+			if m.Captured == NoPiece && m.Promo == NoPiece {
 				sst.hist.Add(b.STM, m.From, m.To, d)
 			}
 
@@ -411,7 +411,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 				continue
 			}
 
-			if m.SEE < 0 {
+			if m.Weight < 0 {
 				sst.QSEE++
 				b.UndoMove(m)
 				continue
@@ -448,14 +448,13 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case b.SquaresToPiece[m.To] != NoPiece:
+		case b.SquaresToPiece[m.To] != NoPiece || m.Promo != NoPiece:
 			see := heur.SEE(b, &m)
 			if see < 0 {
 				moves[ix].Weight = see - heur.Captures
 			} else {
 				moves[ix].Weight = see + heur.Captures
 			}
-			moves[ix].SEE = see
 
 		default:
 			hist := sst.hist.Probe(b.STM, m.From, m.To)
@@ -469,7 +468,6 @@ func rankMovesQ(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
 		if b.SquaresToPiece[m.To] != NoPiece {
 			see := heur.SEE(b, &m)
-			moves[ix].SEE = see
 			moves[ix].Weight = see
 		}
 	}

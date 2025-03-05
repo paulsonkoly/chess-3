@@ -8,8 +8,6 @@ type Move struct {
 	SimpleMove
 	// Piece is the type of piece moving.
 	Piece Piece
-	// SEE is the SEE score of the move for Quiessence search. (filled in by Quiessence move ranking).
-	SEE Score
 	// Weight is the heiristic weight of the move.
 	Weight Score
 	// Captured is the captured piece type. Filled in by making a move, value is
