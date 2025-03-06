@@ -332,7 +332,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	sst.ABBreadth += ix + 1
 
-	if !hasLegal { // TODO : remove me
+	if !hasLegal {
 		value := Score(0)
 
 		if inCheck {

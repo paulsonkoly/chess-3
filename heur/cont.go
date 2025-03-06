@@ -17,7 +17,7 @@ func NewContinuation() *Continuation {
 // Deflate divides every entry in the store by 2.
 func (c *Continuation) Deflate() {
 	for i := range c.data {
-		c.data[i] >>= 1
+		c.data[i] /= 2
 	}
 }
 
