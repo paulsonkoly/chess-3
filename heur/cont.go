@@ -26,10 +26,13 @@ func ix(stm Color, ptHist Piece, toHist Square, pt Piece, to Square) int {
 }
 
 // Add increments the continuation history heuristics for the move by d*d.
-func (c *Continuation) Add(stm Color, ptHist Piece, toHist Square, pt Piece, to Square, d Depth) {
+func (c *Continuation) Add(stm Color, ptHist Piece, toHist Square, pt Piece, to Square, s Score) {
 	ix := ix(stm, ptHist, toHist, pt, to)
-	bonus := c.data[ix] + Score(d)*Score(d)
-	c.data[ix] = min(bonus, MaxHistory)
+	bonus := c.data[ix] + s
+	bonus = min(bonus, MaxHistory)
+	bonus = max(bonus, -MaxHistory)
+
+	c.data[ix] = bonus
 }
 
 // Probe returns the continuation history heuristics entry for the move.
