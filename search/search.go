@@ -281,6 +281,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
 		value *= -1
 		b.UndoMove(m)
+		sst.hstack.pop()
 
 		if value > alpha {
 			failLow = false
@@ -294,21 +295,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 			if m.Captured == NoPiece && m.Promo == NoPiece {
 				sst.hist.Add(b.STM, m.From, m.To, d)
-				pt, to := sst.hstack.top(0)
-				sst.cont[0].Add(b.STM, pt, to, m.Piece, m.To, d)
-				if sst.hstack.size() >= 2 {
-					pt, to = sst.hstack.top(1)
-					sst.cont[1].Add(b.STM, pt, to, m.Piece, m.To, d)
+
+				for ix := range min(sst.hstack.size(), 2) {
+					pt, to := sst.hstack.top(ix)
+					sst.cont[ix].Add(b.STM, pt, to, m.Piece, m.To, d)
 				}
 			}
 
 			sst.ABBreadth += ix + 1
-			sst.hstack.pop()
 
 			return value, nil
 		}
-
-		sst.hstack.pop()
 
 		if abort(sst) {
 			return alpha, pv
@@ -480,7 +477,7 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 			}
 
 		default:
-			score := sst.hist.Probe(b.STM, m.From, m.To) + heur.Quiet
+			score := sst.hist.Probe(b.STM, m.From, m.To)
 
 			if sst.hstack.size() >= 1 {
 				pt, to := sst.hstack.top(0)

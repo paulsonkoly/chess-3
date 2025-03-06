@@ -21,15 +21,13 @@ const (
 	HashMove = Score(15000)
 	// Captures is the minimal score for captures, actual score is this plus SEE.
 	Captures = Score(8192)
-  // Quiet is the minimal score for quiet moves.
-  Quiet = Score(0)
 )
 
 const MaxHistory = 1024
 
 func init() {
   // 1 * history + 2 * continuation[1] + 3 * continuation[0]
-  if Captures - Quiet < 6 * MaxHistory {
+  if Captures < 6 * MaxHistory {
     panic("gap is not big enough in move weight layout for history scores")
   }
 }
