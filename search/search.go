@@ -23,13 +23,15 @@ const (
 
 // State is a persistent state storage between searches.
 type State struct {
-	tt   *transp.Table
-	hist *heur.History
-	ms   *move.Store
+	tt     *transp.Table
+	hist   *heur.History
+	cont   [2]*heur.Continuation
+	ms     *move.Store
+	hstack *historyStack
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
-	// Stop channel signals an immediate Stop requiest to the search. Current
+	// Stop channel signals an immediate Stop request to the search. Current
 	// depth will be abandoned.
 	Stop chan struct{}
 
@@ -46,13 +48,19 @@ type State struct {
 	QDepth    int   // QDepth is the maximal quiesence search depth.
 	QDelta    int   // QDelta is the count of times a delta pruning happened in quiesence search.
 	QSEE      int   // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
-	Time      int64 // Time is the search time in miliseconds.
+	Time      int64 // Time is the search time in milliseconds.
 }
 
 // NewState creates a new search state. It's supposed to be called once, and
 // re-used between Search() calls.
 func NewState() *State {
-	return &State{tt: transp.New(), ms: move.NewStore(), hist: heur.NewHistory()}
+	return &State{
+		tt:     transp.New(),
+		ms:     move.NewStore(),
+		hist:   heur.NewHistory(),
+		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
+		hstack: newHistStack(),
+	}
 }
 
 // Clear resets the counters, and various stores for the search, assuming a new
@@ -61,6 +69,7 @@ func (s *State) Clear() {
 	s.abort = false
 	s.tt.Clear()
 	s.ms.Clear()
+	s.hstack.reset()
 	s.AWFail = 0
 	s.ABLeaf = 0
 	s.ABBreadth = 0
@@ -226,6 +235,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	// deflate history
 	if sst.ABCnt%10_000 == 0 {
 		sst.hist.Deflate()
+		sst.cont[0].Deflate()
+		sst.cont[1].Deflate()
 	}
 
 	sst.ms.Push()
@@ -252,6 +263,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		hasLegal = true
 
+		sst.hstack.push(m.Piece, m.To)
+
 		// late move reduction
 		rd := lmr(d, ix)
 		if rd < d-1 && !inCheck {
@@ -260,6 +273,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 			if value <= alpha {
 				b.UndoMove(m)
+				sst.hstack.pop()
 				continue
 			}
 		}
@@ -267,6 +281,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
 		value *= -1
 		b.UndoMove(m)
+		sst.hstack.pop()
 
 		if value > alpha {
 			failLow = false
@@ -280,9 +295,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 			if m.Captured == NoPiece && m.Promo == NoPiece {
 				sst.hist.Add(b.STM, m.From, m.To, d)
+
+				for ix := range min(sst.hstack.size(), 2) {
+					pt, to := sst.hstack.top(ix)
+					sst.cont[ix].Add(b.STM, pt, to, m.Piece, m.To, d)
+				}
 			}
 
-			sst.ABBreadth += ix
+			sst.ABBreadth += ix + 1
 
 			return value, nil
 		}
@@ -292,7 +312,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 	}
 
-	sst.ABBreadth += ix
+	sst.ABBreadth += ix + 1
 
 	if !hasLegal {
 		value := Score(0)
@@ -457,9 +477,19 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 			}
 
 		default:
-			hist := sst.hist.Probe(b.STM, m.From, m.To)
+			score := sst.hist.Probe(b.STM, m.From, m.To)
 
-			moves[ix].Weight = hist + heur.QuietHistory
+			if sst.hstack.size() >= 1 {
+				pt, to := sst.hstack.top(0)
+				score += 3 * sst.cont[0].Probe(b.STM, pt, to, m.Piece, m.To)
+			}
+
+			if sst.hstack.size() >= 2 {
+				pt, to := sst.hstack.top(1)
+				score += 2 * sst.cont[1].Probe(b.STM, pt, to, m.Piece, m.To)
+			}
+
+			moves[ix].Weight = score
 		}
 	}
 }
