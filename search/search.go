@@ -293,12 +293,30 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			// store node as fail high (cut-node)
 			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
-			if m.Captured == NoPiece && m.Promo == NoPiece {
-				sst.hist.Add(b.STM, m.From, m.To, d)
+			hSize := sst.hstack.size()
+			bonus := -Score(d * d)
 
-				for ix := range min(sst.hstack.size(), 2) {
-					pt, to := sst.hstack.top(ix)
-					sst.cont[ix].Add(b.STM, pt, to, m.Piece, m.To, d)
+			for i, m := range moves {
+				if i == ix {
+					bonus = -bonus
+				}
+
+				if m.Captured == NoPiece && m.Promo == NoPiece {
+					sst.hist.Add(b.STM, m.From, m.To, bonus)
+
+					if hSize >= 1 {
+						pt, to := sst.hstack.top(0)
+						sst.cont[0].Add(b.STM, pt, to, m.Piece, m.To, bonus)
+					}
+
+					if hSize >= 2 {
+						pt, to := sst.hstack.top(1)
+						sst.cont[1].Add(b.STM, pt, to, m.Piece, m.To, bonus)
+					}
+				}
+
+				if i == ix {
+					break
 				}
 			}
 
