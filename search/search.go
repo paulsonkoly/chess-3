@@ -25,7 +25,7 @@ const (
 type State struct {
 	tt     *transp.Table
 	hist   *heur.History
-	cont   [2]*heur.Continuation
+	cont   *heur.Continuation
 	ms     *move.Store
 	hstack *historyStack
 
@@ -58,7 +58,7 @@ func NewState() *State {
 		tt:     transp.New(),
 		ms:     move.NewStore(),
 		hist:   heur.NewHistory(),
-		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
+		cont:   heur.NewContinuation(),
 		hstack: newHistStack(),
 	}
 }
@@ -235,8 +235,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	// deflate history
 	if sst.ABCnt%10_000 == 0 {
 		sst.hist.Deflate()
-		sst.cont[0].Deflate()
-		sst.cont[1].Deflate()
+		sst.cont.Deflate()
 	}
 
 	sst.ms.Push()
@@ -293,12 +292,30 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			// store node as fail high (cut-node)
 			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
-			if m.Captured == NoPiece && m.Promo == NoPiece {
-				sst.hist.Add(b.STM, m.From, m.To, d)
+			hSize := sst.hstack.size()
+			bonus := -Score(d * d)
 
-				for ix := range min(sst.hstack.size(), 2) {
-					pt, to := sst.hstack.top(ix)
-					sst.cont[ix].Add(b.STM, pt, to, m.Piece, m.To, d)
+			for i, m := range moves {
+				if i == ix {
+					bonus = -bonus
+				}
+
+				if m.Captured == NoPiece && m.Promo == NoPiece {
+					sst.hist.Add(b.STM, m.From, m.To, bonus)
+
+					if hSize >= 1 {
+						pt, to := sst.hstack.top(0)
+						sst.cont.Add(b.STM, pt, to, m.Piece, m.To, bonus)
+					}
+
+					if hSize >= 2 {
+						pt, to := sst.hstack.top(1)
+						sst.cont.Add(b.STM, pt, to, m.Piece, m.To, bonus)
+					}
+				}
+
+				if i == ix {
+					break
 				}
 			}
 
@@ -481,12 +498,12 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 
 			if sst.hstack.size() >= 1 {
 				pt, to := sst.hstack.top(0)
-				score += 3 * sst.cont[0].Probe(b.STM, pt, to, m.Piece, m.To)
+				score += 2 * heur.MaxHistory + sst.cont.Probe(b.STM, pt, to, m.Piece, m.To)
 			}
 
 			if sst.hstack.size() >= 2 {
 				pt, to := sst.hstack.top(1)
-				score += 2 * sst.cont[1].Probe(b.STM, pt, to, m.Piece, m.To)
+				score += heur.MaxHistory + sst.cont.Probe(b.STM, pt, to, m.Piece, m.To)
 			}
 
 			moves[ix].Weight = score

@@ -15,7 +15,6 @@ var PieceValues = [...]Score{0, 100, 300, 300, 500, 900, Inf}
 //
 //	 ^                         ^                                    ^       ^                      ^
 //	HashMove            Captures                                Quiet       0                      -Captures
-//
 const (
 	// HashMove is assigned to a move from Hash, either PV or fail-high.
 	HashMove = Score(15000)
@@ -26,8 +25,8 @@ const (
 const MaxHistory = 1024
 
 func init() {
-  // 1 * history + 2 * continuation[1] + 3 * continuation[0]
-  if Captures < 6 * MaxHistory {
-    panic("gap is not big enough in move weight layout for history scores")
-  }
+	// 1 * history + 2 * continuation[1] + 3 * continuation[0]
+	if Captures < 6*MaxHistory {
+		panic("gap is not big enough in move weight layout for history scores")
+	}
 }
