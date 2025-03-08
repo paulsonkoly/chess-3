@@ -498,12 +498,12 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 
 			if sst.hstack.size() >= 1 {
 				pt, to := sst.hstack.top(0)
-				score += 3 * sst.cont.Probe(b.STM, pt, to, m.Piece, m.To)
+				score += 2 * heur.MaxHistory + sst.cont.Probe(b.STM, pt, to, m.Piece, m.To)
 			}
 
 			if sst.hstack.size() >= 2 {
 				pt, to := sst.hstack.top(1)
-				score += 2 * sst.cont.Probe(b.STM, pt, to, m.Piece, m.To)
+				score += heur.MaxHistory + sst.cont.Probe(b.STM, pt, to, m.Piece, m.To)
 			}
 
 			moves[ix].Weight = score
