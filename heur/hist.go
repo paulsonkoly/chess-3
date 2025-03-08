@@ -22,18 +22,18 @@ func (h *History) Deflate() {
 	for color := White; color <= Black; color++ {
 		for sqFrom := A1; sqFrom <= H8; sqFrom++ {
 			for sqTo := A1; sqTo <= H8; sqTo++ {
-				h.data[color][sqFrom][sqTo] /= 2 
+				h.data[color][sqFrom][sqTo] /= 2
 			}
 		}
 	}
 }
 
-// Add increments the history heuristics for the move by bonus. 
+// Add increments the history heuristics for the move by bonus.
 func (h *History) Add(stm Color, from, to Square, bonus Score) {
 	hist := h.data[stm][from][to] + bonus
-  hist = min(MaxHistory, hist)
-  hist = max(-MaxHistory, hist)
-  h.data[stm][from][to] = hist
+	hist = min(MaxHistory, hist)
+	hist = max(-MaxHistory, hist)
+	h.data[stm][from][to] = hist
 }
 
 // Probe returns the history heuristics entry for the move.

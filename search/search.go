@@ -215,14 +215,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	inCheck := movegen.InCheck(b, b.STM)
 
-  // RFP
-  if !inCheck {
-    staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
+	// RFP
+	if !inCheck {
+		staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
 
-    if staticEval >= beta + Score(d) * 105 {
-      return staticEval, pv
-    }
-  }
+		if staticEval >= beta+Score(d)*105 {
+			return staticEval, pv
+		}
+	}
 
 	// null move pruning
 	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
