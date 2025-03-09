@@ -276,8 +276,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move, also don't do this until we
 		// failed low at least once.
-		if hasLegal && !failLow && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, lmr(d, ix), sst)
+		rd := lmr(d, ix)
+		nullSearched := false
+		var (
+			value Score
+			curr  []move.SimpleMove
+		)
+		if hasLegal && (!failLow || rd < d-1) && !inCheck {
+			nullSearched = true
+
+			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
 
 			if value <= alpha {
@@ -289,8 +297,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		hasLegal = true
 
-		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
-		value *= -1
+		if alpha+1 != beta || !nullSearched {
+			value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+			value *= -1
+		}
+
 		b.UndoMove(m)
 		sst.hstack.pop()
 
