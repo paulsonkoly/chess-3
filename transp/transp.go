@@ -17,6 +17,7 @@ var (
 
 type Table struct {
 	data []Entry
+	cnt  int
 }
 
 type NodeT byte
@@ -49,8 +50,14 @@ func New() *Table {
 	}
 }
 
+// HashFull is the permill count of the hash usage.
+func (t Table) HashFull() int {
+	return 1000 * t.cnt / TableSize
+}
+
 // Clear clears the transposition table for the next search.Search().
 func (t *Table) Clear() {
+	t.cnt = 0
 	for ix := range t.data {
 		t.data[ix].Depth = 0
 	}
@@ -63,6 +70,10 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 
 	if t.data[ix].Depth > d {
 		return
+	}
+
+	if t.data[ix].Depth == 0 {
+		t.cnt++
 	}
 
 	t.data[ix] = Entry{
