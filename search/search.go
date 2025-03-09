@@ -259,7 +259,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	)
 
 	hasLegal := false
-	hasFailLow := false
 	failLow := true
 	maxim := -Inf
 
@@ -272,20 +271,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			continue
 		}
 
-		hasLegal = true
-
 		sst.hstack.push(m.Piece, m.To)
 
 		// Late move reduction and null-window search. Skip it on the first legal
-		// move, which is likely to be the hash move, also don't do this until we
-		// failed low at least once.
+		// move, which is likely to be the hash move. 
 		rd := lmr(d, ix)
 		nullSearched := false
 		var (
 			value Score
 			curr  []move.SimpleMove
 		)
-		if (hasFailLow || rd < d-1) && !inCheck {
+		if (hasLegal || rd < d-1) && !inCheck {
 			nullSearched = true
 
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
@@ -298,7 +294,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			}
 		}
 
-		if alpha+1 != beta || !nullSearched {
+		hasLegal = true
+
+    // if our full search is different from the null window search or there was
+    // no null window search at all
+		if alpha+1 != beta || rd < d-1 || !nullSearched {
 			value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
 			value *= -1
 		}
@@ -312,8 +312,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			failLow = false
 			alpha = value
 			pv = append(curr, m.SimpleMove)
-		} else {
-			hasFailLow = true
 		}
 
 		if value >= beta {
