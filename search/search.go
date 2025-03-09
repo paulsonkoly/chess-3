@@ -313,7 +313,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			alpha = value
 			pv = append(curr, m.SimpleMove)
 		} else {
-			hasFailLow = false
+			hasFailLow = true
 		}
 
 		if value >= beta {
