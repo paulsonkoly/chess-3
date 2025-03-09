@@ -109,6 +109,7 @@ func (e *UciEngine) handleSetOption(args []string) {
 		}
 
 		transp.TableSize = val * 1024 * 1024 / transp.EntrySize
+		e.sst = search.NewState() // we need to re-allocate the hash table
 	}
 }
 
