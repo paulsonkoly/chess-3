@@ -271,14 +271,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			continue
 		}
 
-		hasLegal = true
-
 		sst.hstack.push(m.Piece, m.To)
 
-		// late move reduction
-		rd := lmr(d, ix)
-		if rd < d-1 && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
+		// Late move reduction and null-window search. Skip it on the first legal
+		// move, which is likely to be the hash move, also don't do this until we
+		// failed low at least once.
+		if hasLegal && !failLow && !inCheck {
+			value, _ := AlphaBeta(b, -alpha-1, -alpha, lmr(d, ix), sst)
 			value *= -1
 
 			if value <= alpha {
@@ -287,6 +286,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 				continue
 			}
 		}
+
+		hasLegal = true
 
 		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
 		value *= -1
@@ -390,7 +391,7 @@ var log = [...]int{
 func lmr(d Depth, mCount int) Depth {
 	value := (log[int(d)] * log[mCount] / 19500)
 
-	return max(0, d-Depth(value))
+	return Clamp(d-Depth(value), 0, d-1)
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
