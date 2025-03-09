@@ -9,12 +9,15 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const (
-	TableSize = 1 << 18 // 4Mb
+const EntrySize = 16 // EntrySize is the transposition table entry size in bytes.
+
+var (
+	TableSize = 8 * 1024 * 1024 / EntrySize
 )
 
 type Table struct {
 	data []Entry
+	cnt  int
 }
 
 type NodeT byte
@@ -47,8 +50,14 @@ func New() *Table {
 	}
 }
 
+// HashFull is the permill count of the hash usage.
+func (t Table) HashFull() int {
+	return 1000 * t.cnt / TableSize
+}
+
 // Clear clears the transposition table for the next search.Search().
 func (t *Table) Clear() {
+	t.cnt = 0
 	for ix := range t.data {
 		t.data[ix].Depth = 0
 	}
@@ -57,10 +66,14 @@ func (t *Table) Clear() {
 // Insert inserts an entry to the transposition table if the current hash in
 // the table has a lower depth than d.
 func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, value Score, typ NodeT) {
-	ix := hash % TableSize
+	ix := hash % board.Hash(TableSize)
 
 	if t.data[ix].Depth > d {
 		return
+	}
+
+	if t.data[ix].Depth == 0 {
+		t.cnt++
 	}
 
 	t.data[ix] = Entry{
@@ -75,7 +88,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 
 // Lookup looks up the transposition table entry, using hash as the key.
 func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
-	ix := hash % TableSize
+	ix := hash % board.Hash(TableSize)
 
 	if t.data[ix].Hash == hash {
 		return &t.data[ix], true
