@@ -274,7 +274,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		sst.hstack.push(m.Piece, m.To)
 
 		// Late move reduction and null-window search. Skip it on the first legal
-		// move, which is likely to be the hash move. 
+		// move, which is likely to be the hash move.
 		rd := lmr(d, ix)
 		nullSearched := false
 		var (
@@ -296,8 +296,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		hasLegal = true
 
-    // if our full search is different from the null window search or there was
-    // no null window search at all
+		// if our full search is different from the null window search or there was
+		// no null window search at all
 		if alpha+1 != beta || rd < d-1 || !nullSearched {
 			value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
 			value *= -1
