@@ -282,8 +282,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			value Score
 			curr  []move.SimpleMove
 		)
-		if hasLegal && (!failLow || rd < d-1) && !inCheck {
+		if ((hasLegal && !failLow) || rd < d-1) && !inCheck {
 			nullSearched = true
+			hasLegal = true
 
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
