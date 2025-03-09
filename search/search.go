@@ -259,6 +259,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	)
 
 	hasLegal := false
+	hasFailLow := false
 	failLow := true
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
@@ -269,6 +270,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			b.UndoMove(m)
 			continue
 		}
+
+		hasLegal = true
 
 		sst.hstack.push(m.Piece, m.To)
 
@@ -281,9 +284,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			value Score
 			curr  []move.SimpleMove
 		)
-		if ((hasLegal && !failLow) || rd < d-1) && !inCheck {
+		if (hasFailLow || rd < d-1) && !inCheck {
 			nullSearched = true
-			hasLegal = true
 
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
@@ -294,8 +296,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 				continue
 			}
 		}
-
-		hasLegal = true
 
 		if alpha+1 != beta || !nullSearched {
 			value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
@@ -309,6 +309,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			failLow = false
 			alpha = value
 			pv = append(curr, m.SimpleMove)
+		} else {
+			hasFailLow = false
 		}
 
 		if value >= beta {
