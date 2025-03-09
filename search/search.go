@@ -132,8 +132,8 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
-		fmt.Printf("info depth %d score cp %d nodes %d time %d pv %s\n",
-			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, pvInfo(moves))
+		fmt.Printf("info depth %d score cp %d nodes %d time %d hashfull %d pv %s\n",
+			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(moves))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
