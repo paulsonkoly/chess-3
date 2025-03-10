@@ -261,6 +261,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	hasLegal := false
 	failLow := true
 	maxim := -Inf
+	moveCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -270,6 +271,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			b.UndoMove(m)
 			continue
 		}
+
+		hasLegal = true
+		moveCnt++
 
 		sst.hstack.push(m.Piece, m.To)
 
@@ -281,7 +285,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			value Score
 			curr  []move.SimpleMove
 		)
-		if (hasLegal || rd < d-1) && !inCheck {
+		if (moveCnt > 6 || rd < d-1) && !inCheck {
 			nullSearched = true
 
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
@@ -294,13 +298,24 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			}
 		}
 
-		hasLegal = true
-
 		// if our full search is different from the null window search or there was
 		// no null window search at all
 		if alpha+1 != beta || rd < d-1 || !nullSearched {
-			value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
-			value *= -1
+
+			// if there was a null window search at full depth that proved score >=
+			// alpha+1
+			if nullSearched && rd == d-1 {
+				alpha = value - 1
+
+				if value < beta {
+					value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+					value *= -1
+				}
+
+			} else {
+				value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+				value *= -1
+			}
 		}
 
 		b.UndoMove(m)
