@@ -210,9 +210,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	sst.ABCnt++
 
-	hasLegal := false
-	failLow := true
-
 	inCheck := movegen.InCheck(b, b.STM)
 
 	// RFP
@@ -261,6 +258,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		ix int
 	)
 
+	hasLegal := false
+	failLow := true
+	moveCnt := 0
+
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
 		b.MakeMove(m)
@@ -271,13 +272,22 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		hasLegal = true
+		moveCnt++
 
 		sst.hstack.push(m.Piece, m.To)
 
-		// late move reduction
+		// Late move reduction and null-window search. Skip it on the first legal
+		// move, which is likely to be the hash move.
 		rd := lmr(d, ix)
-		if rd < d-1 && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
+		nullSearched := false
+		var (
+			value Score
+			curr  []move.SimpleMove
+		)
+		if (moveCnt > 6 || rd < d-1) && !inCheck {
+			nullSearched = true
+
+			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
 
 			if value <= alpha {
@@ -287,8 +297,26 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			}
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
-		value *= -1
+		// if our full search is different from the null window search or there was
+		// no null window search at all
+		if alpha+1 != beta || rd < d-1 || !nullSearched {
+
+			// if there was a null window search at full depth that proved score >=
+			// alpha+1
+			if nullSearched && rd == d-1 {
+				alpha = value - 1
+
+				if value < beta {
+					value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+					value *= -1
+				}
+
+			} else {
+				value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+				value *= -1
+			}
+		}
+
 		b.UndoMove(m)
 		sst.hstack.pop()
 
@@ -388,7 +416,7 @@ var log = [...]int{
 func lmr(d Depth, mCount int) Depth {
 	value := (log[int(d)] * log[mCount] / 19500)
 
-	return max(0, d-Depth(value))
+	return Clamp(d-Depth(value), 0, d-1)
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
@@ -419,7 +447,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 	standPat := eval.Eval(b, alpha, beta, &eval.Coefficients)
 
 	if standPat >= beta {
-		return beta
+		return standPat
 	}
 
 	delta := standPat + 110
