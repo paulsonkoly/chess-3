@@ -285,7 +285,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			value Score
 			curr  []move.SimpleMove
 		)
-		if (moveCnt > 6 || rd < d-1) && !inCheck {
+		if (moveCnt > 7 || rd < d-1) && !inCheck {
 			nullSearched = true
 
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
