@@ -45,11 +45,11 @@ func TestQuiescence(t *testing.T) {
 		},
 	}
 
-	sst := search.NewState()
+	s := search.New()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sst.Clear()
-			got := search.Quiescence(tt.b, -Inf-1, Inf+1, 0, sst)
+			s.Clear()
+			got := s.Quiescence(tt.b, -Inf-1, Inf+1, 0)
 			assert.InDelta(t, int(tt.want), int(got), 50.0)
 		})
 	}
@@ -74,7 +74,7 @@ func TestDraws(t *testing.T) {
 		},
 	}
 
-	sst := search.NewState()
+	s := search.New()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -82,9 +82,7 @@ func TestDraws(t *testing.T) {
 				tt.b.MakeMove(&m)
 			}
 
-			sst.Clear()
-
-			score, _ := search.Search(tt.b, 3, sst)
+			score, _ := s.Go(tt.b, 3)
 
 			assert.InDelta(t, tt.want, int(score), 200)
 		})
