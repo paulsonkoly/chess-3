@@ -210,9 +210,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	sst.ABCnt++
 
-	hasLegal := false
-	failLow := true
-
 	inCheck := movegen.InCheck(b, b.STM)
 
 	// RFP
@@ -261,6 +258,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		ix int
 	)
 
+	hasLegal := false
+	failLow := true
+	maxim := -Inf
+
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
 		b.MakeMove(m)
@@ -291,6 +292,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		value *= -1
 		b.UndoMove(m)
 		sst.hstack.pop()
+
+		maxim = max(maxim, value)
 
 		if value > alpha {
 			failLow = false
@@ -335,28 +338,27 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		if abort(sst) {
-			return alpha, pv
+			return maxim, pv
 		}
 	}
 
 	sst.ABBreadth += ix + 1
 
 	if !hasLegal {
-		value := Score(0)
+		maxim = Score(0)
 
 		if inCheck {
-			value = -Inf
+			maxim = -Inf
 		}
 
-		if value > alpha {
+		if maxim > alpha {
 			failLow = false
-			alpha = value
 		}
 	}
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, alpha, transp.AllNode)
+		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
 	} else {
 		// store node as exact (PV-node)
 		// there might not be a move in case of !hasLegal
@@ -365,10 +367,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			sm = pv[len(pv)-1]
 		}
 
-		transpT.Insert(b.Hash(), d, tfCnt, sm, alpha, transp.PVNode)
+		transpT.Insert(b.Hash(), d, tfCnt, sm, maxim, transp.PVNode)
 	}
 
-	return alpha, pv
+	return maxim, pv
 }
 
 var log = [...]int{
@@ -419,10 +421,12 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 	standPat := eval.Eval(b, alpha, beta, &eval.Coefficients)
 
 	if standPat >= beta {
-		return beta
+		return standPat
 	}
 
 	delta := standPat + 110
+	// fail soft upper bound
+	maxim := standPat
 	alpha = max(alpha, standPat)
 
 	moves := sst.ms.Frame()
@@ -452,7 +456,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 				gain += heur.PieceValues[m.Promo] - heur.PieceValues[Pawn]
 			}
 
-			if gain+delta < alpha {
+			if gain+delta < maxim {
 				sst.QDelta++
 				b.UndoMove(m)
 				continue
@@ -471,14 +475,15 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 		if curr >= beta {
 			return curr
 		}
+		maxim = max(maxim, curr)
 		alpha = max(alpha, curr)
 
 		if abort(sst) {
-			return alpha
+			return maxim
 		}
 	}
 
-	return alpha
+	return maxim
 }
 
 func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
