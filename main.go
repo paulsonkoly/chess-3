@@ -34,7 +34,7 @@ var bench = flag.Bool("bench", false, "run benchmark instead of UCI")
 
 type UciEngine struct {
 	board       *board.Board
-	sst         *search.State
+	search      *search.Search
 	timeControl struct {
 		wtime int // White time in milliseconds
 		btime int // Black time in milliseconds
@@ -45,8 +45,8 @@ type UciEngine struct {
 
 func NewUciEngine() *UciEngine {
 	return &UciEngine{
-		board: board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-		sst:   search.NewState(),
+		board:  board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+		search: search.New(),
 	}
 }
 
@@ -78,10 +78,10 @@ func (e *UciEngine) handleCommand(command string) {
 		switch parts[1] {
 
 		case "on":
-			e.sst.Debug = true
+			e.search.Debug = true
 
 		case "off":
-			e.sst.Debug = false
+			e.search.Debug = false
 		}
 	}
 }
@@ -144,7 +144,7 @@ func (e *UciEngine) handleGo(args []string) {
 
 	if timeAllowed > 0 {
 		// Timeout handling with iterative deepening
-		e.sst.Stop = make(chan struct{})
+		e.search.Stop = make(chan struct{})
 		var bestMove move.SimpleMove
 
 		wg := sync.WaitGroup{}
@@ -161,7 +161,7 @@ func (e *UciEngine) handleGo(args []string) {
 		}()
 
 		time.Sleep(time.Duration(timeAllowed) * time.Millisecond)
-		close(e.sst.Stop)
+		close(e.search.Stop)
 		wg.Wait()
 		fmt.Printf("bestmove %s\n", bestMove)
 	} else {
@@ -179,7 +179,7 @@ func (e *UciEngine) handleGo(args []string) {
 }
 
 func (e *UciEngine) Search(d Depth) (Score, []move.SimpleMove) {
-	return search.Search(e.board, d, e.sst)
+	return e.search.Go(e.board, d)
 }
 
 // 7800 that factors 39 * 200
@@ -303,8 +303,8 @@ func main() {
 		e.board = board.FromFEN(fen)
 		e.Search(9)
 
-		nodes := e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt
-		time := e.sst.Time
+		nodes := e.search.ABCnt + e.search.ABLeaf + e.search.QCnt
+		time := e.search.Time
 
 		fmt.Printf("%d nodes %d nps\n", nodes, 1000*nodes/int(time))
 		return
@@ -384,16 +384,16 @@ func (e *UciEngine) bench() {
 
 		stats = append(stats, Stats{
 			ok,
-			e.sst.AWFail,
-			e.sst.ABCnt + e.sst.ABLeaf,
-			float32(e.sst.ABBreadth) / float32(e.sst.ABCnt),
-			e.sst.TTHit,
-			e.sst.QCnt,
-			e.sst.QDepth,
-			e.sst.QDelta,
-			e.sst.QSEE,
-			e.sst.Time,
-			(e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt) / int(e.sst.Time),
+			e.search.AWFail,
+			e.search.ABCnt + e.search.ABLeaf,
+			float32(e.search.ABBreadth) / float32(e.search.ABCnt),
+			e.search.TTHit,
+			e.search.QCnt,
+			e.search.QDepth,
+			e.search.QDelta,
+			e.search.QSEE,
+			e.search.Time,
+			(e.search.ABCnt + e.search.ABLeaf + e.search.QCnt) / int(e.search.Time),
 		})
 	}
 
