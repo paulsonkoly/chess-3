@@ -456,7 +456,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 				gain += heur.PieceValues[m.Promo] - heur.PieceValues[Pawn]
 			}
 
-			if gain+delta < maxim {
+			if gain+delta < alpha {
 				sst.QDelta++
 				b.UndoMove(m)
 				continue
