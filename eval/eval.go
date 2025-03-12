@@ -564,16 +564,10 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 
 func Manhattan(a, b Square) int {
 	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
-	return max(abs(ax-bx), abs(ay-by))
+	return max(Abs(ax-bx), Abs(ay-by))
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
+// insuffientMat determines if it is guaranteed draw apart from help-mate.
 func insuffientMat(b *board.Board) bool {
 	if b.Pieces[Pawn]|b.Pieces[Queen]|b.Pieces[Rook] != 0 {
 		return false
@@ -584,14 +578,31 @@ func insuffientMat(b *board.Board) bool {
 	wB := (b.Colors[White] & b.Pieces[Bishop]).Count()
 	bB := (b.Colors[Black] & b.Pieces[Bishop]).Count()
 
-	if wN+bN+wB+bB <= 3 { // draw cases
-		wScr := wN + 3*wB
-		bScr := bN + 3*bB
+	if wN+wB > bN+bB { // white has the advantage
+		switch wN + wB {
 
-		if max(wScr-bScr, bScr-wScr) <= 3 {
+		case 2:
+			return wN == 2
+
+		// there is no 0 case
+		case 1:
 			return true
+
+		default:
+			return false
+		}
+
+	} else {
+		switch bN + bB {
+
+		case 2:
+			return bN == 2
+
+		case 1, 0:
+			return true
+
+		default:
+			return false
 		}
 	}
-
-	return false
 }
