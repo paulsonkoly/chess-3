@@ -355,11 +355,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			failLow = false
 		}
 
-    if maxim >= beta {
-      // store node as fail high (Cut-node)
-      transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.CutNode)
-      return maxim, pv
-    }
+		if maxim >= beta {
+			// store node as fail high (Cut-node)
+			transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.CutNode)
+			return maxim, pv
+		}
 	}
 
 	if failLow {
