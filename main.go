@@ -120,7 +120,7 @@ func (e *UciEngine) applyMoves(moves []string) {
 }
 
 func (e *UciEngine) handleGo(args []string) {
-	depth := Depth(10) // Default depth if none is specified
+	depth := Depth(1) // Default depth if none is specified
 	timeAllowed := 0
 
 	for i := 0; i < len(args); i++ {
