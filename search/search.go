@@ -107,12 +107,12 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 
 			case scoreSample <= alpha:
 				sst.AWFail++
-				alpha -= factor * WindowSize
+				alpha = scoreSample - factor*WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
 				sst.AWFail++
-				beta += factor * WindowSize
+				beta = scoreSample + factor*WindowSize
 				factor *= 2
 
 			default:
@@ -261,6 +261,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	hasLegal := false
 	failLow := true
 	maxim := -Inf
+	moveCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -272,13 +273,22 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		hasLegal = true
+		moveCnt++
 
 		sst.hstack.push(m.Piece, m.To)
 
-		// late move reduction
+		// Late move reduction and null-window search. Skip it on the first legal
+		// move, which is likely to be the hash move.
 		rd := lmr(d, ix)
-		if rd < d-1 && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
+		nullSearched := false
+		var (
+			value Score
+			curr  []move.SimpleMove
+		)
+		if (moveCnt > 1 || rd < d-1) && !inCheck {
+			nullSearched = true
+
+			value, curr = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
 
 			if value <= alpha {
@@ -288,8 +298,25 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			}
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
-		value *= -1
+		// if our full search is different from the null window search or there was
+		// no null window search at all
+		if alpha+1 != beta || rd < d-1 || !nullSearched {
+
+			// if there was a null window search at full depth that proved score >=
+			// alpha+1
+			if nullSearched && rd == d-1 {
+
+				if value < beta {
+					value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+					value *= -1
+				}
+
+			} else {
+				value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+				value *= -1
+			}
+		}
+
 		b.UndoMove(m)
 		sst.hstack.pop()
 
@@ -354,9 +381,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		if maxim > alpha {
 			failLow = false
 		}
+
+		if maxim >= beta {
+			return maxim, pv
+		}
 	}
 
 	if failLow {
+		if maxim > alpha {
+			panic("oops")
+		}
 		// store node as fail low (All-node)
 		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
 	} else {
@@ -390,7 +424,7 @@ var log = [...]int{
 func lmr(d Depth, mCount int) Depth {
 	value := (log[int(d)] * log[mCount] / 19500)
 
-	return max(0, d-Depth(value))
+	return Clamp(d-Depth(value), 0, d-1)
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.

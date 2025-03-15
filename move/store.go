@@ -23,6 +23,7 @@ func (s *Store) Clear() {
 }
 
 func (s *Store) Alloc() *Move {
+  s.data[s.allocIx].Weight = 0
 	s.allocIx++
 	return &s.data[s.allocIx-1]
 }
