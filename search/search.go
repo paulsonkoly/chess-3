@@ -307,7 +307,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			if nullSearched && rd == d-1 {
 
 				if value < beta {
-          // this was between alpha+1 and beta
 					value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
 					value *= -1
 				}
