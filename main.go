@@ -120,7 +120,7 @@ func (e *UciEngine) applyMoves(moves []string) {
 }
 
 func (e *UciEngine) handleGo(args []string) {
-	depth := Depth(10) // Default depth if none is specified
+	depth := Depth(1) // Default depth if none is specified
 	timeAllowed := 0
 
 	for i := 0; i < len(args); i++ {
@@ -142,9 +142,13 @@ func (e *UciEngine) handleGo(args []string) {
 
 	timeAllowed = e.TimeControl(timeAllowed)
 
+	// Timeout handling with iterative deepening. If we issue a time based go
+	// that closes Stop, and then subsequently a depth based go the Stop should
+	// still be re-initialised otherwise the depth based go would abort
+	// immediately.
+	e.sst.Stop = make(chan struct{})
+
 	if timeAllowed > 0 {
-		// Timeout handling with iterative deepening
-		e.sst.Stop = make(chan struct{})
 		var bestMove move.SimpleMove
 
 		wg := sync.WaitGroup{}
