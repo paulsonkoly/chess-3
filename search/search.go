@@ -107,12 +107,12 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 
 			case scoreSample <= alpha:
 				sst.AWFail++
-				alpha -= factor * WindowSize
+				alpha = scoreSample - factor*WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
 				sst.AWFail++
-				beta += factor * WindowSize
+				beta = scoreSample + factor*WindowSize
 				factor *= 2
 
 			default:
@@ -288,7 +288,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		if (moveCnt > 1 || rd < d-1) && !inCheck {
 			nullSearched = true
 
-			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
+			value, curr = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
 
 			if value <= alpha {
@@ -307,7 +307,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			if nullSearched && rd == d-1 {
 
 				if value < beta {
-					value, curr = AlphaBeta(b, -beta, -value+1, d-1, sst)
+          // this was between alpha+1 and beta
+					value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
 					value *= -1
 				}
 
@@ -381,9 +382,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		if maxim > alpha {
 			failLow = false
 		}
+
+		if maxim >= beta {
+			return maxim, pv
+		}
 	}
 
 	if failLow {
+		if maxim > alpha {
+			panic("oops")
+		}
 		// store node as fail low (All-node)
 		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
 	} else {
