@@ -157,7 +157,7 @@ func (e *UciEngine) handleGo(args []string) {
 		go func() {
 			defer wg.Done()
 
-			_, moves := e.Search(100)
+			_, moves := e.Search(search.MaxPlies)
 
 			if len(moves) > 0 {
 				bestMove = moves[0]
