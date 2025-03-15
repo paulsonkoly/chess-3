@@ -285,7 +285,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			value Score
 			curr  []move.SimpleMove
 		)
-		if (moveCnt > 7 || rd < d-1) && !inCheck {
+		if (moveCnt > 1 || rd < d-1) && !inCheck {
 			nullSearched = true
 
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
@@ -305,10 +305,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			// if there was a null window search at full depth that proved score >=
 			// alpha+1
 			if nullSearched && rd == d-1 {
-				alpha = value - 1
 
 				if value < beta {
-					value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+					value, curr = AlphaBeta(b, -beta, -value+1, d-1, sst)
 					value *= -1
 				}
 
