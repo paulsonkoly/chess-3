@@ -316,7 +316,7 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 		// scoreHist[pType] = score
 
 		if score-c.LazyMargin[pType] >= beta {
-			return beta
+			return score-c.LazyMargin[pType]
 		}
 
 		if pType == Knight {
