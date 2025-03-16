@@ -283,8 +283,8 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 	score := TaperedScore(b, phase, mg[:], eg[:])
 
 	// scoreHist[0] = score
-	if score > beta+c.LazyMargin[0] {
-		return beta
+	if score-c.LazyMargin[0] >= beta {
+		return score - c.LazyMargin[0]
 	}
 
 	pWise := newPieceWise(b, c)
@@ -315,7 +315,7 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 		score = TaperedScore(b, phase, mg[:], eg[:])
 		// scoreHist[pType] = score
 
-		if score > beta+c.LazyMargin[pType] {
+		if score-c.LazyMargin[pType] >= beta {
 			return beta
 		}
 

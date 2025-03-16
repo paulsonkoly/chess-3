@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	WindowSize = 50 // half a pawn left and right around score
+	WindowSize = 25 // quarter of a pawn left and right around score
 )
 
 // State is a persistent state storage between searches.
@@ -43,6 +43,7 @@ type State struct {
 	// (ABBreadth / ABCnt) is the average alpha-beta branching factor.
 	ABBreadth int
 	ABCnt     int   // ABCnt is the inner node count in alpha-beta.
+	ABRe      int   // ABRe is the number of re-searches in alpha.beta.
 	TTHit     int   // TThit is the transposition table hit-count.
 	QCnt      int   // Quiesence node count
 	QDepth    int   // QDepth is the maximal quiesence search depth.
@@ -74,6 +75,7 @@ func (s *State) Clear() {
 	s.ABLeaf = 0
 	s.ABBreadth = 0
 	s.ABCnt = 0
+	s.ABRe = 0
 	s.TTHit = 0
 	s.QCnt = 0
 	s.QDepth = 0
@@ -106,11 +108,13 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 			switch {
 
 			case scoreSample <= alpha:
+				fmt.Printf("info depth %d score %d upperbound nodes %d\n", d, scoreSample, sst.ABCnt+sst.ABLeaf+sst.QCnt)
 				sst.AWFail++
 				alpha = scoreSample - factor*WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
+				fmt.Printf("info depth %d score %d lowerbound nodes %d\n", d, scoreSample, sst.ABCnt+sst.ABLeaf+sst.QCnt)
 				sst.AWFail++
 				beta = scoreSample + factor*WindowSize
 				factor *= 2
@@ -222,7 +226,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	}
 
 	// null move pruning
-	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 && alpha+1 == beta {
 
 		enP := b.MakeNullMove()
 
@@ -309,11 +313,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 				if value < beta {
 					value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
 					value *= -1
+					sst.ABRe++
 				}
 
 			} else {
 				value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
 				value *= -1
+				sst.ABRe++
 			}
 		}
 
