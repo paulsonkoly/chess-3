@@ -338,6 +338,7 @@ type Stats struct {
 	AWFail int
 	ABCnt  int
 	ABBF   float32
+	ABRe   int
 	TTHit  int
 	QCnt   int
 	QDepth int
@@ -391,6 +392,7 @@ func (e *UciEngine) bench() {
 			e.sst.AWFail,
 			e.sst.ABCnt + e.sst.ABLeaf,
 			float32(e.sst.ABBreadth) / float32(e.sst.ABCnt),
+			e.sst.ABRe,
 			e.sst.TTHit,
 			e.sst.QCnt,
 			e.sst.QDepth,
@@ -407,6 +409,7 @@ func (e *UciEngine) bench() {
 		avg.AWFail += stat.AWFail
 		avg.ABCnt += stat.ABCnt
 		avg.ABBF += stat.ABBF
+		avg.ABRe += stat.ABRe
 		avg.TTHit += stat.TTHit
 		avg.QCnt += stat.QCnt
 		avg.QDepth += stat.QDepth
@@ -431,6 +434,7 @@ func (e *UciEngine) bench() {
 		aWFail := fmt.Sprintf("%d", stat.AWFail)
 		aBCnt := fmt.Sprintf("%d", stat.ABCnt)
 		abBF := fmt.Sprintf("%.4f", stat.ABBF)
+		abRe := fmt.Sprintf("%d", stat.ABRe)
 		tTHit := fmt.Sprintf("%d", stat.TTHit)
 		qCnt := fmt.Sprintf("%d", stat.QCnt)
 		qDepth := fmt.Sprintf("%d", stat.QDepth)
@@ -439,7 +443,7 @@ func (e *UciEngine) bench() {
 		timeMs := fmt.Sprintf("%d", stat.Time)
 		kNps := fmt.Sprintf("%d", stat.KNps)
 
-		table.Append([]string{fmt.Sprintf("BK %d", ix+1), ok, aWFail, aBCnt, abBF, tTHit, qCnt, qDepth, qDelta, qSEE, timeMs, kNps})
+		table.Append([]string{fmt.Sprintf("BK %d", ix+1), ok, aWFail, aBCnt, abBF, abRe, tTHit, qCnt, qDepth, qDelta, qSEE, timeMs, kNps})
 	}
 
 	table.Append([]string{"average",
@@ -447,6 +451,7 @@ func (e *UciEngine) bench() {
 		fmt.Sprintf("%.2f", float32(avg.AWFail)/float32(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float64(avg.ABCnt)/float64(len(bratkoKopec))),
 		fmt.Sprintf("%.4f", avg.ABBF/float32(len(bratkoKopec))),
+		fmt.Sprintf("%.2f", float64(avg.ABRe)/float64(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float64(avg.TTHit)/float64(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float64(avg.QCnt)/float64(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float32(avg.QDepth)/float32(len(bratkoKopec))),
@@ -456,7 +461,7 @@ func (e *UciEngine) bench() {
 		fmt.Sprintf("%.2f", float64(avg.KNps)/float64(len(bratkoKopec))),
 	})
 
-	table.SetHeader([]string{"Test", "BM", "AWFail", "ABCnt", "ABBF", "TTHit", "QCnt", "QDepth", "QDelta", "QSEE", "Time (ms)", "Speed (Kn/s)"})
+	table.SetHeader([]string{"Test", "BM", "AWFail", "ABCnt", "ABBF", "ABRe", "TTHit", "QCnt", "QDepth", "QDelta", "QSEE", "Time (ms)", "Speed (Kn/s)"})
 	table.SetAutoWrapText(false)
 	table.Render()
 }
