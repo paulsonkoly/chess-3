@@ -107,12 +107,12 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 
 			case scoreSample <= alpha:
 				sst.AWFail++
-				alpha -= factor * WindowSize
+				alpha = scoreSample - factor * WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
 				sst.AWFail++
-				beta += factor * WindowSize
+				beta = scoreSample + factor * WindowSize
 				factor *= 2
 
 			default:
