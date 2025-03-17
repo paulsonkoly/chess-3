@@ -21,6 +21,12 @@ const (
 	WindowSize = 50 // half a pawn left and right around score
 )
 
+// Trace variation entry.
+type Trace struct {
+	Move move.SimpleMove
+	Hash board.Hash
+}
+
 // State is a persistent state storage between searches.
 type State struct {
 	tt     *transp.Table
@@ -29,7 +35,8 @@ type State struct {
 	ms     *move.Store
 	hstack *historyStack
 
-	Debug bool // Debug determines if additional debug info output is enabled.
+	Debug bool    // Debug determines if additional debug info output is enabled.
+	Trace []Trace // Trace enables tracing a particular line of move.
 
 	// Stop channel signals an immediate Stop request to the search. Current
 	// depth will be abandoned.
@@ -101,16 +108,22 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 		)
 
 		for !awOk {
-			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, sst)
+			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, 0, sst)
 
 			switch {
 
 			case scoreSample <= alpha:
+				if sst.Trace != nil {
+					fmt.Printf("depth %d upperbound %d new alpha %d\n", d, scoreSample, alpha-factor*WindowSize)
+				}
 				sst.AWFail++
 				alpha -= factor * WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
+				if sst.Trace != nil {
+					fmt.Printf("depth %d lowerbound %d new beta %d\n", d, scoreSample, beta+factor*WindowSize)
+				}
 				sst.AWFail++
 				beta += factor * WindowSize
 				factor *= 2
@@ -170,7 +183,7 @@ func pvInfo(moves []move.SimpleMove) string {
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, []move.SimpleMove) {
+func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) (Score, []move.SimpleMove) {
 
 	transpT := sst.tt
 	pv := []move.SimpleMove{}
@@ -180,23 +193,35 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		return 0, pv
 	}
 
+	trace := sst.Trace != nil && len(sst.Trace) > int(ply) && sst.Trace[ply].Hash == b.Hash()
+
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
+
 		switch transpE.Type {
 
 		case transp.PVNode:
 			if transpE.From|transpE.To != 0 {
 				pv = []move.SimpleMove{transpE.SimpleMove}
 			}
+			if trace {
+				fmt.Printf("depth %d tt hit return exact score %d alpha %d beta %d\n", d, transpE.Value, alpha, beta)
+			}
 			return transpE.Value, pv
 
 		case transp.CutNode:
 			if transpE.Value >= beta {
+				if trace {
+					fmt.Printf("depth %d tt hit return lower bound %d alpha %d beta %d\n", d, transpE.Value, alpha, beta)
+				}
 				return transpE.Value, pv
 			}
 
 		case transp.AllNode:
 			if transpE.Value <= alpha {
+				if trace {
+					fmt.Printf("depth %d tt hit return upper bound %d alpha %d beta %d\n", d, transpE.Value, alpha, beta)
+				}
 				return transpE.Value, pv
 			}
 		}
@@ -217,6 +242,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
 
 		if staticEval >= beta+Score(d)*105 {
+			if trace {
+				fmt.Printf("depth %d RFP static eval %d alpha %d beta %d\n", d, staticEval, alpha, beta)
+			}
 			return staticEval, pv
 		}
 	}
@@ -228,12 +256,15 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		rd := max(0, d-3)
 
-		value, _ := AlphaBeta(b, -beta, -beta+1, rd, sst)
+		value, _ := AlphaBeta(b, -beta, -beta+1, rd, ply, sst)
 		value *= -1
 
 		b.UndoNullMove(enP)
 
 		if value >= beta {
+			if trace {
+				fmt.Printf("depth %d NMP score %d alpha %d beta %d\n", d, value, alpha, beta)
+			}
 			return value, pv
 		}
 	}
@@ -264,6 +295,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
+		traceM := trace && sst.Trace[ply].Move.Matches(m)
+
 		b.MakeMove(m)
 
 		if movegen.InCheck(b, b.STM.Flip()) {
@@ -278,17 +311,20 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		// late move reduction
 		rd := lmr(d, ix)
 		if rd < d-1 && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
+			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, sst)
 			value *= -1
 
 			if value <= alpha {
+				if traceM {
+					fmt.Printf("depth %d move %s LMR failed low score %d alpha %d beta %d\n", d, m, value, alpha, beta)
+				}
 				b.UndoMove(m)
 				sst.hstack.pop()
 				continue
 			}
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
+		value, curr := AlphaBeta(b, -beta, -alpha, d-1, ply+1, sst)
 		value *= -1
 		b.UndoMove(m)
 		sst.hstack.pop()
@@ -296,6 +332,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		maxim = max(maxim, value)
 
 		if value > alpha {
+			if traceM {
+				fmt.Printf("depth %d move %s score %d raised alpha alpha %d beta %d\n", d, m, value, alpha, beta)
+			}
 			failLow = false
 			alpha = value
 			pv = append(curr, m.SimpleMove)
@@ -307,6 +346,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 			hSize := sst.hstack.size()
 			bonus := -Score(d * d)
+
+			if traceM {
+				fmt.Printf("depth %d move %s score %d failed high alpha %d beta %d\n", d, m, value, alpha, beta)
+			}
 
 			for i, m := range moves {
 				if i == ix {
@@ -359,6 +402,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	if failLow {
 		// store node as fail low (All-node)
 		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
+		if trace {
+			fmt.Printf("depth %d failed low maxim %d alpha %d beta %d\n", d, maxim, alpha, beta)
+		}
 	} else {
 		// store node as exact (PV-node)
 		// there might not be a move in case of !hasLegal

@@ -70,6 +70,8 @@ func (e *UciEngine) handleCommand(command string) {
 		e.handlePosition(parts[1:])
 	case "go":
 		e.handleGo(parts[1:])
+	case "trace":
+		e.handleTrace(parts[1:])
 	case "fen":
 		fmt.Println(e.board.FEN())
 	case "quit":
@@ -117,6 +119,49 @@ func (e *UciEngine) applyMoves(moves []string) {
 
 		b.MakeMove(&m)
 	}
+}
+
+func (e *UciEngine) handleTrace(args []string) {
+	e.sst.Trace = make([]search.Trace, 0, 16)
+	depth := Depth(1)
+	skip := false
+
+	for i := 0; i < len(args); i++ {
+		if !skip {
+			switch args[i] {
+
+			case "depth":
+				depth = Depth(parseInt(args[i+1]))
+				skip = true
+
+			default:
+				e.writeTraceBuf(args[i:])
+				goto End
+			}
+		} else {
+      skip = false
+    }
+	}
+End:
+
+	e.sst.Stop = make(chan struct{})
+	e.Search(depth)
+}
+
+func (e *UciEngine) writeTraceBuf(args []string) {
+	if len(args) == 0 {
+		return
+	}
+
+	sm := parseUCIMove(args[0])
+	m := movegen.FromSimple(e.board, sm)
+	e.sst.Trace = append(e.sst.Trace, search.Trace{Move: sm, Hash: e.board.Hash()})
+
+	e.board.MakeMove(&m)
+
+	e.writeTraceBuf(args[1:])
+
+	e.board.UndoMove(&m)
 }
 
 func (e *UciEngine) handleGo(args []string) {
