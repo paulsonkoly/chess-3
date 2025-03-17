@@ -261,7 +261,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	hasLegal := false
 	failLow := true
 	maxim := -Inf
-  bestMove := move.SimpleMove{}
+	bestMove := move.SimpleMove{}
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -294,10 +294,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		b.UndoMove(m)
 		sst.hstack.pop()
 
-    if value > maxim {
-      bestMove = m.SimpleMove
-      maxim = value
-    }
+		if value > maxim {
+			bestMove = m.SimpleMove
+			maxim = value
+		}
 
 		if value > alpha {
 			failLow = false
@@ -366,9 +366,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	} else {
 		// store node as exact (PV-node)
 		// there might not be a move in case of !hasLegal
-    if bestMove.From |bestMove.To != 0 {
-      pv = append(pv, bestMove)
-    }
+		if bestMove.From|bestMove.To != 0 {
+			pv = append(pv, bestMove)
+		}
 
 		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
 	}
