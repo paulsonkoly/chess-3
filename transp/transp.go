@@ -63,6 +63,10 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 		return
 	}
 
+  if t.data[ix].Depth == d && t.data[ix].Type == PVNode {
+    return
+  }
+
 	t.data[ix] = Entry{
 		SimpleMove: sm,
 		Hash:       hash,
