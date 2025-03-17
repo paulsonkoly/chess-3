@@ -139,8 +139,8 @@ func (e *UciEngine) handleTrace(args []string) {
 				goto End
 			}
 		} else {
-      skip = false
-    }
+			skip = false
+		}
 	}
 End:
 
