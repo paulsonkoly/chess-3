@@ -260,7 +260,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	hasLegal := false
 	failLow := true
-	maxim := -Inf-1
+	maxim := -Inf - 1
 	bestMove := move.SimpleMove{}
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
