@@ -10,6 +10,7 @@ const MaxPlies = 64
 type historyMove struct {
 	piece Piece
 	to    Square
+	score Score
 }
 
 type historyStack struct {
@@ -25,8 +26,8 @@ func (h *historyStack) reset() {
 	h.sp = 0
 }
 
-func (h *historyStack) push(piece Piece, to Square) {
-	h.data[h.sp] = historyMove{piece: piece, to: to}
+func (h *historyStack) push(piece Piece, to Square, score Score) {
+	h.data[h.sp] = historyMove{piece: piece, to: to, score: score}
 	h.sp++
 }
 
@@ -34,9 +35,8 @@ func (h *historyStack) pop() {
 	h.sp--
 }
 
-func (h *historyStack) top(n int) (Piece, Square) {
-	d := h.data[h.sp-n-1]
-	return d.piece, d.to
+func (h *historyStack) top(n int) historyMove {
+	return h.data[h.sp-n-1]
 }
 
 func (h *historyStack) size() int {

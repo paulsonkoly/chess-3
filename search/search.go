@@ -212,10 +212,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	inCheck := movegen.InCheck(b, b.STM)
 
+	staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
+
+	improving := false
+	if sst.hstack.size() >= 2 {
+		old := sst.hstack.top(1).score
+		improving = staticEval > old
+	}
+
 	// RFP
 	if !inCheck {
-		staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
-
 		if staticEval >= beta+Score(d)*105 {
 			return staticEval, pv
 		}
@@ -273,10 +279,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 		hasLegal = true
 
-		sst.hstack.push(m.Piece, m.To)
+		sst.hstack.push(m.Piece, m.To, staticEval)
 
 		// late move reduction
-		rd := lmr(d, ix)
+		rd := lmr(d, ix, improving)
 		if rd < d-1 && !inCheck {
 			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
@@ -317,13 +323,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 					sst.hist.Add(b.STM, m.From, m.To, bonus)
 
 					if hSize >= 1 {
-						pt, to := sst.hstack.top(0)
-						sst.cont[0].Add(b.STM, pt, to, m.Piece, m.To, bonus)
+						hist := sst.hstack.top(0)
+						sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
 					}
 
 					if hSize >= 2 {
-						pt, to := sst.hstack.top(1)
-						sst.cont[1].Add(b.STM, pt, to, m.Piece, m.To, bonus)
+						hist := sst.hstack.top(1)
+						sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
 					}
 				}
 
@@ -387,8 +393,12 @@ var log = [...]int{
 	451, 452, 453, 454, 455, 456, 457, 458, 459, 460,
 }
 
-func lmr(d Depth, mCount int) Depth {
+func lmr(d Depth, mCount int, improving bool) Depth {
 	value := (log[int(d)] * log[mCount] / 19500)
+
+	if !improving {
+		value++
+	}
 
 	return max(0, d-Depth(value))
 }
@@ -512,13 +522,13 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 			score := sst.hist.Probe(b.STM, m.From, m.To)
 
 			if sst.hstack.size() >= 1 {
-				pt, to := sst.hstack.top(0)
-				score += 3 * sst.cont[0].Probe(b.STM, pt, to, m.Piece, m.To)
+				hist := sst.hstack.top(0)
+				score += 3 * sst.cont[0].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To)
 			}
 
 			if sst.hstack.size() >= 2 {
-				pt, to := sst.hstack.top(1)
-				score += 2 * sst.cont[1].Probe(b.STM, pt, to, m.Piece, m.To)
+				hist := sst.hstack.top(1)
+				score += 2 * sst.cont[1].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To)
 			}
 
 			moves[ix].Weight = score
