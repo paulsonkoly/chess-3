@@ -211,36 +211,34 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	sst.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
-
-	staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
-
 	improving := false
-	if sst.hstack.size() >= 2 {
-		old := sst.hstack.top(1).score
-		improving = staticEval > old
-	}
+	staticEval := Inv
 
-	// RFP
 	if !inCheck {
+		staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
+
+    improving = sst.hstack.oldScore() < staticEval
+
+		// RFP
 		if staticEval >= beta+Score(d)*105 {
 			return staticEval, pv
 		}
-	}
 
-	// null move pruning
-	if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+		// null move pruning
+		if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
-		enP := b.MakeNullMove()
+			enP := b.MakeNullMove()
 
-		rd := max(0, d-3)
+			rd := max(0, d-3)
 
-		value, _ := AlphaBeta(b, -beta, -beta+1, rd, sst)
-		value *= -1
+			value, _ := AlphaBeta(b, -beta, -beta+1, rd, sst)
+			value *= -1
 
-		b.UndoNullMove(enP)
+			b.UndoNullMove(enP)
 
-		if value >= beta {
-			return value, pv
+			if value >= beta {
+				return value, pv
+			}
 		}
 	}
 
