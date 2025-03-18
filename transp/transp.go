@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	TableSize = 1 << 18 // 4Mb
+	TableSize = 1 << 20 // 4Mb
 )
 
 type Table struct {
@@ -50,7 +50,7 @@ func New() *Table {
 // Clear clears the transposition table for the next search.Search().
 func (t *Table) Clear() {
 	for ix := range t.data {
-		t.data[ix].Depth = 0
+		t.data[ix].Hash = 0
 	}
 }
 

@@ -393,7 +393,7 @@ func (e *UciEngine) bench() {
 			float32(e.sst.ABBreadth) / float32(e.sst.ABCnt),
 			e.sst.TTHit,
 			e.sst.QCnt,
-			e.sst.QDepth,
+			int(e.sst.QDepth),
 			e.sst.QDelta,
 			e.sst.QSEE,
 			e.sst.Time,

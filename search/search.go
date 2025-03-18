@@ -45,7 +45,7 @@ type State struct {
 	ABCnt     int   // ABCnt is the inner node count in alpha-beta.
 	TTHit     int   // TThit is the transposition table hit-count.
 	QCnt      int   // Quiesence node count
-	QDepth    int   // QDepth is the maximal quiesence search depth.
+	QDepth    Depth // QDepth is the maximal quiesence search depth.
 	QDelta    int   // QDelta is the count of times a delta pruning happened in quiesence search.
 	QSEE      int   // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
 	Time      int64 // Time is the search time in milliseconds.
@@ -398,14 +398,16 @@ func lmr(d Depth, mCount int) Depth {
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
-func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
-	if d > sst.QDepth {
+func Quiescence(b *board.Board, alpha, beta Score, d Depth, sst *State) Score {
+	if d < sst.QDepth {
 		sst.QDepth = d
 	}
 
 	sst.QCnt++
 
-	if b.FiftyCnt >= 100 || b.Threefold() >= 3 {
+	transpT := sst.tt
+	tfCnt := b.Threefold()
+	if b.FiftyCnt >= 100 || tfCnt >= 3 {
 		return 0
 	}
 
@@ -415,6 +417,26 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 
 	if movegen.IsStalemate(b) {
 		return 0
+	}
+
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+		sst.TTHit++
+		switch transpE.Type {
+
+		case transp.PVNode:
+			return transpE.Value
+
+		case transp.CutNode:
+			if transpE.Value >= beta {
+				return transpE.Value
+			}
+
+		case transp.AllNode:
+			if transpE.Value <= alpha {
+				return transpE.Value
+			}
+		}
+		sst.TTHit--
 	}
 
 	sst.ms.Push()
@@ -473,10 +495,12 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 			}
 		}
 
-		curr := -Quiescence(b, -beta, -alpha, d+1, sst)
+		curr := -Quiescence(b, -beta, -alpha, d-1, sst)
 		b.UndoMove(m)
 
 		if curr >= beta {
+			// store node as fail high (cut-node)
+			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, curr, transp.CutNode)
 			return curr
 		}
 		maxim = max(maxim, curr)
@@ -486,6 +510,12 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 			return maxim
 		}
 	}
+
+	typ := transp.PVNode
+	if maxim <= alpha {
+		typ = transp.AllNode
+	}
+	transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, typ)
 
 	return maxim
 }
