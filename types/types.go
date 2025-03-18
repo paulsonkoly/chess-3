@@ -10,8 +10,11 @@ type Depth int8
 
 type Score int16
 
-// Inf is the checkmate score.
-const Inf = Score(10_000)
+const (
+  Inf = Score(10_000) // Inf is the checkmate score.
+  Inv = Score(11_000) // Inv is an invalid score.
+)
+
 
 const (
 	Short = 0

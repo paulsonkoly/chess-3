@@ -212,19 +212,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 
 	inCheck := movegen.InCheck(b, b.STM)
 	improving := false
-	// assuming we don't use staticEval in case of inCheck for anything but to calculate improving
-	// no scores can be >= Inf+1
-	staticEval := Inf + 1
+	staticEval := Inv
 
 	if !inCheck {
 		staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
 
-		size := sst.hstack.size()
-		if size >= 2 && staticEval > sst.hstack.top(1).score {
-			improving = true
-		} else if size >= 4 && staticEval > sst.hstack.top(3).score {
-			improving = true
-		}
+    improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
