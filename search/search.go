@@ -217,7 +217,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	if !inCheck {
 		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
 
-    improving = sst.hstack.oldScore() < staticEval
+		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
