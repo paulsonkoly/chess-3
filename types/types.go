@@ -11,10 +11,9 @@ type Depth int8
 type Score int16
 
 const (
-  Inf = Score(10_000) // Inf is the checkmate score.
-  Inv = Score(11_000) // Inv is an invalid score.
+	Inf = Score(10_000) // Inf is the checkmate score.
+	Inv = Score(11_000) // Inv is an invalid score.
 )
-
 
 const (
 	Short = 0
@@ -95,4 +94,9 @@ func Signum[T constraints.Signed](x T) T {
 		return 1
 	}
 	return 0
+}
+
+// Clamp clamps the value x between a and b.
+func Clamp[T constraints.Signed](x, a, b T) T {
+	return min(b, max(x, a))
 }
