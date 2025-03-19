@@ -215,7 +215,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	staticEval := Inv
 
 	if !inCheck {
-		staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
+		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
 
     improving = sst.hstack.oldScore() < staticEval
 
