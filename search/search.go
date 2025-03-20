@@ -168,6 +168,8 @@ func pvInfo(moves []move.SimpleMove) string {
 	return sb.String()
 }
 
+var RFPMargin = Score(105)
+
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
 func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, []move.SimpleMove) {
@@ -217,7 +219,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 {
+		if staticEval >= beta+Score(d)*RFPMargin {
 			return staticEval, pv
 		}
 

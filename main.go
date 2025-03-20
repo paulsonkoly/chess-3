@@ -63,7 +63,10 @@ func (e *UciEngine) handleCommand(command string) {
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Println("option name Hash type spin default 1 min 1 max 1")
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
+		fmt.Printf("option name RFPMargin type spin default %d min 1 max 200\n", search.RFPMargin)
 		fmt.Println("uciok")
+	case "setoption":
+		e.handleSetOption(parts[1:])
 	case "isready":
 		fmt.Println("readyok")
 	case "position":
@@ -83,6 +86,23 @@ func (e *UciEngine) handleCommand(command string) {
 		case "off":
 			e.sst.Debug = false
 		}
+	}
+}
+
+func (e *UciEngine) handleSetOption(args []string) {
+	if len(args) != 4 || args[0] != "name" || args[2] != "value" {
+		return
+	}
+	switch strings.ToLower(args[1]) {
+	case "rfpmargin":
+		v, err := strconv.Atoi(args[3])
+		if err != nil {
+			return
+		}
+
+		v = Clamp(v, 1, 200)
+
+		search.RFPMargin = Score(v)
 	}
 }
 
