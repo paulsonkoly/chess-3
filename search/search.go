@@ -224,11 +224,15 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		// null move pruning
-		if !inCheck && !improving && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+		if b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
 			enP := b.MakeNullMove()
 
-			rd := max(0, d-3)
+			improveRed := Depth(1)
+			if improving {
+				improveRed = 0
+			}
+			rd := max(0, d-2-improveRed)
 
 			value, _ := AlphaBeta(b, -beta, -beta+1, rd, sst)
 			value *= -1
