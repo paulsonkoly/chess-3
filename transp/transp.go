@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	TableSize = 1 << 20 // 4Mb
+	TableSize = 1 << 18 // 4Mb
 )
 
 type Table struct {
