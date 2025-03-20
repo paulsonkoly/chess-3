@@ -239,13 +239,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 	}
 
-	// deflate history
-	if sst.ABCnt%10_000 == 0 {
-		sst.hist.Deflate()
-		sst.cont[0].Deflate()
-		sst.cont[1].Deflate()
-	}
-
 	sst.ms.Push()
 	defer sst.ms.Pop()
 

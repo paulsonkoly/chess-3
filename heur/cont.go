@@ -14,13 +14,6 @@ func NewContinuation() *Continuation {
 	return &Continuation{}
 }
 
-// Deflate divides every entry in the store by 2.
-func (c *Continuation) Deflate() {
-	for i := range c.data {
-		c.data[i] /= 2
-	}
-}
-
 func ix(stm Color, ptHist Piece, toHist Square, pt Piece, to Square) int {
 	return int(to) + 64*int(pt-1) + 6*64*int(toHist) + 64*6*64*int(ptHist-1) + 6*64*6*64*int(stm)
 }
