@@ -425,14 +425,14 @@ var log = [...]int{
 func lmr(d Depth, mCount int, improving, quiet bool) Depth {
 	value := (log[int(d)] * log[mCount] / 19500)
 
-	if !quiet {
-		value /= 2
-	}
-
-	if !improving {
-		value++
-	}
-
+	// if !quiet {
+	// 	value /= 2
+	// }
+	//
+	// if !improving {
+	// 	value++
+	// }
+	//
 	return Clamp(d-1-Depth(value), 0, d-1)
 }
 
