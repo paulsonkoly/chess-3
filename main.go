@@ -334,21 +334,17 @@ func main() {
 
 // Stats contains search statistics. See search.State.
 type Stats struct {
-	Ok       bool
-	ImpHit   int
-	ImpMiss  int
-	Imp2Hit  int
-	Imp2Miss int
-	AWFail   int
-	ABCnt    int
-	ABBF     float32
-	TTHit    int
-	QCnt     int
-	QDepth   int
-	QDelta   int
-	QSEE     int
-	Time     int64
-	KNps     int
+	Ok     bool
+	AWFail int
+	ABCnt  int
+	ABBF   float32
+	TTHit  int
+	QCnt   int
+	QDepth int
+	QDelta int
+	QSEE   int
+	Time   int64
+	KNps   int
 }
 
 func (e *UciEngine) bench() {
@@ -386,13 +382,12 @@ func (e *UciEngine) bench() {
 
 	for _, bk := range bratkoKopec {
 		e.board = board.FromFEN(bk.fen)
-		_, ms := e.Search(11)
+		_, ms := e.Search(9)
 
 		ok := ms[0].String() == bk.bm
 
 		stats = append(stats, Stats{
 			ok,
-			e.sst.ImpHit, e.sst.ImpMiss, e.sst.Imp2Hit, e.sst.Imp2Miss,
 			e.sst.AWFail,
 			e.sst.ABCnt + e.sst.ABLeaf,
 			float32(e.sst.ABBreadth) / float32(e.sst.ABCnt),
@@ -409,10 +404,6 @@ func (e *UciEngine) bench() {
 	avg := Stats{}
 
 	for _, stat := range stats {
-		avg.ImpHit = e.sst.ImpHit
-		avg.ImpMiss = e.sst.ImpMiss
-		avg.Imp2Hit = e.sst.Imp2Hit
-		avg.Imp2Miss = e.sst.Imp2Miss
 		avg.AWFail += stat.AWFail
 		avg.ABCnt += stat.ABCnt
 		avg.ABBF += stat.ABBF
@@ -437,10 +428,6 @@ func (e *UciEngine) bench() {
 		} else {
 			ok = "❌"
 		}
-    impHit := fmt.Sprintf("%d", stat.ImpHit)
-    impMiss := fmt.Sprintf("%d", stat.ImpMiss)
-    imp2Hit := fmt.Sprintf("%d", stat.Imp2Hit)
-    imp2Miss := fmt.Sprintf("%d", stat.Imp2Miss)
 		aWFail := fmt.Sprintf("%d", stat.AWFail)
 		aBCnt := fmt.Sprintf("%d", stat.ABCnt)
 		abBF := fmt.Sprintf("%.4f", stat.ABBF)
@@ -452,15 +439,11 @@ func (e *UciEngine) bench() {
 		timeMs := fmt.Sprintf("%d", stat.Time)
 		kNps := fmt.Sprintf("%d", stat.KNps)
 
-		table.Append([]string{fmt.Sprintf("BK %d", ix+1), ok, impHit, impMiss, imp2Hit, imp2Miss, aWFail, aBCnt, abBF, tTHit, qCnt, qDepth, qDelta, qSEE, timeMs, kNps})
+		table.Append([]string{fmt.Sprintf("BK %d", ix+1), ok, aWFail, aBCnt, abBF, tTHit, qCnt, qDepth, qDelta, qSEE, timeMs, kNps})
 	}
 
 	table.Append([]string{"average",
 		fmt.Sprintf("%d / %d", okCnt, len(bratkoKopec)),
-		fmt.Sprintf("%.2f", float32(avg.ImpHit)/float32(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float32(avg.ImpMiss)/float32(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float32(avg.Imp2Hit)/float32(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float32(avg.Imp2Miss)/float32(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float32(avg.AWFail)/float32(len(bratkoKopec))),
 		fmt.Sprintf("%.2f", float64(avg.ABCnt)/float64(len(bratkoKopec))),
 		fmt.Sprintf("%.4f", avg.ABBF/float32(len(bratkoKopec))),
@@ -473,7 +456,7 @@ func (e *UciEngine) bench() {
 		fmt.Sprintf("%.2f", float64(avg.KNps)/float64(len(bratkoKopec))),
 	})
 
-	table.SetHeader([]string{"Test", "BM", "ImpHit", "ImpMiss", "Imp2Hit", "Imp2Miss", "AWFail", "ABCnt", "ABBF", "TTHit", "QCnt", "QDepth", "QDelta", "QSEE", "Time (ms)", "Speed (Kn/s)"})
+	table.SetHeader([]string{"Test", "BM", "AWFail", "ABCnt", "ABBF", "TTHit", "QCnt", "QDepth", "QDelta", "QSEE", "Time (ms)", "Speed (Kn/s)"})
 	table.SetAutoWrapText(false)
 	table.Render()
 }
