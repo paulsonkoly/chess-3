@@ -218,10 +218,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	sst.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
+  improving := false
 	staticEval := Inv
 
 	if !inCheck {
 		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
+
+		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
@@ -269,6 +272,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	hasLegal := false
 	failLow := true
 	maxim := -Inf
+	moveCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -280,13 +284,22 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		hasLegal = true
+		moveCnt++
 
 		sst.hstack.push(m.Piece, m.To, staticEval)
 
-		// late move reduction
+		// Late move reduction and null-window search. Skip it on the first legal
+		// move, which is likely to be the hash move.
 		rd := lmr(d, ix)
-		if rd < d-1 && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
+		nullSearched := false
+		var (
+			value Score
+			curr  []move.SimpleMove
+		)
+		if (moveCnt > 6 || rd < d-1) && !inCheck && !improving {
+			nullSearched = true
+
+			value, curr = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
 
 			if value <= alpha {
@@ -296,8 +309,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			}
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
-		value *= -1
+		// null window search failed (meaning didn't fail low).
+		// if our full search is different from the null window search or there was
+		// no null window search at all, then re-search
+		if alpha+1 != beta || rd < d-1 || !nullSearched {
+			// if there was a null window search at full depth that proved score >=
+			// alpha+1, we must also have failed high because score >= beta. Therefore
+			// we ne need to re-search in all cases.
+			value, curr = AlphaBeta(b, -beta, -alpha, d-1, sst)
+			value *= -1
+
+		}
 		b.UndoMove(m)
 		sst.hstack.pop()
 
