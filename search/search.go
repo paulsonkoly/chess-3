@@ -222,7 +222,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		// null move pruning
-		if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+		if staticEval > alpha-90 && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
 			enP := b.MakeNullMove()
 
