@@ -37,6 +37,11 @@ type State struct {
 
 	abort bool
 
+	ImpHit   int
+	ImpMiss  int
+	Imp2Hit  int
+	Imp2Miss int
+
 	AWFail int // AwFail is the count of times the score fell outside of the aspiration window.
 	ABLeaf int // ABLeaf is the count of alpha-beta leafs.
 	// ABBreadth is the total count of explored moves in alpha-beta. Thus
@@ -70,6 +75,10 @@ func (s *State) Clear() {
 	s.tt.Clear()
 	s.ms.Clear()
 	s.hstack.reset()
+	s.ImpHit = 0
+	s.ImpMiss = 0
+	s.Imp2Hit = 0
+	s.Imp2Miss = 0
 	s.AWFail = 0
 	s.ABLeaf = 0
 	s.ABBreadth = 0
@@ -296,7 +305,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			value Score
 			curr  []move.SimpleMove
 		)
-		if (moveCnt > 6 || rd < d-1) && !inCheck && !improving {
+		if (moveCnt > 1 || rd < d-1) && !inCheck && !improving {
 			nullSearched = true
 
 			value, curr = AlphaBeta(b, -alpha-1, -alpha, rd, sst)
@@ -305,9 +314,21 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 			if value <= alpha {
 				b.UndoMove(m)
 				sst.hstack.pop()
+				// if improving {
+				// 	sst.ImpMiss++
+				// } else {
+				// 	sst.ImpHit++
+				// }
 				continue
 			}
 		}
+		// if moveCnt > 1 {
+		// 	if improving {
+		// 		sst.Imp2Hit++
+		// 	} else {
+		// 		sst.Imp2Miss++
+		// 	}
+		// }
 
 		// null window search failed (meaning didn't fail low).
 		// if our full search is different from the null window search or there was
