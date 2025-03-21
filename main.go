@@ -382,7 +382,7 @@ func (e *UciEngine) bench() {
 
 	for _, bk := range bratkoKopec {
 		e.board = board.FromFEN(bk.fen)
-		_, ms := e.Search(9)
+		_, ms := e.Search(11)
 
 		ok := ms[0].String() == bk.bm
 
