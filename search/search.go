@@ -120,6 +120,9 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 			}
 
 			if abort(sst) {
+				if awOk && scoreSample >= score {
+					break
+				}
 				return
 			}
 		}
@@ -137,6 +140,10 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 
 			fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d qdelta %d qsee %d\n",
 				sst.AWFail, sst.ABLeaf, ABBF, sst.TTHit, sst.QDepth, sst.QDelta, sst.QSEE)
+		}
+
+		if abort(sst) {
+			return
 		}
 
 		alpha = score - WindowSize
