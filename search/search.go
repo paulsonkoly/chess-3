@@ -439,10 +439,6 @@ func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
 		value++
 	}
 
-	if !improving {
-		value++
-	}
-
 	return Clamp(d-1-Depth(value), 0, d-1)
 }
 
