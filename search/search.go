@@ -218,10 +218,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 	sst.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
+  improving := false
 	staticEval := Inv
 
 	if !inCheck {
 		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
+
+		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
