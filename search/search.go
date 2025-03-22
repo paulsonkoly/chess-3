@@ -320,7 +320,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		value, curr = AlphaBeta(b, -beta, -alpha, d-1, true, false, sst)
 		value *= -1
 
-		// }
 		b.UndoMove(m)
 		sst.hstack.pop()
 
@@ -421,12 +420,12 @@ var log = [...]int{
 
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
-func lmr(d Depth, mCount int, improving, _, pvN, cutN bool) Depth {
-	value := (log[int(d)] * log[mCount]) >> 14
+func lmr(d Depth, mCount int, improving, quiet, pvN, cutN bool) Depth {
+	value := (log[d/2] * log[mCount]) >> 14
 
-	// if !quiet {
-	// 	value /= 2
-	// }
+	if !quiet {
+		value /= 2
+	}
 
 	if !pvN {
 		value++
