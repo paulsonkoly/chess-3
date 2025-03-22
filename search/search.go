@@ -303,7 +303,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 			lmrStart = 1
 		}
 		if moveCnt > lmrStart && !inCheck {
-			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, true, sst)
+			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, !cutN, sst)
 			value *= -1
 
 			if value <= alpha {
@@ -421,16 +421,16 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, quiet, pvN, cutN bool) Depth {
-	value := (log[d/2] * log[mCount]) >> 14
+	value := (log[d] * log[mCount]) >> 14
 
-	if !quiet {
-		value /= 2
-	}
-
+	// if !quiet {
+	// 	value /= 2
+	// }
+	//
 	if !pvN {
 		value++
 	}
-
+	//
 	if cutN {
 		value++
 	}
