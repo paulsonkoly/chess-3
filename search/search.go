@@ -422,7 +422,7 @@ var log = [...]int{
 
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )/19500}}
-func lmr(d Depth, mCount int, improving, quiet bool) Depth {
+func lmr(d Depth, mCount int, _, _ bool) Depth {
 	value := (log[int(d)] * log[mCount] / 19500)
 
 	// if !quiet {
