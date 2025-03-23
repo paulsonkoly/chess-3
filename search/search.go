@@ -302,7 +302,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		if pvN {
 			lmrStart = 1
 		}
-		if d > 2 && moveCnt > lmrStart && !inCheck {
+		if d > 3 && moveCnt > lmrStart && !inCheck {
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, !cutN, sst)
 			value *= -1
 
