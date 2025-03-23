@@ -314,21 +314,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 				maxim = max(maxim, value)
 				continue
 			}
-
-			// re-search with full depth, null-window
-			if d-1 > rd {
-				value, _ = AlphaBeta(b, -alpha-1, -alpha, d-1, false, !cutN, sst)
-				value *= -1
-			}
-
-			if value <= alpha {
-				b.UndoMove(m)
-				sst.hstack.pop()
-				// outherwise in an all node if all null-window searches succeed we
-				// would end up with -Inf as upper bound
-				maxim = max(maxim, value)
-				continue
-			}
 		}
 
 		// null window search failed (meaning didn't fail low).
