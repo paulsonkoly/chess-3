@@ -273,6 +273,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 	failLow := true
 	maxim := -Inf
 	moveCnt := 0
+	quietCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -294,15 +295,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		)
 
 		quiet := m.Captured == NoPiece && m.Promo == NoPiece
+		if quiet {
+			quietCnt++
+		}
 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
-		rd := lmr(d, moveCnt-1, improving, quiet, pvN, cutN)
-		lmrStart := 0
-		if pvN {
-			lmrStart = 1
-		}
-		if d > 1 && moveCnt > lmrStart && !inCheck {
+		if d > 1 && quietCnt > 2 && !inCheck {
+			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, !cutN, sst)
 			value *= -1
 
@@ -420,7 +420,7 @@ var log = [...]int{
 
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
-func lmr(d Depth, mCount int, improving, quiet, pvN, cutN bool) Depth {
+func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
 	value := (log[d] * log[mCount]) >> 14
 
 	// if !quiet {
