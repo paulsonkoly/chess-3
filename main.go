@@ -21,7 +21,6 @@ import (
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
-	"github.com/paulsonkoly/chess-3/transp"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -47,7 +46,7 @@ type UciEngine struct {
 func NewUciEngine() *UciEngine {
 	return &UciEngine{
 		board: board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-		sst:   search.NewState(),
+		sst:   search.NewState(8),
 	}
 }
 
@@ -104,12 +103,11 @@ func (e *UciEngine) handleSetOption(args []string) {
 
 	case "Hash":
 		val, err := strconv.Atoi(args[3])
-		if err != nil || val < 1 {
+		if err != nil || val < 1 || val & (val-1) != 0 {
 			return
 		}
 
-		transp.TableSize = val * 1024 * 1024 / transp.EntrySize
-		e.sst = search.NewState() // we need to re-allocate the hash table
+		e.sst = search.NewState(val) // we need to re-allocate the hash table
 	}
 }
 

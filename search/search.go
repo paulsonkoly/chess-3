@@ -53,9 +53,9 @@ type State struct {
 
 // NewState creates a new search state. It's supposed to be called once, and
 // re-used between Search() calls.
-func NewState() *State {
+func NewState(ttSizeInMb int) *State {
 	return &State{
-		tt:     transp.New(),
+		tt:     transp.New(ttSizeInMb),
 		ms:     move.NewStore(),
 		hist:   heur.NewHistory(),
 		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
