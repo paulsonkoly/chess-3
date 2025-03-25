@@ -14,25 +14,16 @@ func NewContinuation() *Continuation {
 	return &Continuation{}
 }
 
-// Deflate divides every entry in the store by 2.
-func (c *Continuation) Deflate() {
-	for i := range c.data {
-		c.data[i] /= 2
-	}
-}
-
 func ix(stm Color, ptHist Piece, toHist Square, pt Piece, to Square) int {
 	return int(to) + 64*int(pt-1) + 6*64*int(toHist) + 64*6*64*int(ptHist-1) + 6*64*6*64*int(stm)
 }
 
 // Add increments the continuation history heuristics for the move by d*d.
-func (c *Continuation) Add(stm Color, ptHist Piece, toHist Square, pt Piece, to Square, s Score) {
+func (c *Continuation) Add(stm Color, ptHist Piece, toHist Square, pt Piece, to Square, bonus Score) {
 	ix := ix(stm, ptHist, toHist, pt, to)
-	bonus := c.data[ix] + s
-	bonus = min(bonus, MaxHistory)
-	bonus = max(bonus, -MaxHistory)
 
-	c.data[ix] = bonus
+	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
+	c.data[ix] += clampedBonus - Score(int(c.data[ix])*int(Abs(clampedBonus))/MaxHistory)
 }
 
 // Probe returns the continuation history heuristics entry for the move.

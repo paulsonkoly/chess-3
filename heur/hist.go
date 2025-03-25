@@ -17,23 +17,10 @@ func NewHistory() *History {
 	return &History{}
 }
 
-// Deflate divides every entry in the store by 2.
-func (h *History) Deflate() {
-	for color := White; color <= Black; color++ {
-		for sqFrom := A1; sqFrom <= H8; sqFrom++ {
-			for sqTo := A1; sqTo <= H8; sqTo++ {
-				h.data[color][sqFrom][sqTo] /= 2
-			}
-		}
-	}
-}
-
 // Add increments the history heuristics for the move by bonus.
 func (h *History) Add(stm Color, from, to Square, bonus Score) {
-	hist := h.data[stm][from][to] + bonus
-	hist = min(MaxHistory, hist)
-	hist = max(-MaxHistory, hist)
-	h.data[stm][from][to] = hist
+	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
+	h.data[stm][from][to] += clampedBonus - Score(int(h.data[stm][from][to])*int(Abs(clampedBonus))/MaxHistory)
 }
 
 // Probe returns the history heuristics entry for the move.
