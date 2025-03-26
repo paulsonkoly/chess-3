@@ -101,7 +101,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 		)
 
 		for !awOk {
-			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, sst)
+			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, true, false, sst)
 
 			switch {
 
@@ -177,7 +177,7 @@ func pvInfo(moves []move.SimpleMove) string {
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, []move.SimpleMove) {
+func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *State) (Score, []move.SimpleMove) {
 
 	transpT := sst.tt
 	pv := []move.SimpleMove{}
@@ -218,10 +218,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	sst.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
+	improving := false
 	staticEval := Inv
 
 	if !inCheck {
 		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
+
+		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
@@ -229,13 +232,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		// null move pruning
-		if !inCheck && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+		if b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
 			enP := b.MakeNullMove()
 
 			rd := max(0, d-3)
 
-			value, _ := AlphaBeta(b, -beta, -beta+1, rd, sst)
+			value, _ := AlphaBeta(b, -beta, -beta+1, rd, false, !cutN, sst)
 			value *= -1
 
 			b.UndoNullMove(enP)
@@ -269,6 +272,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	hasLegal := false
 	failLow := true
 	maxim := -Inf
+	moveCnt := 0
+	quietCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -280,24 +285,41 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 
 		hasLegal = true
+		moveCnt++
 
 		sst.hstack.push(m.Piece, m.To, staticEval)
 
-		// late move reduction
-		rd := lmr(d, ix)
-		if rd < d-1 && !inCheck {
-			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
+		var (
+			value Score
+			curr  []move.SimpleMove
+		)
+
+		quiet := m.Captured == NoPiece && m.Promo == NoPiece
+		if quiet {
+			quietCnt++
+		}
+
+		// Late move reduction and null-window search. Skip it on the first legal
+		// move, which is likely to be the hash move.
+		if d > 1 && quietCnt > 2 && !inCheck {
+			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
+			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, !cutN, sst)
 			value *= -1
 
 			if value <= alpha {
 				b.UndoMove(m)
 				sst.hstack.pop()
+				// outherwise in an all node if all null-window searches succeed we
+				// would end up with -Inf as upper bound
+				maxim = max(maxim, value)
 				continue
 			}
 		}
 
-		value, curr := AlphaBeta(b, -beta, -alpha, d-1, sst)
+		// null window search failed (meaning didn't fail low).
+		value, curr = AlphaBeta(b, -beta, -alpha, d-1, true, false, sst)
 		value *= -1
+
 		b.UndoMove(m)
 		sst.hstack.pop()
 
@@ -340,7 +362,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 				}
 			}
 
-			sst.ABBreadth += ix + 1
+			sst.ABBreadth += moveCnt
 
 			return value, nil
 		}
@@ -350,7 +372,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		}
 	}
 
-	sst.ABBreadth += ix + 1
+	sst.ABBreadth += moveCnt
 
 	if !hasLegal {
 		maxim = Score(0)
@@ -397,9 +419,25 @@ var log = [...]int{
 }
 
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
-// 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )/19500}}
-func lmr(d Depth, mCount int) Depth {
-	value := (log[int(d)] * log[mCount] / 19500)
+// 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
+func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
+	value := (log[d] * log[mCount]) >> 14
+
+	// if !quiet {
+	// 	value /= 2
+	// }
+	//
+	if !pvN {
+		value++
+	}
+	//
+	if cutN {
+		value++
+	}
+
+	if !improving {
+		value++
+	}
 
 	return Clamp(d-1-Depth(value), 0, d-1)
 }
