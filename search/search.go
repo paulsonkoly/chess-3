@@ -17,8 +17,16 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const (
-	WindowSize = 50 // half a pawn left and right around score
+// const (
+// WindowSize = 50 // half a pawn left and right around score
+// )
+
+var (
+	WindowSize = Score(50)
+	RFPMargin  = Score(105)
+	NMPRd      = Depth(3)
+	LMRDCond   = Depth(1)
+	LMRQCnt    = 2
 )
 
 // State is a persistent state storage between searches.
@@ -227,7 +235,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 {
+		if staticEval >= beta+Score(d)*RFPMargin {
 			return staticEval, pv
 		}
 
@@ -236,7 +244,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 			enP := b.MakeNullMove()
 
-			rd := max(0, d-3)
+			rd := max(0, d-NMPRd)
 
 			value, _ := AlphaBeta(b, -beta, -beta+1, rd, false, !cutN, sst)
 			value *= -1
@@ -301,7 +309,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
-		if d > 1 && quietCnt > 2 && !inCheck {
+		if d > LMRDCond && quietCnt > LMRQCnt && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
 			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, !cutN, sst)
 			value *= -1

@@ -63,6 +63,13 @@ func (e *UciEngine) handleCommand(command string) {
 		fmt.Println("option name Hash type spin default 8 min 1 max 128")
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
+
+		fmt.Println("option name WindowSize type spin default 50 min 1 max 200")
+		fmt.Println("option name RFPMargin type spin default 105 min 1 max 200")
+		fmt.Println("option name NMPRd type spin default 3 min 1 max 10")
+		fmt.Println("option name LMRDCond type spin default 1 min 1 max 10")
+		fmt.Println("option name LMRQCnt type spin default 2 min 1 max 10")
+
 		fmt.Println("uciok")
 
 	case "isready":
@@ -108,6 +115,43 @@ func (e *UciEngine) handleSetOption(args []string) {
 		}
 
 		e.sst = search.NewState(val) // we need to re-allocate the hash table
+  case "WindowSize":
+		val, err := strconv.Atoi(args[3])
+		if err != nil || val < 1 {
+			return
+		}
+
+    search.WindowSize = Score(val)
+
+  case "RFPMargin":
+		val, err := strconv.Atoi(args[3])
+		if err != nil || val < 1 {
+			return
+		}
+
+    search.RFPMargin = Score(val)
+
+  case "NMPRd":
+		val, err := strconv.Atoi(args[3])
+		if err != nil || val < 1 || val > 10 {
+			return
+		}
+
+    search.NMPRd = Depth(val)
+
+  case "LMRDCond":
+		val, err := strconv.Atoi(args[3])
+		if err != nil || val < 1 || val > 10 {
+			return
+		}
+    search.NMPRd = Depth(val)
+
+  case "LMRQCnt":
+		val, err := strconv.Atoi(args[3])
+		if err != nil || val < 1 || val > 10 {
+			return
+		}
+    search.LMRQCnt = val
 	}
 }
 
