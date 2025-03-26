@@ -423,14 +423,10 @@ var log = [...]int{
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
 	value := (log[d] * log[mCount]) >> 14
 
-	// if !quiet {
-	// 	value /= 2
-	// }
-	//
 	if !pvN {
 		value++
 	}
-	//
+
 	if cutN {
 		value++
 	}
