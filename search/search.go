@@ -37,6 +37,11 @@ type State struct {
 
 	abort bool
 
+	ImpHit   int
+	ImpMiss  int
+	Imp2Hit  int
+	Imp2Miss int
+
 	AWFail int // AwFail is the count of times the score fell outside of the aspiration window.
 	ABLeaf int // ABLeaf is the count of alpha-beta leafs.
 	// ABBreadth is the total count of explored moves in alpha-beta. Thus
@@ -70,6 +75,10 @@ func (s *State) Clear() {
 	s.tt.Clear()
 	s.ms.Clear()
 	s.hstack.reset()
+	s.ImpHit = 0
+	s.ImpMiss = 0
+	s.Imp2Hit = 0
+	s.Imp2Miss = 0
 	s.AWFail = 0
 	s.ABLeaf = 0
 	s.ABBreadth = 0
