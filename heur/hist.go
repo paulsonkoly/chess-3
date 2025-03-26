@@ -30,10 +30,8 @@ func (h *History) Deflate() {
 
 // Add increments the history heuristics for the move by bonus.
 func (h *History) Add(stm Color, from, to Square, bonus Score) {
-	hist := h.data[stm][from][to] + bonus
-	hist = min(MaxHistory, hist)
-	hist = max(-MaxHistory, hist)
-	h.data[stm][from][to] = hist
+	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
+	h.data[stm][from][to] += clampedBonus - Score(int(h.data[stm][from][to])*int(Abs(clampedBonus))/MaxHistory)
 }
 
 // Probe returns the history heuristics entry for the move.
