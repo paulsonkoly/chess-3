@@ -39,15 +39,6 @@ func (h *historyStack) top(n int) historyMove {
 	return h.data[h.sp-n-1]
 }
 
-func (h * historyStack) oldScore() Score {
-  if h.sp >= 2 && h.data[h.sp - 2].score != Inv {
-    return h.data[h.sp - 2].score
-  } else if h.sp >= 4 {
-    return h.data[h.sp - 4].score
-  }
-  return Inv
-}
-
 func (h *historyStack) size() int {
 	return h.sp
 }

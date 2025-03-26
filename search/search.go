@@ -211,13 +211,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	sst.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
-	improving := false
 	staticEval := Inv
 
 	if !inCheck {
-		staticEval := eval.Eval(b, alpha, beta, &eval.Coefficients)
-
-    improving = sst.hstack.oldScore() < staticEval
+		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
@@ -280,7 +277,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 		sst.hstack.push(m.Piece, m.To, staticEval)
 
 		// late move reduction
-		rd := lmr(d, ix, improving)
+		rd := lmr(d, ix)
 		if rd < d-1 && !inCheck {
 			value, _ := AlphaBeta(b, -alpha-1, -alpha, rd, sst)
 			value *= -1
@@ -377,6 +374,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, sst *State) (Score, [
 	return maxim, pv
 }
 
+// (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
 var log = [...]int{
 	0,
 	0, 69, 109, 138, 160, 179, 194, 207, 219, 230,
@@ -391,14 +389,12 @@ var log = [...]int{
 	451, 452, 453, 454, 455, 456, 457, 458, 459, 460,
 }
 
-func lmr(d Depth, mCount int, improving bool) Depth {
+// x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
+// 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )/19500}}
+func lmr(d Depth, mCount int) Depth {
 	value := (log[int(d)] * log[mCount] / 19500)
 
-	if !improving {
-		value++
-	}
-
-	return max(0, d-Depth(value))
+	return Clamp(d-1-Depth(value), 0, d-1)
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
