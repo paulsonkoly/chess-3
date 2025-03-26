@@ -53,9 +53,9 @@ type State struct {
 
 // NewState creates a new search state. It's supposed to be called once, and
 // re-used between Search() calls.
-func NewState() *State {
+func NewState(ttSizeInMb int) *State {
 	return &State{
-		tt:     transp.New(),
+		tt:     transp.New(ttSizeInMb),
 		ms:     move.NewStore(),
 		hist:   heur.NewHistory(),
 		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
@@ -132,8 +132,8 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
-		fmt.Printf("info depth %d score cp %d nodes %d time %d pv %s\n",
-			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, pvInfo(moves))
+		fmt.Printf("info depth %d score cp %d nodes %d time %d hashfull %d pv %s\n",
+			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(moves))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)

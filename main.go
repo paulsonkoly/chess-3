@@ -46,7 +46,7 @@ type UciEngine struct {
 func NewUciEngine() *UciEngine {
 	return &UciEngine{
 		board: board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-		sst:   search.NewState(),
+		sst:   search.NewState(8),
 	}
 }
 
@@ -60,20 +60,29 @@ func (e *UciEngine) handleCommand(command string) {
 	case "uci":
 		fmt.Println("id name chess-3")
 		fmt.Println("id author Paul Sonkoly")
+		fmt.Println("option name Hash type spin default 8 min 1 max 128")
 		// these are here to conform ob. we don't actually support these options.
-		fmt.Println("option name Hash type spin default 1 min 1 max 1")
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		fmt.Println("uciok")
+
 	case "isready":
 		fmt.Println("readyok")
+
 	case "position":
 		e.handlePosition(parts[1:])
+
 	case "go":
 		e.handleGo(parts[1:])
+
 	case "fen":
 		fmt.Println(e.board.FEN())
+
+	case "setoption":
+		e.handleSetOption(parts[1:])
+
 	case "quit":
 		os.Exit(0)
+
 	case "debug":
 		switch parts[1] {
 
@@ -83,6 +92,22 @@ func (e *UciEngine) handleCommand(command string) {
 		case "off":
 			e.sst.Debug = false
 		}
+	}
+}
+
+func (e *UciEngine) handleSetOption(args []string) {
+	if len(args) != 4 || args[0] != "name" || args[2] != "value" {
+		return
+	}
+	switch args[1] {
+
+	case "Hash":
+		val, err := strconv.Atoi(args[3])
+		if err != nil || val < 1 || val & (val-1) != 0 {
+			return
+		}
+
+		e.sst = search.NewState(val) // we need to re-allocate the hash table
 	}
 }
 
