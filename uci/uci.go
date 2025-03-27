@@ -35,16 +35,15 @@ type Engine struct {
 
 func NewEngine() *Engine {
 	return &Engine{
-		Board:      board.FromFEN(startPos),
-		SST:        search.NewState(defaultHash),
-		input:      bufio.NewScanner(os.Stdin),
-		inputLines: make(chan string),
+		Board: board.FromFEN(startPos),
+		SST:   search.NewState(defaultHash),
 	}
 }
 
 func (e *Engine) Run() {
 	wg := sync.WaitGroup{}
 
+	e.input = bufio.NewScanner(os.Stdin)
 	e.inputLines = make(chan string)
 	e.stop = make(chan struct{})
 
@@ -311,6 +310,7 @@ func (e *Engine) handleGo(args []string) {
 		close(searchFin)
 	}()
 
+	stopped := false
 	for finished := false; !finished; {
 		select {
 
@@ -318,14 +318,18 @@ func (e *Engine) handleGo(args []string) {
 			finished = true
 
 		case <-time.After(time.Duration(allocTime) * time.Millisecond):
+			stopped = true
 			close(e.SST.Stop)
 
 		case <-e.stop:
+			stopped = true
 			close(e.SST.Stop)
 		}
 	}
 
-	close(e.SST.Stop)
+	if !stopped {
+		close(e.SST.Stop)
+	}
 
 	if len(moves) > 0 {
 		bestMove := moves[0]
