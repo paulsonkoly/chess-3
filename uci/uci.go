@@ -40,6 +40,9 @@ func NewEngine() *Engine {
 	}
 }
 
+// Run executes an input loop reading from stdin and in paralell running and
+// controlling the search. It supports search interrupts with time control or
+// stop command.
 func (e *Engine) Run() {
 	wg := sync.WaitGroup{}
 
@@ -289,10 +292,6 @@ func (e *Engine) handleGo(args []string) {
 
 	allocTime := tc.allocate(e.Board)
 
-	// Timeout handling with iterative deepening. If we issue a time based go
-	// that closes Stop, and then subsequently a depth based go the Stop should
-	// still be re-initialised otherwise the depth based go would abort
-	// immediately.
 	e.SST.Stop = make(chan struct{})
 
 	if allocTime > 0 {
