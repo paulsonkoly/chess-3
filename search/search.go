@@ -22,11 +22,12 @@ import (
 // )
 
 var (
-	WindowSize = Score(50)
-	RFPMargin  = Score(105)
-	NMPRd      = Depth(3)
-	LMRDCond   = Depth(1)
-	LMRQCnt    = 2
+	WindowSize = Score(32)
+	RFPMargin  = Score(100)
+	NMPRd      = Depth(5)
+	LMRDCond   = Depth(2)
+	LMRQCnt    = 1
+	QDelta     = Score(110)
 )
 
 // State is a persistent state storage between searches.
@@ -481,7 +482,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 		return standPat
 	}
 
-	delta := standPat + 110
+	delta := standPat + QDelta
 	// fail soft upper bound
 	maxim := standPat
 	alpha = max(alpha, standPat)

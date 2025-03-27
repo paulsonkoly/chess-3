@@ -69,6 +69,7 @@ func (e *UciEngine) handleCommand(command string) {
 		fmt.Println("option name NMPRd type spin default 3 min 1 max 10")
 		fmt.Println("option name LMRDCond type spin default 1 min 1 max 10")
 		fmt.Println("option name LMRQCnt type spin default 2 min 1 max 10")
+		fmt.Println("option name QDelta type spin default 110 min 1 max 200")
 
 		fmt.Println("uciok")
 
@@ -149,6 +150,13 @@ func (e *UciEngine) handleSetOption(args []string) {
   case "LMRQCnt":
 		val, err := strconv.Atoi(args[3])
 		if err != nil || val < 1 || val > 10 {
+			return
+		}
+    search.LMRQCnt = val
+
+  case "QDelta":
+		val, err := strconv.Atoi(args[3])
+		if err != nil || val < 1 || val > 200 {
 			return
 		}
     search.LMRQCnt = val
