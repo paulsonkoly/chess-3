@@ -103,7 +103,7 @@ func (e *UciEngine) handleSetOption(args []string) {
 
 	case "Hash":
 		val, err := strconv.Atoi(args[3])
-		if err != nil || val < 1 || val & (val-1) != 0 {
+		if err != nil || val < 1 || val&(val-1) != 0 {
 			return
 		}
 
@@ -148,7 +148,7 @@ func (e *UciEngine) handleGo(args []string) {
 	depth := Depth(1) // Default depth if none is specified
 	timeAllowed := 0
 
-	for i := 0; i < len(args); i++ {
+	for i := range args {
 		switch args[i] {
 		case "wtime":
 			e.timeControl.wtime = parseMilliseconds(args[i+1])
@@ -248,7 +248,7 @@ func (e *UciEngine) TimeControl(timeAllowed int) int {
 	matCount = min(matCount, initialMatCount)
 
 	// linear interpolate initialMatCount -> 44 .. 0 -> 5 moves left
-	movesLeft := (matCount / 200) + 5
+	movesLeft := matCount/200 + 5
 
 	complexity := float64(matCount) / float64(initialMatCount)
 	complexity = 1 - complexity // 1-(1-x)**2 tapers off around 1 (d = 0) and steep around 0
@@ -257,12 +257,12 @@ func (e *UciEngine) TimeControl(timeAllowed int) int {
 	complexity *= 3.0 // scale up
 	complexity += 0.2 // safety margin
 
-	return int(math.Floor((complexity * float64(timeAllowed)) / float64(movesLeft)))
+	return int(math.Floor(complexity * float64(timeAllowed) / float64(movesLeft)))
 }
 
 func parseUCIMove(uciM string) move.SimpleMove {
-	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
-	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
+	from := Square(uciM[0] - 'a' + (uciM[1]-'1')*8)
+	to := Square(uciM[2] - 'a' + (uciM[3]-'1')*8)
 	var promo Piece
 	if len(uciM) == 5 {
 		switch uciM[4] {

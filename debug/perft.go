@@ -75,12 +75,12 @@ func StockfishPerft(b *board.Board, depth int) int {
 		panic(err)
 	}
 
-	_, err = sfIn.Write([]byte(fmt.Sprintf("position fen %s\n", b.FEN())))
+	_, err = sfIn.Write(fmt.Appendf(nil, "position fen %s\n", b.FEN()))
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = sfIn.Write([]byte(fmt.Sprintf("go perft %d\n", depth)))
+	_, err = sfIn.Write(fmt.Appendf(nil, "go perft %d\n", depth))
 	if err != nil {
 		panic(err)
 	}
