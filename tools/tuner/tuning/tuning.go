@@ -37,7 +37,7 @@ func InitialCoeffs() *Coeffs {
 	dst := reflect.ValueOf(&result).Elem()
 	src := reflect.ValueOf(&eval.Coefficients).Elem()
 
-	for ix := 0; ix < t.NumField(); ix++ {
+	for ix := range t.NumField() {
 		convert(dst.Field(ix), src.Field(ix))
 	}
 
@@ -58,7 +58,7 @@ func convert(dst, src reflect.Value) {
 		if src.Len() != dst.Len() {
 			panic("len mismatch")
 		}
-		for i := 0; i < dst.Len(); i++ {
+		for i := range dst.Len() {
 			convert(dst.Index(i), src.Index(i))
 		}
 
@@ -75,7 +75,7 @@ func convert(dst, src reflect.Value) {
 
 func (t *Coeffs) Print() {
 	typ := reflect.TypeOf(*t)
-	for ix := 0; ix < typ.NumField(); ix++ {
+	for ix := range typ.NumField() {
 		f := typ.Field(ix)
 		if slices.Contains(Targets[:], f.Name) {
 			v := reflect.ValueOf(*t).Field(ix)
@@ -119,7 +119,7 @@ func printField(v reflect.Value, in int) {
 			fmt.Printf("{")
 			comma := ""
 			fmt.Print(indent(in))
-			for i := 0; i < v.Len(); i++ {
+			for i := range v.Len() {
 				fmt.Printf("%s\n%s", comma, indent(in+1))
 				printField(v.Index(i), in+1)
 				comma = ","
@@ -130,7 +130,7 @@ func printField(v reflect.Value, in int) {
 
 			fmt.Printf("{ ")
 			comma := ""
-			for i := 0; i < v.Len(); i++ {
+			for i := range v.Len() {
 
 				fmt.Printf("%s", comma)
 				printField(v.Index(i), in+1)
@@ -159,7 +159,7 @@ func (t *Coeffs) Loop() iter.Seq[Index] {
 		typ := reflect.TypeOf(*t.ToEvalType())
 		v := reflect.ValueOf(*t.ToEvalType())
 
-		for ix := 0; ix < typ.NumField(); ix++ {
+		for ix := range typ.NumField() {
 			if !slices.Contains(Targets[:], typ.Field(ix).Name) {
 				continue
 			}
@@ -181,7 +181,7 @@ func recurse(yield func(Index) bool, ix Index, v reflect.Value) bool {
 	switch v.Kind() {
 
 	case reflect.Array:
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			if !recurse(yield, Index{append(ix.s, i)}, v.Index(i)) {
 				return false
 			}

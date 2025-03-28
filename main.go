@@ -122,22 +122,22 @@ func runBench(e *uci.Engine) {
 
 	for _, bk := range bratkoKopec {
 		e.Board = board.FromFEN(bk.fen)
-		_, ms := e.Search(9)
+		_, ms := e.Go(9)
 
 		ok := ms[0].String() == bk.bm
 
 		stats = append(stats, Stats{
 			ok,
-			e.SST.AWFail,
-			e.SST.ABCnt + e.SST.ABLeaf,
-			float32(e.SST.ABBreadth) / float32(e.SST.ABCnt),
-			e.SST.TTHit,
-			e.SST.QCnt,
-			e.SST.QDepth,
-			e.SST.QDelta,
-			e.SST.QSEE,
-			e.SST.Time,
-			(e.SST.ABCnt + e.SST.ABLeaf + e.SST.QCnt) / int(e.SST.Time),
+			e.Search.AWFail,
+			e.Search.ABCnt + e.Search.ABLeaf,
+			float32(e.Search.ABBreadth) / float32(e.Search.ABCnt),
+			e.Search.TTHit,
+			e.Search.QCnt,
+			e.Search.QDepth,
+			e.Search.QDelta,
+			e.Search.QSEE,
+			e.Search.Time,
+			(e.Search.ABCnt + e.Search.ABLeaf + e.Search.QCnt) / int(e.Search.Time),
 		})
 	}
 
@@ -204,10 +204,10 @@ func runBench(e *uci.Engine) {
 func runOBBench(e *uci.Engine) {
 	fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
 	e.Board = board.FromFEN(fen)
-	e.Search(15)
+	e.Go(15)
 
-	nodes := e.SST.ABCnt + e.SST.ABLeaf + e.SST.QCnt
-	time := e.SST.Time
+	nodes := e.Search.ABCnt + e.Search.ABLeaf + e.Search.QCnt
+	time := e.Search.Time
 
 	fmt.Printf("%d nodes %d nps\n", nodes, 1000*nodes/int(time))
 }
