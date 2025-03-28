@@ -151,11 +151,11 @@ var inBetween [64][64]board.BitBoard
 func initInBetween() {
 	var fileA, rankA, fileB, rankB Square
 
-	for fileA = 0; fileA < 8; fileA++ {
-		for rankA = 0; rankA < 8; rankA++ {
-			for fileB = 0; fileB < 8; fileB++ {
-				for rankB = 0; rankB < 8; rankB++ {
-					if (fileA == fileB) || (rankA == rankB) || (Abs(fileA-fileB) == Abs(rankA-rankB)) {
+	for fileA = range 8 {
+		for rankA = range 8 {
+			for fileB = range 8 {
+				for rankB = range 8 {
+					if fileA == fileB || rankA == rankB || Abs(fileA-fileB) == Abs(rankA-rankB) {
 						iterF := fileA
 						iterR := rankA
 						fileD := Signum(fileB - fileA)
@@ -163,14 +163,14 @@ func initInBetween() {
 						result := board.BitBoard(0)
 
 						for iterF != fileB || iterR != rankB {
-							result |= (board.BitBoard(1) << ((iterR << 3) + iterF))
+							result |= board.BitBoard(1) << (iterR<<3 + iterF)
 							iterF += fileD
 							iterR += rankD
 						}
-						inBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] =
-							result | (board.BitBoard(1) << ((rankB << 3) + fileB))
+						inBetween[rankA<<3+fileA][rankB<<3+fileB] =
+							result | board.BitBoard(1)<<(rankB<<3+fileB)
 					} else {
-						inBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] = 0
+						inBetween[rankA<<3+fileA][rankB<<3+fileB] = 0
 					}
 				}
 			}
@@ -187,7 +187,7 @@ func initBishopMagic() {
 
 		for {
 			attacks := calcBishopAttacks(sq, occ)
-			bishopAttacks[sq][(occ*magic)>>(64-shift)] = attacks
+			bishopAttacks[sq][occ*magic>>(64-shift)] = attacks
 			occ = (occ - mask) & mask
 
 			if occ == mask {
@@ -207,7 +207,7 @@ func initRookMagic() {
 
 		for {
 			attacks := calcRookAttacks(sq, occ)
-			rookAttacks[sq][(occ*magic)>>(64-shift)] = attacks
+			rookAttacks[sq][occ*magic>>(64-shift)] = attacks
 			occ = (occ - mask) & mask
 
 			if occ == mask {
@@ -231,7 +231,7 @@ func calcBishopAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 	f := int(sq % 8)
 
 	for rr, ff := r+1, f+1; rr <= 7 && ff <= 7; {
-		result |= (1 << (ff + rr*8))
+		result |= 1 << (ff + rr*8)
 		if occ&(1<<(ff+rr*8)) != 0 {
 			break
 		}
@@ -239,7 +239,7 @@ func calcBishopAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 		ff++
 	}
 	for rr, ff := r+1, f-1; rr <= 7 && ff >= 0; {
-		result |= (1 << (ff + rr*8))
+		result |= 1 << (ff + rr*8)
 		if occ&(1<<(ff+rr*8)) != 0 {
 			break
 		}
@@ -247,7 +247,7 @@ func calcBishopAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 		ff--
 	}
 	for rr, ff := r-1, f+1; rr >= 0 && ff <= 7; {
-		result |= (1 << (ff + rr*8))
+		result |= 1 << (ff + rr*8)
 		if occ&(1<<(ff+rr*8)) != 0 {
 			break
 		}
@@ -274,25 +274,25 @@ func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 	f := int(sq % 8)
 
 	for rr := r + 1; rr <= 7; rr++ {
-		result |= (1 << (f + rr*8))
+		result |= 1 << (f + rr*8)
 		if occ&(1<<(f+rr*8)) != 0 {
 			break
 		}
 	}
 	for rr := r - 1; rr >= 0; rr-- {
-		result |= (1 << (f + rr*8))
+		result |= 1 << (f + rr*8)
 		if occ&(1<<(f+rr*8)) != 0 {
 			break
 		}
 	}
 	for ff := f + 1; ff <= 7; ff++ {
-		result |= (1 << (ff + r*8))
+		result |= 1 << (ff + r*8)
 		if occ&(1<<(ff+r*8)) != 0 {
 			break
 		}
 	}
 	for ff := f - 1; ff >= 0; ff-- {
-		result |= (1 << (ff + r*8))
+		result |= 1 << (ff + r*8)
 		if occ&(1<<(ff+r*8)) != 0 {
 			break
 		}

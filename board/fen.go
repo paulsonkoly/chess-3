@@ -25,7 +25,7 @@ func FromFEN(fen string) *Board {
 	)
 
 	for ix, c = range []byte(fen) {
-		sq := (8 * rank) + file
+		sq := 8*rank + file
 		bb := BitBoard(1 << sq)
 
 		switch c {
