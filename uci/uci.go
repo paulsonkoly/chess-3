@@ -27,7 +27,7 @@ const (
 
 type Engine struct {
 	Board      *board.Board
-	Search        *search.Search
+	Search     *search.Search
 	input      *bufio.Scanner
 	inputLines chan string
 	stop       chan struct{}
@@ -35,8 +35,8 @@ type Engine struct {
 
 func NewEngine() *Engine {
 	return &Engine{
-		Board: board.FromFEN(startPos),
-		Search:   search.New(defaultHash),
+		Board:  board.FromFEN(startPos),
+		Search: search.New(defaultHash),
 	}
 }
 
@@ -187,8 +187,8 @@ func (e *Engine) applyMoves(moves []string) {
 }
 
 func parseUCIMove(uciM string) move.SimpleMove {
-	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
-	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
+	from := Square(uciM[0] - 'a' + (uciM[1]-'1')*8)
+	to := Square(uciM[2] - 'a' + (uciM[3]-'1')*8)
 	var promo Piece
 	if len(uciM) == 5 {
 		switch uciM[4] {
@@ -256,7 +256,7 @@ func (tc timeControl) allocate(b *board.Board) int {
 	matCount = min(matCount, initialMatCount)
 
 	// linear interpolate initialMatCount -> 44 .. 0 -> 5 moves left
-	movesLeft := (matCount / 200) + 5
+	movesLeft := matCount/200 + 5
 
 	complexity := float64(matCount) / float64(initialMatCount)
 	complexity = 1 - complexity // 1-(1-x)**2 tapers off around 1 (d = 0) and steep around 0
@@ -265,7 +265,7 @@ func (tc timeControl) allocate(b *board.Board) int {
 	complexity *= 3.0 // scale up
 	complexity += 0.2 // safety margin
 
-	return int(math.Floor((complexity * float64(gameTime)) / float64(movesLeft)))
+	return int(math.Floor(complexity * float64(gameTime) / float64(movesLeft)))
 }
 
 func (e *Engine) handleGo(args []string) {
