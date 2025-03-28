@@ -57,7 +57,7 @@ func New(sizeInMb int) *Table {
 	return &Table{
 		data:   make([]Entry, numEntries),
 		numE:   numEntries,
-		ixMask: (1 << numEntriesL2) - 1,
+		ixMask: 1<<numEntriesL2 - 1,
 	}
 }
 

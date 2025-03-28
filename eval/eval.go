@@ -343,13 +343,10 @@ func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg []T) T {
 	mgScore := mg[b.STM] - mg[b.STM.Flip()]
 	egScore := eg[b.STM] - eg[b.STM.Flip()]
 
-	mgPhase := phase
-	if mgPhase > 24 {
-		mgPhase = 24 // in case of early promotion
-	}
+	mgPhase := min(phase, 24)
 	egPhase := 24 - mgPhase
 
-	if _, ok := (any(mgScore)).(Score); ok {
+	if _, ok := any(mgScore).(Score); ok {
 		return T((int(mgScore)*mgPhase + int(egScore)*egPhase) / 24)
 	}
 
@@ -388,18 +385,18 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 		var kingNb board.BitBoard
 		switch color {
 		case White:
-			kingNb = king | kingA | (kingA << 8)
+			kingNb = king | kingA | kingA<<8
 		case Black:
-			kingNb = king | kingA | (kingA >> 8)
+			kingNb = king | kingA | kingA>>8
 		}
 
 		result.kingNb[color] = kingNb
 	}
 
 	wP := b.Pieces[Pawn] & b.Colors[White]
-	result.pawnCover[White] = ((wP & ^board.AFile) << 7) | ((wP & ^board.HFile) << 9)
+	result.pawnCover[White] = wP & ^board.AFile << 7 | wP & ^board.HFile << 9
 	bP := b.Pieces[Pawn] & b.Colors[Black]
-	result.pawnCover[Black] = ((bP & ^board.HFile) >> 7) | ((bP & ^board.AFile) >> 9)
+	result.pawnCover[Black] = bP & ^board.HFile >> 7 | bP & ^board.AFile >> 9
 
 	// various useful pawn bitboards
 	wFrontSpan := frontFill(wP, White) << 8
@@ -410,8 +407,8 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 
 	// calculate holes in our position, squares that cannot be protected by one
 	// of our pawns.
-	wCover := ((wFrontSpan & ^board.AFile) >> 1) | ((wFrontSpan & ^board.HFile) << 1)
-	bCover := ((bFrontSpan & ^board.HFile) << 1) | ((bFrontSpan & ^board.AFile) >> 1)
+	wCover := wFrontSpan & ^board.AFile >> 1 | wFrontSpan & ^board.HFile << 1
+	bCover := bFrontSpan & ^board.HFile << 1 | bFrontSpan & ^board.AFile >> 1
 	result.holes[White] = sideOfBoard[White] & ^wCover
 	result.holes[Black] = sideOfBoard[Black] & ^bCover
 
@@ -437,7 +434,7 @@ func (p *pieceWise[T]) Passers() {
 
 		frontLine := ^myRearSpan & myPawns
 
-		enemyCover := theirFrontSpan | ((theirFrontSpan & ^board.AFile) >> 1) | ((theirFrontSpan & ^board.HFile) << 1)
+		enemyCover := theirFrontSpan | theirFrontSpan & ^board.AFile >> 1 | theirFrontSpan & ^board.HFile << 1
 
 		p.passers |= frontLine & ^enemyCover
 	}
@@ -504,7 +501,7 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 		eg[color] += p.c.MobilityKnight[1][mobCnt]
 
 		// calculate knight outputs
-		if (board.BitBoard(1)<<sq)&p.holes[color.Flip()]&p.pawnCover[color] != 0 {
+		if board.BitBoard(1)<<sq&p.holes[color.Flip()]&p.pawnCover[color] != 0 {
 			// the hole square is from the enemy's perspective, white's in black's territory
 			if color == White {
 				sq ^= 56
