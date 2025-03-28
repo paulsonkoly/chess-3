@@ -1,29 +1,17 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
-	"math"
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/olekukonko/tablewriter"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/debug"
-	"github.com/paulsonkoly/chess-3/heur"
-	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/movegen"
-	"github.com/paulsonkoly/chess-3/search"
-
-	//revive:disable-next-line
-	. "github.com/paulsonkoly/chess-3/types"
+	"github.com/paulsonkoly/chess-3/uci"
 )
 
 var debugFEN = flag.String("debugFEN", "", "Debug a given fen to a given depth using stockfish perft")
@@ -31,269 +19,6 @@ var debugDepth = flag.Int("debugDepth", 3, "Debug a given depth")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
 var memProf = flag.String("memProf", "", "mem profile file name")
 var bench = flag.Bool("bench", false, "run benchmark instead of UCI")
-
-type UciEngine struct {
-	board       *board.Board
-	sst         *search.State
-	timeControl struct {
-		wtime int // White time in milliseconds
-		btime int // Black time in milliseconds
-		winc  int // White increment per move in milliseconds
-		binc  int // Black increment per move in milliseconds
-	}
-}
-
-func NewUciEngine() *UciEngine {
-	return &UciEngine{
-		board: board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-		sst:   search.NewState(8),
-	}
-}
-
-func (e *UciEngine) handleCommand(command string) {
-	parts := strings.Fields(command)
-	if len(parts) == 0 {
-		return
-	}
-
-	switch parts[0] {
-	case "uci":
-		fmt.Println("id name chess-3")
-		fmt.Println("id author Paul Sonkoly")
-		fmt.Println("option name Hash type spin default 8 min 1 max 128")
-		// these are here to conform ob. we don't actually support these options.
-		fmt.Println("option name Threads type spin default 1 min 1 max 1")
-		fmt.Println("uciok")
-
-	case "isready":
-		fmt.Println("readyok")
-
-	case "position":
-		e.handlePosition(parts[1:])
-
-	case "go":
-		e.handleGo(parts[1:])
-
-	case "fen":
-		fmt.Println(e.board.FEN())
-
-	case "setoption":
-		e.handleSetOption(parts[1:])
-
-	case "quit":
-		os.Exit(0)
-
-	case "debug":
-		switch parts[1] {
-
-		case "on":
-			e.sst.Debug = true
-
-		case "off":
-			e.sst.Debug = false
-		}
-	}
-}
-
-func (e *UciEngine) handleSetOption(args []string) {
-	if len(args) != 4 || args[0] != "name" || args[2] != "value" {
-		return
-	}
-	switch args[1] {
-
-	case "Hash":
-		val, err := strconv.Atoi(args[3])
-		if err != nil || val < 1 || val & (val-1) != 0 {
-			return
-		}
-
-		e.sst = search.NewState(val) // we need to re-allocate the hash table
-	}
-}
-
-func (e *UciEngine) handlePosition(args []string) {
-	if len(args) == 0 {
-		return
-	}
-
-	if args[0] == "startpos" {
-		e.board = board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-		if len(args) > 2 && args[1] == "moves" {
-			e.applyMoves(args[2:])
-		}
-	} else if args[0] == "fen" {
-		fen := strings.Join(args[1:], " ")
-		spaceIndex := strings.Index(fen, " moves ")
-		if spaceIndex != -1 {
-			e.board = board.FromFEN(fen[:spaceIndex])
-			e.applyMoves(strings.Fields(fen[spaceIndex+7:]))
-		} else {
-			e.board = board.FromFEN(fen)
-		}
-	}
-}
-
-func (e *UciEngine) applyMoves(moves []string) {
-	b := e.board
-	for _, ms := range moves {
-		sm := parseUCIMove(ms)
-
-		m := movegen.FromSimple(b, sm)
-
-		b.MakeMove(&m)
-	}
-}
-
-func (e *UciEngine) handleGo(args []string) {
-	depth := Depth(1) // Default depth if none is specified
-	timeAllowed := 0
-
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "wtime":
-			e.timeControl.wtime = parseMilliseconds(args[i+1])
-		case "btime":
-			e.timeControl.btime = parseMilliseconds(args[i+1])
-		case "winc":
-			e.timeControl.winc = parseMilliseconds(args[i+1])
-		case "binc":
-			e.timeControl.binc = parseMilliseconds(args[i+1])
-		case "depth":
-			depth = Depth(parseInt(args[i+1]))
-		case "movetime":
-			timeAllowed = parseMilliseconds(args[i+1]) - 30 // safety margin
-		}
-	}
-
-	timeAllowed = e.TimeControl(timeAllowed)
-
-	// Timeout handling with iterative deepening. If we issue a time based go
-	// that closes Stop, and then subsequently a depth based go the Stop should
-	// still be re-initialised otherwise the depth based go would abort
-	// immediately.
-	e.sst.Stop = make(chan struct{})
-
-	if timeAllowed > 0 {
-		var bestMove move.SimpleMove
-
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			_, moves := e.Search(search.MaxPlies)
-
-			if len(moves) > 0 {
-				bestMove = moves[0]
-			}
-		}()
-
-		time.Sleep(time.Duration(timeAllowed) * time.Millisecond)
-		close(e.sst.Stop)
-		wg.Wait()
-		fmt.Printf("bestmove %s\n", bestMove)
-	} else {
-		// Fixed depth search
-
-		_, moves := e.Search(depth)
-
-		if len(moves) > 0 {
-			bestMove := moves[0]
-			fmt.Printf("bestmove %s\n", bestMove)
-		} else {
-			fmt.Println("bestmove 0000") // No legal move
-		}
-	}
-}
-
-func (e *UciEngine) Search(d Depth) (Score, []move.SimpleMove) {
-	return search.Search(e.board, d, e.sst)
-}
-
-// 7800 that factors 39 * 200
-var initialMatCount = int(16*heur.PieceValues[Pawn] +
-	4*heur.PieceValues[Knight] +
-	4*heur.PieceValues[Bishop] +
-	4*heur.PieceValues[Rook] +
-	2*heur.PieceValues[Queen])
-
-func (e *UciEngine) TimeControl(timeAllowed int) int {
-	if timeAllowed != 0 {
-		return timeAllowed
-	}
-
-	if e.board.STM == White {
-		if e.timeControl.wtime == 0 {
-			return timeAllowed
-		}
-		timeAllowed = e.timeControl.wtime
-	}
-
-	if e.board.STM == Black {
-		if e.timeControl.btime == 0 {
-			return timeAllowed
-		}
-		timeAllowed = e.timeControl.btime
-	}
-
-	// TODO use the same functionality from eval
-
-	matCount := e.board.Pieces[Queen].Count()*int(heur.PieceValues[Queen]) +
-		e.board.Pieces[Rook].Count()*int(heur.PieceValues[Rook]) +
-		e.board.Pieces[Bishop].Count()*int(heur.PieceValues[Bishop]) +
-		e.board.Pieces[Knight].Count()*int(heur.PieceValues[Knight]) +
-		e.board.Pieces[Pawn].Count()*int(heur.PieceValues[Pawn])
-
-	matCount = min(matCount, initialMatCount)
-
-	// linear interpolate initialMatCount -> 44 .. 0 -> 5 moves left
-	movesLeft := (matCount / 200) + 5
-
-	complexity := float64(matCount) / float64(initialMatCount)
-	complexity = 1 - complexity // 1-(1-x)**2 tapers off around 1 (d = 0) and steep around 0
-	complexity *= complexity
-	complexity = 1 - complexity
-	complexity *= 3.0 // scale up
-	complexity += 0.2 // safety margin
-
-	return int(math.Floor((complexity * float64(timeAllowed)) / float64(movesLeft)))
-}
-
-func parseUCIMove(uciM string) move.SimpleMove {
-	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
-	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
-	var promo Piece
-	if len(uciM) == 5 {
-		switch uciM[4] {
-		case 'q':
-			promo = Queen
-		case 'r':
-			promo = Rook
-		case 'b':
-			promo = Bishop
-		case 'n':
-			promo = Knight
-		}
-	}
-	return move.SimpleMove{From: from, To: to, Promo: promo}
-}
-
-func parseMilliseconds(value string) int {
-	result, err := strconv.Atoi(value)
-	if err != nil {
-		return 0
-	}
-	return result
-}
-
-func parseInt(value string) int {
-	result, err := strconv.Atoi(value)
-	if err != nil {
-		return 0
-	}
-	return result
-}
 
 func main() {
 
@@ -318,31 +43,21 @@ func main() {
 		return
 	}
 
-	e := NewUciEngine()
+	e := uci.NewEngine()
 
 	// our normal benchmark table
 	if *bench {
-		e.bench()
+		runBench(e)
 		return
 	}
 
 	// openbench compatibility bench
 	if len(os.Args) > 1 && os.Args[1] == "bench" {
-		fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
-		e.board = board.FromFEN(fen)
-		e.Search(15)
-
-		nodes := e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt
-		time := e.sst.Time
-
-		fmt.Printf("%d nodes %d nps\n", nodes, 1000*nodes/int(time))
+		runOBBench(e)
 		return
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		e.handleCommand(scanner.Text())
-	}
+	e.Run()
 
 	if *memProf != "" {
 		f, err := os.Create(*memProf)
@@ -372,7 +87,7 @@ type Stats struct {
 	KNps   int
 }
 
-func (e *UciEngine) bench() {
+func runBench(e *uci.Engine) {
 	bratkoKopec := []struct {
 		fen string
 		bm  string
@@ -406,23 +121,23 @@ func (e *UciEngine) bench() {
 	stats := []Stats{}
 
 	for _, bk := range bratkoKopec {
-		e.board = board.FromFEN(bk.fen)
+		e.Board = board.FromFEN(bk.fen)
 		_, ms := e.Search(9)
 
 		ok := ms[0].String() == bk.bm
 
 		stats = append(stats, Stats{
 			ok,
-			e.sst.AWFail,
-			e.sst.ABCnt + e.sst.ABLeaf,
-			float32(e.sst.ABBreadth) / float32(e.sst.ABCnt),
-			e.sst.TTHit,
-			e.sst.QCnt,
-			e.sst.QDepth,
-			e.sst.QDelta,
-			e.sst.QSEE,
-			e.sst.Time,
-			(e.sst.ABCnt + e.sst.ABLeaf + e.sst.QCnt) / int(e.sst.Time),
+			e.SST.AWFail,
+			e.SST.ABCnt + e.SST.ABLeaf,
+			float32(e.SST.ABBreadth) / float32(e.SST.ABCnt),
+			e.SST.TTHit,
+			e.SST.QCnt,
+			e.SST.QDepth,
+			e.SST.QDelta,
+			e.SST.QSEE,
+			e.SST.Time,
+			(e.SST.ABCnt + e.SST.ABLeaf + e.SST.QCnt) / int(e.SST.Time),
 		})
 	}
 
@@ -484,4 +199,15 @@ func (e *UciEngine) bench() {
 	table.SetHeader([]string{"Test", "BM", "AWFail", "ABCnt", "ABBF", "TTHit", "QCnt", "QDepth", "QDelta", "QSEE", "Time (ms)", "Speed (Kn/s)"})
 	table.SetAutoWrapText(false)
 	table.Render()
+}
+
+func runOBBench(e *uci.Engine) {
+	fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
+	e.Board = board.FromFEN(fen)
+	e.Search(15)
+
+	nodes := e.SST.ABCnt + e.SST.ABLeaf + e.SST.QCnt
+	time := e.SST.Time
+
+	fmt.Printf("%d nodes %d nps\n", nodes, 1000*nodes/int(time))
 }
