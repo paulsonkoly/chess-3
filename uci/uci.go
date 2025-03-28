@@ -27,7 +27,7 @@ const (
 
 type Engine struct {
 	Board      *board.Board
-	SST        *search.State
+	Search        *search.Search
 	input      *bufio.Scanner
 	inputLines chan string
 	stop       chan struct{}
@@ -36,7 +36,7 @@ type Engine struct {
 func NewEngine() *Engine {
 	return &Engine{
 		Board: board.FromFEN(startPos),
-		SST:   search.NewState(defaultHash),
+		Search:   search.New(defaultHash),
 	}
 }
 
@@ -129,10 +129,10 @@ func (e *Engine) handleCommand(command string) {
 		switch parts[1] {
 
 		case "on":
-			e.SST.Debug = true
+			e.Search.Debug = true
 
 		case "off":
-			e.SST.Debug = false
+			e.Search.Debug = false
 		}
 	}
 }
@@ -149,7 +149,7 @@ func (e *Engine) handleSetOption(args []string) {
 			return
 		}
 
-		e.SST = search.NewState(val) // we need to re-allocate the hash table
+		e.Search = search.New(val) // we need to re-allocate the hash table
 	}
 }
 
@@ -292,7 +292,7 @@ func (e *Engine) handleGo(args []string) {
 
 	allocTime := tc.allocate(e.Board)
 
-	e.SST.Stop = make(chan struct{})
+	e.Search.Stop = make(chan struct{})
 
 	if allocTime > 0 {
 		depth = search.MaxPlies
@@ -305,7 +305,7 @@ func (e *Engine) handleGo(args []string) {
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, moves = e.Search(depth)
+		_, moves = e.Go(depth)
 		close(searchFin)
 	}()
 
@@ -318,16 +318,16 @@ func (e *Engine) handleGo(args []string) {
 
 		case <-time.After(time.Duration(allocTime) * time.Millisecond):
 			stopped = true
-			close(e.SST.Stop)
+			close(e.Search.Stop)
 
 		case <-e.stop:
 			stopped = true
-			close(e.SST.Stop)
+			close(e.Search.Stop)
 		}
 	}
 
 	if !stopped {
-		close(e.SST.Stop)
+		close(e.Search.Stop)
 	}
 
 	if len(moves) > 0 {
@@ -346,6 +346,6 @@ func parseInt(value string) int {
 	return result
 }
 
-func (e *Engine) Search(d Depth) (Score, []move.SimpleMove) {
-	return search.Search(e.Board, d, e.SST)
+func (e *Engine) Go(d Depth) (Score, []move.SimpleMove) {
+	return e.Search.Go(e.Board, d)
 }
