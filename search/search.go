@@ -118,7 +118,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 			}
 
 			if abort(sst) {
-				if awOk && scoreSample >= score {
+				if awOk && scoreSample >= score && len(sst.pv.active()) > 0 {
 					break
 				}
 				return
@@ -268,7 +268,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	hasLegal := false
 	failLow := true
-	maxim := -Inf
+	maxim := -Inf - 1
 	bestMove := move.SimpleMove{}
 	moveCnt := 0
 	quietCnt := 0
@@ -367,6 +367,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		if abort(sst) {
+			if bestMove.From|bestMove.To != 0 {
+				sst.pv.insert(ply, bestMove)
+			}
 			return maxim
 		}
 	}
