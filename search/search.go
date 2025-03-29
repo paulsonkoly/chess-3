@@ -388,12 +388,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 	}
 
+	node := transp.PVNode
 	if failLow {
-		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
-	} else {
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
+		node = transp.AllNode
 	}
+
+	transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, node)
 
 	return maxim
 }
@@ -534,9 +534,6 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	var transPE *transp.Entry
 
 	transPE, _ = sst.tt.LookUp(b.Hash())
-	if transPE != nil && transPE.Type == transp.AllNode {
-		transPE = nil
-	}
 
 	for ix, m := range moves {
 
