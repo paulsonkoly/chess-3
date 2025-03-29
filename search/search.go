@@ -385,6 +385,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		if abort(sst) {
+			if bestMove.From|bestMove.To != 0 {
+				sst.pv.insert(ply, bestMove)
+			}
 			return maxim
 		}
 	}
