@@ -324,45 +324,46 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		if value > alpha { // TODO move this after beta cut, no need to save the PV
+			if value >= beta {
+				// store node as fail high (cut-node)
+				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
+
+				hSize := sst.hstack.size()
+				bonus := -Score(d * d)
+
+				for i, m := range moves {
+					if i == ix {
+						bonus = -bonus
+					}
+
+					if m.Captured == NoPiece && m.Promo == NoPiece {
+						sst.hist.Add(b.STM, m.From, m.To, bonus)
+
+						if hSize >= 1 {
+							hist := sst.hstack.top(0)
+							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+						}
+
+						if hSize >= 2 {
+							hist := sst.hstack.top(1)
+							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+						}
+					}
+
+					if i == ix {
+						break
+					}
+				}
+
+				sst.ABBreadth += moveCnt
+
+				return value
+			}
+
+			// value > alpha
 			failLow = false
 			alpha = value
 			sst.pv.insert(ply, m.SimpleMove)
-		}
-
-		if value >= beta {
-			// store node as fail high (cut-node)
-			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
-
-			hSize := sst.hstack.size()
-			bonus := -Score(d * d)
-
-			for i, m := range moves {
-				if i == ix {
-					bonus = -bonus
-				}
-
-				if m.Captured == NoPiece && m.Promo == NoPiece {
-					sst.hist.Add(b.STM, m.From, m.To, bonus)
-
-					if hSize >= 1 {
-						hist := sst.hstack.top(0)
-						sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
-					}
-
-					if hSize >= 2 {
-						hist := sst.hstack.top(1)
-						sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
-					}
-				}
-
-				if i == ix {
-					break
-				}
-			}
-
-			sst.ABBreadth += moveCnt
-
-			return value
 		}
 
 		if abort(sst) {
