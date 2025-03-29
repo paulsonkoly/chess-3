@@ -2,7 +2,6 @@ package search
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -28,6 +27,7 @@ type State struct {
 	cont   [2]*heur.Continuation
 	ms     *move.Store
 	hstack *historyStack
+	pv     *pv
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
@@ -60,6 +60,7 @@ func NewState(ttSizeInMb int) *State {
 		hist:   heur.NewHistory(),
 		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
 		hstack: newHistStack(),
+		pv:     newPV(),
 	}
 }
 
@@ -95,13 +96,10 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
-		var (
-			scoreSample Score
-			movesSample []move.SimpleMove
-		)
+		var scoreSample Score
 
 		for !awOk {
-			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, true, false, sst)
+			scoreSample = AlphaBeta(b, alpha, beta, d, 0, true, false, sst)
 
 			switch {
 
@@ -126,8 +124,8 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 				return
 			}
 		}
-		score, moves = scoreSample, movesSample
-		slices.Reverse(moves)
+		score = scoreSample
+		moves = sst.pv.active()
 
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
@@ -177,14 +175,14 @@ func pvInfo(moves []move.SimpleMove) string {
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *State) (Score, []move.SimpleMove) {
+func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, sst *State) Score {
 
 	transpT := sst.tt
-	pv := []move.SimpleMove{}
+	sst.pv.setNull(ply)
 
 	tfCnt := b.Threefold()
 	if b.FiftyCnt >= 100 || tfCnt >= 3 {
-		return 0, pv
+		return 0
 	}
 
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
@@ -193,18 +191,18 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 		case transp.PVNode:
 			if transpE.From|transpE.To != 0 {
-				pv = []move.SimpleMove{transpE.SimpleMove}
+				sst.pv.setTip(ply, transpE.SimpleMove)
 			}
-			return transpE.Value, pv
+			return transpE.Value
 
 		case transp.CutNode:
 			if transpE.Value >= beta {
-				return transpE.Value, pv
+				return transpE.Value
 			}
 
 		case transp.AllNode:
 			if transpE.Value <= alpha {
-				return transpE.Value, pv
+				return transpE.Value
 			}
 		}
 		sst.TTHit--
@@ -212,7 +210,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 	if d == 0 {
 		sst.ABLeaf++
-		return Quiescence(b, alpha, beta, 0, sst), pv
+		return Quiescence(b, alpha, beta, 0, sst)
 	}
 
 	sst.ABCnt++
@@ -228,7 +226,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
-			return staticEval, pv
+			return staticEval
 		}
 
 		// null move pruning
@@ -238,13 +236,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 			rd := max(0, d-3)
 
-			value, _ := AlphaBeta(b, -beta, -beta+1, rd, false, !cutN, sst)
-			value *= -1
+			value := -AlphaBeta(b, -beta, -beta+1, rd, ply, false, !cutN, sst)
 
 			b.UndoNullMove(enP)
 
 			if value >= beta {
-				return value, pv
+				return value
 			}
 		}
 	}
@@ -272,6 +269,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 	hasLegal := false
 	failLow := true
 	maxim := -Inf
+	bestMove := move.SimpleMove{}
 	moveCnt := 0
 	quietCnt := 0
 
@@ -289,10 +287,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 		sst.hstack.push(m.Piece, m.To, staticEval)
 
-		var (
-			value Score
-			curr  []move.SimpleMove
-		)
+		var value Score
 
 		quiet := m.Captured == NoPiece && m.Promo == NoPiece
 		if quiet {
@@ -303,32 +298,35 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		// move, which is likely to be the hash move.
 		if d > 1 && quietCnt > 2 && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
-			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, !cutN, sst)
-			value *= -1
+			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst)
 
 			if value <= alpha {
+				if value > maxim {
+					maxim = value
+					bestMove = m.SimpleMove
+				}
+
 				b.UndoMove(m)
 				sst.hstack.pop()
-				// outherwise in an all node if all null-window searches succeed we
-				// would end up with -Inf as upper bound
-				maxim = max(maxim, value)
 				continue
 			}
 		}
 
 		// null window search failed (meaning didn't fail low).
-		value, curr = AlphaBeta(b, -beta, -alpha, d-1, true, false, sst)
-		value *= -1
+		value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
 
 		b.UndoMove(m)
 		sst.hstack.pop()
 
-		maxim = max(maxim, value)
+		if value > maxim {
+			maxim = value
+			bestMove = m.SimpleMove
+		}
 
-		if value > alpha {
+		if value > alpha { // TODO move this after beta cut, no need to save the PV
 			failLow = false
 			alpha = value
-			pv = append(curr, m.SimpleMove)
+			sst.pv.insert(ply, m.SimpleMove)
 		}
 
 		if value >= beta {
@@ -364,11 +362,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 			sst.ABBreadth += moveCnt
 
-			return value, nil
+			return value
 		}
 
 		if abort(sst) {
-			return maxim, pv
+			return maxim
 		}
 	}
 
@@ -390,17 +388,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		// store node as fail low (All-node)
 		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
 	} else {
-		// store node as exact (PV-node)
-		// there might not be a move in case of !hasLegal
-		var sm move.SimpleMove
-		if len(pv) > 0 {
-			sm = pv[len(pv)-1]
-		}
-
-		transpT.Insert(b.Hash(), d, tfCnt, sm, maxim, transp.PVNode)
+		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
 	}
 
-	return maxim, pv
+	return maxim
 }
 
 // (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
