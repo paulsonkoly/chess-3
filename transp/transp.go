@@ -70,7 +70,7 @@ func (t Table) HashFull() int {
 func (t *Table) Clear() {
 	t.cnt = 0
 	for ix := range t.data {
-		t.data[ix].Depth = 0
+		t.data[ix].Depth = -1
 	}
 }
 
