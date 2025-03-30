@@ -240,6 +240,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 			b.UndoNullMove(enP)
 
+			// In case the null move search left a PV fragment this removes it,
+			// normally, it shouldn't matter because it's expected to fail low higher
+			// up anyway. But going up the window can widen, and it would be possible
+			// a nullmove line bubbles up.
+			sst.pv.setNull(ply)
+
 			if value >= beta {
 				return value
 			}
