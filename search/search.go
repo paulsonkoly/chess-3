@@ -323,7 +323,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			bestMove = m.SimpleMove
 		}
 
-		if value > alpha { // TODO move this after beta cut, no need to save the PV
+		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
@@ -367,9 +367,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		if abort(sst) {
-			if bestMove.From|bestMove.To != 0 {
-				sst.pv.insert(ply, bestMove)
-			}
 			return maxim
 		}
 	}
@@ -382,14 +379,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if inCheck {
 			maxim = -Inf
 		}
-
-		if maxim > alpha {
-			failLow = false
-		}
 	}
 
 	node := transp.PVNode
-	if failLow {
+	if failLow && hasLegal {
 		node = transp.AllNode
 	}
 
