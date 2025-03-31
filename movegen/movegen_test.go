@@ -625,6 +625,11 @@ func TestIsCheckMate(t *testing.T) {
 			b:    board.FromFEN("1kbr4/Qp3R2/3q2pp/4p3/2B5/8/PPP2B2/2K5 b - - 0 1"),
 			want: true,
 		},
+		{
+			name: "regression 3 / single pawn push blocks",
+			b:    board.FromFEN("rnbqkbnr/ppppp1pp/8/5p1Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 0 1"),
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
