@@ -550,8 +550,8 @@ func Block(b *board.Board, squares board.BitBoard, color Color) board.BitBoard {
 	res := board.BitBoard(0)
 	occ := b.Colors[White] | b.Colors[Black]
 
-	for square := board.BitBoard(0); squares != 0; squares ^= square {
-		square = squares & -squares
+	for square, eachSquare := board.BitBoard(0), squares; eachSquare != 0; eachSquare ^= square {
+		square = eachSquare & -eachSquare
 		sq := square.LowestSet()
 
 		sub := board.BitBoard(0)
