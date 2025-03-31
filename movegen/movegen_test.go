@@ -638,6 +638,58 @@ func TestIsCheckMate(t *testing.T) {
 	}
 }
 
+func TestEnPassantStates(t *testing.T) {
+	tests := []struct {
+		name   string
+		b      *board.Board
+		move   move.SimpleMove
+		bAfter *board.Board
+	}{
+		{
+			name:   "En passant possible after pawn move",
+			b:      board.FromFEN("4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1"),
+			move:   move.SimpleMove{From: C2, To: C4},
+			bAfter: board.FromFEN("4k3/8/8/8/2Pp4/8/8/4K3 b - c3 0 1"),
+		},
+		{
+			name:   "En passant not possible due to no pawn",
+			b:      board.FromFEN("4k3/8/8/8/8/8/2P5/4K3 w - - 0 1"),
+			move:   move.SimpleMove{From: C2, To: C4},
+			bAfter: board.FromFEN("4k3/8/8/8/2P5/8/8/4K3 b - - 0 1"),
+		},
+		{
+			name:   "En passant not possible due to simple pin",
+			b:      board.FromFEN("8/8/1k6/8/3p4/8/2P5/3K2B1 w - - 0 1"),
+			move:   move.SimpleMove{From: C2, To: C4},
+			bAfter: board.FromFEN("8/8/1k6/8/2Pp4/8/8/3K2B1 b - - 0 1"),
+		},
+		{
+			name:   "En passant not possible due to tricky pin",
+			b:      board.FromFEN("8/8/8/8/k2p3R/8/2P5/3K4 w - - 0 1"),
+			move:   move.SimpleMove{From: C2, To: C4},
+			bAfter: board.FromFEN("8/8/8/8/k1Pp3R/8/8/3K4 b - - 0 1"),
+		},
+	}
+
+	for _, tt := range tests {
+		ms := move.NewStore()
+
+		t.Run(tt.name, func(t *testing.T) {
+			b := tt.b
+			m := movegen.FromSimple(b, tt.move)
+
+			ms.Push()
+			movegen.GenMoves(ms, b)
+			assert.Contains(t, ms.Frame(), m)
+			ms.Pop()
+
+			b.MakeMove(&m)
+			assert.Equal(t, tt.bAfter.EnPassant, b.EnPassant)
+			assert.Equal(t, tt.bAfter.Hash(), b.Hash())
+		})
+	}
+}
+
 func K(f, t Square) move.Move {
 	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: King}
 }
