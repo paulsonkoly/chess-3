@@ -75,7 +75,11 @@ func (e *Engine) readInput() {
 		switch line {
 
 		case "stop":
-			e.stop <- struct{}{}
+			select {
+			case e.stop <- struct{}{}:
+			default:
+				// no search is running. Ignore.
+			}
 
 		case "quit":
 			return
