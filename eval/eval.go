@@ -343,10 +343,7 @@ func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg []T) T {
 	mgScore := mg[b.STM] - mg[b.STM.Flip()]
 	egScore := eg[b.STM] - eg[b.STM.Flip()]
 
-	mgPhase := phase
-	if mgPhase > 24 {
-		mgPhase = 24 // in case of early promotion
-	}
+	mgPhase := min(phase, 24)
 	egPhase := 24 - mgPhase
 
 	if _, ok := (any(mgScore)).(Score); ok {

@@ -151,10 +151,10 @@ var inBetween [64][64]board.BitBoard
 func initInBetween() {
 	var fileA, rankA, fileB, rankB Square
 
-	for fileA = 0; fileA < 8; fileA++ {
-		for rankA = 0; rankA < 8; rankA++ {
-			for fileB = 0; fileB < 8; fileB++ {
-				for rankB = 0; rankB < 8; rankB++ {
+	for fileA = range 8 {
+		for rankA = range 8 {
+			for fileB = range 8 {
+				for rankB = range 8 {
 					if (fileA == fileB) || (rankA == rankB) || (Abs(fileA-fileB) == Abs(rankA-rankB)) {
 						iterF := fileA
 						iterR := rankA
