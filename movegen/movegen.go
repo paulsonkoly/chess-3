@@ -289,11 +289,42 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 		m.From = from
 		m.To = from + 2*shift
 		m.CRights = 0
-		m.EPSq = m.To ^ b.EnPassant
+		m.EPSq = b.EnPassant
+		if canEnPassant(b, m.To) {
+			m.EPSq ^= m.To
+		}
 		m.Castle = 0
 		m.Promo = 0
 		m.EPP = 0
 	}
+}
+
+// canEnPassant determines if we need to change the en passant state of the
+// board after a double pawn push.
+//
+// This is important in order to have the right hashes for 3-fold repetation.
+// If we didn't do this the next turn move generator would take care of things
+// and everything would work, apart from we would have the incorrect board en
+// passant state.
+// https://chess.stackexchange.com/questions/777/rules-en-passant-and-draw-by-triple-repetition
+func canEnPassant(b *board.Board, to Square) bool {
+	target := board.BitBoard(1) << to
+	them := b.Colors[b.STM.Flip()]
+	shift := shifts[b.STM]
+	king := b.Pieces[King] & them
+	dest := board.BitBoard(1) << (to - shift)
+
+	// pawns that are able to en-passant
+	ables := ((target & ^board.AFile >> 1) | (target & ^board.HFile << 1)) & b.Pieces[Pawn] & them
+	for able := board.BitBoard(0); ables != 0; ables ^= able {
+		able = ables & -ables
+		// remove the pawns from the occupancy
+		occ := (b.Colors[White] | b.Colors[Black] | dest) &^ (target | able)
+		if !IsAttacked(b, b.STM, occ, king) {
+			return true
+		}
+	}
+	return false
 }
 
 func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
@@ -910,7 +941,9 @@ func FromSimple(b *board.Board, sm move.SimpleMove) move.Move {
 
 	case Pawn:
 		if sm.From-sm.To == 16 || sm.To-sm.From == 16 {
-			result.EPSq ^= sm.To
+			if canEnPassant(b, sm.To) {
+				result.EPSq ^= sm.To
+			}
 		}
 		if (sm.From-sm.To)&1 != 0 && b.SquaresToPiece[sm.To] == NoPiece { // en-passant capture
 			result.EPP = Pawn
