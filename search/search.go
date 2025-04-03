@@ -84,7 +84,7 @@ func (s *State) Clear() {
 
 // Search is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window.
-func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.SimpleMove) {
+func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
@@ -125,13 +125,15 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 			}
 		}
 		score = scoreSample
-		moves = sst.pv.active()
+		if len(sst.pv.active()) > 0 {
+			move = sst.pv.active()[0]
+		}
 
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
 		fmt.Printf("info depth %d score cp %d nodes %d time %d hashfull %d pv %s\n",
-			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(moves))
+			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
