@@ -310,15 +310,16 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 func canEnPassant(b *board.Board, to Square) bool {
 	target := board.BitBoard(1) << to
 	them := b.Colors[b.STM.Flip()]
-
+	shift := shifts[b.STM]
 	king := b.Pieces[King] & them
+	dest := board.BitBoard(1) << (to - shift)
 
 	// pawns that are able to en-passant
 	ables := ((target & ^board.AFile >> 1) | (target & ^board.HFile << 1)) & b.Pieces[Pawn] & them
 	for able := board.BitBoard(0); ables != 0; ables ^= able {
 		able = ables & -ables
 		// remove the pawns from the occupancy
-		occ := (b.Colors[White] | b.Colors[Black]) &^ (target | able)
+		occ := (b.Colors[White] | b.Colors[Black] | dest) &^ (target | able)
 		if !IsAttacked(b, b.STM, occ, king) {
 			return true
 		}

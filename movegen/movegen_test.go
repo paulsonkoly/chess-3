@@ -669,6 +669,12 @@ func TestEnPassantStates(t *testing.T) {
 			move:   move.SimpleMove{From: C2, To: C4},
 			bAfter: board.FromFEN("8/8/8/8/k1Pp3R/8/8/3K4 b - - 0 1"),
 		},
+		{
+			name:   "En passant possible in pin that's not affected",
+			b:      board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22"),
+			move:   move.SimpleMove{From: F2, To: F4},
+			bAfter: board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rpP2/6PN/1P2P1BP/1RR3K1 b - f3 0 23"),
+		},
 	}
 
 	for _, tt := range tests {
