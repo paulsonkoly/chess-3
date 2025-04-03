@@ -12,6 +12,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/uci"
+	"slices"
 )
 
 var debugFEN = flag.String("debugFEN", "", "Debug a given fen to a given depth using stockfish perft")
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	// openbench compatibility bench
-	if len(os.Args) > 1 && os.Args[1] == "bench" {
+	if slices.Contains(os.Args, "bench") {
 		runOBBench(e)
 		return
 	}
