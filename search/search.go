@@ -2,7 +2,6 @@ package search
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -28,6 +27,7 @@ type State struct {
 	cont   [2]*heur.Continuation
 	ms     *move.Store
 	hstack *historyStack
+	pv     *pv
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
@@ -60,6 +60,7 @@ func NewState(ttSizeInMb int) *State {
 		hist:   heur.NewHistory(),
 		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
 		hstack: newHistStack(),
+		pv:     newPV(),
 	}
 }
 
@@ -83,7 +84,7 @@ func (s *State) Clear() {
 
 // Search is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window.
-func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.SimpleMove) {
+func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
@@ -95,13 +96,10 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
-		var (
-			scoreSample Score
-			movesSample []move.SimpleMove
-		)
+		var scoreSample Score
 
 		for !awOk {
-			scoreSample, movesSample = AlphaBeta(b, alpha, beta, d, true, false, sst)
+			scoreSample = AlphaBeta(b, alpha, beta, d, 0, true, false, sst)
 
 			switch {
 
@@ -120,20 +118,22 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 			}
 
 			if abort(sst) {
-				if awOk && scoreSample >= score {
+				if awOk && scoreSample >= score && len(sst.pv.active()) > 0 {
 					break
 				}
 				return
 			}
 		}
-		score, moves = scoreSample, movesSample
-		slices.Reverse(moves)
+		score = scoreSample
+		if len(sst.pv.active()) > 0 {
+			move = sst.pv.active()[0]
+		}
 
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
 		fmt.Printf("info depth %d score cp %d nodes %d time %d hashfull %d pv %s\n",
-			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(moves))
+			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
@@ -177,14 +177,14 @@ func pvInfo(moves []move.SimpleMove) string {
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *State) (Score, []move.SimpleMove) {
+func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, sst *State) Score {
 
 	transpT := sst.tt
-	pv := []move.SimpleMove{}
+	sst.pv.setNull(ply)
 
 	tfCnt := b.Threefold()
 	if b.FiftyCnt >= 100 || tfCnt >= 3 {
-		return 0, pv
+		return 0
 	}
 
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
@@ -193,18 +193,18 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 		case transp.PVNode:
 			if transpE.From|transpE.To != 0 {
-				pv = []move.SimpleMove{transpE.SimpleMove}
+				sst.pv.setTip(ply, transpE.SimpleMove)
 			}
-			return transpE.Value, pv
+			return transpE.Value
 
 		case transp.CutNode:
 			if transpE.Value >= beta {
-				return transpE.Value, pv
+				return transpE.Value
 			}
 
 		case transp.AllNode:
 			if transpE.Value <= alpha {
-				return transpE.Value, pv
+				return transpE.Value
 			}
 		}
 		sst.TTHit--
@@ -212,7 +212,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 	if d == 0 {
 		sst.ABLeaf++
-		return Quiescence(b, alpha, beta, 0, sst), pv
+		return Quiescence(b, alpha, beta, 0, sst)
 	}
 
 	sst.ABCnt++
@@ -228,7 +228,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 {
-			return staticEval, pv
+			return staticEval
 		}
 
 		// null move pruning
@@ -238,13 +238,18 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 			rd := max(0, d-3)
 
-			value, _ := AlphaBeta(b, -beta, -beta+1, rd, false, !cutN, sst)
-			value *= -1
+			value := -AlphaBeta(b, -beta, -beta+1, rd, ply, false, !cutN, sst)
 
 			b.UndoNullMove(enP)
 
+			// In case the null move search left a PV fragment this removes it,
+			// normally, it shouldn't matter because it's expected to fail low higher
+			// up anyway. But going up the window can widen, and it would be possible
+			// a nullmove line bubbles up.
+			sst.pv.setNull(ply)
+
 			if value >= beta {
-				return value, pv
+				return value
 			}
 		}
 	}
@@ -271,7 +276,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 	hasLegal := false
 	failLow := true
-	maxim := -Inf
+	maxim := -Inf - 1
+	bestMove := move.SimpleMove{}
 	moveCnt := 0
 	quietCnt := 0
 
@@ -289,10 +295,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 
 		sst.hstack.push(m.Piece, m.To, staticEval)
 
-		var (
-			value Score
-			curr  []move.SimpleMove
-		)
+		var value Score
 
 		quiet := m.Captured == NoPiece && m.Promo == NoPiece
 		if quiet {
@@ -303,72 +306,76 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		// move, which is likely to be the hash move.
 		if d > 1 && quietCnt > 2 && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
-			value, _ = AlphaBeta(b, -alpha-1, -alpha, rd, false, !cutN, sst)
-			value *= -1
+			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst)
 
 			if value <= alpha {
+				if value > maxim {
+					maxim = value
+					bestMove = m.SimpleMove
+				}
+
 				b.UndoMove(m)
 				sst.hstack.pop()
-				// outherwise in an all node if all null-window searches succeed we
-				// would end up with -Inf as upper bound
-				maxim = max(maxim, value)
 				continue
 			}
 		}
 
 		// null window search failed (meaning didn't fail low).
-		value, curr = AlphaBeta(b, -beta, -alpha, d-1, true, false, sst)
-		value *= -1
+		value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
 
 		b.UndoMove(m)
 		sst.hstack.pop()
 
-		maxim = max(maxim, value)
-
-		if value > alpha {
-			failLow = false
-			alpha = value
-			pv = append(curr, m.SimpleMove)
+		if value > maxim {
+			maxim = value
+			bestMove = m.SimpleMove
 		}
 
-		if value >= beta {
-			// store node as fail high (cut-node)
-			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
+		if value > alpha {
+			if value >= beta {
+				// store node as fail high (cut-node)
+				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
-			hSize := sst.hstack.size()
-			bonus := -Score(d * d)
+				hSize := sst.hstack.size()
+				bonus := -Score(d * d)
 
-			for i, m := range moves {
-				if i == ix {
-					bonus = -bonus
-				}
-
-				if m.Captured == NoPiece && m.Promo == NoPiece {
-					sst.hist.Add(b.STM, m.From, m.To, bonus)
-
-					if hSize >= 1 {
-						hist := sst.hstack.top(0)
-						sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+				for i, m := range moves {
+					if i == ix {
+						bonus = -bonus
 					}
 
-					if hSize >= 2 {
-						hist := sst.hstack.top(1)
-						sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+					if m.Captured == NoPiece && m.Promo == NoPiece {
+						sst.hist.Add(b.STM, m.From, m.To, bonus)
+
+						if hSize >= 1 {
+							hist := sst.hstack.top(0)
+							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+						}
+
+						if hSize >= 2 {
+							hist := sst.hstack.top(1)
+							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+						}
+					}
+
+					if i == ix {
+						break
 					}
 				}
 
-				if i == ix {
-					break
-				}
+				sst.ABBreadth += moveCnt
+
+				return value
 			}
 
-			sst.ABBreadth += moveCnt
-
-			return value, nil
+			// value > alpha
+			failLow = false
+			alpha = value
+			sst.pv.insert(ply, m.SimpleMove)
 		}
 
 		if abort(sst) {
-			return maxim, pv
+			return maxim
 		}
 	}
 
@@ -390,17 +397,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d Depth, pvN, cutN bool, sst *
 		// store node as fail low (All-node)
 		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
 	} else {
-		// store node as exact (PV-node)
-		// there might not be a move in case of !hasLegal
-		var sm move.SimpleMove
-		if len(pv) > 0 {
-			sm = pv[len(pv)-1]
-		}
-
-		transpT.Insert(b.Hash(), d, tfCnt, sm, maxim, transp.PVNode)
+		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
 	}
 
-	return maxim, pv
+	return maxim
 }
 
 // (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }

@@ -123,9 +123,9 @@ func runBench(e *uci.Engine) {
 
 	for _, bk := range bratkoKopec {
 		e.Board = board.FromFEN(bk.fen)
-		_, ms := e.Search(9)
+		_, m := e.Search(9)
 
-		ok := ms[0].String() == bk.bm
+		ok := m.String() == bk.bm
 
 		stats = append(stats, Stats{
 			ok,
