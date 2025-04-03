@@ -99,7 +99,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, moves []move.Simp
 		var scoreSample Score
 
 		for !awOk {
-			scoreSample = AlphaBeta(b, alpha, beta, d, 0, true, false, sst, byte(b.STM))
+			scoreSample = AlphaBeta(b, alpha, beta, d, 0, true, false, sst)
 
 			switch {
 
@@ -175,7 +175,7 @@ func pvInfo(moves []move.SimpleMove) string {
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, sst *State, check byte) Score {
+func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, sst *State) Score {
 
 	transpT := sst.tt
 	sst.pv.setNull(ply)
@@ -191,9 +191,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 		case transp.PVNode:
 			if transpE.From|transpE.To != 0 {
-				if (byte(ply & 1) ^ byte(b.STM)) != check {
-					panic("oops")
-				}
 				sst.pv.setTip(ply, transpE.SimpleMove)
 			}
 			return transpE.Value
@@ -239,7 +236,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 			rd := max(0, d-3)
 
-			value := -AlphaBeta(b, -beta, -beta+1, rd, ply, false, !cutN, sst, check ^1)
+			value := -AlphaBeta(b, -beta, -beta+1, rd, ply, false, !cutN, sst)
 
 			b.UndoNullMove(enP)
 
@@ -307,7 +304,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		// move, which is likely to be the hash move.
 		if d > 1 && quietCnt > 2 && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
-			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst, check)
+			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst)
 
 			if value <= alpha {
 				if value > maxim {
@@ -322,7 +319,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		// null window search failed (meaning didn't fail low).
-		value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst, check)
+		value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
 
 		b.UndoMove(m)
 		sst.hstack.pop()
@@ -372,9 +369,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			// value > alpha
 			failLow = false
 			alpha = value
-			if (byte(ply&1) ^ byte(b.STM)) != check {
-				panic("oops2")
-			}
 			sst.pv.insert(ply, m.SimpleMove)
 		}
 
