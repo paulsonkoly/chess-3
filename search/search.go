@@ -45,9 +45,7 @@ type State struct {
 	ABCnt     int   // ABCnt is the inner node count in alpha-beta.
 	TTHit     int   // TThit is the transposition table hit-count.
 	QCnt      int   // Quiesence node count
-	QDepth    int   // QDepth is the maximal quiesence search depth.
-	QDelta    int   // QDelta is the count of times a delta pruning happened in quiesence search.
-	QSEE      int   // QSEE is the count of times the static exchange evaluation fell under 0 in quiesence search.
+	QDepth    Depth // QDepth is the maximal quiesence search depth.
 	Time      int64 // Time is the search time in milliseconds.
 }
 
@@ -78,8 +76,6 @@ func (s *State) Clear() {
 	s.TTHit = 0
 	s.QCnt = 0
 	s.QDepth = 0
-	s.QDelta = 0
-	s.QSEE = 0
 }
 
 // Search is the main entry point to the engine. It performs and
@@ -132,14 +128,14 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
-		fmt.Printf("info depth %d score cp %d nodes %d time %d hashfull %d pv %s\n",
-			d, score, sst.ABCnt+sst.ABLeaf+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
+		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
+			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
 
-			fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d qdelta %d qsee %d\n",
-				sst.AWFail, sst.ABLeaf, ABBF, sst.TTHit, sst.QDepth, sst.QDelta, sst.QSEE)
+			fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d\n",
+				sst.AWFail, sst.ABLeaf, ABBF, sst.TTHit, sst.QDepth)
 		}
 
 		if abort(sst) {
@@ -173,6 +169,20 @@ func pvInfo(moves []move.SimpleMove) string {
 		space = " "
 	}
 	return sb.String()
+}
+
+func scInfo(score Score) string {
+	if Abs(score) >= Inf-MaxPlies {
+		diff := Inf - score
+
+		if score < 0 {
+			diff = -score - Inf
+		}
+
+		return fmt.Sprintf("mate %d", (diff+1)/2)
+	}
+
+	return fmt.Sprintf("cp %d", score)
 }
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
@@ -212,7 +222,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if d == 0 {
 		sst.ABLeaf++
-		return Quiescence(b, alpha, beta, 0, sst)
+		return Quiescence(b, alpha, beta, 0, ply, sst)
 	}
 
 	sst.ABCnt++
@@ -385,7 +395,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		maxim = Score(0)
 
 		if inCheck {
-			maxim = -Inf
+			maxim = -Inf + Score(ply)
 		}
 
 		if maxim > alpha {
@@ -443,7 +453,7 @@ func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
-func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
+func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Score {
 	if d > sst.QDepth {
 		sst.QDepth = d
 	}
@@ -455,7 +465,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 	}
 
 	if movegen.IsCheckmate(b) {
-		return -Inf
+		return -Inf + Score(ply)
 	}
 
 	if movegen.IsStalemate(b) {
@@ -506,19 +516,17 @@ func Quiescence(b *board.Board, alpha, beta Score, d int, sst *State) Score {
 			}
 
 			if gain+delta < alpha {
-				sst.QDelta++
 				b.UndoMove(m)
 				continue
 			}
 
 			if m.Weight < 0 {
-				sst.QSEE++
 				b.UndoMove(m)
 				continue
 			}
 		}
 
-		curr := -Quiescence(b, -beta, -alpha, d+1, sst)
+		curr := -Quiescence(b, -beta, -alpha, d+1, ply+1, sst)
 		b.UndoMove(m)
 
 		if curr >= beta {
