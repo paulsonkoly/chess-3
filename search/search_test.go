@@ -49,7 +49,7 @@ func TestQuiescence(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sst.Clear()
-			got := search.Quiescence(tt.b, -Inf-1, Inf+1, 0, sst)
+			got := search.Quiescence(tt.b, -Inf-1, Inf+1, 0, 0, sst)
 			assert.InDelta(t, int(tt.want), int(got), 50.0)
 		})
 	}
