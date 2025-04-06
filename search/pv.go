@@ -14,10 +14,10 @@ import (
 //
 // For each ply the length of the required array is one less than the previous
 // ply's array. Ply 0 assumes the length to be MaxPlies. Thus the total buffer
-// size is MaxPlies + (MaxPlies-1) + ... + 1 == MaxPlies * (MaxPlies - 1) / 2.
+// size is MaxPlies + (MaxPlies-1) + ... + 1 == MaxPlies * (MaxPlies + 1) / 2.
 type pv struct {
 	// moves is the double buffered PV
-	moves [MaxPlies * (MaxPlies - 1) / 2]move.SimpleMove
+	moves [MaxPlies * (MaxPlies + 1) / 2]move.SimpleMove
 
 	depth [MaxPlies]Depth
 }
