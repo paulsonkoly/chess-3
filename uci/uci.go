@@ -304,12 +304,12 @@ func (e *Engine) handleGo(args []string) {
 		allocTime = 1 << 50 // not timed mode, essentially disable timeout
 	}
 
-	var moves []move.SimpleMove
+	var move move.SimpleMove
 
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, moves = e.Search(depth)
+		_, move = e.Search(depth)
 		close(searchFin)
 	}()
 
@@ -334,12 +334,7 @@ func (e *Engine) handleGo(args []string) {
 		close(e.SST.Stop)
 	}
 
-	if len(moves) > 0 {
-		bestMove := moves[0]
-		fmt.Printf("bestmove %s\n", bestMove)
-	} else {
-		fmt.Println("bestmove 0000") // No legal move
-	}
+	fmt.Printf("bestmove %s\n", move)
 }
 
 func parseInt(value string) int {
@@ -350,6 +345,6 @@ func parseInt(value string) int {
 	return result
 }
 
-func (e *Engine) Search(d Depth) (Score, []move.SimpleMove) {
+func (e *Engine) Search(d Depth) (Score, move.SimpleMove) {
 	return search.Search(e.Board, d, e.SST)
 }

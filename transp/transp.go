@@ -83,6 +83,10 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 		return
 	}
 
+	if t.data[ix].Depth == d && t.data[ix].Type != AllNode && typ == AllNode {
+		return
+	}
+
 	if t.data[ix].Depth == 0 {
 		t.cnt++
 	}
