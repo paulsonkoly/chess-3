@@ -197,7 +197,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d {
 		sst.TTHit++
 		switch transpE.Type {
 
@@ -344,7 +344,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
+				transpT.Insert(b.Hash(), d, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
 				bonus := -Score(d * d)
@@ -405,9 +405,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
+		transpT.Insert(b.Hash(), d, move.SimpleMove{}, maxim, transp.AllNode)
 	} else {
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
+		transpT.Insert(b.Hash(), d, bestMove, maxim, transp.PVNode)
 	}
 
 	return maxim
