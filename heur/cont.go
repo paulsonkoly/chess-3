@@ -7,7 +7,7 @@ import (
 
 type Continuation struct {
 	// color, pt, sq, pt2, sq2
-	data [2 * 6 * 64 * 6 * 64]Score
+	data [2 * 6 * 16 * 6 * 64]Score
 }
 
 func NewContinuation() *Continuation {
@@ -22,7 +22,10 @@ func (c *Continuation) Deflate() {
 }
 
 func ix(stm Color, ptHist Piece, toHist Square, pt Piece, to Square) int {
-	return int(to) + 64*int(pt-1) + 6*64*int(toHist) + 64*6*64*int(ptHist-1) + 6*64*6*64*int(stm)
+	// reduce toHist to 2x2 region
+	toHist = (toHist & 0b110) >> 1 | toHist >> 4
+
+	return int(to) + 64*int(pt-1) + 6*64*int(toHist) + 16*6*64*int(ptHist-1) + 6*16*6*64*int(stm)
 }
 
 // Add increments the continuation history heuristics for the move by d*d.
