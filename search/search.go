@@ -331,7 +331,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		// null window search failed (meaning didn't fail low).
-		value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
+		if value < beta {
+			value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
+		}
 
 		b.UndoMove(m)
 		sst.hstack.pop()
