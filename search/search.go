@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	WindowSize = 50 // half a pawn left and right around score
+	WindowSize = 26 // WindowSize is the +- delta left and right around score
 )
 
 // State is a persistent state storage between searches.
@@ -237,7 +237,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 {
+		if staticEval >= beta+Score(d)*93 {
 			return staticEval
 		}
 
@@ -246,7 +246,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 			enP := b.MakeNullMove()
 
-			rd := max(0, d-3)
+			rd := max(0, d-5)
 
 			value := -AlphaBeta(b, -beta, -beta+1, rd, ply, false, !cutN, sst)
 
@@ -314,7 +314,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
-		if d > 1 && quietCnt > 2 && !inCheck {
+		if d > 2 && quietCnt > 1 && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
 			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst)
 
@@ -483,7 +483,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		return standPat
 	}
 
-	delta := standPat + 110
+	delta := standPat + 120
 	// fail soft upper bound
 	maxim := standPat
 	alpha = max(alpha, standPat)
