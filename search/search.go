@@ -314,7 +314,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
-		if d > 1 && quietCnt > 2 && !inCheck {
+		if d > 1 && (quietCnt > 2 || !pvN) && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
 			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst)
 
