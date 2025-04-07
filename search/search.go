@@ -522,7 +522,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 
 			if m.Weight < 0 {
 				b.UndoMove(m)
-				continue
+				return maxim
 			}
 		}
 
