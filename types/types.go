@@ -10,7 +10,7 @@ type Depth int8
 
 type Score int16
 
-type Age int8
+type Age uint8
 
 const (
 	Inf      = Score(10_000) // Inf is the checkmate score.
