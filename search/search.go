@@ -173,7 +173,7 @@ func pvInfo(moves []move.SimpleMove) string {
 }
 
 func scInfo(score Score) string {
-	if Abs(score) >= Inf-MaxPlies {
+	if Abs(score) >= Inf-Score(MaxPlies) {
 		diff := Inf - score
 
 		if score < 0 {
@@ -198,7 +198,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.Probe(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
 		switch transpE.Type {
 
@@ -547,7 +547,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	var transPE *transp.Entry
 
-	transPE, _ = sst.tt.LookUp(b.Hash())
+	transPE, _ = sst.tt.Probe(b.Hash())
 	if transPE != nil && transPE.Type == transp.AllNode {
 		transPE = nil
 	}
