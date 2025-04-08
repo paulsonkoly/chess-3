@@ -93,16 +93,13 @@ func New(sizeInMb int) *Table {
 	}
 }
 
-// HashFull is the permill count of the hash usage.
-func (t Table) HashFull() int {
-	return 1000 * t.cnt / t.numE / bucketSize
-}
-
-// Clear clears the transposition table for the next search.Search().
+// Clear clears the transposition table.
 func (t *Table) Clear() {
 	t.cnt = 0
 	for ix := range t.data {
 		for jx := range bucketSize {
+			t.data[ix].data[jx].hash = 0
+			t.data[ix].data[jx].age = 0
 			t.data[ix].data[jx].Depth = 0
 		}
 	}
@@ -116,7 +113,7 @@ func (t *Table) Insert(hash board.Hash, d Depth, age Age, sm move.SimpleMove, va
 
 	repl := &t.data[ix].data[wx]
 
-	if repl.age == age && repl.Depth > d + Depth(typ) - Depth(repl.Type) {
+	if repl.age == age && repl.Depth > d+Depth(typ)-Depth(repl.Type) {
 		return
 	}
 

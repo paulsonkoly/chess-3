@@ -80,6 +80,11 @@ func (s *State) Clear() {
 	s.QDepth = 0
 }
 
+// Reset resets the state from one game to the next.
+func (s *State) Reset() {
+	s.tt.Clear()
+}
+
 // Search is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window.
 func Search(b *board.Board, depth Depth, sst *State) (score Score, move move.SimpleMove) {
@@ -132,8 +137,8 @@ func Search(b *board.Board, depth Depth, sst *State) (score Score, move move.Sim
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
-		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
+		fmt.Printf("info depth %d score %s nodes %d time %d pv %s\n",
+			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, pvInfo(sst.pv.active()))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
