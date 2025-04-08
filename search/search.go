@@ -31,6 +31,8 @@ type State struct {
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
+	cnt Age
+
 	// Stop channel signals an immediate Stop request to the search. Current
 	// depth will be abandoned.
 	Stop chan struct{}
@@ -89,6 +91,8 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 	start := time.Now()
 
 	sst.Clear()
+
+	sst.cnt++
 
 	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
 		awOk := false // aspiration window succeeded
@@ -198,7 +202,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.Probe(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.Probe(b.Hash()); ok && transpE.Depth >= d {
 		sst.TTHit++
 		switch transpE.Type {
 
@@ -345,7 +349,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
+				transpT.Insert(b.Hash(), d, sst.cnt, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
 				bonus := -Score(d * d)
@@ -406,9 +410,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.AllNode)
+		transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, bestMove, maxim, transp.AllNode)
 	} else {
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
+		transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, bestMove, maxim, transp.PVNode)
 	}
 
 	return maxim
