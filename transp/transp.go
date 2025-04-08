@@ -116,7 +116,7 @@ func (t *Table) Insert(hash board.Hash, d Depth, age Age, sm move.SimpleMove, va
 
 	repl := &t.data[ix].data[wx]
 
-	if repl.age == age && repl.Depth > d + Depth(typ - repl.Type) {
+	if repl.age == age && repl.Depth > d + Depth(typ) - Depth(repl.Type) {
 		return
 	}
 
