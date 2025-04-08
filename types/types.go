@@ -11,8 +11,9 @@ type Depth int8
 type Score int16
 
 const (
-	Inf = Score(10_000) // Inf is the checkmate score.
-	Inv = Score(11_000) // Inv is an invalid score.
+	Inf      = Score(10_000) // Inf is the checkmate score.
+	Inv      = Score(11_000) // Inv is an invalid score.
+	MaxPlies = Depth(64)
 )
 
 const (

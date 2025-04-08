@@ -302,7 +302,7 @@ func (e *Engine) handleGo(args []string) {
 	e.SST.Stop = make(chan struct{})
 
 	if allocTime > 0 {
-		depth = search.MaxPlies
+		depth = MaxPlies
 	} else {
 		allocTime = 1 << 50 // not timed mode, essentially disable timeout
 	}

@@ -5,8 +5,6 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const MaxPlies = 64
-
 type historyMove struct {
 	piece Piece
 	to    Square
