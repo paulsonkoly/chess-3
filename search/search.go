@@ -82,7 +82,7 @@ func (s *State) Clear() {
 
 // Search is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window.
-func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleMove) {
+func Search(b *board.Board, depth Depth, sst *State) (score Score, move move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
@@ -93,7 +93,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 
 	sst.cnt++
 
-	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
+	for d := Depth(1); d <= depth; d++ {
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
 		var scoreSample Score
