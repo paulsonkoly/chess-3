@@ -69,7 +69,6 @@ func NewState(ttSizeInMb int) *State {
 // position.
 func (s *State) Clear() {
 	s.abort = false
-	s.tt.Clear()
 	s.ms.Clear()
 	s.hstack.reset()
 	s.AWFail = 0
