@@ -114,6 +114,9 @@ func (e *Engine) handleCommand(command string) {
 	case "isready":
 		fmt.Println("readyok")
 
+	case "ucinewgame":
+		e.SST.Reset()
+
 	case "position":
 		e.handlePosition(parts[1:])
 
