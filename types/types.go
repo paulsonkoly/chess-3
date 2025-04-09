@@ -76,6 +76,9 @@ func AllPieces() iter.Seq[Piece] {
 }
 
 func (p Piece) String() string {
+	if p == NoPiece {
+		return ""
+	}
 	return string(" pnbrqk"[p])
 }
 

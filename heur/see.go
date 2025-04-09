@@ -13,8 +13,8 @@ var capturesStore = [64]Piece{}
 
 // SEE is static exchange evaluation of m.
 func SEE(b *board.Board, m *move.Move) Score {
-	fromBB, to := board.BitBoard(1)<<m.From, m.To
-	toBB := board.BitBoard(1) << m.To
+	fromBB, to := board.BitBoard(1)<<m.From(), m.To()
+	toBB := board.BitBoard(1) << m.To()
 
 	// replace pawns that are part of SEE with Queen if they are on the second /
 	// seventh rank.
@@ -52,13 +52,13 @@ func SEE(b *board.Board, m *move.Move) Score {
 	// piece type of least valueable attacker per side
 	start := [2]Piece{Pawn, Pawn}
 	piece := m.Piece
-	if m.Promo != NoPiece {
-		piece = m.Promo
+	if m.Promo() != NoPiece {
+		piece = m.Promo()
 	}
 	occ := b.Colors[White] | b.Colors[Black]
 	stm := b.STM
 
-	captures = append(captures, b.SquaresToPiece[m.To], piece)
+	captures = append(captures, b.SquaresToPiece[m.To()], piece)
 
 	// dummy mkMove
 	attackers[stm][piece] &= ^fromBB

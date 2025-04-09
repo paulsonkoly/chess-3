@@ -55,29 +55,31 @@ func TestSEE(t *testing.T) {
 }
 
 func K(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: King}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: King}
 }
 
 func N(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Knight}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Knight}
 }
 
 func B(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Bishop}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Bishop}
 }
 
 func R(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Rook}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Rook}
 }
 
 func Q(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Queen}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Queen}
 }
 
 func P(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Pawn}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Pawn}
 }
 
 func PP(f, t Square, p Piece) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t, Promo: p}, Piece: Pawn}
+	sm := move.FromSquares(f, t)
+	sm.SetPromo(p)
+	return move.Move{SimpleMove: sm, Piece: Pawn}
 }
