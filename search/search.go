@@ -197,7 +197,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	var (
+		transpE *transp.Entry
+		hasTT      bool
+	)
+
+	if transpE, hasTT = transpT.LookUp(b.Hash()); hasTT && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
 		switch transpE.Type {
 
@@ -237,8 +242,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 {
-			return staticEval
+		margin := Score(d) * 105
+		if improving {
+			margin -= 105
+		}
+
+		if staticEval >= beta+margin && hasTT && b.SquaresToPiece[transpE.To] == NoPiece {
+			return (staticEval + beta) / 2
 		}
 
 		// null move pruning
