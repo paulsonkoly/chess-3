@@ -12,6 +12,8 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+var TTRStubbornness = Depth(1)
+
 const (
 	entrySize  = 32 // entrySize is the transposition table entry size in bytes.
 	bucketSize = 2  // bucket is the number of entries in a bucket.
@@ -113,7 +115,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleM
 
 	repl := &t.data[ix].data[wx]
 
-	if repl.age == age && repl.Depth > d+Depth(typ)-Depth(repl.Type) {
+	if repl.age == age && repl.Depth > d+Depth(typ)-Depth(repl.Type) + TTRStubbornness {
 		return
 	}
 
