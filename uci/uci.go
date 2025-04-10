@@ -300,13 +300,13 @@ func (e *Engine) handleGo(args []string) {
 	allocTime := tc.allocate(e.Board)
 
 	e.SST.Stop = make(chan struct{})
+	e.SST.SoftTime = 0
 
 	if allocTime > 0 {
 		depth = search.MaxPlies
 		e.SST.SoftTime = allocTime * 4 / 5
 	} else {
 		allocTime = 1 << 50 // not timed mode, essentially disable timeout
-		e.SST.SoftTime = -1
 	}
 
 	var move move.SimpleMove
