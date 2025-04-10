@@ -37,8 +37,8 @@ const (
 // We use up 16 bytes
 type Entry struct {
 	move.SimpleMove            // SimpleMove is the simplified move data.
-	Depth           Depth      // Depth of the entry.
 	Value           Score      // Value is the entry score value. Not valid for nodes where the score is not established.
+	Depth           Depth      // Depth of the entry.
 	TFCnt           Depth      // Three-fold repetation count of the entry.
 	Type            NodeT      // Type is the entry type.
 	Hash            board.Hash // Hash is the board Zobrist-hash.

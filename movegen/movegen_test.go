@@ -648,31 +648,31 @@ func TestEnPassantStates(t *testing.T) {
 		{
 			name:   "En passant possible after pawn move",
 			b:      board.FromFEN("4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1"),
-			move:   move.SimpleMove{From: C2, To: C4},
+			move:   move.FromSquares(C2, C4),
 			bAfter: board.FromFEN("4k3/8/8/8/2Pp4/8/8/4K3 b - c3 0 1"),
 		},
 		{
 			name:   "En passant not possible due to no pawn",
 			b:      board.FromFEN("4k3/8/8/8/8/8/2P5/4K3 w - - 0 1"),
-			move:   move.SimpleMove{From: C2, To: C4},
+			move:   move.FromSquares(C2, C4),
 			bAfter: board.FromFEN("4k3/8/8/8/2P5/8/8/4K3 b - - 0 1"),
 		},
 		{
 			name:   "En passant not possible due to simple pin",
 			b:      board.FromFEN("8/8/1k6/8/3p4/8/2P5/3K2B1 w - - 0 1"),
-			move:   move.SimpleMove{From: C2, To: C4},
+			move:   move.FromSquares(C2, C4),
 			bAfter: board.FromFEN("8/8/1k6/8/2Pp4/8/8/3K2B1 b - - 0 1"),
 		},
 		{
 			name:   "En passant not possible due to tricky pin",
 			b:      board.FromFEN("8/8/8/8/k2p3R/8/2P5/3K4 w - - 0 1"),
-			move:   move.SimpleMove{From: C2, To: C4},
+			move:   move.FromSquares(C2, C4),
 			bAfter: board.FromFEN("8/8/8/8/k1Pp3R/8/8/3K4 b - - 0 1"),
 		},
 		{
 			name:   "En passant possible in pin that's not affected",
 			b:      board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22"),
-			move:   move.SimpleMove{From: F2, To: F4},
+			move:   move.FromSquares(F2, F4),
 			bAfter: board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rpP2/6PN/1P2P1BP/1RR3K1 b - f3 0 23"),
 		},
 	}
@@ -697,31 +697,33 @@ func TestEnPassantStates(t *testing.T) {
 }
 
 func K(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: King}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: King}
 }
 
 func N(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Knight}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Knight}
 }
 
 func B(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Bishop}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Bishop}
 }
 
 func R(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Rook}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Rook}
 }
 
 func Q(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Queen}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Queen}
 }
 
 func P(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t}, Piece: Pawn}
+	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Pawn}
 }
 
 func PP(f, t Square, p Piece) move.Move {
-	return move.Move{SimpleMove: move.SimpleMove{From: f, To: t, Promo: p}, Piece: Pawn}
+	sm := move.FromSquares(f, t)
+	sm.SetPromo(p)
+	return move.Move{SimpleMove: sm, Piece: Pawn}
 }
 
 func TestIsAttacked(t *testing.T) {

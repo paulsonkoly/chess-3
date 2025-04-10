@@ -191,8 +191,10 @@ func (e *Engine) applyMoves(moves []string) {
 }
 
 func parseUCIMove(uciM string) move.SimpleMove {
-	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
-	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
+	var m move.SimpleMove
+
+	m.SetFrom(Square((uciM[0] - 'a') + (uciM[1]-'1')*8))
+	m.SetTo(Square((uciM[2] - 'a') + (uciM[3]-'1')*8))
 	var promo Piece
 	if len(uciM) == 5 {
 		switch uciM[4] {
@@ -206,7 +208,8 @@ func parseUCIMove(uciM string) move.SimpleMove {
 			promo = Knight
 		}
 	}
-	return move.SimpleMove{From: from, To: to, Promo: promo}
+	m.SetPromo(promo)
+	return m
 }
 
 type timeControl struct {

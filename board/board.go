@@ -87,7 +87,7 @@ var hashEnable = [2]Hash{0, 0xffffffffffffffff}
 
 func (b *Board) MakeMove(m *move.Move) {
 	m.FiftyCnt = b.FiftyCnt
-	if m.Piece == Pawn || m.CRights != 0 || b.SquaresToPiece[m.To] != NoPiece {
+	if m.Piece == Pawn || m.CRights != 0 || b.SquaresToPiece[m.To()] != NoPiece {
 		b.FiftyCnt = 0
 	} else {
 		b.FiftyCnt++
@@ -109,26 +109,26 @@ func (b *Board) MakeMove(m *move.Move) {
 	hash ^= castlingRand[3] & hashEnable[(m.CRights>>3)&1]
 
 	b.CRights = m.CRights ^ b.CRights
-	m.Captured = b.SquaresToPiece[m.To]
+	m.Captured = b.SquaresToPiece[m.To()]
 	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
 	b.EnPassant ^= m.EPSq
 	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
 
-	pm := pieceMask[m.Promo]
+	pm := pieceMask[m.Promo()]
 
-	b.Pieces[m.Captured] &= ^(1 << m.To)
-	hash ^= piecesRand[b.STM.Flip()][m.Captured][m.To]
-	b.Pieces[m.Piece] ^= (1 << m.From) | ((1 << m.To) & ^pm)
-	hash ^= piecesRand[b.STM][m.Piece][m.From] ^ (piecesRand[b.STM][m.Piece][m.To] & ^Hash(pm))
-	b.Pieces[m.Promo] ^= (1 << m.To) & pm
-	hash ^= (piecesRand[b.STM][m.Promo][m.To] & Hash(pm))
+	b.Pieces[m.Captured] &= ^(1 << m.To())
+	hash ^= piecesRand[b.STM.Flip()][m.Captured][m.To()]
+	b.Pieces[m.Piece] ^= (1 << m.From()) | ((1 << m.To()) & ^pm)
+	hash ^= piecesRand[b.STM][m.Piece][m.From()] ^ (piecesRand[b.STM][m.Piece][m.To()] & ^Hash(pm))
+	b.Pieces[m.Promo()] ^= (1 << m.To()) & pm
+	hash ^= (piecesRand[b.STM][m.Promo()][m.To()] & Hash(pm))
 
-	b.Colors[b.STM.Flip()] &= ^(1 << m.To)
-	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
+	b.Colors[b.STM.Flip()] &= ^(1 << m.To())
+	b.Colors[b.STM] ^= (1 << m.From()) | (1 << m.To())
 
-	b.SquaresToPiece[m.From] = NoPiece
+	b.SquaresToPiece[m.From()] = NoPiece
 	promo := Piece(pm & 1)
-	b.SquaresToPiece[m.To] = (1-promo)*m.Piece + promo*m.Promo
+	b.SquaresToPiece[m.To()] = (1-promo)*m.Piece + promo*m.Promo()
 
 	castle := castles[m.Castle]
 	hash ^= piecesRand[b.STM][Rook][castle.down] & hashEnable[castle.piece>>2]
@@ -157,16 +157,16 @@ func (b *Board) UndoMove(m *move.Move) {
 	b.SquaresToPiece[castle.down] += castle.piece
 	b.SquaresToPiece[castle.up] -= castle.piece
 
-	pm := pieceMask[m.Promo]
+	pm := pieceMask[m.Promo()]
 
-	b.Pieces[m.Piece] ^= (1 << m.From) | ((1 << m.To) & ^pm)
-	b.Pieces[m.Promo] ^= (1 << m.To) & pm
-	b.Colors[b.STM] ^= (1 << m.From) | (1 << m.To)
+	b.Pieces[m.Piece] ^= (1 << m.From()) | ((1 << m.To()) & ^pm)
+	b.Pieces[m.Promo()] ^= (1 << m.To()) & pm
+	b.Colors[b.STM] ^= (1 << m.From()) | (1 << m.To())
 
-	b.SquaresToPiece[m.From] = m.Piece
-	b.SquaresToPiece[m.To] = m.Captured
+	b.SquaresToPiece[m.From()] = m.Piece
+	b.SquaresToPiece[m.To()] = m.Captured
 
-	cm := (1 << m.To) & pieceMask[m.Captured]
+	cm := (1 << m.To()) & pieceMask[m.Captured]
 	b.Pieces[m.Captured] ^= cm
 	b.Colors[b.STM.Flip()] ^= cm
 

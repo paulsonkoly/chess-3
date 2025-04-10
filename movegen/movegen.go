@@ -89,11 +89,11 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
 			m := ms.Alloc()
 			m.Piece = King
-			m.From = from
-			m.To = to
+			m.SetFrom(from)
+			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
 			m.Castle = 0
-			m.Promo = 0
+			m.SetPromo(0)
 			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
@@ -116,11 +116,11 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 			newC := b.CRights & ^(rookCRightsUpd[to])
 			m := ms.Alloc()
 			m.Piece = Knight
-			m.From = from
-			m.To = to
+			m.SetFrom(from)
+			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
 			m.Castle = 0
-			m.Promo = 0
+			m.SetPromo(0)
 			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
@@ -145,11 +145,11 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 			newC := b.CRights & ^(rookCRightsUpd[to])
 			m := ms.Alloc()
 			m.Piece = Bishop
-			m.From = from
-			m.To = to
+			m.SetFrom(from)
+			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
 			m.Castle = 0
-			m.Promo = 0
+			m.SetPromo(0)
 			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
@@ -177,11 +177,11 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 			newC := b.CRights & ^(rookCRightsUpd[from] | rookCRightsUpd[to])
 			m := ms.Alloc()
 			m.Piece = Rook
-			m.From = from
-			m.To = to
+			m.SetFrom(from)
+			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
 			m.Castle = 0
-			m.Promo = 0
+			m.SetPromo(0)
 			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
@@ -212,11 +212,11 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boa
 			cNew := b.CRights &^ rookCRightsUpd[to]
 			m := ms.Alloc()
 			m.Piece = Queen
-			m.From = from
-			m.To = to
+			m.SetFrom(from)
+			m.SetTo(to)
 			m.CRights = cNew ^ b.CRights
 			m.Castle = 0
-			m.Promo = 0
+			m.SetPromo(0)
 			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
@@ -238,11 +238,11 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board
 
 		m := ms.Alloc()
 		m.Piece = Pawn
-		m.From = from
-		m.To = from + shift
+		m.SetFrom(from)
+		m.SetTo(from + shift)
 		m.CRights = 0
 		m.Castle = 0
-		m.Promo = 0
+		m.SetPromo(0)
 		m.EPP = 0
 		m.EPSq = b.EnPassant
 	}
@@ -261,10 +261,10 @@ func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk board.
 		for promo := Queen; promo > Pawn; promo-- {
 			m := ms.Alloc()
 			m.Piece = Pawn
-			m.From = from
-			m.To = from + shift
+			m.SetFrom(from)
+			m.SetTo(from + shift)
 			m.CRights = 0
-			m.Promo = promo
+			m.SetPromo(promo)
 			m.Castle = 0
 			m.EPP = 0
 			m.EPSq = b.EnPassant
@@ -286,15 +286,15 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 
 		m := ms.Alloc()
 		m.Piece = Pawn
-		m.From = from
-		m.To = from + 2*shift
+		m.SetFrom(from)
+		m.SetTo(from + 2*shift)
 		m.CRights = 0
 		m.EPSq = b.EnPassant
-		if canEnPassant(b, m.To) {
-			m.EPSq ^= m.To
+		if canEnPassant(b, m.To()) {
+			m.EPSq ^= m.To()
 		}
 		m.Castle = 0
-		m.Promo = 0
+		m.SetPromo(0)
 		m.EPP = 0
 	}
 }
@@ -353,11 +353,11 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 
 			m := ms.Alloc()
 			m.Piece = Pawn
-			m.From = from
-			m.To = to
+			m.SetFrom(from)
+			m.SetTo(to)
 			m.CRights = 0
 			m.Castle = 0
-			m.Promo = 0
+			m.SetPromo(0)
 			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
@@ -391,9 +391,9 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 			for promo := Queen; promo > Pawn; promo-- {
 				m := ms.Alloc()
 				m.Piece = Pawn
-				m.From = from
-				m.To = to
-				m.Promo = promo
+				m.SetFrom(from)
+				m.SetTo(to)
+				m.SetPromo(promo)
 				m.CRights = cNew ^ b.CRights
 				m.Castle = 0
 				m.EPP = 0
@@ -414,12 +414,12 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 
 		m := ms.Alloc()
 		m.Piece = Pawn
-		m.From = from
-		m.To = b.EnPassant + shift
+		m.SetFrom(from)
+		m.SetTo(b.EnPassant + shift)
 		m.EPP = Pawn
 		m.CRights = 0
 		m.Castle = 0
-		m.Promo = 0
+		m.SetPromo(0)
 		m.EPSq = b.EnPassant
 	}
 }
@@ -436,11 +436,11 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.Bit
 				newC := b.CRights & ^kingCRightsUpd[b.STM]
 				m := ms.Alloc()
 				m.Piece = King
-				m.From = from
-				m.To = from + 2
+				m.SetFrom(from)
+				m.SetTo(from + 2)
 				m.Castle = C(b.STM, Short)
 				m.CRights = b.CRights ^ newC
-				m.Promo = 0
+				m.SetPromo(0)
 				m.EPP = 0
 				m.EPSq = b.EnPassant
 			}
@@ -457,11 +457,11 @@ func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitB
 				newC := b.CRights & ^kingCRightsUpd[b.STM]
 				m := ms.Alloc()
 				m.Piece = King
-				m.From = from
-				m.To = from - 2
+				m.SetFrom(from)
+				m.SetTo(from - 2)
 				m.Castle = C(b.STM, Long)
 				m.CRights = b.CRights ^ newC
-				m.Promo = 0
+				m.SetPromo(0)
 				m.EPP = 0
 				m.EPSq = b.EnPassant
 			}
@@ -916,39 +916,39 @@ func InCheck(b *board.Board, who Color) bool {
 }
 
 func FromSimple(b *board.Board, sm move.SimpleMove) move.Move {
-	pType := b.SquaresToPiece[sm.From]
+	pType := b.SquaresToPiece[sm.From()]
 	result := move.Move{SimpleMove: sm, Piece: pType, EPSq: b.EnPassant}
 
 	switch pType {
 
 	case King:
-		if sm.From-sm.To == 2 || sm.To-sm.From == 2 {
+		if sm.From()-sm.To() == 2 || sm.To()-sm.From() == 2 {
 			newC := b.CRights & ^kingCRightsUpd[b.STM]
 			result.CRights = newC ^ b.CRights
-			result.Castle = C(b.STM, int(((sm.From-sm.To)+2)/4))
+			result.Castle = C(b.STM, int(((sm.From()-sm.To())+2)/4))
 		} else {
-			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[sm.To])
+			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[sm.To()])
 			result.CRights = newC ^ b.CRights
 		}
 
 	case Knight, Bishop, Queen:
-		newC := b.CRights & ^(rookCRightsUpd[sm.To])
+		newC := b.CRights & ^(rookCRightsUpd[sm.To()])
 		result.CRights = newC ^ b.CRights
 
 	case Rook:
-		newC := b.CRights & ^(rookCRightsUpd[sm.From] | rookCRightsUpd[sm.To])
+		newC := b.CRights & ^(rookCRightsUpd[sm.From()] | rookCRightsUpd[sm.To()])
 		result.CRights = newC ^ b.CRights
 
 	case Pawn:
-		if sm.From-sm.To == 16 || sm.To-sm.From == 16 {
-			if canEnPassant(b, sm.To) {
-				result.EPSq ^= sm.To
+		if sm.From()-sm.To() == 16 || sm.To()-sm.From() == 16 {
+			if canEnPassant(b, sm.To()) {
+				result.EPSq ^= sm.To()
 			}
 		}
-		if (sm.From-sm.To)&1 != 0 && b.SquaresToPiece[sm.To] == NoPiece { // en-passant capture
+		if (sm.From()-sm.To())&1 != 0 && b.SquaresToPiece[sm.To()] == NoPiece { // en-passant capture
 			result.EPP = Pawn
 		}
-		newC := b.CRights &^ rookCRightsUpd[sm.To]
+		newC := b.CRights &^ rookCRightsUpd[sm.To()]
 		result.CRights = newC ^ b.CRights
 	}
 

@@ -202,7 +202,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		switch transpE.Type {
 
 		case transp.PVNode:
-			if transpE.From|transpE.To != 0 {
+			if transpE.SimpleMove != 0 {
 				sst.pv.setTip(ply, transpE.SimpleMove)
 			}
 			return transpE.Value
@@ -280,14 +280,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	rankMovesAB(b, moves, sst)
 
 	var (
-		m  *move.Move
-		ix int
+		m        *move.Move
+		ix       int
+		bestMove move.SimpleMove
 	)
 
 	hasLegal := false
 	failLow := true
 	maxim := -Inf - 1
-	bestMove := move.SimpleMove{}
 	moveCnt := 0
 	quietCnt := 0
 
@@ -303,11 +303,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		hasLegal = true
 		moveCnt++
 
-		sst.hstack.push(m.Piece, m.To, staticEval)
+		sst.hstack.push(m.Piece, m.To(), staticEval)
 
 		var value Score
 
-		quiet := m.Captured == NoPiece && m.Promo == NoPiece
+		quiet := m.Captured == NoPiece && m.Promo() == NoPiece
 		if quiet {
 			quietCnt++
 		}
@@ -354,17 +354,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 						bonus = -bonus
 					}
 
-					if m.Captured == NoPiece && m.Promo == NoPiece {
-						sst.hist.Add(b.STM, m.From, m.To, bonus)
+					if m.Captured == NoPiece && m.Promo() == NoPiece {
+						sst.hist.Add(b.STM, m.From(), m.To(), bonus)
 
 						if hSize >= 1 {
 							hist := sst.hstack.top(0)
-							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
 						}
 
 						if hSize >= 2 {
 							hist := sst.hstack.top(1)
-							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To, bonus)
+							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
 						}
 					}
 
@@ -405,7 +405,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, move.SimpleMove{}, maxim, transp.AllNode)
+		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.AllNode)
 	} else {
 		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
 	}
@@ -504,15 +504,15 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		check := movegen.InCheck(b, b.STM)
 
 		if !check {
-			if m.Captured == NoPiece && m.Promo == NoPiece {
+			if m.Captured == NoPiece && m.Promo() == NoPiece {
 				b.UndoMove(m)
 				continue
 			}
 
 			gain := heur.PieceValues[m.Captured]
 
-			if m.Promo != NoPiece {
-				gain += heur.PieceValues[m.Promo] - heur.PieceValues[Pawn]
+			if m.Promo() != NoPiece {
+				gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
 			}
 
 			if gain+delta < alpha {
@@ -557,7 +557,7 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case b.SquaresToPiece[m.To] != NoPiece || m.Promo != NoPiece:
+		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece:
 			see := heur.SEE(b, &m)
 			if see < 0 {
 				moves[ix].Weight = see - heur.Captures
@@ -566,16 +566,16 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 			}
 
 		default:
-			score := sst.hist.Probe(b.STM, m.From, m.To)
+			score := sst.hist.Probe(b.STM, m.From(), m.To())
 
 			if sst.hstack.size() >= 1 {
 				hist := sst.hstack.top(0)
-				score += 3 * sst.cont[0].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To)
+				score += 3 * sst.cont[0].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
 			}
 
 			if sst.hstack.size() >= 2 {
 				hist := sst.hstack.top(1)
-				score += 2 * sst.cont[1].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To)
+				score += 2 * sst.cont[1].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
 			}
 
 			moves[ix].Weight = score
@@ -585,7 +585,7 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 
 func rankMovesQ(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
-		if b.SquaresToPiece[m.To] != NoPiece {
+		if b.SquaresToPiece[m.To()] != NoPiece {
 			see := heur.SEE(b, &m)
 			moves[ix].Weight = see
 		}
