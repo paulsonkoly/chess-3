@@ -110,7 +110,7 @@ func (e *Engine) handleCommand(command string) {
 		fmt.Printf("option name Hash type spin default %d min 1 max 128\n", defaultHash)
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
-		fmt.Println("option name TTRStubbornness type spin default 1 min 1 max 4")
+		fmt.Println("option name TTRStubbornness type spin default 1 min 0 max 4")
 		fmt.Println("uciok")
 
 	case "isready":
@@ -162,7 +162,7 @@ func (e *Engine) handleSetOption(args []string) {
 
 	case "TTRStubbornness":
 		val, err := strconv.Atoi(args[3])
-		if err != nil || val < 1 || val > 3 {
+		if err != nil || val < 0 || val > 4 {
 			return
 		}
 
