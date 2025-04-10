@@ -114,6 +114,9 @@ func (e *Engine) handleCommand(command string) {
 	case "isready":
 		fmt.Println("readyok")
 
+	case "ucinewgame":
+		e.SST.Reset()
+
 	case "position":
 		e.handlePosition(parts[1:])
 
@@ -302,7 +305,7 @@ func (e *Engine) handleGo(args []string) {
 	e.SST.Stop = make(chan struct{})
 
 	if allocTime > 0 {
-		depth = search.MaxPlies
+		depth = MaxPlies
 	} else {
 		allocTime = 1 << 50 // not timed mode, essentially disable timeout
 	}

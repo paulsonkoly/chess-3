@@ -17,7 +17,7 @@ import (
 // size is MaxPlies + (MaxPlies-1) + ... + 1 == MaxPlies * (MaxPlies + 1) / 2.
 type pv struct {
 	// moves is the double buffered PV
-	moves [MaxPlies * (MaxPlies + 1) / 2]move.SimpleMove
+	moves [int(MaxPlies) * int(MaxPlies + 1) / 2]move.SimpleMove
 
 	depth [MaxPlies]Depth
 }
@@ -50,7 +50,7 @@ func (pv * pv)setNull(ply Depth) {
 }
 
 func bufIx(ply Depth) int {
-	return int(ply)*MaxPlies - int(ply)*int(ply-1)/2
+	return int(ply)*int(MaxPlies) - int(ply)*int(ply-1)/2
 }
 
 // active is the principal variation held in the PV buffer.

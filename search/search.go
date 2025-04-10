@@ -31,6 +31,8 @@ type State struct {
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
+	cnt Age
+
 	// Stop channel signals an immediate Stop request to the search. Current
 	// depth will be abandoned.
 	Stop chan struct{}
@@ -66,7 +68,6 @@ func NewState(ttSizeInMb int) *State {
 // position.
 func (s *State) Clear() {
 	s.abort = false
-	s.tt.Clear()
 	s.ms.Clear()
 	s.hstack.reset()
 	s.AWFail = 0
@@ -78,9 +79,14 @@ func (s *State) Clear() {
 	s.QDepth = 0
 }
 
+// Reset resets the state from one game to the next.
+func (s *State) Reset() {
+	s.tt.Clear()
+}
+
 // Search is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window.
-func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleMove) {
+func Search(b *board.Board, depth Depth, sst *State) (score Score, move move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
@@ -89,7 +95,9 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 
 	sst.Clear()
 
-	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
+	sst.cnt++
+
+	for d := Depth(1); d <= depth; d++ {
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
 		var scoreSample Score
@@ -128,8 +136,8 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
-		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
+		fmt.Printf("info depth %d score %s nodes %d time %d pv %s\n",
+			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, pvInfo(sst.pv.active()))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
@@ -172,7 +180,7 @@ func pvInfo(moves []move.SimpleMove) string {
 }
 
 func scInfo(score Score) string {
-	if Abs(score) >= Inf-MaxPlies {
+	if Abs(score) >= Inf-Score(MaxPlies) {
 		diff := Inf - score
 
 		if score < 0 {
@@ -197,7 +205,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.Probe(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
 		switch transpE.Type {
 
@@ -344,7 +352,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
+				transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
 				bonus := -Score(d * d)
@@ -405,9 +413,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.AllNode)
+		transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, bestMove, maxim, transp.AllNode)
 	} else {
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
+		transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, bestMove, maxim, transp.PVNode)
 	}
 
 	return maxim
@@ -546,7 +554,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	var transPE *transp.Entry
 
-	transPE, _ = sst.tt.LookUp(b.Hash())
+	transPE, _ = sst.tt.Probe(b.Hash())
 	if transPE != nil && transPE.Type == transp.AllNode {
 		transPE = nil
 	}
