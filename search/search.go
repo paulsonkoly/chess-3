@@ -47,6 +47,7 @@ type State struct {
 	QCnt      int   // Quiesence node count
 	QDepth    Depth // QDepth is the maximal quiesence search depth.
 	Time      int64 // Time is the search time in milliseconds.
+	SoftTime  int64 // Soft time limit in milliseconds. <= 0 for no limit.
 }
 
 // NewState creates a new search state. It's supposed to be called once, and
@@ -138,7 +139,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 				sst.AWFail, sst.ABLeaf, ABBF, sst.TTHit, sst.QDepth)
 		}
 
-		if abort(sst) {
+		if abort(sst) || (sst.SoftTime > 0 && miliSec > sst.SoftTime) {
 			return
 		}
 

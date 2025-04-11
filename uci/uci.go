@@ -3,7 +3,6 @@ package uci
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
@@ -213,66 +211,39 @@ func parseUCIMove(uciM string) move.SimpleMove {
 }
 
 type timeControl struct {
-	wtime int // White time in milliseconds
-	btime int // Black time in milliseconds
-	winc  int // White increment per move in milliseconds
-	binc  int // Black increment per move in milliseconds
-	mtime int // move time
+	wtime int64 // White time in milliseconds
+	btime int64 // Black time in milliseconds
+	winc  int64 // White increment per move in milliseconds
+	binc  int64 // Black increment per move in milliseconds
+	mtime int64 // move time
 }
 
-// 7800 that factors 39 * 200
-var initialMatCount = int(16*heur.PieceValues[Pawn] +
-	4*heur.PieceValues[Knight] +
-	4*heur.PieceValues[Bishop] +
-	4*heur.PieceValues[Rook] +
-	2*heur.PieceValues[Queen])
+func (tc timeControl) timedMode(stm Color) bool {
+	return (stm == White && tc.wtime > 0) || (stm == Black && tc.btime > 0) || tc.mtime > 0
+}
 
-const MinTime = 30
-
-func (tc timeControl) allocate(b *board.Board) int {
-	if tc.mtime >= MinTime {
-		return tc.mtime // safety margin
-	}
-	if tc.mtime != 0 {
-		return 0
+func (tc timeControl) softLimit(stm Color) int64 {
+	if tc.mtime > 0 {
+		return tc.mtime
 	}
 
-	gameTime := 0
-	if b.STM == White {
-		if tc.wtime == 0 {
-			return 0
-		}
-		gameTime = tc.wtime
+	if stm == White && tc.wtime > 0 {
+		return tc.wtime/20 + tc.winc/2
 	}
 
-	if b.STM == Black {
-		if tc.btime == 0 {
-			return 0
-		}
-		gameTime = tc.btime
+	if stm == Black && tc.btime > 0 {
+		return tc.btime/20 + tc.binc/2
 	}
 
-	// TODO use the same functionality from eval
+	return 1 << 50
+}
 
-	matCount := b.Pieces[Queen].Count()*int(heur.PieceValues[Queen]) +
-		b.Pieces[Rook].Count()*int(heur.PieceValues[Rook]) +
-		b.Pieces[Bishop].Count()*int(heur.PieceValues[Bishop]) +
-		b.Pieces[Knight].Count()*int(heur.PieceValues[Knight]) +
-		b.Pieces[Pawn].Count()*int(heur.PieceValues[Pawn])
+func (tc timeControl) hardLimit(stm Color) int64 {
+	if tc.mtime > 0 {
+		return tc.mtime
+	}
 
-	matCount = min(matCount, initialMatCount)
-
-	// linear interpolate initialMatCount -> 44 .. 0 -> 5 moves left
-	movesLeft := (matCount / 200) + 5
-
-	complexity := float64(matCount) / float64(initialMatCount)
-	complexity = 1 - complexity // 1-(1-x)**2 tapers off around 1 (d = 0) and steep around 0
-	complexity *= complexity
-	complexity = 1 - complexity
-	complexity *= 3.0 // scale up
-	complexity += 0.2 // safety margin
-
-	return int(math.Floor((complexity * float64(gameTime)) / float64(movesLeft)))
+	return 3 * tc.softLimit(stm)
 }
 
 func (e *Engine) handleGo(args []string) {
@@ -283,29 +254,28 @@ func (e *Engine) handleGo(args []string) {
 	for i := range len(args) {
 		switch args[i] {
 		case "wtime":
-			tc.wtime = parseInt(args[i+1])
+			tc.wtime = parseInt64(args[i+1])
 		case "btime":
-			tc.btime = parseInt(args[i+1])
+			tc.btime = parseInt64(args[i+1])
 		case "winc":
-			tc.winc = parseInt(args[i+1])
+			tc.winc = parseInt64(args[i+1])
 		case "binc":
-			tc.binc = parseInt(args[i+1])
+			tc.binc = parseInt64(args[i+1])
 		case "depth":
 			depth = Depth(parseInt(args[i+1]))
 		case "movetime":
-			tc.mtime = parseInt(args[i+1])
+			tc.mtime = parseInt64(args[i+1])
 		}
 	}
 
-	allocTime := tc.allocate(e.Board)
+	stm := e.Board.STM
+
+	if tc.timedMode(stm) {
+		depth = search.MaxPlies
+	} 
 
 	e.SST.Stop = make(chan struct{})
-
-	if allocTime > 0 {
-		depth = search.MaxPlies
-	} else {
-		allocTime = 1 << 50 // not timed mode, essentially disable timeout
-	}
+	e.SST.SoftTime = tc.softLimit(stm)
 
 	var move move.SimpleMove
 
@@ -323,7 +293,7 @@ func (e *Engine) handleGo(args []string) {
 		case <-searchFin:
 			finished = true
 
-		case <-time.After(time.Duration(allocTime) * time.Millisecond):
+		case <-time.After(time.Duration(tc.hardLimit(stm)) * time.Millisecond):
 			stopped = true
 			close(e.SST.Stop)
 
@@ -342,6 +312,14 @@ func (e *Engine) handleGo(args []string) {
 
 func parseInt(value string) int {
 	result, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return result
+}
+
+func parseInt64(value string) int64 {
+	result, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return 0
 	}
