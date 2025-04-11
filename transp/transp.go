@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	entrySize  = 32 // entrySize is the transposition table entry size in bytes.
-	bucketSize = 2  // bucket is the number of entries in a bucket.
+	bucketSize    = 32 // entrySize is the transposition table entry size in bytes.
+	bucketEntries = 2  // bucket is the number of entries in a bucket.
 )
 
 type Table struct {
@@ -26,14 +26,14 @@ type Table struct {
 
 // 32 bytes
 type Bucket struct {
-	data [bucketSize]Entry // data is the pair of hash entries, one
+	data [bucketEntries]Entry // data is the pair of hash entries, one
 }
 
 // replIx is the replacement index in a bucket
 func (b *Bucket) replIx(hash board.Hash, age Age) int {
 	minD := int(255)<<10 + int(MaxPlies-1)<<2 + 3
 	minIx := -1
-	for ix := range bucketSize {
+	for ix := range bucketEntries {
 		// if hash matches replace. This should guarantee different hashes in a bucket per entry.
 		if b.data[ix].hash == hash {
 			return ix
@@ -83,7 +83,7 @@ func New(sizeInMb int) *Table {
 	}
 
 	sizeInBytes := sizeInMb * 1024 * 1024
-	numEntries := sizeInBytes / entrySize
+	numEntries := sizeInBytes / bucketSize
 	numEntriesL2 := bits.TrailingZeros(uint(numEntries))
 
 	return &Table{
@@ -97,7 +97,7 @@ func New(sizeInMb int) *Table {
 func (t *Table) Clear() {
 	t.cnt = 0
 	for ix := range t.data {
-		for jx := range bucketSize {
+		for jx := range bucketEntries {
 			t.data[ix].data[jx].hash = 0
 			t.data[ix].data[jx].age = 0
 			t.data[ix].data[jx].Depth = 0
@@ -136,7 +136,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleM
 func (t *Table) Probe(hash board.Hash) (*Entry, bool) {
 	ix := hash & t.ixMask
 
-	for jx := range bucketSize {
+	for jx := range bucketEntries {
 		if t.data[ix].data[jx].hash == hash {
 			return &t.data[ix].data[jx], true
 		}
