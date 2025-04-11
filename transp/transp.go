@@ -31,7 +31,7 @@ type Bucket struct {
 
 // replIx is the replacement index in a bucket
 func (b *Bucket) replIx(hash board.Hash, age Age) int {
-	minD := int(255)<<18 + int(MaxPlies-1)<<2 + 3
+	minD := int(255)<<10 + int(MaxPlies-1)<<2 + 3
 	minIx := -1
 	for ix := range bucketSize {
 		// if hash matches replace. This should guarantee different hashes in a bucket per entry.
@@ -41,7 +41,7 @@ func (b *Bucket) replIx(hash board.Hash, age Age) int {
 
 		ageDiff := (int(b.data[ix].age) - int(age) + 255) % 256
 
-		importance := (ageDiff)<<18 + int(b.data[ix].Depth)<<2 + int(b.data[ix].Type)
+		importance := (ageDiff)<<10 + int(b.data[ix].Depth)<<2 + int(b.data[ix].Type)
 
 		if importance < minD {
 			minD = importance
@@ -113,7 +113,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleM
 
 	repl := &t.data[ix].data[wx]
 
-	if repl.age == age && repl.Depth > d+Depth(typ)-Depth(repl.Type) {
+	if repl.age == age && repl.hash == hash && repl.Type == PVNode && typ != PVNode {
 		return
 	}
 
