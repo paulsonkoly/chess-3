@@ -304,7 +304,7 @@ func (e *Engine) handleGo(args []string) {
 
 	if allocTime > 0 {
 		depth = search.MaxPlies
-		e.SST.SoftTime = allocTime * 4 / 5
+		e.SST.SoftTime = allocTime * 3 / 4
 	} else {
 		allocTime = 1 << 50 // not timed mode, essentially disable timeout
 	}
