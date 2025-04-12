@@ -39,7 +39,7 @@ func (b *Bucket) replIx(hash board.Hash, age Age) int {
 			return ix
 		}
 
-		ageDiff := (int(b.data[ix].age) - int(age) + 255) % 256
+		ageDiff := (int(b.data[ix].Age) - int(age) + 255) % 256
 
 		importance := (ageDiff)<<10 + int(b.data[ix].Depth)<<2 + int(b.data[ix].Type)
 
@@ -67,11 +67,11 @@ const (
 //
 // 16 bytes
 type Entry struct {
-	move.SimpleMove       // SimpleMove is the simplified move data.
-	Value           Score // Value is the entry score value. Not valid for nodes where the score is not established.
-	Depth           Depth // Depth of the entry.
-	TFCnt           Depth // Three-fold repetation count of the entry.
-	age             Age
+	move.SimpleMove            // SimpleMove is the simplified move data.
+	Value           Score      // Value is the entry score value. Not valid for nodes where the score is not established.
+	Depth           Depth      // Depth of the entry.
+	TFCnt           Depth      // Three-fold repetation count of the entry.
+	Age             Age        // Age is the rolling search counter.
 	Type            NodeT      // Type is the entry type.
 	hash            board.Hash // Hash is the board Zobrist-hash.
 }
@@ -99,7 +99,7 @@ func (t *Table) Clear() {
 	for ix := range t.data {
 		for jx := range bucketEntries {
 			t.data[ix].data[jx].hash = 0
-			t.data[ix].data[jx].age = 0
+			t.data[ix].data[jx].Age = 0
 			t.data[ix].data[jx].Depth = 0
 		}
 	}
@@ -113,7 +113,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleM
 
 	repl := &t.data[ix].data[wx]
 
-	if repl.age == age && repl.hash == hash && repl.Type == PVNode && typ != PVNode {
+	if repl.Age == age && repl.hash == hash && repl.Type == PVNode && typ != PVNode {
 		return
 	}
 
@@ -128,7 +128,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleM
 		TFCnt:      tfCnt,
 		Type:       typ,
 		Depth:      d,
-		age:        age,
+		Age:        age,
 	}
 }
 

@@ -206,7 +206,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.Probe(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.Probe(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt && transpE.Age == sst.cnt {
 		sst.TTHit++
 		switch transpE.Type {
 
