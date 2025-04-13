@@ -80,6 +80,9 @@ func (fp *fenParser) position() error {
 		case '/':
 			file = 0
 			rank--
+			if rank < 0 {
+				return errors.New("invalid position")
+			}
 
 		case 'p', 'r', 'n', 'b', 'q', 'k', 'P', 'R', 'N', 'B', 'Q', 'K':
 

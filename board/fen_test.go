@@ -116,6 +116,51 @@ func TestFENConversion(t *testing.T) {
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQx e6 0 1",
 			err:  errors.New("K, Q, k, q or - expected got x"),
 		},
+		{
+			name: "Incomplete en passant square",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ e 0 1",
+			err:  errors.New("square expected got e "),
+		},
+		{
+			name: "Too many ranks in position",
+			fen:  "8/8/8/8/8/8/8/8/8 w - - 0 1",
+			err:  errors.New("invalid position"),
+		},
+		{
+			name: "Invalid en passant file",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ i3 0 1",
+			err:  errors.New("square expected got i3"),
+		},
+		{
+			name: "Invalid en passant rank",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ a9 0 1",
+			err:  errors.New("square expected got a9"),
+		},
+		{
+			name: "Rank overflow",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1",
+			err:  errors.New("invalid position"),
+		},
+		{
+			name: "Fifty-move non-digit",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - x 1",
+			err:  errors.New("digit expected got x"),
+		},
+		{
+			name: "Missing space between fields",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNRwKQ-01",
+			err:  errors.New("invalid char w"),
+		},
+		{
+			name: "Invalid castling mix",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KX - 0 1",
+			err:  errors.New("K, Q, k, q or - expected got X"),
+		},
+		{
+			name: "Invalid rank structure",
+			fen:  "rnbqkbnr/pppppppp/9/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1",
+			err:  errors.New("invalid char 9"),
+		},
 	}
 
 	for _, tt := range tests {
