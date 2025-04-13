@@ -9,27 +9,68 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+func FromFEN(fen string) (*Board, error) {
+	p := fenParser{fen: fen, l: len(fen)}
+
+	if err := p.seq(
+		p.position,
+		p.stm,
+		p.cRights,
+		p.enPassant,
+		p.fifty,
+	); err != nil {
+		return nil, err
+	}
+
+	b := &p.b
+
+	b.hashes = append(b.hashes, b.CalculateHash())
+
+	return b, nil
+}
+
 var cToP = map[byte]Piece{
 	'p': Pawn, 'r': Rook, 'n': Knight, 'b': Bishop, 'q': Queen, 'k': King,
 	'P': Pawn, 'R': Rook, 'N': Knight, 'B': Bishop, 'Q': Queen, 'K': King,
 }
 
-func FromFEN(fen string) (*Board, error) {
-	b := Board{}
+type fenParser struct {
+	fen string
+	ix  int
+	l   int
+	b   Board
+}
 
-	l := len(fen)
+func (fp *fenParser) seq(parsers ...func() error) error {
+	first := true
+	for _, parser := range parsers {
 
+		if first {
+			first = false
+		} else {
+			for fp.ix < fp.l && fp.fen[fp.ix] == ' ' {
+				fp.ix++
+			}
+
+			if fp.ix >= fp.l {
+				return errors.New("premature end of fen")
+			}
+		}
+
+		if err := parser(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (fp *fenParser) position() error {
 	rank := 7
 	file := 0
 
-	var (
-		ix int
-		c  byte
-	)
-
-	for ix, c = range []byte(fen) {
+	for fp.ix < fp.l {
 		sq := (8 * rank) + file
-		bb := BitBoard(1 << sq)
+		c := fp.fen[fp.ix]
 
 		switch c {
 
@@ -41,135 +82,104 @@ func FromFEN(fen string) (*Board, error) {
 			rank--
 
 		case 'p', 'r', 'n', 'b', 'q', 'k', 'P', 'R', 'N', 'B', 'Q', 'K':
+
+			if sq < 0 || sq > 63 {
+				return errors.New("invalid position")
+			}
+			bb := BitBoard(1 << sq)
+
 			color := White
 			piece := cToP[c]
 			if c > 'a' && c < 'z' {
 				color = Black
 			}
-			b.Pieces[piece] |= bb
-			b.Colors[color] |= bb
-			b.SquaresToPiece[sq] = piece
+			fp.b.Pieces[piece] |= bb
+			fp.b.Colors[color] |= bb
+			fp.b.SquaresToPiece[sq] = piece
 			file++
 
 		case ' ':
-			goto out
+			return nil
 
 		default:
-			return nil, fmt.Errorf("invalid char %c", c)
+			return fmt.Errorf("invalid char %c", c)
 		}
-	}
-out:
 
-	if ix >= l-1 {
-		return nil, errors.New("premature end of fen")
+		fp.ix++
 	}
 
-	for ix < l && fen[ix] == ' ' {
-		ix++
-	}
+	fp.ix++
+	return nil
+}
 
-	if ix >= l {
-		return nil, errors.New("premature end of fen")
-	}
-
-	switch fen[ix] {
+func (fp *fenParser) stm() error {
+	switch fp.fen[fp.ix] {
 	case 'w':
-		b.STM = White
+		fp.b.STM = White
 	case 'b':
-		b.STM = Black
+		fp.b.STM = Black
 	default:
-		return nil, fmt.Errorf("w or b expected, got %c", fen[ix])
+		return fmt.Errorf("w or b expected, got %c", fp.fen[fp.ix])
 	}
-	ix++
+	fp.ix++
 
-	if ix >= l {
-		return nil, errors.New("premature end of fen")
-	}
+	return nil
+}
 
-	for ix < l && fen[ix] == ' ' {
-		ix++
-	}
-
-	if ix >= l {
-		return nil, errors.New("premature end of fen")
-	}
-
-	for ix < l && fen[ix] != ' ' {
-		switch fen[ix] {
+func (fp *fenParser) cRights() error {
+	for fp.ix < fp.l && fp.fen[fp.ix] != ' ' {
+		switch fp.fen[fp.ix] {
 		case 'K':
-			b.CRights |= CRights(ShortWhite)
+			fp.b.CRights |= CRights(ShortWhite)
 		case 'Q':
-			b.CRights |= CRights(LongWhite)
+			fp.b.CRights |= CRights(LongWhite)
 		case 'k':
-			b.CRights |= CRights(ShortBlack)
+			fp.b.CRights |= CRights(ShortBlack)
 		case 'q':
-			b.CRights |= CRights(LongBlack)
+			fp.b.CRights |= CRights(LongBlack)
 		case '-':
 
 		default:
-			return nil, fmt.Errorf("K, Q, k, q or - expected got %c", fen[ix])
+			return fmt.Errorf("K, Q, k, q or - expected got %c", fp.fen[fp.ix])
 		}
 
-		ix++
+		fp.ix++
 	}
+	return nil
+}
 
-	for ix < l && fen[ix] == ' ' {
-		ix++
-	}
-
-	if ix >= l {
-		return nil, errors.New("premature end of fen")
-	}
-
-	if fen[ix] != '-' {
-		if fen[ix] < 'a' || fen[ix] > 'h' || fen[ix+1] < '1' || fen[ix+1] > '8' {
-			return nil, fmt.Errorf("square expected got %c%c", fen[ix], fen[ix+1])
+func (fp *fenParser) enPassant() error {
+	if fp.fen[fp.ix] != '-' {
+		if fp.fen[fp.ix] < 'a' || fp.fen[fp.ix] > 'h' || fp.fen[fp.ix+1] < '1' || fp.fen[fp.ix+1] > '8' {
+			return fmt.Errorf("square expected got %c%c", fp.fen[fp.ix], fp.fen[fp.ix+1])
 		}
-		file := fen[ix] - 'a'
-		rank := fen[ix+1] - '1'
+		file := fp.fen[fp.ix] - 'a'
+		rank := fp.fen[fp.ix+1] - '1'
 		if rank == 2 {
 			rank = 3
 		} else if rank == 5 {
 			rank = 4
 		}
-		b.EnPassant = Square(rank*8 + file)
-		ix++
+		fp.b.EnPassant = Square(rank*8 + file)
+		fp.ix++
 	}
-	ix++
+	fp.ix++
+	return nil
+}
 
-	if ix >= l {
-		return nil, errors.New("premature end of fen")
-	}
-
-	for ix < l && fen[ix] == ' ' {
-		ix++
-	}
-
-	if ix >= l {
-		return nil, errors.New("premature end of fen")
-	}
-
+func (fp *fenParser) fifty() error {
 	cnt := 0
-	for ix < l && fen[ix] != ' ' {
-		if fen[ix] < '0' || fen[ix] > '9' {
-			return nil, fmt.Errorf("digit expected got %c", fen[ix])
+	for fp.ix < fp.l && fp.fen[fp.ix] != ' ' {
+		if fp.fen[fp.ix] < '0' || fp.fen[fp.ix] > '9' {
+			return fmt.Errorf("digit expected got %c", fp.fen[fp.ix])
 		}
 		cnt *= 10
-		cnt += int(fen[ix] - '0')
-		ix++
+		cnt += int(fp.fen[fp.ix] - '0')
+		fp.ix++
 	}
 
-	b.FiftyCnt = Depth(cnt)
-
-	b.hashes = append(b.hashes, b.CalculateHash())
-
-	// /* TODO: move counter */
-	// board->halfmovecnt = 0;
-	// board->history[0].hash = calculate_hash(board);
-	// board->history[0].flags = 0;
-	//
-	// return board;
-	return &b, nil
+	fp.b.FiftyCnt = Depth(cnt)
+	return nil
 }
 
 func (b Board) FEN() string {

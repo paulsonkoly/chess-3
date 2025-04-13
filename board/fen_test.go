@@ -1,10 +1,11 @@
-package board
+package board_test
 
 import (
 	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/paulsonkoly/chess-3/board"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,13 +48,18 @@ func TestFENConversion(t *testing.T) {
 		// Error Test Cases
 		{
 			name: "rand string",
-			fen: "adbc",
-			err: errors.New("invalid char a"),
+			fen:  "adbc",
+			err:  errors.New("invalid char a"),
 		},
 		{
 			name: "Invalid character in piece placement",
 			fen:  "rnbqkbnr/ppp1pppp/8/3pX3/8/8/PPPPPPPP/RNBQKBNR w KQkq d6 0 1",
 			err:  errors.New("invalid char X"),
+		},
+		{
+			name: "Overflow the board with piece placement",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e6 0 1",
+			err:  errors.New("invalid position"),
 		},
 		{
 			name: "Premature end after piece placement",
@@ -115,20 +121,24 @@ func TestFENConversion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Convert FEN to Board
-			board, err := FromFEN(tt.fen)
+			board, err := board.FromFEN(tt.fen)
 
 			if tt.err != nil {
 				assert.EqualError(t, err, tt.err.Error())
 			} else {
 
 				assert.NoError(t, err)
+				assert.NotNil(t, board)
 
-				// Convert Board back to FEN
-				outputFEN := board.FEN()
+				if board != nil {
 
-				// Compare the FENs using cmp
-				if diff := cmp.Diff(tt.fen, outputFEN); diff != "" {
-					t.Errorf("FEN conversion failed (-expected +actual):\n%s", diff)
+					// Convert Board back to FEN
+					outputFEN := board.FEN()
+
+					// Compare the FENs using cmp
+					if diff := cmp.Diff(tt.fen, outputFEN); diff != "" {
+						t.Errorf("FEN conversion failed (-expected +actual):\n%s", diff)
+					}
 				}
 			}
 		})
