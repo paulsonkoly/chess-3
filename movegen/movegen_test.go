@@ -13,6 +13,35 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+func TestPawnSinglePushMoves(t * testing.T) {
+	tests := []struct {
+		name  string
+		from  board.BitBoard
+		color Color
+		to    board.BitBoard
+	}{
+		{
+			name:  "pawn push white",
+			from:  board.BitBoardFromSquares(B1, E5, D7, C8, G8),
+			color: White,
+			to:    board.BitBoardFromSquares(B2, E6, D8),
+		},
+		{
+			name:  "pawn push black",
+			from:  board.BitBoardFromSquares(B1, E5, D7, C8, G8),
+			color: Black,
+			to:    board.BitBoardFromSquares(E4, D6, C7, G7),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.to, movegen.PawnSinglePushMoves(tt.from, tt.color))
+		})
+	}
+
+}
+
 func TestPawnCaptureMoves(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -694,6 +723,26 @@ func TestIsCheckMate(t *testing.T) {
 			name: "pinned rook by bishop can't block",
 			b:    Must(board.FromFEN("2q5/2b5/8/7k/8/7K/6R1/5b2 w - - 0 1")),
 			want: true,
+		},
+		{
+			name: "pawn promotion blocks check white to move",
+			b:    Must(board.FromFEN("K4rk1/RP6/8/8/8/8/8/8 w - - 0 1")),
+			want: false, // Pawn promotes to block
+		},
+		{
+			name: "pawn promotion blocks black to move",
+			b:    Must(board.FromFEN("8/8/8/8/8/8/6pr/KR5k b - - 0 1")),
+			want: false, // Pawn promotes to block
+		},
+		{
+			name: "pinned defender cannot capture",
+			b:    Must(board.FromFEN("6k1/8/8/4b3/8/r7/1B6/KR6 w - - 0 1")),
+			want: true, // Bishop is pinned by hypothetical bishop/rook
+		},
+		{
+			name: "knight check with pinned pawn",
+			b:    Must(board.FromFEN("r5k1/8/8/8/8/1n6/PP6/KR6 w - - 0 1")),
+			want: true, // Pawn is pinned and cannot capture
 		},
 		{
 			name: "regression 1",
