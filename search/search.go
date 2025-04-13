@@ -98,6 +98,10 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 		for !awOk {
 			scoreSample = AlphaBeta(b, alpha, beta, d, 0, true, false, sst)
 
+			if abort(sst) {
+				return
+			}
+
 			switch {
 
 			case scoreSample <= alpha:
@@ -112,13 +116,6 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 
 			default:
 				awOk = true
-			}
-
-			if abort(sst) {
-				if awOk && scoreSample >= score && len(sst.pv.active()) > 0 {
-					break
-				}
-				return
 			}
 		}
 		score = scoreSample
@@ -386,7 +383,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		if abort(sst) {
-			return maxim
+			return 0
 		}
 	}
 
@@ -537,7 +534,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		alpha = max(alpha, curr)
 
 		if abort(sst) {
-			return maxim
+			return 0
 		}
 	}
 
