@@ -1,6 +1,7 @@
 package board
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,8 +14,10 @@ var cToP = map[byte]Piece{
 	'P': Pawn, 'R': Rook, 'N': Knight, 'B': Bishop, 'Q': Queen, 'K': King,
 }
 
-func FromFEN(fen string) *Board {
+func FromFEN(fen string) (*Board, error) {
 	b := Board{}
+
+	l := len(fen)
 
 	rank := 7
 	file := 0
@@ -48,14 +51,25 @@ func FromFEN(fen string) *Board {
 			b.SquaresToPiece[sq] = piece
 			file++
 
-		default:
+		case ' ':
 			goto out
+
+		default:
+			return nil, fmt.Errorf("invalid char %c", c)
 		}
 	}
 out:
 
-	for fen[ix] == ' ' {
+	if ix >= l-1 {
+		return nil, errors.New("premature end of fen")
+	}
+
+	for ix < l && fen[ix] == ' ' {
 		ix++
+	}
+
+	if ix >= l {
+		return nil, errors.New("premature end of fen")
 	}
 
 	switch fen[ix] {
@@ -63,14 +77,24 @@ out:
 		b.STM = White
 	case 'b':
 		b.STM = Black
+	default:
+		return nil, fmt.Errorf("w or b expected, got %c", fen[ix])
 	}
 	ix++
 
-	for fen[ix] == ' ' {
+	if ix >= l {
+		return nil, errors.New("premature end of fen")
+	}
+
+	for ix < l && fen[ix] == ' ' {
 		ix++
 	}
 
-	for fen[ix] != ' ' {
+	if ix >= l {
+		return nil, errors.New("premature end of fen")
+	}
+
+	for ix < l && fen[ix] != ' ' {
 		switch fen[ix] {
 		case 'K':
 			b.CRights |= CRights(ShortWhite)
@@ -80,16 +104,27 @@ out:
 			b.CRights |= CRights(ShortBlack)
 		case 'q':
 			b.CRights |= CRights(LongBlack)
+		case '-':
+
+		default:
+			return nil, fmt.Errorf("K, Q, k, q or - expected got %c", fen[ix])
 		}
 
 		ix++
 	}
 
-	for fen[ix] == ' ' {
+	for ix < l && fen[ix] == ' ' {
 		ix++
 	}
 
+	if ix >= l {
+		return nil, errors.New("premature end of fen")
+	}
+
 	if fen[ix] != '-' {
+		if fen[ix] < 'a' || fen[ix] > 'h' || fen[ix+1] < '1' || fen[ix+1] > '8' {
+			return nil, fmt.Errorf("square expected got %c%c", fen[ix], fen[ix+1])
+		}
 		file := fen[ix] - 'a'
 		rank := fen[ix+1] - '1'
 		if rank == 2 {
@@ -102,12 +137,23 @@ out:
 	}
 	ix++
 
-	for fen[ix] == ' ' {
+	if ix >= l {
+		return nil, errors.New("premature end of fen")
+	}
+
+	for ix < l && fen[ix] == ' ' {
 		ix++
 	}
 
+	if ix >= l {
+		return nil, errors.New("premature end of fen")
+	}
+
 	cnt := 0
-	for fen[ix] != ' ' {
+	for ix < l && fen[ix] != ' ' {
+		if fen[ix] < '0' || fen[ix] > '9' {
+			return nil, fmt.Errorf("digit expected got %c", fen[ix])
+		}
 		cnt *= 10
 		cnt += int(fen[ix] - '0')
 		ix++
@@ -123,7 +169,7 @@ out:
 	// board->history[0].flags = 0;
 	//
 	// return board;
-	return &b
+	return &b, nil
 }
 
 func (b Board) FEN() string {

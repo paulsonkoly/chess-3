@@ -33,7 +33,7 @@ type Engine struct {
 
 func NewEngine() *Engine {
 	return &Engine{
-		Board: board.FromFEN(startPos),
+		Board: Must(board.FromFEN(startPos)),
 		SST:   search.NewState(defaultHash),
 	}
 }
@@ -161,7 +161,7 @@ func (e *Engine) handlePosition(args []string) {
 	}
 
 	if args[0] == "startpos" {
-		e.Board = board.FromFEN(startPos)
+		e.Board = Must(board.FromFEN(startPos))
 		if len(args) > 2 && args[1] == "moves" {
 			e.applyMoves(args[2:])
 		}
@@ -169,10 +169,18 @@ func (e *Engine) handlePosition(args []string) {
 		fen := strings.Join(args[1:], " ")
 		spaceIndex := strings.Index(fen, " moves ")
 		if spaceIndex != -1 {
-			e.Board = board.FromFEN(fen[:spaceIndex])
+			b, err := board.FromFEN(fen[:spaceIndex])
+			if err != nil {
+				return
+			}
+			e.Board = b
 			e.applyMoves(strings.Fields(fen[spaceIndex+7:]))
 		} else {
-			e.Board = board.FromFEN(fen)
+			b, err := board.FromFEN(fen)
+			if err != nil {
+				return
+			}
+			e.Board = b
 		}
 	}
 }
@@ -272,7 +280,7 @@ func (e *Engine) handleGo(args []string) {
 
 	if tc.timedMode(stm) {
 		depth = search.MaxPlies
-	} 
+	}
 
 	e.SST.Stop = make(chan struct{})
 	e.SST.SoftTime = tc.softLimit(stm)

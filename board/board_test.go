@@ -13,7 +13,7 @@ import (
 )
 
 func TestCastle(t *testing.T) {
-	b := board.FromFEN("k7/p7/8/8/8/8/8/R3K2R w KQ - 0 1")
+	b := Must(board.FromFEN("k7/p7/8/8/8/8/8/R3K2R w KQ - 0 1"))
 	m := move.Move{SimpleMove: move.FromSquares( E1, G1), Piece: King, Castle: ShortWhite, CRights: CRights(LongWhite, ShortWhite)}
 
 	b.MakeMove(&m)
@@ -61,7 +61,7 @@ func TestZobrist(t *testing.T) {
 	}{
 		{
 			name: "castle / en-passant / capture",
-			b:    board.FromFEN("r3k3/8/8/4p1Pp/8/1p6/3P4/3BK2R w Kq h6 0 1"),
+			b:    Must(board.FromFEN("r3k3/8/8/4p1Pp/8/1p6/3P4/3BK2R w Kq h6 0 1")),
 		},
 	}
 

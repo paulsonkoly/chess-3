@@ -17,7 +17,9 @@ import (
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
-	"github.com/paulsonkoly/chess-3/types"
+
+	//revive:disable-next-line
+	. "github.com/paulsonkoly/chess-3/types"
 )
 
 var epdF = flag.String("epd", "", "epd file name")
@@ -77,7 +79,7 @@ func main() {
 			panic("epd line error " + line)
 		}
 
-		b := board.FromFEN(splits[0])
+		b := Must(board.FromFEN(splits[0]))
 		// fmt.Println(b.FEN())
 		r, err := strconv.ParseFloat(splits[1], 64)
 		if err != nil {
@@ -260,7 +262,7 @@ func computeE(data []EPDEntry, k float64, coeffs *tuning.Coeffs) float64 {
 func evalCoeffs(b *board.Board, coeffs *tuning.Coeffs) float64 {
 	score := eval.Eval(b, -10_001.0, 10_001.0, coeffs.ToEvalType())
 
-	if b.STM == types.Black {
+	if b.STM == Black {
 		score = -score
 	}
 	return score
@@ -327,7 +329,7 @@ func doFilter(data []EPDEntry) {
 			}
 			hasLegal = true
 
-			if m.Captured != types.NoPiece {
+			if m.Captured != NoPiece {
 				b.UndoMove(&m)
 				hasForcing = true
 				break
@@ -372,7 +374,7 @@ func doDiff(data []EPDEntry, diff *string) {
 			panic("epd line error " + line)
 		}
 
-		b := board.FromFEN(splits[0])
+		b := Must(board.FromFEN(splits[0]))
 
 		bHsh := b.Hash()
 		if _, ok := hsh[bHsh]; !ok {

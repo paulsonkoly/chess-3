@@ -22,25 +22,25 @@ func TestSEE(t *testing.T) {
 	}{
 		{
 			name: "3Q4/3q4/1B2N3/5N2/2KPk3/3r4/2n1nb2/3R4 b - - 0 1",
-			b:    board.FromFEN("3Q4/3q4/1B2N3/5N2/2KPk3/3r4/2n1nb2/3R4 b - - 0 1"),
+			b:    Must(board.FromFEN("3Q4/3q4/1B2N3/5N2/2KPk3/3r4/2n1nb2/3R4 b - - 0 1")),
 			m:    N(C2, D4),
 			want: -200,
 		},
 		{
 			name: "7k/2b5/8/8/2N5/1R6/8/7K w - - 0 4",
-			b:    board.FromFEN("7k/2b5/8/8/2N5/1R6/8/7K w - - 0 4"),
+			b:    Must(board.FromFEN("7k/2b5/8/8/2N5/1R6/8/7K w - - 0 4")),
 			m:    R(B3, B6),
 			want: -200,
 		},
 		{
 			name: "promotion move",
-			b:    board.FromFEN("8/KP6/3b4/8/8/8/7k/8 w - - 0 1"),
+			b:    Must(board.FromFEN("8/KP6/3b4/8/8/8/7k/8 w - - 0 1")),
 			m:    PP(B7, B8, Queen),
 			want: -600,
 		},
 		{
 			name: "promotion capture",
-			b:    board.FromFEN("K1n3rr/1Q6/4b3/8/8/2R5/7k/2R5 w - - 0 1"),
+			b:    Must(board.FromFEN("K1n3rr/1Q6/4b3/8/8/2R5/7k/2R5 w - - 0 1")),
 			m:    R(C3, C8),
 			want: -200,
 		},
