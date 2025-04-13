@@ -561,6 +561,21 @@ func TestIsStalemate(t *testing.T) {
 			b:    Must(board.FromFEN("1kb4q/6p1/3p2P1/r2Pp1K1/r7/8/8/8 w - e6 0 2")),
 			want: true,
 		},
+		{
+			name: "pawn can promote",
+			b:    Must(board.FromFEN("8/1P6/8/8/8/2rk2b1/8/3K4 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "knight not actually pinned",
+			b:    Must(board.FromFEN("8/8/8/BB2n2B/R6B/4k3/4p3/K3R3 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "edge pawn capture",
+			b:    Must(board.FromFEN("8/8/6pp/7P/5k1K/7P/8/8 w - - 0 1")),
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
