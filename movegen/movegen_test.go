@@ -13,6 +13,35 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+func TestPawnSinglePushMoves(t * testing.T) {
+	tests := []struct {
+		name  string
+		from  board.BitBoard
+		color Color
+		to    board.BitBoard
+	}{
+		{
+			name:  "pawn push white",
+			from:  board.BitBoardFromSquares(B1, E5, D7, C8, G8),
+			color: White,
+			to:    board.BitBoardFromSquares(B2, E6, D8),
+		},
+		{
+			name:  "pawn push black",
+			from:  board.BitBoardFromSquares(B1, E5, D7, C8, G8),
+			color: Black,
+			to:    board.BitBoardFromSquares(E4, D6, C7, G7),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.to, movegen.PawnSinglePushMoves(tt.from, tt.color))
+		})
+	}
+
+}
+
 func TestPawnCaptureMoves(t *testing.T) {
 	tests := []struct {
 		name  string
