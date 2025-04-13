@@ -547,6 +547,51 @@ func TestIsStalemate(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "checkmate",
+			b:    Must(board.FromFEN("2q5/2b5/8/7k/8/7K/6R1/5b2 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pawn can push",
+			b:    Must(board.FromFEN("7K/5P2/7k/8/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pawn can capture",
+			b:    Must(board.FromFEN("7K/5P2/7k/8/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned queen can move",
+			b:    Must(board.FromFEN("7K/8/7k/4Q3/3b4/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned rook can't move",
+			b:    Must(board.FromFEN("7K/8/7k/4R3/3b4/8/8/6r1 w - - 0 1")),
+			want: true,
+		},
+		{
+			name: "pinned rook can move",
+			b:    Must(board.FromFEN("q3R2K/8/7k/8/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned knight can't move",
+			b:    Must(board.FromFEN("7K/8/7k/4N3/3b4/8/8/6r1 w - - 0 1")),
+			want: true,
+		},
+		{
+			name: "knight can move",
+			b:    Must(board.FromFEN("7K/8/7k/4N3/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned pawn can't move",
+			b:    Must(board.FromFEN("7K/8/7k/4P3/3b4/8/8/6r1 w - - 0 1")),
+			want: true,
+		},
+		{
 			name: "en-passant captureable",
 			b:    Must(board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2N5/8/1K6 b - d3 0 1")),
 			want: false,
@@ -629,6 +674,26 @@ func TestIsCheckMate(t *testing.T) {
 			name: "en-passant captureable",
 			b:    Must(board.FromFEN("8/7B/2bbb3/2bkb3/2bnPp2/8/8/K7 b - e3 0 1")),
 			want: false,
+		},
+		{
+			name: "pinned bishop by rook can't capture",
+			b:    Must(board.FromFEN("8/7k/5n2/r3B2K/8/6bb/8/2q5 w - - 0 1")),
+			want: true,
+		},
+		{
+			name: "pinned rook by bishop can't capture",
+			b:    Must(board.FromFEN("8/8/7K/8/7k/5N2/5rQ1/4B3 b - - 0 1")),
+			want: true,
+		},
+		{
+			name: "pinned bishop by rook can't block",
+			b:    Must(board.FromFEN("8/8/7k/8/r6K/8/4n2B/5b1r w - - 0 1")),
+			want: true,
+		},
+		{
+			name: "pinned rook by bishop can't block",
+			b:    Must(board.FromFEN("2q5/2b5/8/7k/8/7K/6R1/5b2 w - - 0 1")),
+			want: true,
 		},
 		{
 			name: "regression 1",
