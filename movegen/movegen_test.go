@@ -696,6 +696,26 @@ func TestIsCheckMate(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "pawn promotion blocks check white to move",
+			b:    Must(board.FromFEN("K4rk1/RP6/8/8/8/8/8/8 w - - 0 1")),
+			want: false, // Pawn promotes to block
+		},
+		{
+			name: "pawn promotion blocks black to move",
+			b:    Must(board.FromFEN("8/8/8/8/8/8/6pr/KR5k b - - 0 1")),
+			want: false, // Pawn promotes to block
+		},
+		{
+			name: "pinned defender cannot capture",
+			b:    Must(board.FromFEN("6k1/8/8/4b3/8/r7/1B6/KR6 w - - 0 1")),
+			want: true, // Bishop is pinned by hypothetical bishop/rook
+		},
+		{
+			name: "knight check with pinned pawn",
+			b:    Must(board.FromFEN("r5k1/8/8/8/8/1n6/PP6/KR6 w - - 0 1")),
+			want: true, // Pawn is pinned and cannot capture
+		},
+		{
 			name: "regression 1",
 			b:    Must(board.FromFEN("1k1r4/pp3R2/6pp/4p3/2B5/7Q/PPP2B2/2Kq4 w - - 1 1")),
 			want: true,

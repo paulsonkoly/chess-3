@@ -49,7 +49,7 @@ func PawnCaptureMoves(b board.BitBoard, color Color) board.BitBoard {
 // push a single square forward from any of the squares set in b. It does not
 // work for the eights rank for backwards pushes.
 func PawnSinglePushMoves(b board.BitBoard, color Color) board.BitBoard {
-	return ((b) << 8) >> ((color) << 4)
+	return ((b) << 8) >> ((color) << 4) | ((b) >> 8) << ((color ^1) << 4)
 }
 
 var (
@@ -595,11 +595,10 @@ func Block(b *board.Board, squares board.BitBoard, color Color) board.BitBoard {
 		res |= sub & blockers
 	}
 
-	/* we are making a pawn move backwards, so ignore the pawn in occupancy, as
-	 * we are moving where the actual pawn is, but don't ignore a blocking pawn
-	 * otherwise we would jump over it. See:
-	 * 6k1/8/8/1b6/3PP3/r1PKP3/2PRB3/8 w - - 0 1
-	 */
+	// we are making a pawn move backwards, so ignore the pawn in occupancy, as
+	// we are moving where the actual pawn is, but don't ignore a blocking pawn
+	// otherwise we would jump over it. See:
+	// 6k1/8/8/1b6/3PP3/r1PKP3/2PRB3/8 w - - 0 1
 	occNoPawn := occ & ^(b.Pieces[Pawn] & blockers)
 
 	/* double pawn push blocking */
