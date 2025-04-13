@@ -13,6 +13,9 @@ import (
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/uci"
 	"slices"
+
+	//revive:disable-next-line
+	. "github.com/paulsonkoly/chess-3/types"
 )
 
 var debugFEN = flag.String("debugFEN", "", "Debug a given fen to a given depth using stockfish perft")
@@ -38,7 +41,7 @@ func main() {
 	}
 
 	if *debugFEN != "" {
-		b := board.FromFEN(*debugFEN)
+		b := Must(board.FromFEN(*debugFEN))
 
 		debug.MatchPerft(b, *debugDepth)
 		return
@@ -120,7 +123,7 @@ func runBench(e *uci.Engine) {
 	stats := []Stats{}
 
 	for _, bk := range bratkoKopec {
-		e.Board = board.FromFEN(bk.fen)
+		e.Board = Must(board.FromFEN(bk.fen))
 		_, m := e.Search(9)
 
 		ok := m.String() == bk.bm
@@ -194,7 +197,7 @@ func runBench(e *uci.Engine) {
 
 func runOBBench(e *uci.Engine) {
 	fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
-	e.Board = board.FromFEN(fen)
+	e.Board = Must(board.FromFEN(fen))
 	e.Search(15)
 
 	nodes := e.SST.ABCnt + e.SST.ABLeaf + e.SST.QCnt

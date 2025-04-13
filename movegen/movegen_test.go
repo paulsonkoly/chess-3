@@ -50,7 +50,7 @@ func TestMoves(t *testing.T) {
 	}{
 		{
 			name: "simple king move",
-			b:    board.FromFEN("8/8/8/8/8/4K3/8/k7 w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/8/8/4K3/8/k7 w - - 0 1")),
 			want: []move.Move{
 				K(E3, D2), K(E3, E2), K(E3, F2),
 				K(E3, D3), K(E3, F3),
@@ -59,14 +59,14 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "king in the corner",
-			b:    board.FromFEN("8/8/8/8/8/8/K7/7k b - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/8/8/8/K7/7k b - - 0 1")),
 			want: []move.Move{
 				K(H1, H2), K(H1, G2), K(H1, G1),
 			},
 		},
 		{
 			name: "simple knight move",
-			b:    board.FromFEN("8/8/8/8/8/4N3/8/k6K w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/8/8/4N3/8/k6K w - - 0 1")),
 			want: []move.Move{
 				N(E3, C4), N(E3, D5), N(E3, F5), N(E3, G4),
 				N(E3, C2), N(E3, D1), N(E3, F1), N(E3, G2),
@@ -75,7 +75,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "knight in the corner",
-			b:    board.FromFEN("k7/8/8/8/8/8/8/K6N w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/K6N w - - 0 1")),
 			want: []move.Move{
 				N(H1, F2), N(H1, G3),
 				K(A1, A2), K(A1, B2), K(A1, B1),
@@ -83,7 +83,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "simple bishop move",
-			b:    board.FromFEN("k7/8/8/8/8/3B4/8/7K w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/8/3B4/8/7K w - - 0 1")),
 			want: []move.Move{
 				B(D3, C2), B(D3, B1), B(D3, E2), B(D3, F1), B(D3, C4), B(D3, B5),
 				B(D3, A6), B(D3, E4), B(D3, F5), B(D3, G6), B(D3, H7),
@@ -92,7 +92,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "bishop in the corner",
-			b:    board.FromFEN("k7/8/8/8/8/8/8/B6K w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/B6K w - - 0 1")),
 			want: []move.Move{
 				B(A1, B2), B(A1, C3), B(A1, D4), B(A1, E5), B(A1, F6), B(A1, G7), B(A1, H8),
 				K(H1, G1), K(H1, G2), K(H1, H2),
@@ -100,7 +100,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "bishop blocked by friendly",
-			b:    board.FromFEN("k7/8/8/8/8/2K5/1B6/8 w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/8/2K5/1B6/8 w - - 0 1")),
 			want: []move.Move{
 				B(B2, A3), B(B2, A1), B(B2, C1),
 				K(C3, B3), K(C3, B4), K(C3, C2), K(C3, C4), K(C3, D2), K(C3, D3), K(C3, D4),
@@ -108,7 +108,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "simple rook move",
-			b:    board.FromFEN("k7/8/8/8/4R3/8/8/7K w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/4R3/8/8/7K w - - 0 1")),
 			want: []move.Move{
 				R(E4, D4), R(E4, C4), R(E4, B4), R(E4, A4), R(E4, H4), R(E4, G4), R(E4, F4),
 				R(E4, E5), R(E4, E6), R(E4, E7), R(E4, E8), R(E4, E3), R(E4, E2), R(E4, E1),
@@ -117,7 +117,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "rook in the corner",
-			b:    board.FromFEN("k7/8/8/8/8/8/8/R6K w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/R6K w - - 0 1")),
 			want: []move.Move{
 				R(A1, A2), R(A1, A3), R(A1, A4), R(A1, A5), R(A1, A6), R(A1, A7), R(A1, A8),
 				R(A1, B1), R(A1, C1), R(A1, D1), R(A1, E1), R(A1, F1), R(A1, G1),
@@ -126,7 +126,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "rook blocked by friendly",
-			b:    board.FromFEN("k7/8/8/8/8/2K5/2R5/8 w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/8/2K5/2R5/8 w - - 0 1")),
 			want: []move.Move{
 				R(C2, B2), R(C2, A2), R(C2, D2), R(C2, E2), R(C2, F2), R(C2, G2), R(C2, H2),
 				R(C2, C1),
@@ -135,7 +135,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "simple queen move",
-			b:    board.FromFEN("k7/8/8/8/4Q3/8/8/7K w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/4Q3/8/8/7K w - - 0 1")),
 			want: []move.Move{
 				Q(E4, D4), Q(E4, C4), Q(E4, B4), Q(E4, A4), Q(E4, H4), Q(E4, G4), Q(E4, F4),
 				Q(E4, E5), Q(E4, E6), Q(E4, E7), Q(E4, E8), Q(E4, E3), Q(E4, E2), Q(E4, E1),
@@ -146,7 +146,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "queen in the corner",
-			b:    board.FromFEN("k7/8/8/8/8/8/8/Q6K w - - 0 1"),
+			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/Q6K w - - 0 1")),
 			want: []move.Move{
 				Q(A1, A2), Q(A1, A3), Q(A1, A4), Q(A1, A5), Q(A1, A6), Q(A1, A7), Q(A1, A8),
 				Q(A1, B1), Q(A1, C1), Q(A1, D1), Q(A1, E1), Q(A1, F1), Q(A1, G1),
@@ -156,7 +156,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "queen blocked by friendly",
-			b:    board.FromFEN("8/8/8/2k5/8/2K5/2Q5/8 w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/2k5/8/2K5/2Q5/8 w - - 0 1")),
 			want: []move.Move{
 				Q(C2, B1), Q(C2, C1), Q(C2, D1), Q(C2, A2), Q(C2, B2), Q(C2, D2), Q(C2, E2),
 				Q(C2, F2), Q(C2, G2), Q(C2, H2), Q(C2, B3), Q(C2, D3), Q(C2, A4), Q(C2, E4),
@@ -166,7 +166,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "single pawn push forward as white",
-			b:    board.FromFEN("4k3/8/8/8/4P3/8/8/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("4k3/8/8/8/4P3/8/8/K7 w - - 0 1")),
 			want: []move.Move{
 				P(E4, E5),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -174,7 +174,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "single pawn push forward as black",
-			b:    board.FromFEN("7K/8/8/8/4p3/8/8/k7 b - - 0 1"),
+			b:    Must(board.FromFEN("7K/8/8/8/4p3/8/8/k7 b - - 0 1")),
 			want: []move.Move{
 				P(E4, E3),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -182,21 +182,21 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "blocked pawn push forward as white",
-			b:    board.FromFEN("8/8/8/4k3/4P3/8/8/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/4k3/4P3/8/8/K7 w - - 0 1")),
 			want: []move.Move{
 				K(A1, B1), K(A1, B2), K(A1, A2),
 			},
 		},
 		{
 			name: "blocked pawn push forward as black",
-			b:    board.FromFEN("8/8/8/8/4p3/4K3/8/k7 b - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/8/4p3/4K3/8/k7 b - - 0 1")),
 			want: []move.Move{
 				K(A1, B1), K(A1, B2), K(A1, A2),
 			},
 		},
 		{
 			name: "double pawn push forward as white",
-			b:    board.FromFEN("7k/8/8/8/8/8/4P3/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("7k/8/8/8/8/8/4P3/K7 w - - 0 1")),
 			want: []move.Move{
 				P(E2, E3), P(E2, E4),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -204,7 +204,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "double pawn push forward as black",
-			b:    board.FromFEN("7K/4p3/8/8/8/8/8/k7 b - - 0 1"),
+			b:    Must(board.FromFEN("7K/4p3/8/8/8/8/8/k7 b - - 0 1")),
 			want: []move.Move{
 				P(E7, E6), P(E7, E5),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -212,14 +212,14 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "double pawn push blocked by a piece directly in front",
-			b:    board.FromFEN("8/8/8/8/8/4k3/4P3/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/8/8/4k3/4P3/K7 w - - 0 1")),
 			want: []move.Move{
 				K(A1, B1), K(A1, B2), K(A1, A2),
 			},
 		},
 		{
 			name: "double pawn push blocked by a piece 2 squares in front",
-			b:    board.FromFEN("8/8/8/8/4k3/8/4P3/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/8/4k3/8/4P3/K7 w - - 0 1")),
 			want: []move.Move{
 				P(E2, E3),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -227,7 +227,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "pawn capture",
-			b:    board.FromFEN("7k/8/8/8/3n4/4P3/8/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("7k/8/8/8/3n4/4P3/8/K7 w - - 0 1")),
 			want: []move.Move{
 				P(E3, E4), P(E3, D4),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -235,7 +235,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "pawn capture on AFile testing for wrap to HFile",
-			b:    board.FromFEN("7k/8/8/8/1n5n/P7/8/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("7k/8/8/8/1n5n/P7/8/K7 w - - 0 1")),
 			want: []move.Move{
 				P(A3, A4), P(A3, B4),
 				K(A1, B1), K(A1, B2),
@@ -243,7 +243,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "pawn promotion (push)",
-			b:    board.FromFEN("7k/4P3/8/8/8/8/8/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("7k/4P3/8/8/8/8/8/K7 w - - 0 1")),
 			want: []move.Move{
 				PP(E7, E8, Queen), PP(E7, E8, Rook), PP(E7, E8, Bishop), PP(E7, E8, Knight),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -251,14 +251,14 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "pawn promotion blocked (push)",
-			b:    board.FromFEN("8/8/8/8/8/8/6p1/k5K1 b - - 0 1"),
+			b:    Must(board.FromFEN("8/8/8/8/8/8/6p1/k5K1 b - - 0 1")),
 			want: []move.Move{
 				K(A1, B1), K(A1, B2), K(A1, A2),
 			},
 		},
 		{
 			name: "pawn promotion (capture)",
-			b:    board.FromFEN("3nn2k/4P3/8/8/8/8/8/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("3nn2k/4P3/8/8/8/8/8/K7 w - - 0 1")),
 			want: []move.Move{
 				PP(E7, D8, Queen), PP(E7, D8, Rook), PP(E7, D8, Bishop), PP(E7, D8, Knight),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -266,7 +266,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "pawn promotion (capture or push)",
-			b:    board.FromFEN("3n3k/4P3/8/8/8/8/8/K7 w - - 0 1"),
+			b:    Must(board.FromFEN("3n3k/4P3/8/8/8/8/8/K7 w - - 0 1")),
 			want: []move.Move{
 				PP(E7, D8, Queen), PP(E7, D8, Rook), PP(E7, D8, Bishop), PP(E7, D8, Knight),
 				PP(E7, E8, Queen), PP(E7, E8, Rook), PP(E7, E8, Bishop), PP(E7, E8, Knight),
@@ -275,7 +275,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "en passant",
-			b:    board.FromFEN("7k/8/8/2Pp4/8/8/8/K7 w - d6 0 1"),
+			b:    Must(board.FromFEN("7k/8/8/2Pp4/8/8/8/K7 w - d6 0 1")),
 			want: []move.Move{
 				P(C5, C6), P(C5, D6),
 				K(A1, B1), K(A1, B2), K(A1, A2),
@@ -284,7 +284,7 @@ func TestMoves(t *testing.T) {
 
 		{
 			name: "regression #1",
-			b:    board.FromFEN("rnbqkbnr/1ppppppp/8/p7/8/7P/PPPPPPP1/RNBQKBNR w - - 0 1"),
+			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/8/p7/8/7P/PPPPPPP1/RNBQKBNR w - - 0 1")),
 			want: []move.Move{
 				P(A2, A3), P(B2, B3), P(C2, C3), P(D2, D3), P(E2, E3), P(F2, F3), P(G2, G3), P(H3, H4),
 				P(A2, A4), P(B2, B4), P(C2, C4), P(D2, D4), P(E2, E4), P(F2, F4), P(G2, G4),
@@ -294,7 +294,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "regression #2",
-			b:    board.FromFEN("rnbqkbnr/1ppppppp/8/p7/1P6/8/P1PPPPPP/RNBQKBNR w - - 0 1"),
+			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/8/p7/1P6/8/P1PPPPPP/RNBQKBNR w - - 0 1")),
 			want: []move.Move{
 				P(A2, A3), P(C2, C3), P(D2, D3), P(E2, E3), P(F2, F3), P(G2, G3), P(H2, H3), P(B4, B5), P(A2, A4),
 				P(C2, C4), P(D2, D4), P(E2, E4), P(F2, F4), P(G2, G4), P(H2, H4), P(B4, A5),
@@ -304,7 +304,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "regression #3",
-			b:    board.FromFEN("rnbqkbnr/1ppppppp/8/p7/8/N6N/PPPPPPPP/R1BQKB1R b - - 0 1"),
+			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/8/p7/8/N6N/PPPPPPPP/R1BQKB1R b - - 0 1")),
 			want: []move.Move{
 				P(A5, A4), P(B7, B6), P(C7, C6), P(D7, D6), P(E7, E6), P(F7, F6), P(G7, G6), P(H7, H6), P(B7, B5),
 				P(C7, C5), P(D7, D5), P(E7, E5), P(F7, F5), P(G7, G5), P(H7, H5),
@@ -314,7 +314,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "regression #4",
-			b:    board.FromFEN("rnbqkbnr/1ppppppp/p7/1N6/8/8/PPPPPPPP/R1BQKBNR b - - 0 1"),
+			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/p7/1N6/8/8/PPPPPPPP/R1BQKBNR b - - 0 1")),
 			want: []move.Move{
 				P(A6, A5), P(B7, B6), P(C7, C6), P(D7, D6), P(E7, E6), P(F7, F6), P(G7, G6), P(H7, H6),
 				P(C7, C5), P(D7, D5), P(E7, E5), P(F7, F5), P(G7, G5), P(H7, H5), P(A6, B5),
@@ -323,7 +323,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "regression #5",
-			b:    board.FromFEN("rnbq3r/pp1Pbpkp/2p3p1/6P1/2B5/8/PPP1Nn1P/RNBQ1K1R b - - 0 1"),
+			b:    Must(board.FromFEN("rnbq3r/pp1Pbpkp/2p3p1/6P1/2B5/8/PPP1Nn1P/RNBQ1K1R b - - 0 1")),
 			want: []move.Move{
 				P(C6, C5), P(A7, A6), P(B7, B6), P(F7, F6), P(H7, H6), P(A7, A5), P(B7, B5), P(F7, F5), P(H7, H5),
 				N(F2, D1), N(F2, H1), N(F2, D3), N(F2, H3), N(F2, E4), N(F2, G4), N(B8, A6), N(B8, D7),
@@ -335,7 +335,7 @@ func TestMoves(t *testing.T) {
 		},
 		{
 			name: "regression #6",
-			b:    board.FromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPPBN1PP/R3KN1n w Q - 0 1"),
+			b:    Must(board.FromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPPBN1PP/R3KN1n w Q - 0 1")),
 			want: []move.Move{
 				P(A2, A3), P(B2, B3), P(C2, C3), P(G2, G3), P(H2, H3), P(A2, A4), P(B2, B4), P(G2, G4), P(H2, H4),
 				PP(D7, C8, Queen), PP(D7, C8, Rook), PP(D7, C8, Bishop), PP(D7, C8, Knight),
@@ -404,7 +404,7 @@ func TestGenForcing(t *testing.T) {
 	}{
 		{
 			name: "king discovered checks",
-			b:    board.FromFEN("8/6k1/8/8/8/8/1K6/B7 w - - 0 1"),
+			b:    Must(board.FromFEN("8/6k1/8/8/8/8/1K6/B7 w - - 0 1")),
 			want: []move.Move{
 				K(B2, B1), K(B2, C1),
 				K(B2, A2), K(B2, C2),
@@ -413,70 +413,70 @@ func TestGenForcing(t *testing.T) {
 		},
 		{
 			name: "king captures",
-			b:    board.FromFEN("8/8/7k/8/8/8/pK6/B7 w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/7k/8/8/8/pK6/B7 w - - 0 1")),
 			want: []move.Move{
 				K(B2, A2),
 			},
 		},
 		{
 			name: "knight discovered checks",
-			b:    board.FromFEN("8/6k1/8/8/8/8/1N6/B2K4 w - - 0 1"),
+			b:    Must(board.FromFEN("8/6k1/8/8/8/8/1N6/B2K4 w - - 0 1")),
 			want: []move.Move{
 				N(B2, A4), N(B2, C4), N(B2, D3),
 			},
 		},
 		{
 			name: "knight checks",
-			b:    board.FromFEN("8/6k1/8/8/8/4N3/8/3K4 w - - 0 1"),
+			b:    Must(board.FromFEN("8/6k1/8/8/8/4N3/8/3K4 w - - 0 1")),
 			want: []move.Move{
 				N(E3, F5),
 			},
 		},
 		{
 			name: "knight captures",
-			b:    board.FromFEN("8/6k1/8/8/8/p7/8/1N1K4 w - - 0 1"),
+			b:    Must(board.FromFEN("8/6k1/8/8/8/p7/8/1N1K4 w - - 0 1")),
 			want: []move.Move{
 				N(B1, A3),
 			},
 		},
 		{
 			name: "bishop discovered checks",
-			b:    board.FromFEN("K1N5/RB4k1/2P5/8/8/8/8/8 w - - 0 1"),
+			b:    Must(board.FromFEN("K1N5/RB4k1/2P5/8/8/8/8/8 w - - 0 1")),
 			want: []move.Move{
 				B(B7, A6),
 			},
 		},
 		{
 			name: "bishop checks",
-			b:    board.FromFEN("6k1/KB6/8/8/8/8/8/8 w - - 0 1"),
+			b:    Must(board.FromFEN("6k1/KB6/8/8/8/8/8/8 w - - 0 1")),
 			want: []move.Move{
 				B(B7, D5),
 			},
 		},
 		{
 			name: "rook checks",
-			b:    board.FromFEN("5k2/8/8/8/8/8/8/KR6 w - - 0 1"),
+			b:    Must(board.FromFEN("5k2/8/8/8/8/8/8/KR6 w - - 0 1")),
 			want: []move.Move{
 				R(B1, F1), R(B1, B8),
 			},
 		},
 		{
 			name: "bishop captures",
-			b:    board.FromFEN("K7/1B6/p6k/8/8/8/8/8 w - - 0 1"),
+			b:    Must(board.FromFEN("K7/1B6/p6k/8/8/8/8/8 w - - 0 1")),
 			want: []move.Move{
 				B(B7, A6),
 			},
 		},
 		{
 			name: "pawn discovered checks",
-			b:    board.FromFEN("8/8/1P4PP/PRPk1PQP/1P3PPP/8/6PP/K5NB w - - 0 1"),
+			b:    Must(board.FromFEN("8/8/1P4PP/PRPk1PQP/1P3PPP/8/6PP/K5NB w - - 0 1")),
 			want: []move.Move{
 				P(C5, C6), P(F5, F6), P(G2, G3), Q(G5, D8),
 			},
 		},
 		{
 			name: "pawn captures",
-			b:    board.FromFEN("6k1/8/8/8/8/p2PP2P/PP3P2/KB6 w - - 0 1"),
+			b:    Must(board.FromFEN("6k1/8/8/8/8/p2PP2P/PP3P2/KB6 w - - 0 1")),
 			want: []move.Move{
 				P(B2, A3),
 			},
@@ -538,27 +538,27 @@ func TestIsStalemate(t *testing.T) {
 	}{
 		{
 			name: "king can move",
-			b:    board.FromFEN("7k/7p/6pP/4p1P1/4P3/3B4/8/1K6 b - - 0 1"),
+			b:    Must(board.FromFEN("7k/7p/6pP/4p1P1/4P3/3B4/8/1K6 b - - 0 1")),
 			want: false,
 		},
 		{
 			name: "king can't move",
-			b:    board.FromFEN("7k/7p/6pP/4p1P1/2B1P3/8/8/1K6 b - - 0 1"),
+			b:    Must(board.FromFEN("7k/7p/6pP/4p1P1/2B1P3/8/8/1K6 b - - 0 1")),
 			want: true,
 		},
 		{
 			name: "en-passant captureable",
-			b:    board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2N5/8/1K6 b - d3 0 1"),
+			b:    Must(board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2N5/8/1K6 b - d3 0 1")),
 			want: false,
 		},
 		{
 			name: "en-passant pinned (diag)",
-			b:    board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2B5/8/1K6 b - d3 0 1"),
+			b:    Must(board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2B5/8/1K6 b - d3 0 1")),
 			want: true,
 		},
 		{
 			name: "en-passant pinned (rank)",
-			b:    board.FromFEN("1kb4q/6p1/3p2P1/r2Pp1K1/r7/8/8/8 w - e6 0 2"),
+			b:    Must(board.FromFEN("1kb4q/6p1/3p2P1/r2Pp1K1/r7/8/8/8 w - e6 0 2")),
 			want: true,
 		},
 	}
@@ -577,57 +577,57 @@ func TestIsCheckMate(t *testing.T) {
 	}{
 		{
 			name: "king not in check",
-			b:    board.FromFEN("5k2/8/8/8/8/8/8/KR6 w - - 0 1"),
+			b:    Must(board.FromFEN("5k2/8/8/8/8/8/8/KR6 w - - 0 1")),
 			want: false,
 		},
 		{
 			name: "somthered mate",
-			b:    board.FromFEN("kr6/ppN5/8/8/8/8/8/K7 b - - 0 1"),
+			b:    Must(board.FromFEN("kr6/ppN5/8/8/8/8/8/K7 b - - 0 1")),
 			want: true,
 		},
 		{
 			name: "king in check not checkmate king can move",
-			b:    board.FromFEN("5k2/8/8/8/8/8/8/K4Q2 b - - 0 1"),
+			b:    Must(board.FromFEN("5k2/8/8/8/8/8/8/K4Q2 b - - 0 1")),
 			want: false,
 		},
 		{
 			name: "king in check not checkmate capture the checker",
-			b:    board.FromFEN("4rkr1/4p1p1/8/1b6/8/8/8/K4Q2 b - - 0 1"),
+			b:    Must(board.FromFEN("4rkr1/4p1p1/8/1b6/8/8/8/K4Q2 b - - 0 1")),
 			want: false,
 		},
 		{
 			name: "king in check not checkmate block the checker",
-			b:    board.FromFEN("4rkr1/4p1p1/8/8/3n4/8/8/K4Q2 b - - 0 1"),
+			b:    Must(board.FromFEN("4rkr1/4p1p1/8/8/3n4/8/8/K4Q2 b - - 0 1")),
 			want: false,
 		},
 		{
 			name: "king in double check king can move",
-			b:    board.FromFEN("4bk1Q/6p1/8/2B5/8/8/8/K7 b - - 0 1"),
+			b:    Must(board.FromFEN("4bk1Q/6p1/8/2B5/8/8/8/K7 b - - 0 1")),
 			want: false,
 		},
 		{
 			name: "king in double check king can't move",
-			b:    board.FromFEN("4bkr1/6p1/8/2B5/8/8/8/K4Q2 b - - 0 1"),
+			b:    Must(board.FromFEN("4bkr1/6p1/8/2B5/8/8/8/K4Q2 b - - 0 1")),
 			want: true,
 		},
 		{
 			name: "en-passant captureable",
-			b:    board.FromFEN("8/7B/2bbb3/2bkb3/2bnPp2/8/8/K7 b - e3 0 1"),
+			b:    Must(board.FromFEN("8/7B/2bbb3/2bkb3/2bnPp2/8/8/K7 b - e3 0 1")),
 			want: false,
 		},
 		{
 			name: "regression 1",
-			b:    board.FromFEN("1k1r4/pp3R2/6pp/4p3/2B5/7Q/PPP2B2/2Kq4 w - - 1 1"),
+			b:    Must(board.FromFEN("1k1r4/pp3R2/6pp/4p3/2B5/7Q/PPP2B2/2Kq4 w - - 1 1")),
 			want: true,
 		},
 		{
 			name: "regression 2",
-			b:    board.FromFEN("1kbr4/Qp3R2/3q2pp/4p3/2B5/8/PPP2B2/2K5 b - - 0 1"),
+			b:    Must(board.FromFEN("1kbr4/Qp3R2/3q2pp/4p3/2B5/8/PPP2B2/2K5 b - - 0 1")),
 			want: true,
 		},
 		{
 			name: "regression 3 / single pawn push blocks",
-			b:    board.FromFEN("rnbqkbnr/ppppp1pp/8/5p1Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 0 1"),
+			b:    Must(board.FromFEN("rnbqkbnr/ppppp1pp/8/5p1Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 0 1")),
 			want: false,
 		},
 	}
@@ -647,33 +647,33 @@ func TestEnPassantStates(t *testing.T) {
 	}{
 		{
 			name:   "En passant possible after pawn move",
-			b:      board.FromFEN("4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1"),
+			b:      Must(board.FromFEN("4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1")),
 			move:   move.FromSquares(C2, C4),
-			bAfter: board.FromFEN("4k3/8/8/8/2Pp4/8/8/4K3 b - c3 0 1"),
+			bAfter: Must(board.FromFEN("4k3/8/8/8/2Pp4/8/8/4K3 b - c3 0 1")),
 		},
 		{
 			name:   "En passant not possible due to no pawn",
-			b:      board.FromFEN("4k3/8/8/8/8/8/2P5/4K3 w - - 0 1"),
+			b:      Must(board.FromFEN("4k3/8/8/8/8/8/2P5/4K3 w - - 0 1")),
 			move:   move.FromSquares(C2, C4),
-			bAfter: board.FromFEN("4k3/8/8/8/2P5/8/8/4K3 b - - 0 1"),
+			bAfter: Must(board.FromFEN("4k3/8/8/8/2P5/8/8/4K3 b - - 0 1")),
 		},
 		{
 			name:   "En passant not possible due to simple pin",
-			b:      board.FromFEN("8/8/1k6/8/3p4/8/2P5/3K2B1 w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/1k6/8/3p4/8/2P5/3K2B1 w - - 0 1")),
 			move:   move.FromSquares(C2, C4),
-			bAfter: board.FromFEN("8/8/1k6/8/2Pp4/8/8/3K2B1 b - - 0 1"),
+			bAfter: Must(board.FromFEN("8/8/1k6/8/2Pp4/8/8/3K2B1 b - - 0 1")),
 		},
 		{
 			name:   "En passant not possible due to tricky pin",
-			b:      board.FromFEN("8/8/8/8/k2p3R/8/2P5/3K4 w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/k2p3R/8/2P5/3K4 w - - 0 1")),
 			move:   move.FromSquares(C2, C4),
-			bAfter: board.FromFEN("8/8/8/8/k1Pp3R/8/8/3K4 b - - 0 1"),
+			bAfter: Must(board.FromFEN("8/8/8/8/k1Pp3R/8/8/3K4 b - - 0 1")),
 		},
 		{
 			name:   "En passant possible in pin that's not affected",
-			b:      board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22"),
+			b:      Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22")),
 			move:   move.FromSquares(F2, F4),
-			bAfter: board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rpP2/6PN/1P2P1BP/1RR3K1 b - f3 0 23"),
+			bAfter: Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rpP2/6PN/1P2P1BP/1RR3K1 b - f3 0 23")),
 		},
 	}
 
@@ -736,70 +736,70 @@ func TestIsAttacked(t *testing.T) {
 	}{
 		{
 			name:   "king not in check",
-			b:      board.FromFEN("8/1k6/8/8/8/8/8/RNBQKBNR w - - 0 1"),
+			b:      Must(board.FromFEN("8/1k6/8/8/8/8/8/RNBQKBNR w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(B7),
 			want:   false,
 		},
 		{
 			name:   "king in check by knight",
-			b:      board.FromFEN("8/8/8/8/8/2k5/8/RNBQKBNR w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/8/2k5/8/RNBQKBNR w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(C3),
 			want:   true,
 		},
 		{
 			name:   "king in check by bishop",
-			b:      board.FromFEN("8/8/8/8/8/4k3/8/RNBQKBNR w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/8/4k3/8/RNBQKBNR w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(E3),
 			want:   true,
 		},
 		{
 			name:   "bishop does not attack through a blocking piece",
-			b:      board.FromFEN("8/8/8/8/8/4k3/3N4/R1BQKBNR w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/8/4k3/3N4/R1BQKBNR w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(E3),
 			want:   false,
 		},
 		{
 			name:   "king in check by rook",
-			b:      board.FromFEN("k7/8/8/8/8/8/8/RNBQKBNR w - - 0 1"),
+			b:      Must(board.FromFEN("k7/8/8/8/8/8/8/RNBQKBNR w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(A8),
 			want:   true,
 		},
 		{
 			name:   "rook does not attack through a blocking piece",
-			b:      board.FromFEN("k7/8/8/8/8/N7/8/R1BQKBNR w - - 0 1"),
+			b:      Must(board.FromFEN("k7/8/8/8/8/N7/8/R1BQKBNR w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(A8),
 			want:   false,
 		},
 		{
 			name:   "king in check by queen",
-			b:      board.FromFEN("8/8/8/8/3k4/8/8/RNBQKBNR w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/3k4/8/8/RNBQKBNR w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(D4),
 			want:   true,
 		},
 		{
 			name:   "queen does not attack through a blocking piece",
-			b:      board.FromFEN("8/8/8/8/6k1/8/4N3/RNBQKB1R w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/6k1/8/4N3/RNBQKB1R w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(G4),
 			want:   false,
 		},
 		{
 			name:   "king in check by pawn",
-			b:      board.FromFEN("8/8/8/8/5k2/4P3/8/K7 w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/5k2/4P3/8/K7 w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(F4),
 			want:   true,
 		},
 		{
 			name:   "king not in check by pawn wrap",
-			b:      board.FromFEN("8/8/8/8/7k/P7/8/K7 w - - 0 1"),
+			b:      Must(board.FromFEN("8/8/8/8/7k/P7/8/K7 w - - 0 1")),
 			by:     White,
 			target: board.BitBoardFromSquares(H4),
 			want:   false,

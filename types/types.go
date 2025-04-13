@@ -103,3 +103,10 @@ func Signum[T constraints.Signed](x T) T {
 func Clamp[T constraints.Signed](x, a, b T) T {
 	return min(b, max(x, a))
 }
+
+func Must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
