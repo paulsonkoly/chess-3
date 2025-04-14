@@ -518,7 +518,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 
 			if gain+delta < alpha {
 				b.UndoMove(m)
-				continue
+				break
 			}
 
 			if m.Weight < 0 {
