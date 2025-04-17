@@ -17,6 +17,12 @@ import (
 )
 
 const (
+	NMPDiffFactor = Score(51)
+	NMPDepthLimit = Depth(1)
+	NMPInit       = Depth(4)
+)
+
+const (
 	WindowSize = 50 // half a pawn left and right around score
 )
 
@@ -243,13 +249,19 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		// null move pruning
-		if b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+		if d > NMPDepthLimit && staticEval >= beta && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
 			enP := b.MakeNullMove()
 
-			rd := max(0, d-3)
+			r := Depth(NMPInit)
 
-			value := -AlphaBeta(b, -beta, -beta+1, rd, ply, false, !cutN, sst)
+			if improving {
+				r++
+			}
+
+			r += Depth((staticEval - beta) / NMPDiffFactor)
+
+			value := -AlphaBeta(b, -beta, -beta+1, max(d-r, 0), ply, false, !cutN, sst)
 
 			b.UndoNullMove(enP)
 
