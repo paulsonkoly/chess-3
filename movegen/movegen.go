@@ -48,7 +48,7 @@ func PawnCaptureMoves(b board.BitBoard, color Color) board.BitBoard {
 // PawnSinglePushMoves is the bitboard set where the pawns of color color can
 // push a single square forward from any of the squares set in b.
 func PawnSinglePushMoves(b board.BitBoard, color Color) board.BitBoard {
-	return ((b) << 8) >> ((color) << 4) | ((b) >> 8) << ((color ^1) << 4)
+	return ((b)<<8)>>((color)<<4) | ((b)>>8)<<((color^1)<<4)
 }
 
 var (
@@ -503,55 +503,23 @@ func GenForcing(ms *move.Store, b *board.Board) {
 	them := b.Colors[b.STM.Flip()]
 	occ := b.Colors[White] | b.Colors[Black]
 
-	eKing := them & b.Pieces[King]
-	eKSq := eKing.LowestSet()
-	bChkMsk := BishopMoves(eKSq, occ) // squares from which a discovered bishop check might exist
-	rChkMsk := RookMoves(eKSq, occ)   // squares from which a discovered rook check might exist
-	chkMsk := bChkMsk | rChkMsk
-
 	gen := generator{
 		self: self,
 		them: them,
 		occ:  occ,
 	}
 
-	gen.kingMoves(ms, b, chkMsk, ^chkMsk|them)
-	gen.kingMoves(ms, b, ^chkMsk, them)
+	gen.kingMoves(ms, b, board.Full, them)
+	gen.knightMoves(ms, b, board.Full, them)
+	gen.bishopMoves(ms, b, board.Full, them)
+	gen.rookMoves(ms, b, board.Full, them)
+	gen.queenMoves(ms, b, board.Full, them)
 
-	gen.knightMoves(ms, b, chkMsk, board.Full)
-	gen.knightMoves(ms, b, ^chkMsk, KnightMoves(eKSq)|them)
-
-	gen.bishopMoves(ms, b, rChkMsk, board.Full)
-	gen.bishopMoves(ms, b, ^rChkMsk, bChkMsk|them)
-
-	gen.rookMoves(ms, b, bChkMsk, board.Full)
-	gen.rookMoves(ms, b, ^bChkMsk, rChkMsk|them)
-
-	gen.queenMoves(ms, b, board.Full, chkMsk|them)
-
-	var (
-		pChkMsk, pChks1, pChks2 board.BitBoard
-	)
-
-	if b.STM == White {
-		pChkMsk = (((eKing & ^board.HFile) >> 7) | ((eKing & ^board.AFile) >> 9))
-		pChks1 = pChkMsk >> 8
-		pChks2 = pChkMsk >> 16
-	} else {
-		pChkMsk = (((eKing & ^board.AFile) << 7) | ((eKing & ^board.HFile) << 9))
-		pChks1 = pChkMsk << 8
-		pChks2 = pChkMsk << 16
-	}
-
-	gen.singlePushMoves(ms, b, chkMsk|pChks1)
 	gen.promoPushMoves(ms, b, board.Full)
-	gen.doublePushMoves(ms, b, chkMsk|pChks2)
 	gen.pawnCaptureMoves(ms, b)
 	gen.pawnCapturePromoMoves(ms, b)
 	gen.enPassant(ms, b)
 
-	gen.shortCastle(ms, b, rChkMsk)
-	gen.longCastle(ms, b, rChkMsk)
 }
 
 func Attackers(b *board.Board, squares board.BitBoard, occ board.BitBoard, color Color) board.BitBoard {

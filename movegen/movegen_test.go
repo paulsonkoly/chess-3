@@ -432,33 +432,10 @@ func TestGenForcing(t *testing.T) {
 		want []move.Move
 	}{
 		{
-			name: "king discovered checks",
-			b:    Must(board.FromFEN("8/6k1/8/8/8/8/1K6/B7 w - - 0 1")),
-			want: []move.Move{
-				K(B2, B1), K(B2, C1),
-				K(B2, A2), K(B2, C2),
-				K(B2, A3), K(B2, B3),
-			},
-		},
-		{
 			name: "king captures",
 			b:    Must(board.FromFEN("8/8/7k/8/8/8/pK6/B7 w - - 0 1")),
 			want: []move.Move{
 				K(B2, A2),
-			},
-		},
-		{
-			name: "knight discovered checks",
-			b:    Must(board.FromFEN("8/6k1/8/8/8/8/1N6/B2K4 w - - 0 1")),
-			want: []move.Move{
-				N(B2, A4), N(B2, C4), N(B2, D3),
-			},
-		},
-		{
-			name: "knight checks",
-			b:    Must(board.FromFEN("8/6k1/8/8/8/4N3/8/3K4 w - - 0 1")),
-			want: []move.Move{
-				N(E3, F5),
 			},
 		},
 		{
@@ -469,38 +446,10 @@ func TestGenForcing(t *testing.T) {
 			},
 		},
 		{
-			name: "bishop discovered checks",
-			b:    Must(board.FromFEN("K1N5/RB4k1/2P5/8/8/8/8/8 w - - 0 1")),
-			want: []move.Move{
-				B(B7, A6),
-			},
-		},
-		{
-			name: "bishop checks",
-			b:    Must(board.FromFEN("6k1/KB6/8/8/8/8/8/8 w - - 0 1")),
-			want: []move.Move{
-				B(B7, D5),
-			},
-		},
-		{
-			name: "rook checks",
-			b:    Must(board.FromFEN("5k2/8/8/8/8/8/8/KR6 w - - 0 1")),
-			want: []move.Move{
-				R(B1, F1), R(B1, B8),
-			},
-		},
-		{
 			name: "bishop captures",
 			b:    Must(board.FromFEN("K7/1B6/p6k/8/8/8/8/8 w - - 0 1")),
 			want: []move.Move{
 				B(B7, A6),
-			},
-		},
-		{
-			name: "pawn discovered checks",
-			b:    Must(board.FromFEN("8/8/1P4PP/PRPk1PQP/1P3PPP/8/6PP/K5NB w - - 0 1")),
-			want: []move.Move{
-				P(C5, C6), P(F5, F6), P(G2, G3), Q(G5, D8),
 			},
 		},
 		{
