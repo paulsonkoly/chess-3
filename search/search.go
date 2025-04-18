@@ -485,16 +485,16 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		return 0
 	}
 
-	sst.ms.Push()
-	defer sst.ms.Pop()
-
-	movegen.GenForcing(sst.ms, b)
-
 	standPat := eval.Eval(b, alpha, beta, &eval.Coefficients)
 
 	if standPat >= beta {
 		return standPat
 	}
+
+	sst.ms.Push()
+	defer sst.ms.Pop()
+
+	movegen.GenForcing(sst.ms, b)
 
 	delta := standPat + 110
 	// fail soft upper bound
