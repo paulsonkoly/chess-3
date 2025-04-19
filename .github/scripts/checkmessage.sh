@@ -14,7 +14,7 @@ commit_message_check(){
       # loops through the file an gets the message
       for i in `cat ./shafile.txt`; do 
         # gets the git commit message based on the sha
-        gitmessage=`git log --format=%B -n 1 "$i"`
+        git log --format=%B -n 1 "$i" > msgfile.txt
 
         ####################### TEST STRINGS comment out line 13 to use #########################################
         #gitmessage="feat sdasdsadsaas (AEROGEAR-asdsada)"
@@ -24,9 +24,10 @@ commit_message_check(){
         #########################################################################################################
         
         # Checks gitmessage for string feat, fix, docs and breaking, if the messagecheck var is empty if fails
-        echo $gitmessage
-        messagecheck=`echo $gitmessage | egrep "^bench [0-9]+$"`
-        if [ -z "$messagecheck" ]; then 
+        # echo $gitmessage
+        # messagecheck=`echo -en $gitmessage | egrep "^bench [0-9]+$"`
+        # if [ -z "$messagecheck" ]; then 
+        if ! egrep '^bench [0-9+$]' msgfile.txt > /dev/null; then
             echo "Your commit message must contain the bench number"
             failed=1
         fi
