@@ -22,10 +22,6 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 		return 1
 	}
 
-	if movegen.IsCheckmate(b) || movegen.IsStalemate(b) {
-		return 0
-	}
-
 	cnt := 0
 	me := b.STM
 
@@ -34,25 +30,14 @@ func perft(ms *move.Store, b *board.Board, depth int) int {
 
 	movegen.GenMoves(ms, b)
 
-	hasLegal := false
-
 	for _, m := range ms.Frame() {
 		b.MakeMove(&m)
 
-		if b.Hash() != b.CalculateHash() {
-			panic("oops")
-		}
-
 		if !movegen.InCheck(b, me) {
-			hasLegal = true
 			cnt += perft(ms, b, depth-1)
 		}
 
 		b.UndoMove(&m)
-	}
-
-	if !hasLegal {
-		panic("oops")
 	}
 
 	return cnt
