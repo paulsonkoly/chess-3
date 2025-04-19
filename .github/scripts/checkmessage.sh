@@ -27,7 +27,7 @@ commit_message_check(){
         # echo $gitmessage
         # messagecheck=`echo -en $gitmessage | egrep "^bench [0-9]+$"`
         # if [ -z "$messagecheck" ]; then 
-        if ! egrep '^bench [0-9+$]' msgfile.txt > /dev/null; then
+        if ! egrep '^bench [0-9]+$' msgfile.txt > /dev/null; then
             echo "Your commit message must contain the bench number"
             failed=1
         fi
