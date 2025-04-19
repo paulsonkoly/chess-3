@@ -26,7 +26,4 @@ jobs:
         with:
           ref: ${{github.event.pull_request.head.sha }}
       - name: Check Commit Type
-        uses: gsactions/commit-message-checker@v2
-        with:
-          pattern: '^bench \d+$'
-          error: 'commit message has to contain a bench number'
+        run: .github/scripts/checkmessage.sh
