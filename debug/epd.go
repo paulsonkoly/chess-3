@@ -13,6 +13,7 @@ import (
 )
 
 type EPDReader struct {
+	io     *os.File
 	inp    *bufio.Scanner
 	fen    string
 	depths []string
@@ -30,7 +31,7 @@ func NewEPDReader(fn string) (*EPDReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &EPDReader{inp: bufio.NewScanner(inp), depths: make([]string, 0)}, nil
+	return &EPDReader{io: inp, inp: bufio.NewScanner(inp), depths: make([]string, 0)}, nil
 }
 
 func (e *EPDReader) Scan() bool {
@@ -77,4 +78,8 @@ func (e *EPDReader) Entry() EPDEntry {
 		panic(err)
 	}
 	return EPDEntry{Board: board, Fen: e.fen, D: Depth(d), Cnt: exp}
+}
+
+func (e *EPDReader) Close() {
+	e.io.Close()
 }
