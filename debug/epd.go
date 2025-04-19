@@ -65,6 +65,9 @@ func (e *EPDReader) Entry() EPDEntry {
 	}
 
 	parts := strings.Split(dstr[1:], " ")
+	if len(parts) != 2 {
+		panic("malformed perft depth info")
+	}
 	d, err := strconv.Atoi(parts[0])
 	if err != nil {
 		panic(err)
