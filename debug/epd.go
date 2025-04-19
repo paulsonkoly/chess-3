@@ -39,14 +39,18 @@ func (e *EPDReader) Scan() bool {
 		return true
 	}
 
-	if !e.inp.Scan() {
-		return false
+	for e.inp.Scan() {
+		line := e.inp.Text()
+		parts := strings.Split(line, " ;")
+		if len(parts) < 2 {
+			continue
+		}
+		e.fen = parts[0]
+		e.depths = parts[1:]
+		return true
 	}
-	line := e.inp.Text()
-	parts := strings.Split(line, " ;")
-	e.fen = parts[0]
-	e.depths = parts[1:]
-	return true
+
+	return false
 }
 
 func (e *EPDReader) Entry() EPDEntry {
