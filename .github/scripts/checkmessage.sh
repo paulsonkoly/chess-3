@@ -29,6 +29,9 @@ commit_message_check(){
         # if [ -z "$messagecheck" ]; then 
         if ! egrep '^bench [0-9]+$' msgfile.txt > /dev/null; then
             echo "Your commit message must contain the bench number"
+            echo "it was :"
+            cat msgfile.txt
+            echo "--- end ---"
             failed=1
         fi
       done
