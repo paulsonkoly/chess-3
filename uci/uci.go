@@ -246,12 +246,24 @@ func (tc timeControl) softLimit(stm Color) int64 {
 	return 1 << 50
 }
 
+const TimeSafetyMargin = 30
+
 func (tc timeControl) hardLimit(stm Color) int64 {
 	if tc.mtime > 0 {
 		return tc.mtime
 	}
 
-	return 3 * tc.softLimit(stm)
+	var timeLeft int64
+
+	if stm == White && tc.wtime > 0 {
+		timeLeft = tc.wtime
+	}
+
+	if stm == Black && tc.btime > 0 {
+		timeLeft = tc.btime
+	}
+
+	return Clamp(3 * tc.softLimit(stm), TimeSafetyMargin, timeLeft - TimeSafetyMargin)
 }
 
 func (e *Engine) handleGo(args []string) {
