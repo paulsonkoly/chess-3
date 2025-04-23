@@ -230,6 +230,11 @@ func (tc timeControl) timedMode(stm Color) bool {
 	return (stm == White && tc.wtime > 0) || (stm == Black && tc.btime > 0) || tc.mtime > 0
 }
 
+const (
+	TimeSafetyMargin = 30
+	TimeInf          = int64(1 << 50)
+)
+
 func (tc timeControl) softLimit(stm Color) int64 {
 	if tc.mtime > 0 {
 		return tc.mtime
@@ -243,17 +248,15 @@ func (tc timeControl) softLimit(stm Color) int64 {
 		return tc.btime/20 + tc.binc/2
 	}
 
-	return 1 << 50
+	return TimeInf
 }
-
-const TimeSafetyMargin = 30
 
 func (tc timeControl) hardLimit(stm Color) int64 {
 	if tc.mtime > 0 {
 		return tc.mtime
 	}
 
-	var timeLeft int64
+	timeLeft := TimeInf
 
 	if stm == White && tc.wtime > 0 {
 		timeLeft = tc.wtime
@@ -263,7 +266,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 		timeLeft = tc.btime
 	}
 
-	return Clamp(3 * tc.softLimit(stm), TimeSafetyMargin, timeLeft - TimeSafetyMargin)
+	return Clamp(3*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
 }
 
 func (e *Engine) handleGo(args []string) {
