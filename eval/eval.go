@@ -50,16 +50,6 @@ type CoeffSet[T ScoreType] struct {
 	PasserKingDist [2]T
 	// PasserRank is the bonus for the passed pawn being on a specific rank.
 	PasserRank [2][6]T
-
-	// LazyMargin determines the early return margins at various points in the
-	// evaluation. It's not tunable. Every time a new term is added to evaluation
-	// one has to recompute the lazy margins. Modify the evaluation so that
-	// instead of returning early, it records the partial score for the given
-	// return point, then once the complete score is calculated, take the
-	// difference between the final score and the partial score and across many
-	// test positions store the maximal difference. This plus some safety margin
-	// would be the lazy margin.
-	LazyMargin [7]T
 }
 
 var Coefficients = CoeffSet[Score]{
@@ -234,13 +224,12 @@ var Coefficients = CoeffSet[Score]{
 		{-6, -25, -30, -9, -12, 42},
 		{1, 8, 26, 52, 117, 89},
 	},
-	LazyMargin: [...]Score{718, 495, 602, 615, 615, 626, 626},
 }
 
 // Phase is game phase.
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
-func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
+func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 	if insuffientMat(b) {
 		return 0
 	}
@@ -277,16 +266,6 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 		}
 	}
 
-	// see comment on LazyMargin
-	// scoreHist := [7]T{}
-
-	score := TaperedScore(b, phase, mg[:], eg[:])
-
-	// scoreHist[0] = score
-	if score > beta+c.LazyMargin[0] {
-		return beta
-	}
-
 	pWise := newPieceWise(b, c)
 
 	// This loop is going down in piece value for lazy return.
@@ -312,13 +291,6 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 			}
 		}
 
-		score = TaperedScore(b, phase, mg[:], eg[:])
-		// scoreHist[pType] = score
-
-		if score > beta+c.LazyMargin[pType] {
-			return beta
-		}
-
 		if pType == Knight {
 			pWise.Passers()
 		}
@@ -330,11 +302,7 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 		eg[color] += pWise.kingAScore[1][color] * c.KingAttackCount[1][kingACnt]
 	}
 
-	score = TaperedScore(b, phase, mg[:], eg[:])
-
-	// for i, v := range scoreHist {
-	// 	c.LazyMargin[i] = max(c.LazyMargin[i], score-v)
-	// }
+	score := TaperedScore(b, phase, mg[:], eg[:])
 
 	return score
 }
