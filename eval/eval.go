@@ -13,11 +13,6 @@ import (
 // score type, as defined in types. The tuner uses float64.
 type ScoreType interface{ Score | float64 }
 
-const (
-	Mg = 0 // middle game
-	Eg = 1 // end game
-)
-
 type CoeffSet[T ScoreType] struct {
 
 	// PSqT is tapered piece square tables.
@@ -253,8 +248,8 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 	mg := [2]T{}
 	eg := [2]T{}
 
-	mg[b.STM] += c.TempoBonus[Mg]
-	eg[b.STM] += c.TempoBonus[Eg]
+	mg[b.STM] += c.TempoBonus[0]
+	eg[b.STM] += c.TempoBonus[1]
 
 	phase := 0
 
@@ -270,15 +265,15 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 
 			phase += cnt * Phase[pType]
 
-			mg[color] += T(cnt) * c.PieceValues[Mg][pType]
-			eg[color] += T(cnt) * c.PieceValues[Eg][pType]
+			mg[color] += T(cnt) * c.PieceValues[0][pType]
+			eg[color] += T(cnt) * c.PieceValues[1][pType]
 		}
 	}
 
 	for color := White; color <= Black; color++ {
 		if bishopCnt[color] >= 2 && bishopCnt[color.Flip()] == 0 {
-			mg[color] += c.BishopPair[Mg]
-			eg[color] += c.BishopPair[Eg]
+			mg[color] += c.BishopPair[0]
+			eg[color] += c.BishopPair[1]
 		}
 	}
 
@@ -289,7 +284,7 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 
 	// scoreHist[0] = score
 	if score > beta+c.LazyMargin[0] {
-		return (beta + c.LazyMargin[0]) / 2
+		return beta
 	}
 
 	pWise := newPieceWise(b, c)
@@ -321,7 +316,7 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 		// scoreHist[pType] = score
 
 		if score > beta+c.LazyMargin[pType] {
-			return (beta + c.LazyMargin[pType]) / 2
+			return beta
 		}
 
 		if pType == Knight {
@@ -331,8 +326,8 @@ func Eval[T ScoreType](b *board.Board, _, beta T, c *CoeffSet[T]) T {
 
 	for color := White; color <= Black; color++ {
 		kingACnt := min(len(c.KingAttackCount[0])-1, pWise.kingACount[color])
-		mg[color] += pWise.kingAScore[Mg][color] * c.KingAttackCount[Mg][kingACnt]
-		eg[color] += pWise.kingAScore[Eg][color] * c.KingAttackCount[Eg][kingACnt]
+		mg[color] += pWise.kingAScore[0][color] * c.KingAttackCount[0][kingACnt]
+		eg[color] += pWise.kingAScore[1][color] * c.KingAttackCount[1][kingACnt]
 	}
 
 	score = TaperedScore(b, phase, mg[:], eg[:])
@@ -482,28 +477,28 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 		// count vertical mobility 2x compared to horizontal mobility
 		mobCnt := (2*vmob + hmob) / 2
 
-		mg[color] += p.c.MobilityRook[Mg][mobCnt]
-		eg[color] += p.c.MobilityRook[Eg][mobCnt]
+		mg[color] += p.c.MobilityRook[0][mobCnt]
+		eg[color] += p.c.MobilityRook[1][mobCnt]
 
 		// connected rooks
 		if attack&p.b.Pieces[Rook]&p.b.Colors[color] != 0 {
-			mg[color] += p.c.ConnectedRooks[Mg]
-			eg[color] += p.c.ConnectedRooks[Eg]
+			mg[color] += p.c.ConnectedRooks[0]
+			eg[color] += p.c.ConnectedRooks[1]
 		}
 
 	case Bishop:
 		attack = movegen.BishopMoves(sq, occ)
 
 		mobCnt := (attack & ^p.b.Colors[color]).Count()
-		mg[color] += p.c.MobilityBishop[Mg][mobCnt]
-		eg[color] += p.c.MobilityBishop[Eg][mobCnt]
+		mg[color] += p.c.MobilityBishop[0][mobCnt]
+		eg[color] += p.c.MobilityBishop[1][mobCnt]
 
 	case Knight:
 		attack = movegen.KnightMoves(sq)
 
 		mobCnt := (attack & ^p.b.Colors[color] & ^p.pawnCover[color.Flip()]).Count()
-		mg[color] += p.c.MobilityKnight[Mg][mobCnt]
-		eg[color] += p.c.MobilityKnight[Eg][mobCnt]
+		mg[color] += p.c.MobilityKnight[0][mobCnt]
+		eg[color] += p.c.MobilityKnight[1][mobCnt]
 
 		// calculate knight outputs
 		if (board.BitBoard(1)<<sq)&p.holes[color.Flip()]&p.pawnCover[color] != 0 {
@@ -511,8 +506,8 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 			if color == White {
 				sq ^= 56
 			}
-			mg[color] += p.c.KnightOutpost[Mg][sq]
-			eg[color] += p.c.KnightOutpost[Eg][sq]
+			mg[color] += p.c.KnightOutpost[0][sq]
+			eg[color] += p.c.KnightOutpost[1][sq]
 		}
 
 	case Pawn:
@@ -525,12 +520,12 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 
 			// if protected passers add protection bonus
 			if pawn&p.pawnCover[color] != 0 {
-				mg[color] += p.c.ProtectedPasser[Mg]
-				eg[color] += p.c.ProtectedPasser[Eg]
+				mg[color] += p.c.ProtectedPasser[0]
+				eg[color] += p.c.ProtectedPasser[1]
 			}
 
-			mg[color] += p.c.PasserRank[Mg][rank-1]
-			eg[color] += p.c.PasserRank[Eg][rank-1]
+			mg[color] += p.c.PasserRank[0][rank-1]
+			eg[color] += p.c.PasserRank[1][rank-1]
 
 			// KPR, KPNB
 			if p.b.Pieces[Knight]|p.b.Pieces[Bishop]|p.b.Pieces[Queen] == 0 || p.b.Pieces[Rook]|p.b.Pieces[Queen] == 0 {
@@ -543,8 +538,8 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 
 				kingDist := Manhattan(mSq, p.kingSq[color.Flip()]) - Manhattan(mSq, p.kingSq[color])
 
-				mg[color] += p.c.PasserKingDist[Mg] * T(kingDist)
-				eg[color] += p.c.PasserKingDist[Eg] * T(kingDist)
+				mg[color] += p.c.PasserKingDist[0] * T(kingDist)
+				eg[color] += p.c.PasserKingDist[1] * T(kingDist)
 			}
 
 		}
@@ -557,8 +552,8 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 	kingA := (p.kingNb[color.Flip()] & attack).Count()
 
 	if kingA != 0 {
-		p.kingAScore[Mg][color] += p.c.KingAttackPieces[Mg][pType-Knight] * T(kingA)
-		p.kingAScore[Eg][color] += p.c.KingAttackPieces[Eg][pType-Knight] * T(kingA)
+		p.kingAScore[0][color] += p.c.KingAttackPieces[0][pType-Knight] * T(kingA)
+		p.kingAScore[1][color] += p.c.KingAttackPieces[1][pType-Knight] * T(kingA)
 		p.kingACount[color]++
 	}
 
