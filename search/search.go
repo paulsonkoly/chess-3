@@ -244,7 +244,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 && beta > -Inf + MaxPlies {
+		if staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
 			return staticEval
 		}
 
@@ -259,7 +259,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				r++
 			}
 
-			r += Depth((staticEval - beta) / NMPDiffFactor)
+			r += Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
 
 			value := -AlphaBeta(b, -beta, -beta+1, max(d-r, 0), ply, false, !cutN, sst)
 
