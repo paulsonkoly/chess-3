@@ -244,7 +244,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 {
+		if staticEval >= beta+Score(d)*105 && beta > -Inf + MaxPlies {
 			return staticEval
 		}
 
