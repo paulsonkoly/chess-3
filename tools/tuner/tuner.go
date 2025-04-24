@@ -287,8 +287,6 @@ func printMisEval(data []EPDEntry, k float64, coeffs *tuning.Coeffs) {
 		evals[i] = err
 	}
 
-	fmt.Println("LazyMargin ", coeffs.LazyMargin)
-
 	for range 10 {
 		mx := math.Inf(-1)
 		mi := -1
