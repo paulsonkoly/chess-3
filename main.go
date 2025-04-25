@@ -198,7 +198,7 @@ func runBench(e *uci.Engine) {
 func runOBBench(e *uci.Engine) {
 	fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
 	e.Board = Must(board.FromFEN(fen))
-	e.Search(15)
+	e.Search(17)
 
 	nodes := e.SST.ABCnt + e.SST.ABLeaf + e.SST.QCnt
 	time := e.SST.Time
