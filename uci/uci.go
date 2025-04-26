@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
@@ -124,6 +125,9 @@ func (e *Engine) handleCommand(command string) {
 	case "setoption":
 		e.handleSetOption(parts[1:])
 
+	case "eval":
+		e.handleEval()
+
 	case "quit":
 		os.Exit(0)
 
@@ -216,6 +220,10 @@ func parseUCIMove(uciM string) move.SimpleMove {
 	}
 	m.SetPromo(promo)
 	return m
+}
+
+func (e *Engine) handleEval() {
+	fmt.Println(eval.Eval(e.Board, 0, 0, &eval.Coefficients))
 }
 
 type timeControl struct {
