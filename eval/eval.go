@@ -271,8 +271,7 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 
 	pWise := newPieceWise(b, c)
 
-	// This loop is going down in piece value for lazy return.
-	for pType := King; pType >= Pawn; pType-- {
+	for pType := Pawn; pType <= King; pType++ {
 		for color := White; color <= Black; color++ {
 
 			pieces := b.Pieces[pType] & b.Colors[color]
@@ -292,6 +291,14 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 
 				pWise.Eval(pType, color, sq, mg[:], eg[:])
 			}
+		}
+	}
+
+	pWise.calcCover()
+
+	for pType := Knight; pType <= Queen; pType++ {
+		for color := White; color <= Black; color++ {
+			pWise.safeChecks(pType, color)
 		}
 	}
 
@@ -354,6 +361,7 @@ type pieceWise[T ScoreType] struct {
 	attacks    [2][6]board.BitBoard
 	cover      [2]board.BitBoard
 	kingNb     [2]board.BitBoard
+	kingRays   [2][2]board.BitBoard
 	frontSpan  [2]board.BitBoard
 	holes      [2]board.BitBoard
 	kingAScore [2][2]T
@@ -370,7 +378,6 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 
 	// the order of these is important. There are inter-dependencies
 	result.calcKingSquares()
-	result.calcAttacks()
 	result.calcPawnBitBoards()
 	result.calcPassers()
 
@@ -385,8 +392,23 @@ func (p *pieceWise[T]) calcKingSquares() {
 		kingSq := king.LowestSet()
 		kingA := movegen.KingMoves(kingSq)
 
+		p.attacks[color][King-Pawn] = kingA
+		p.kingRays[color][0] = movegen.BishopMoves(kingSq, p.occ)
+		p.kingRays[color][Rook-Bishop] = movegen.RookMoves(kingSq, p.occ)
 		p.kingSq[color] = kingSq
 		p.kingNb[color] = king | kingA
+	}
+}
+
+// this has to be called after the per piece loop as we need the attacks to be filled in
+func (p *pieceWise[T]) calcCover() {
+	for color := White; color <= Black; color++ {
+		p.cover[color] = p.attacks[color][0] |
+			p.attacks[color][Knight-Pawn] |
+			p.attacks[color][Bishop-Pawn] |
+			p.attacks[color][Rook-Pawn] |
+			p.attacks[color][Queen-Pawn] |
+			p.attacks[color][King-Pawn]
 	}
 }
 
@@ -394,7 +416,9 @@ func (p *pieceWise[T]) calcPawnBitBoards() {
 	b := p.b
 
 	wP := b.Pieces[Pawn] & b.Colors[White]
+	p.attacks[White][0] = movegen.PawnCaptureMoves(wP, White)
 	bP := b.Pieces[Pawn] & b.Colors[Black]
+	p.attacks[Black][0] = movegen.PawnCaptureMoves(bP, Black)
 
 	// various useful pawn bitboards
 	wFrontSpan := frontFill(wP, White) << 8
@@ -452,94 +476,21 @@ func frontFill(b board.BitBoard, color Color) board.BitBoard {
 	return b
 }
 
-func (p *pieceWise[T]) calcAttacks() {
-	b := p.b
-
-	for color := White; color <= Black; color++ {
-		pawns := b.Pieces[Pawn] & b.Colors[color]
-		p.attacks[color][0] = movegen.PawnCaptureMoves(pawns, color)
-	}
-
-	for color := White; color <= Black; color++ {
-		accum := board.BitBoard(0)
-		pieces := b.Pieces[Knight] & b.Colors[color]
-
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
-
-			accum |= movegen.KnightMoves(sq)
-		}
-		p.attacks[color][Knight-Pawn] = accum
-
-		accum = board.BitBoard(0)
-		pieces = b.Pieces[Bishop] & b.Colors[color]
-
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
-
-			accum |= movegen.BishopMoves(sq, p.occ)
-		}
-		p.attacks[color][Bishop-Pawn] = accum
-
-		accum = board.BitBoard(0)
-		pieces = b.Pieces[Rook] & b.Colors[color]
-
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
-
-			accum |= movegen.RookMoves(sq, p.occ)
-		}
-		p.attacks[color][Rook-Pawn] = accum
-
-		accum = board.BitBoard(0)
-		pieces = b.Pieces[Queen] & b.Colors[color]
-
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
-
-			accum |= movegen.RookMoves(sq, p.occ) | movegen.BishopMoves(sq, p.occ)
-		}
-		p.attacks[color][Queen-Pawn] = accum
-
-		kingSq := p.kingSq[color]
-		p.attacks[color][King-Pawn] = movegen.KingMoves(kingSq)
-
-		p.cover[color] = p.attacks[color][0] |
-			p.attacks[color][Knight-Pawn] |
-			p.attacks[color][Bishop-Pawn] |
-			p.attacks[color][Rook-Pawn] |
-			p.attacks[color][Queen-Pawn] |
-			p.attacks[color][King-Pawn]
-	}
-}
-
 func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 
 	occ := p.occ
 
-	var (
-		attack     board.BitBoard
-		safeChecks board.BitBoard
-	)
+	var attack board.BitBoard
 
 	switch pType {
 
 	case Queen:
 		attack = movegen.BishopMoves(sq, occ) | movegen.RookMoves(sq, occ)
-
-		// calculate safe checks
-		eKing := p.kingSq[color.Flip()]
-		eKAttack := movegen.BishopMoves(eKing, occ) | movegen.RookMoves(eKing, occ)
-		eCover := p.cover[color.Flip()]
-
-		safeChecks = attack & eKAttack & ^eCover
+		p.attacks[color][Queen-Pawn] |= attack
 
 	case Rook:
 		attack = movegen.RookMoves(sq, occ)
+		p.attacks[color][Rook-Pawn] |= attack
 
 		rank := board.BitBoard(0xff) << (sq & 56)
 		hmob := (attack & rank & ^p.b.Colors[color]).Count()
@@ -557,29 +508,17 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 			eg[color] += p.c.ConnectedRooks[1]
 		}
 
-		// calculate safe checks
-		eKing := p.kingSq[color.Flip()]
-		eKAttack := movegen.RookMoves(eKing, occ)
-		eCover := p.cover[color.Flip()]
-
-		safeChecks = attack & eKAttack & ^eCover
-
 	case Bishop:
 		attack = movegen.BishopMoves(sq, occ)
+		p.attacks[color][Bishop-Pawn] |= attack
 
 		mobCnt := (attack & ^p.b.Colors[color]).Count()
 		mg[color] += p.c.MobilityBishop[0][mobCnt]
 		eg[color] += p.c.MobilityBishop[1][mobCnt]
 
-		// calculate safe checks
-		eKing := p.kingSq[color.Flip()]
-		eKAttack := movegen.BishopMoves(eKing, occ)
-		eCover := p.cover[color.Flip()]
-
-		safeChecks = attack & eKAttack & ^eCover
-
 	case Knight:
 		attack = movegen.KnightMoves(sq)
+		p.attacks[color][Knight-Pawn] |= attack
 
 		mobCnt := (attack & ^p.b.Colors[color] & ^p.attacks[color.Flip()][0]).Count()
 		mg[color] += p.c.MobilityKnight[0][mobCnt]
@@ -594,13 +533,6 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 			mg[color] += p.c.KnightOutpost[0][sq]
 			eg[color] += p.c.KnightOutpost[1][sq]
 		}
-
-		// calculate safe checks
-		eKing := p.kingSq[color.Flip()]
-		eKAttack := movegen.KnightMoves(eKing)
-		eCover := p.cover[color.Flip()]
-
-		safeChecks = attack & eKAttack & ^eCover
 
 	case Pawn:
 		pawn := board.BitBoard(1) << sq
@@ -645,6 +577,31 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 		p.kingAScore[0][color] += p.c.KingAttackPieces[0][pType-Knight]
 		p.kingAScore[1][color] += p.c.KingAttackPieces[1][pType-Knight]
 	}
+}
+
+func (p *pieceWise[T]) safeChecks(pType Piece, color Color) {
+	eCover := p.cover[color.Flip()]
+
+	var safeChecks board.BitBoard
+
+	switch pType {
+
+	case Queen:
+		eKAttack := p.kingRays[color.Flip()][0] | p.kingRays[color.Flip()][Rook-Bishop]
+		safeChecks = p.attacks[color][Queen-Pawn] & eKAttack & ^eCover
+
+	case Rook:
+		eKAttack := p.kingRays[color.Flip()][Rook-Bishop]
+		safeChecks = p.attacks[color][Rook-Pawn] & eKAttack & ^eCover
+
+	case Bishop:
+		eKAttack := p.kingRays[color.Flip()][0]
+		safeChecks = p.attacks[color][Bishop-Pawn] & eKAttack & ^eCover
+
+	case Knight:
+		eKAttack := movegen.KnightMoves(p.kingSq[color.Flip()])
+		safeChecks = p.attacks[color][Knight-Pawn] & eKAttack & ^eCover
+	}
 
 	p.kingAScore[0][color] += p.c.SafeChecks[0][pType-Knight] * T(safeChecks.Count())
 	p.kingAScore[1][color] += p.c.SafeChecks[1][pType-Knight] * T(safeChecks.Count())
@@ -652,14 +609,7 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 
 func Manhattan(a, b Square) int {
 	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
-	return max(abs(ax-bx), abs(ay-by))
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
+	return max(Abs(ax-bx), Abs(ay-by))
 }
 
 func insuffientMat(b *board.Board) bool {
