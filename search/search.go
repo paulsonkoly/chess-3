@@ -444,7 +444,7 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
-	value := (log[d] * log[mCount]) >> 14
+	value := (log[d] * log[min(mCount, len(log) - 1)]) >> 14
 
 	// if !quiet {
 	// 	value /= 2
