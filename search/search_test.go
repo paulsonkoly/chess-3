@@ -12,6 +12,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestAlphaBeta(t *testing.T) {
+	tests := []struct {
+		name string
+		b    *board.Board
+		d    Depth
+	}{
+		{name: "position fen qqqqkqqq/8/8/8/8/8/8/QQQQKQQQ w - - 0 1",
+			b: Must(board.FromFEN("qqqqkqqq/8/8/8/8/8/8/QQQQKQQQ w - - 0 1")),
+			d: 9,
+		},
+	}
+	sst := search.NewState(1)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sst.Clear()
+			assert.NotPanics(t,
+				func() {
+					search.Search(tt.b, tt.d, sst)
+				},
+			)
+		})
+	}
+}
+
 func TestQuiescence(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
