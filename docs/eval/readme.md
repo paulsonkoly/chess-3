@@ -109,9 +109,15 @@
 
 
 
-## KnightOutpost
+## KnightOutpost (Middle Game)
 
-![KnightOutpost](knightoutpost.png)
+![KnightOutpost (Middle Game)](knightoutpost_mg.png)
+
+
+
+## KnightOutpost (End Game)
+
+![KnightOutpost (End Game)](knightoutpost_eg.png)
 
 
 

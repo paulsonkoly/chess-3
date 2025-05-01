@@ -207,11 +207,58 @@ func generateChessboardPlot(field reflect.Value, title, outputFile string) {
 	runGnuplot(script.String(), outputFile)
 }
 
+func generateTruncatedChessboardPlot(field reflect.Value, title, outputFile string, startRank, endRank int) {
+	var buf bytes.Buffer
+
+	// Add the actual data for ranks 3-7
+	for rank := range 5 {
+		for file := range 8 {
+			idx := rank*8 + file
+			val := field.Index(idx).Interface().(Score)
+			buf.WriteString(fmt.Sprintf("%d ", val))
+		}
+		buf.WriteString("\n")
+	}
+	// Fill ranks 1-2 with zeros
+	for range 3 {
+		for range 8 {
+			buf.WriteString("0 ")
+		}
+		buf.WriteString("\n")
+	}
+
+	data := ChessboardPlot{
+		Title:      title,
+		OutputFile: outputFile,
+		Data:       buf.String(),
+	}
+
+	// Use the original chessboard template
+	tmpl, err := template.New("chessboard").Parse(chessboardTemplate)
+	if err != nil {
+		fmt.Printf("Error creating template: %v\n", err)
+		return
+	}
+
+	var script bytes.Buffer
+	if err := tmpl.Execute(&script, data); err != nil {
+		fmt.Printf("Error executing template: %v\n", err)
+		return
+	}
+
+	runGnuplot(script.String(), outputFile)
+}
+
 func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSection) {
 	mg := field.Index(0)
 	eg := field.Index(1)
 
 	outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+
+	if name == "KnightOutpost" {
+		processKnightOutpost(field, name, sections)
+		return
+	}
 
 	switch {
 	case mg.Kind() == reflect.Array && mg.Len() > 0 && mg.Index(0).Kind() == reflect.Array:
@@ -308,6 +355,30 @@ func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, secti
 	// For single value pairs, we'll just create a simple bar chart
 	// (implementation omitted for brevity, but similar to the other functions)
 	fmt.Printf("Single value pair detected for %s (not implemented)\n", name)
+}
+
+// Add this new function to handle KnightOutpost
+func processKnightOutpost(field reflect.Value, name string, sections *[]MarkdownSection) {
+	mg := field.Index(0)
+	eg := field.Index(1)
+
+	// Process middle game
+	mgOutput := fmt.Sprintf("%s_mg.png", strings.ToLower(name))
+	generateTruncatedChessboardPlot(mg, name+" (Middle Game)", mgOutput, 3, 7)
+
+	// Process end game
+	egOutput := fmt.Sprintf("%s_eg.png", strings.ToLower(name))
+	generateTruncatedChessboardPlot(eg, name+" (End Game)", egOutput, 3, 7)
+
+	*sections = append(*sections, MarkdownSection{
+		Title:     name + " (Middle Game)",
+		ImagePath: mgOutput,
+	})
+
+	*sections = append(*sections, MarkdownSection{
+		Title:     name + " (End Game)",
+		ImagePath: egOutput,
+	})
 }
 
 func runGnuplot(script, outputFile string) {

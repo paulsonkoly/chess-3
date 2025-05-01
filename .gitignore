@@ -1,3 +1,4 @@
 chess3*
 tools/tuner/*.epd
 tools/tuner/tuner
+docs/eval/plots
