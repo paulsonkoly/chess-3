@@ -179,7 +179,7 @@ func generateChessboardPlot(field reflect.Value, title, outputFile string) {
 		for j := range 8 {
 			// Chessboards are stored with a1 in the first position, but we want to display
 			// with rank 1 at the bottom, so we reverse the rows
-			idx := (7-i)*8 + j
+			idx := i*8 + j
 			val := field.Index(idx).Interface().(Score)
 			buf.WriteString(fmt.Sprintf("%d ", val))
 		}
