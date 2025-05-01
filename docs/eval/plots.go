@@ -1,0 +1,344 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"reflect"
+	"strings"
+	"text/template"
+
+	"github.com/paulsonkoly/chess-3/eval"
+
+	//revive:disable-next-line
+	. "github.com/paulsonkoly/chess-3/types"
+)
+
+const chessboardTemplate = `# Set up the heatmap
+set terminal pngcairo enhanced font "Arial,12" size 800,600
+set output '{{.OutputFile}}'
+set title "{{.Title}} (Chess Coordinates)"
+set xlabel "File (a-h)"
+set ylabel "Rank (1-8)"
+set xrange [0.5:8.5]
+set yrange [0.5:8.5]
+set xtics ("a" 1, "b" 2, "c" 3, "d" 4, "e" 5, "f" 6, "g" 7, "h" 8)
+set ytics ("1" 1, "2" 2, "3" 3, "4" 4, "5" 5, "6" 6, "7" 7, "8" 8)
+set palette defined (-70 "blue", 0 "white", 96 "red")
+set cbrange [-70:100]
+set pm3d map
+set size square
+
+# Your original data (first row = Rank 1, last row = Rank 8)
+$DATA << EOD
+{{.Data}}
+EOD
+
+# Plot with perfect chess alignment
+plot $DATA matrix using ($1+1):(8-$2):3 with image notitle, \
+     $DATA matrix using ($1+1):(8-$2):(sprintf("%d", $3)) with labels font ",8" notitle
+`
+
+const linePlotTemplate = `# Set up the plot
+set terminal pngcairo enhanced font "Arial,12" size 800,600
+set output '{{.OutputFile}}'
+set title "{{.Title}}"
+set xlabel "X-axis (0-{{.MaxX}})"
+set ylabel "Values"
+set xrange [0:{{.MaxX}}]
+set grid
+
+# Define the data
+$DATA1 << EOD
+{{.Data1}}
+EOD
+
+$DATA2 << EOD
+{{.Data2}}
+EOD
+
+# Plot with connected points (no smoothing) and visible markers
+plot $DATA1 using 1:2 with linespoints lt 1 pt 7 ps 1.5 lw 2 title "Middle Game", \
+     $DATA2 using 1:2 with linespoints lt 2 pt 7 ps 1.5 lw 2 title "End Game"
+`
+
+const markdownTemplate = `# Chess Evaluation Coefficients Visualization
+
+{{range .Sections}}
+## {{.Title}}
+
+![{{.Title}}]({{.ImagePath}})
+
+{{if .Description}}
+{{.Description}}
+{{end}}
+{{end}}
+`
+
+type ChessboardPlot struct {
+	Title      string
+	OutputFile string
+	Data       string
+}
+
+type LinePlot struct {
+	Title      string
+	OutputFile string
+	Data1      string
+	Data2      string
+	MaxX       int
+}
+
+type MarkdownSection struct {
+	Title       string
+	ImagePath   string
+	Description string
+}
+
+func main() {
+	var sections []MarkdownSection
+	val := reflect.ValueOf(eval.Coefficients)
+	typ := val.Type()
+
+	for i := range val.NumField() {
+		field := val.Field(i)
+		fieldType := typ.Field(i)
+		fieldName := fieldType.Name
+
+		switch field.Kind() {
+		case reflect.Array:
+			// Check if it's a chessboard (8x8 array)
+			if isChessboard(field) {
+				processChessboard(field, fieldName, &sections)
+			} else if isPairedArray(field) {
+				processPairedArray(field, fieldName, &sections)
+			} else {
+				fmt.Printf("Unhandled array type for field %s\n", fieldName)
+			}
+		default:
+			fmt.Printf("Unhandled field type %s for field %s\n", field.Kind(), fieldName)
+		}
+	}
+
+	// Generate markdown document
+	generateMarkdown(sections)
+}
+
+func isChessboard(field reflect.Value) bool {
+	if field.Type().Kind() != reflect.Array {
+		return false
+	}
+
+	// Check for [12][64]Score (PSqT)
+	if field.Type().Len() == 12 {
+		inner := field.Index(0)
+		return inner.Type().Kind() == reflect.Array && inner.Type().Len() == 64
+	}
+
+	// Check for [64]Score (single chessboard)
+	return field.Type().Len() == 64
+}
+
+func isPairedArray(field reflect.Value) bool {
+	if field.Type().Kind() != reflect.Array {
+		return false
+	}
+
+	// Check for [2]... pattern
+	return field.Type().Len() == 2
+}
+
+func processChessboard(field reflect.Value, name string, sections *[]MarkdownSection) {
+	if field.Type().Len() == 12 {
+		// Handle PSqT which has 12 chessboards
+		for i := range field.Type().Len() {
+			chessboard := field.Index(i)
+			outputFile := fmt.Sprintf("%s_%d.png", strings.ToLower(name), i)
+			title := fmt.Sprintf("%s %d", name, i)
+			generateChessboardPlot(chessboard, title, outputFile)
+			*sections = append(*sections, MarkdownSection{
+				Title:     title,
+				ImagePath: outputFile,
+			})
+		}
+	} else {
+		// Handle single chessboard case (though we don't have any in our struct)
+		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+		generateChessboardPlot(field, name, outputFile)
+		*sections = append(*sections, MarkdownSection{
+			Title:     name,
+			ImagePath: outputFile,
+		})
+	}
+}
+
+func generateChessboardPlot(field reflect.Value, title, outputFile string) {
+	var buf bytes.Buffer
+	for i := range 8 {
+		for j := range 8 {
+			// Chessboards are stored with a1 in the first position, but we want to display
+			// with rank 1 at the bottom, so we reverse the rows
+			idx := (7-i)*8 + j
+			val := field.Index(idx).Interface().(Score)
+			buf.WriteString(fmt.Sprintf("%d ", val))
+		}
+		buf.WriteString("\n")
+	}
+
+	data := ChessboardPlot{
+		Title:      title,
+		OutputFile: outputFile,
+		Data:       buf.String(),
+	}
+
+	tmpl, err := template.New("chessboard").Parse(chessboardTemplate)
+	if err != nil {
+		fmt.Printf("Error creating template: %v\n", err)
+		return
+	}
+
+	var script bytes.Buffer
+	if err := tmpl.Execute(&script, data); err != nil {
+		fmt.Printf("Error executing template: %v\n", err)
+		return
+	}
+
+	runGnuplot(script.String(), outputFile)
+}
+
+func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSection) {
+	mg := field.Index(0)
+	eg := field.Index(1)
+
+	outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+
+	switch {
+	case mg.Kind() == reflect.Array && mg.Len() > 0 && mg.Index(0).Kind() == reflect.Array:
+		// Nested arrays like [2][9]Score (MobilityKnight)
+		processNestedPairedArray(mg, eg, name, outputFile, sections)
+	case mg.Kind() == reflect.Array:
+		// Simple arrays like [2][7]Score (PieceValues)
+		processSimplePairedArray(mg, eg, name, outputFile, sections)
+	default:
+		// Single values like [2]Score (ConnectedRooks)
+		processSingleValuePair(mg, eg, name, outputFile, sections)
+	}
+}
+
+func processNestedPairedArray(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
+	var data1, data2 bytes.Buffer
+	maxX := mg.Len() - 1
+
+	for i := range mg.Len() {
+		mgVal := mg.Index(i).Interface().(Score)
+		egVal := eg.Index(i).Interface().(Score)
+		data1.WriteString(fmt.Sprintf("%d %d\n", i, mgVal))
+		data2.WriteString(fmt.Sprintf("%d %d\n", i, egVal))
+	}
+
+	data := LinePlot{
+		Title:      name,
+		OutputFile: outputFile,
+		Data1:      data1.String(),
+		Data2:      data2.String(),
+		MaxX:       maxX,
+	}
+
+	tmpl, err := template.New("lineplot").Parse(linePlotTemplate)
+	if err != nil {
+		fmt.Printf("Error creating template: %v\n", err)
+		return
+	}
+
+	var script bytes.Buffer
+	if err := tmpl.Execute(&script, data); err != nil {
+		fmt.Printf("Error executing template: %v\n", err)
+		return
+	}
+
+	runGnuplot(script.String(), outputFile)
+
+	*sections = append(*sections, MarkdownSection{
+		Title:     name,
+		ImagePath: outputFile,
+	})
+}
+
+func processSimplePairedArray(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
+	var data1, data2 bytes.Buffer
+	maxX := mg.Len() - 1
+
+	for i := range mg.Len() {
+		mgVal := mg.Index(i).Interface().(Score)
+		egVal := eg.Index(i).Interface().(Score)
+		data1.WriteString(fmt.Sprintf("%d %d\n", i, mgVal))
+		data2.WriteString(fmt.Sprintf("%d %d\n", i, egVal))
+	}
+
+	data := LinePlot{
+		Title:      name,
+		OutputFile: outputFile,
+		Data1:      data1.String(),
+		Data2:      data2.String(),
+		MaxX:       maxX,
+	}
+
+	tmpl, err := template.New("lineplot").Parse(linePlotTemplate)
+	if err != nil {
+		fmt.Printf("Error creating template: %v\n", err)
+		return
+	}
+
+	var script bytes.Buffer
+	if err := tmpl.Execute(&script, data); err != nil {
+		fmt.Printf("Error executing template: %v\n", err)
+		return
+	}
+
+	runGnuplot(script.String(), outputFile)
+
+	*sections = append(*sections, MarkdownSection{
+		Title:     name,
+		ImagePath: outputFile,
+	})
+}
+
+func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
+	// For single value pairs, we'll just create a simple bar chart
+	// (implementation omitted for brevity, but similar to the other functions)
+	fmt.Printf("Single value pair detected for %s (not implemented)\n", name)
+}
+
+func runGnuplot(script, outputFile string) {
+	cmd := exec.Command("gnuplot")
+	cmd.Stdin = strings.NewReader(script)
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error running gnuplot for %s: %v\n", outputFile, err)
+	}
+}
+
+func generateMarkdown(sections []MarkdownSection) {
+	tmpl, err := template.New("markdown").Parse(markdownTemplate)
+	if err != nil {
+		fmt.Printf("Error creating markdown template: %v\n", err)
+		return
+	}
+
+	file, err := os.Create("readme.md")
+	if err != nil {
+		fmt.Printf("Error creating markdown file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	data := struct {
+		Sections []MarkdownSection
+	}{
+		Sections: sections,
+	}
+
+	if err := tmpl.Execute(file, data); err != nil {
+		fmt.Printf("Error generating markdown: %v\n", err)
+	}
+}
