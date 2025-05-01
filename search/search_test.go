@@ -88,7 +88,7 @@ func TestDraws(t *testing.T) {
 	}{
 		{name: "threefold",
 			b:     Must(board.FromFEN("r5k1/p1R5/1p5R/2p5/8/2P4P/P1P3PK/r7 w - - 3 36")),
-			moves: []move.Move{R(H6, G6), K(G8, F8), R(G6, F6), K(F8, G8), R(F6, G6), K(G8, F8), R(G6, H6), K(F8, G8)},
+			moves: []move.Move{R(H6, G6), K(G8, H8), R(G6, H6), K(H8, G8), R(H6, G6), K(G8, H8), R(G6, H6), K(H8, G8)},
 			want:  0,
 		},
 		{name: "fifty",
