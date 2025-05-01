@@ -22,11 +22,6 @@ var Targets = [...]string{
 	"KnightOutpost", "ConnectedRooks", "BishopPair",
 }
 
-// Anchor is a known value in tuning, anchoring down the tuning process. We
-// skip tuning the value with this index, for example a good setting would be
-// setting a Pawn's value to 100 so we measure evalution in centipawns.
-var Anchor = Index{s: []int{1, 0, 1}}
-
 type Coeffs eval.CoeffSet[float64]
 
 // InitialCoeffs creates the initial coefficents by converting eval.Coefficients from Score to Tunable.
@@ -188,11 +183,7 @@ func recurse(yield func(Index) bool, ix Index, v reflect.Value) bool {
 		}
 
 	case reflect.Float64:
-		if slices.Equal(ix.s[:], Anchor.s[:]) {
-			return true
-		}
 		return yield(ix)
-
 	}
 
 	return true
