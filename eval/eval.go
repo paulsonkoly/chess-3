@@ -583,10 +583,8 @@ func (p *pieceWise[T]) pawns(color Color, mg, eg []T) {
 			if color == White {
 				qSq += 56
 			}
-			// mid square between the pawn and its queening square
-			mSq := (qSq + sq) / 2
 
-			kingDist := Manhattan(mSq, p.kingSq[color.Flip()]) - Manhattan(mSq, p.kingSq[color])
+			kingDist := Manhattan(qSq, p.kingSq[color.Flip()]) - Manhattan(qSq, p.kingSq[color])
 
 			mg[color] += p.c.PasserKingDist[0] * T(kingDist)
 			eg[color] += p.c.PasserKingDist[1] * T(kingDist)
