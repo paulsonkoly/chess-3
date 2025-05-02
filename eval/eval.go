@@ -249,15 +249,9 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 
 	phase := 0
 
-	bishopCnt := [2]int{}
-
 	for pType := Pawn; pType <= Queen; pType++ {
 		for color := White; color <= Black; color++ {
 			cnt := (b.Pieces[pType] & b.Colors[color]).Count()
-
-			if pType == Bishop {
-				bishopCnt[color] = cnt
-			}
 
 			phase += cnt * Phase[pType]
 
@@ -267,14 +261,16 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 	}
 
 	for color := White; color <= Black; color++ {
-		if bishopCnt[color] >= 2 && bishopCnt[color.Flip()] == 0 {
+		myBishops := b.Colors[color] & b.Pieces[Bishop]
+		theirBishops := b.Colors[color.Flip()] & b.Pieces[Bishop]
+
+		if myBishops != 0 && theirBishops == 0 && myBishops&(myBishops-1) != 0 {
 			mg[color] += c.BishopPair[0]
 			eg[color] += c.BishopPair[1]
 		}
 	}
 
-	pWise := newPieceWise(b, c)
-
+	// add up PSqT
 	for pType := Pawn; pType <= King; pType++ {
 		for color := White; color <= Black; color++ {
 
@@ -292,10 +288,27 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 
 				mg[color] += c.PSqT[2*ix][sqIx]
 				eg[color] += c.PSqT[2*ix+1][sqIx]
+			}
+		}
+	}
 
+	pWise := newPieceWise(b, c)
+
+	// evaluate piece wise
+	for pType := Knight; pType <= Queen; pType++ {
+		for color := White; color <= Black; color++ {
+
+			pieces := b.Pieces[pType] & b.Colors[color]
+			for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+				piece = pieces & -pieces
+				sq := piece.LowestSet()
 				pWise.Eval(pType, color, sq, mg[:], eg[:])
 			}
 		}
+	}
+
+	for color := White; color <= Black; color++ {
+		pWise.pawns(color, mg[:], eg[:])
 	}
 
 	pWise.calcCover()
@@ -546,41 +559,6 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 			eg[color] += p.c.KnightOutpost[1][sq]
 		}
 
-	case Pawn:
-		pawn := board.BitBoard(1) << sq
-		if p.passers&pawn != 0 {
-			rank := sq / 8
-			if color == Black {
-				rank ^= 7
-			}
-
-			// if protected passers add protection bonus
-			if pawn&p.attacks[color][0] != 0 {
-				mg[color] += p.c.ProtectedPasser[0]
-				eg[color] += p.c.ProtectedPasser[1]
-			}
-
-			mg[color] += p.c.PasserRank[0][rank-1]
-			eg[color] += p.c.PasserRank[1][rank-1]
-
-			// KPR, KPNB
-			if p.b.Pieces[Knight]|p.b.Pieces[Bishop]|p.b.Pieces[Queen] == 0 || p.b.Pieces[Rook]|p.b.Pieces[Queen] == 0 {
-				qSq := sq % 8
-				if color == White {
-					qSq += 56
-				}
-				// mid square between the pawn and its queening square
-				mSq := (qSq + sq) / 2
-
-				kingDist := Manhattan(mSq, p.kingSq[color.Flip()]) - Manhattan(mSq, p.kingSq[color])
-
-				mg[color] += p.c.PasserKingDist[0] * T(kingDist)
-				eg[color] += p.c.PasserKingDist[1] * T(kingDist)
-			}
-
-		}
-		return
-
 	default:
 		return
 	}
@@ -588,6 +566,50 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 	if p.kingNb[color.Flip()]&attack != 0 {
 		p.kingAScore[0][color] += p.c.KingAttackPieces[0][pType-Knight]
 		p.kingAScore[1][color] += p.c.KingAttackPieces[1][pType-Knight]
+	}
+}
+
+func (p *pieceWise[T]) pawns(color Color, mg, eg []T) {
+	b := p.b
+	passers := p.passers & b.Colors[color]
+
+	// if there is a sole passer
+	if passers != 0 && passers&(passers-1) == 0 {
+		sq := passers.LowestSet()
+
+		// KPR, KPNB
+		if p.b.Pieces[Knight]|p.b.Pieces[Bishop]|p.b.Pieces[Queen] == 0 || p.b.Pieces[Rook]|p.b.Pieces[Queen] == 0 {
+			qSq := sq % 8
+			if color == White {
+				qSq += 56
+			}
+			// mid square between the pawn and its queening square
+			mSq := (qSq + sq) / 2
+
+			kingDist := Manhattan(mSq, p.kingSq[color.Flip()]) - Manhattan(mSq, p.kingSq[color])
+
+			mg[color] += p.c.PasserKingDist[0] * T(kingDist)
+			eg[color] += p.c.PasserKingDist[1] * T(kingDist)
+		}
+	}
+
+	for passer := board.BitBoard(0); passers != 0; passers ^= passer {
+		passer = passers & -passers
+		sq := passer.LowestSet()
+
+		rank := sq / 8
+		if color == Black {
+			rank ^= 7
+		}
+
+		// if protected passers add protection bonus
+		if passer&p.attacks[color][0] != 0 {
+			mg[color] += p.c.ProtectedPasser[0]
+			eg[color] += p.c.ProtectedPasser[1]
+		}
+
+		mg[color] += p.c.PasserRank[0][rank-1]
+		eg[color] += p.c.PasserRank[1][rank-1]
 	}
 }
 
