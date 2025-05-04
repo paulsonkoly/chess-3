@@ -56,139 +56,141 @@ type CoeffSet[T ScoreType] struct {
 	PasserKingDist [2]T
 	// PasserRank is the bonus for the passed pawn being on a specific rank.
 	PasserRank [2][6]T
+	// DoubledPawns is the penalty per doubled pawn (count of non-frontline pawns ie. the pawns in the pawn rearspan).
+	DoubledPawns [2]T
 }
 
 var Coefficients = CoeffSet[Score]{
 	PSqT: [12][64]Score{
 		{
 			0, 0, 0, 0, 0, 0, 0, 0,
-			50, 87, 60, 90, 82, 38, -39, -79,
-			21, 38, 61, 63, 71, 101, 89, 34,
-			-2, 21, 17, 23, 45, 37, 43, 15,
-			-9, 10, 8, 25, 27, 20, 24, 4,
-			-10, 7, 1, 5, 20, 9, 38, 8,
-			-8, 8, -6, -4, 8, 25, 49, 1,
+			50, 90, 60, 88, 79, 42, -29, -77,
+			21, 39, 65, 63, 74, 107, 93, 34,
+			-3, 20, 19, 24, 46, 42, 44, 12,
+			-11, 9, 9, 25, 26, 23, 24, 0,
+			-12, 6, 3, 5, 21, 14, 39, 4,
+			-11, 6, -5, -5, 8, 27, 48, -3,
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		{
 			0, 0, 0, 0, 0, 0, 0, 0,
-			113, 102, 100, 41, 45, 70, 115, 129,
-			24, 26, -17, -54, -58, -37, 3, 7,
-			10, 2, -18, -35, -38, -29, -9, -12,
-			-6, -3, -23, -28, -29, -25, -13, -22,
-			-11, -7, -23, -17, -20, -23, -17, -25,
-			-10, -5, -20, -12, -9, -21, -20, -27,
+			113, 103, 101, 41, 45, 71, 116, 128,
+			24, 29, -14, -53, -58, -33, 7, 7,
+			10, 4, -15, -33, -36, -25, -7, -13,
+			-7, -3, -21, -29, -29, -22, -12, -24,
+			-13, -6, -20, -16, -19, -19, -17, -27,
+			-11, -5, -15, -12, -8, -18, -20, -29,
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		{
-			-159, -113, -67, -34, 1, -77, -126, -117,
-			-24, 0, 34, 49, 8, 72, -9, 8,
-			-7, 29, 35, 34, 85, 61, 41, 10,
-			2, 0, 13, 39, 21, 43, 11, 32,
-			-11, -2, 10, 12, 23, 23, 24, 4,
-			-34, -15, -6, 5, 23, 4, 9, -11,
-			-40, -25, -19, 2, 2, 2, -7, -10,
-			-72, -36, -36, -17, -16, -9, -29, -40,
+			-161, -112, -69, -37, 0, -78, -130, -121,
+			-24, -3, 31, 49, 7, 70, -10, 9,
+			-8, 28, 34, 33, 84, 60, 41, 11,
+			1, 0, 14, 39, 21, 43, 11, 31,
+			-11, -3, 10, 12, 23, 23, 24, 4,
+			-34, -15, -5, 6, 23, 4, 9, -11,
+			-39, -25, -19, 2, 2, 2, -7, -10,
+			-71, -36, -35, -17, -16, -8, -30, -39,
 		},
 		{
-			-45, -6, 5, -2, -5, -22, -5, -71,
-			3, 8, 0, -3, -8, -18, 4, -21,
-			2, 4, 21, 20, -2, -9, -13, -13,
-			14, 22, 32, 26, 24, 22, 16, 0,
+			-47, -6, 7, -2, -5, -22, -6, -71,
+			3, 9, -1, -4, -7, -19, 3, -21,
+			3, 4, 21, 20, -3, -10, -13, -13,
+			15, 21, 31, 25, 23, 21, 16, 1,
 			24, 20, 39, 31, 36, 27, 15, 18,
-			6, 12, 19, 34, 27, 11, 4, 10,
-			8, 11, 11, 12, 12, 7, 5, 17,
-			10, -4, 11, 14, 15, 2, -4, 2,
+			6, 12, 18, 33, 27, 11, 4, 10,
+			9, 11, 12, 12, 12, 7, 5, 18,
+			10, -6, 10, 14, 15, 3, -4, 5,
 		},
 		{
-			-39, -60, -41, -91, -82, -89, -52, -60,
-			-30, 3, -9, -31, 1, -18, -10, -54,
-			-11, 10, 12, 28, 7, 53, 25, 16,
-			-19, -7, 10, 26, 24, 11, -4, -22,
-			-17, -12, -15, 17, 12, -9, -13, -1,
-			-11, -3, 0, -8, -3, 1, 5, 5,
-			-4, 2, 4, -11, -2, 12, 20, 5,
-			-16, 3, -13, -19, -10, -16, 9, -2,
+			-40, -61, -42, -92, -83, -91, -52, -62,
+			-30, 0, -11, -31, 0, -19, -12, -52,
+			-10, 9, 11, 26, 6, 52, 25, 17,
+			-19, -6, 10, 25, 23, 11, -4, -21,
+			-15, -13, -13, 17, 13, -9, -13, 0,
+			-10, -1, 0, -7, -3, 2, 5, 5,
+			-3, 2, 5, -11, -1, 11, 20, 5,
+			-16, 4, -13, -18, -11, -16, 9, -1,
 		},
 		{
-			17, 19, 10, 22, 16, 11, 10, 8,
-			6, 8, 8, 9, 1, 7, 12, 4,
-			18, 12, 12, 1, 8, 8, 6, 9,
-			13, 17, 13, 25, 14, 16, 13, 13,
-			7, 15, 21, 18, 17, 16, 11, -9,
-			5, 17, 17, 16, 21, 16, 7, -2,
-			10, 1, -4, 12, 7, 3, 6, -8,
-			1, 10, 9, 12, 13, 15, -6, -10,
+			16, 20, 9, 21, 16, 11, 10, 7,
+			5, 7, 8, 9, 1, 6, 11, 4,
+			18, 12, 11, 1, 8, 9, 6, 9,
+			12, 17, 13, 24, 14, 16, 13, 12,
+			7, 16, 22, 19, 18, 17, 11, -9,
+			6, 17, 18, 18, 22, 15, 7, -2,
+			11, 0, -4, 12, 7, 3, 5, -7,
+			-1, 10, 10, 12, 13, 16, -5, -10,
 		},
 		{
-			29, 18, 26, 24, 35, 32, 26, 59,
-			7, 3, 29, 46, 30, 45, 20, 52,
-			-14, 17, 13, 17, 45, 39, 71, 44,
-			-16, -6, -6, 7, 9, 6, 11, 16,
-			-33, -31, -18, -6, -7, -27, -4, -15,
-			-30, -28, -17, -14, -7, -11, 17, -3,
-			-34, -23, -7, -3, -1, 0, 16, -21,
-			-20, -14, -6, 3, 7, 0, 5, -21,
+			27, 17, 24, 22, 33, 30, 24, 57,
+			6, 1, 26, 44, 28, 44, 19, 51,
+			-14, 16, 12, 14, 42, 41, 72, 44,
+			-16, -7, -7, 5, 7, 8, 13, 15,
+			-34, -31, -18, -8, -8, -26, -2, -15,
+			-30, -27, -16, -14, -6, -10, 18, -3,
+			-34, -23, -7, -3, 0, 1, 17, -22,
+			-20, -14, -5, 3, 8, 0, 6, -21,
 		},
 		{
-			22, 29, 34, 28, 25, 28, 24, 16,
-			23, 36, 36, 25, 28, 22, 21, 6,
-			24, 22, 23, 20, 10, 7, 0, -4,
-			27, 24, 30, 23, 11, 9, 6, 4,
-			22, 22, 22, 19, 16, 17, 2, 4,
-			15, 12, 12, 14, 7, 1, -20, -14,
-			14, 13, 11, 11, 5, -2, -12, 4,
-			11, 10, 14, 7, 1, 3, -4, 0,
+			23, 30, 35, 29, 25, 28, 24, 17,
+			24, 36, 36, 25, 28, 22, 21, 6,
+			24, 23, 23, 20, 10, 6, 0, -4,
+			27, 24, 30, 22, 10, 8, 7, 5,
+			22, 23, 22, 18, 15, 16, 2, 4,
+			15, 13, 12, 13, 6, 2, -19, -14,
+			14, 14, 12, 10, 4, -2, -12, 3,
+			12, 11, 14, 6, 1, 3, -2, 0,
 		},
 		{
-			-49, -29, -7, 16, 16, 25, 14, -26,
-			-13, -27, -14, -17, -28, 13, -8, 23,
-			-1, -2, -2, 12, 5, 56, 43, 54,
+			-49, -29, -9, 15, 16, 25, 14, -28,
+			-12, -29, -16, -19, -30, 11, -9, 24,
+			-1, -3, -2, 10, 4, 56, 43, 54,
 			-17, -8, -6, -10, -1, 10, 10, 6,
-			-10, -17, -12, 0, 3, -2, 3, 7,
-			-15, -5, -1, -5, 1, 3, 13, 4,
-			-7, -3, 5, 13, 10, 18, 24, 35,
-			-11, -14, -4, 4, 3, -15, 6, -15,
+			-10, -16, -10, 0, 3, -1, 3, 7,
+			-14, -4, 0, -4, 2, 4, 14, 4,
+			-7, -3, 6, 13, 10, 19, 24, 34,
+			-10, -13, -3, 4, 3, -14, 7, -14,
 		},
 		{
-			45, 34, 51, 46, 50, 41, 6, 51,
-			2, 29, 57, 64, 99, 62, 21, 27,
-			10, 26, 56, 48, 67, 35, 1, -17,
-			28, 36, 45, 59, 62, 43, 41, 31,
-			6, 38, 41, 54, 48, 40, 25, 12,
-			-2, 7, 27, 31, 36, 28, -3, -10,
-			-18, -9, -10, -6, -1, -25, -61, -94,
-			-13, -13, -6, -9, -15, -23, -46, -25,
+			46, 35, 52, 47, 51, 41, 7, 52,
+			3, 29, 58, 66, 100, 61, 22, 29,
+			12, 28, 55, 48, 67, 35, 1, -16,
+			29, 36, 44, 59, 61, 42, 41, 31,
+			5, 38, 40, 54, 49, 40, 24, 13,
+			-1, 6, 27, 31, 36, 28, -3, -11,
+			-18, -10, -10, -6, -1, -25, -61, -94,
+			-12, -11, -6, -9, -15, -23, -46, -24,
 		},
 		{
-			75, 113, 83, 27, -27, -22, -57, 109,
-			-63, 27, 5, 104, 51, 11, 7, -60,
-			-38, 58, 25, 7, 41, 96, 16, -12,
-			-8, -13, -29, -37, -36, -34, -60, -109,
-			-61, -50, -46, -70, -76, -67, -104, -135,
-			-45, -38, -63, -61, -46, -73, -47, -69,
-			37, -9, -17, -42, -47, -33, 5, 15,
-			22, 54, 26, -59, -13, -41, 30, 30,
+			83, 125, 91, 36, -24, -21, -58, 117,
+			-56, 34, 13, 112, 56, 16, 12, -57,
+			-33, 62, 28, 7, 45, 99, 20, -7,
+			-4, -12, -26, -35, -34, -34, -60, -108,
+			-58, -48, -45, -70, -75, -67, -105, -134,
+			-45, -36, -61, -60, -48, -73, -48, -70,
+			35, -10, -17, -41, -47, -33, 4, 14,
+			22, 53, 25, -59, -13, -41, 30, 29,
 		},
 		{
-			-105, -63, -39, -4, -4, -6, -12, -120,
-			-7, 17, 28, 8, 29, 44, 40, 11,
-			0, 21, 36, 49, 52, 44, 48, 11,
-			-10, 25, 45, 54, 56, 53, 45, 18,
-			-14, 16, 37, 53, 51, 39, 30, 14,
-			-18, 7, 25, 34, 31, 25, 8, -6,
-			-38, -7, 5, 14, 17, 8, -14, -38,
-			-70, -55, -32, -6, -26, -13, -49, -82,
+			-107, -66, -41, -5, -5, -4, -11, -122,
+			-8, 16, 26, 7, 28, 42, 39, 10,
+			-1, 21, 34, 48, 51, 43, 48, 11,
+			-10, 24, 44, 53, 55, 52, 45, 18,
+			-14, 15, 36, 52, 50, 39, 31, 14,
+			-19, 6, 25, 34, 32, 26, 8, -6,
+			-38, -8, 5, 14, 17, 8, -14, -37,
+			-70, -56, -33, -7, -26, -14, -49, -81,
 		},
 	},
 	PieceValues: [2][7]Score{
-		{0, 80, 385, 415, 504, 1034, 0},
-		{0, 127, 324, 337, 642, 1269, 0},
+		{0, 83, 385, 417, 505, 1029, 0},
+		{0, 132, 324, 338, 641, 1273, 0},
 	},
 	TempoBonus: [2]Score{25, 22},
 	KingAttackPieces: [2][4]Score{
-		{7, 7, 9, 15},
-		{-37, 19, 3, -81},
+		{7, 7, 8, 15},
+		{-42, 19, 4, -81},
 	},
 	SafeChecks: [2][4]Score{
 		{10, 9, 9, 5},
@@ -196,41 +198,42 @@ var Coefficients = CoeffSet[Score]{
 	},
 	KingShelter: [2]Score{7, -1},
 	MobilityKnight: [2][9]Score{
-		{-60, -40, -28, -21, -14, -8, -1, 6, 10},
-		{-42, -3, 18, 28, 36, 44, 42, 38, 27},
+		{-60, -40, -28, -22, -15, -8, -1, 6, 9},
+		{-41, -3, 18, 28, 36, 45, 43, 38, 28},
 	},
 	MobilityBishop: [2][14]Score{
-		{-42, -31, -22, -19, -12, -4, 2, 5, 6, 8, 10, 13, 9, 22},
-		{-28, -10, -5, 7, 20, 33, 36, 43, 50, 48, 46, 45, 53, 38},
+		{-42, -32, -22, -19, -12, -4, 2, 5, 6, 8, 10, 12, 7, 22},
+		{-28, -8, -4, 8, 21, 34, 37, 43, 50, 48, 46, 45, 52, 37},
 	},
 	MobilityRook: [2][11]Score{
-		{-25, -19, -16, -12, -7, -2, 4, 11, 12, 16, 22},
-		{-1, 4, 13, 17, 24, 27, 29, 31, 39, 44, 38},
+		{-26, -19, -17, -12, -8, -1, 7, 13, 13, 16, 22},
+		{-5, 2, 11, 16, 24, 27, 29, 32, 40, 45, 39},
 	},
 	KnightOutpost: [2][40]Score{
 		{
-			-39, 44, 6, 20, 50, 92, 88, -21,
-			57, -9, -25, -53, 11, -38, -6, -18,
-			-4, -3, 9, 34, 14, 48, 16, 14,
-			-2, 26, 36, 36, 50, 53, 69, 12,
-			0, 0, 0, 37, 50, 0, 0, 0,
+			-36, 48, 15, 20, 53, 95, 99, -24,
+			58, -11, -25, -56, 4, -40, -6, -11,
+			-2, -3, 8, 33, 14, 47, 16, 13,
+			-3, 26, 36, 35, 48, 51, 69, 13,
+			0, 0, 0, 35, 49, 0, 0, 0,
 		},
 		{
-			-88, 140, -4, 16, -38, 70, -43, 43,
-			-48, 20, 33, 30, 7, 32, 14, 86,
-			24, 13, 25, 25, 35, 31, 27, 32,
-			22, 14, 16, 26, 29, 12, 1, 23,
-			0, 0, 0, 22, 21, 0, 0, 0,
+			-91, 140, -7, 20, -37, 70, -44, 43,
+			-51, 21, 31, 30, 7, 33, 15, 85,
+			25, 14, 27, 26, 35, 34, 27, 33,
+			23, 15, 16, 26, 27, 12, 0, 23,
+			0, 0, 0, 20, 18, 0, 0, 0,
 		},
 	},
 	ConnectedRooks:  [2]Score{1, 7},
 	BishopPair:      [2]Score{-16, 71},
-	ProtectedPasser: [2]Score{31, 18},
+	ProtectedPasser: [2]Score{30, 17},
 	PasserKingDist:  [2]Score{7, 9},
 	PasserRank: [2][6]Score{
-		{-24, -38, -32, -6, -4, 36},
-		{4, 5, 30, 58, 129, 88},
+		{-25, -40, -32, -5, -2, 37},
+		{-2, -1, 26, 54, 124, 85},
 	},
+	DoubledPawns: [2]Score{-20, -33},
 }
 
 // Phase is game phase.
@@ -294,6 +297,8 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 
 	pWise := newPieceWise(b, c)
 
+	pWise.pawns(mg[:], eg[:])
+
 	// evaluate piece wise
 	for pType := Knight; pType <= Queen; pType++ {
 		for color := White; color <= Black; color++ {
@@ -305,10 +310,6 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 				pWise.Eval(pType, color, sq, mg[:], eg[:])
 			}
 		}
-	}
-
-	for color := White; color <= Black; color++ {
-		pWise.pawns(color, mg[:], eg[:])
 	}
 
 	pWise.calcCover()
@@ -335,6 +336,76 @@ func Eval[T ScoreType](b *board.Board, _, _ T, c *CoeffSet[T]) T {
 	score := TaperedScore(b, phase, mg[:], eg[:])
 
 	return score
+}
+
+func (p *pieceWise[T]) pawns(mg, eg []T) {
+	b := p.b
+
+	ps := [...]board.BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
+
+	p.attacks[White][0] = movegen.PawnCaptureMoves(ps[White], White)
+	p.attacks[Black][0] = movegen.PawnCaptureMoves(ps[Black], Black)
+
+	// various useful pawn bitboards
+	frontSpan := [...]board.BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
+	wRearSpan := frontFill(ps[White], Black) >> 8
+	bRearSpan := frontFill(ps[Black], White) << 8
+
+	// calculate holes in our position, squares that cannot be protected by one
+	// of our pawns.
+	cover := [...]board.BitBoard{
+		((frontSpan[White] & ^board.AFile) >> 1) | ((frontSpan[White] & ^board.HFile) << 1),
+		((frontSpan[Black] & ^board.HFile) << 1) | ((frontSpan[Black] & ^board.AFile) >> 1),
+	}
+	p.holes[White] = sideOfBoard[White] & ^cover[White]
+	p.holes[Black] = sideOfBoard[Black] & ^cover[Black]
+
+	frontLine := [...]board.BitBoard{^wRearSpan & ps[White], ^bRearSpan & ps[Black]}
+
+	for color := White; color <= Black; color++ {
+		passers := frontLine[color] & ^(frontSpan[color.Flip()] | cover[color.Flip()])
+
+		// if there is a sole passer
+		if passers != 0 && passers&(passers-1) == 0 {
+			sq := passers.LowestSet()
+
+			// KPR, KPNB
+			if p.b.Pieces[Knight]|p.b.Pieces[Bishop]|p.b.Pieces[Queen] == 0 || p.b.Pieces[Rook]|p.b.Pieces[Queen] == 0 {
+				qSq := sq % 8
+				if color == White {
+					qSq += 56
+				}
+
+				kingDist := Manhattan(qSq, p.kingSq[color.Flip()]) - Manhattan(qSq, p.kingSq[color])
+
+				mg[color] += p.c.PasserKingDist[0] * T(kingDist)
+				eg[color] += p.c.PasserKingDist[1] * T(kingDist)
+			}
+		}
+
+		for passer := board.BitBoard(0); passers != 0; passers ^= passer {
+			passer = passers & -passers
+			sq := passer.LowestSet()
+
+			rank := sq / 8
+			if color == Black {
+				rank ^= 7
+			}
+
+			// if protected passers add protection bonus
+			if passer&p.attacks[color][0] != 0 {
+				mg[color] += p.c.ProtectedPasser[0]
+				eg[color] += p.c.ProtectedPasser[1]
+			}
+
+			mg[color] += p.c.PasserRank[0][rank-1]
+			eg[color] += p.c.PasserRank[1][rank-1]
+		}
+
+		// doubled pawns
+		mg[color] += p.c.DoubledPawns[0] * T((ps[color] &^ frontLine[color]).Count())
+		eg[color] += p.c.DoubledPawns[1] * T((ps[color] &^ frontLine[color]).Count())
+	}
 }
 
 // def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))
@@ -382,12 +453,10 @@ type pieceWise[T ScoreType] struct {
 	c          *CoeffSet[T]
 	b          *board.Board
 	occ        board.BitBoard
-	passers    board.BitBoard
 	attacks    [2][6]board.BitBoard
 	cover      [2]board.BitBoard
 	kingNb     [2]board.BitBoard
 	kingRays   [2][2]board.BitBoard
-	frontSpan  [2]board.BitBoard
 	holes      [2]board.BitBoard
 	kingAScore [2][2]T
 	kingSq     [2]Square
@@ -403,8 +472,6 @@ func newPieceWise[T ScoreType](b *board.Board, c *CoeffSet[T]) pieceWise[T] {
 
 	// the order of these is important. There are inter-dependencies
 	result.calcKingSquares()
-	result.calcPawnBitBoards()
-	result.calcPassers()
 
 	return result
 }
@@ -434,54 +501,6 @@ func (p *pieceWise[T]) calcCover() {
 			p.attacks[color][Rook-Pawn] |
 			p.attacks[color][Queen-Pawn] |
 			p.attacks[color][King-Pawn]
-	}
-}
-
-func (p *pieceWise[T]) calcPawnBitBoards() {
-	b := p.b
-
-	wP := b.Pieces[Pawn] & b.Colors[White]
-	p.attacks[White][0] = movegen.PawnCaptureMoves(wP, White)
-	bP := b.Pieces[Pawn] & b.Colors[Black]
-	p.attacks[Black][0] = movegen.PawnCaptureMoves(bP, Black)
-
-	// various useful pawn bitboards
-	wFrontSpan := frontFill(wP, White) << 8
-	bFrontSpan := frontFill(bP, Black) >> 8
-
-	p.frontSpan[White] = wFrontSpan
-	p.frontSpan[Black] = bFrontSpan
-
-	// calculate holes in our position, squares that cannot be protected by one
-	// of our pawns.
-	wCover := ((wFrontSpan & ^board.AFile) >> 1) | ((wFrontSpan & ^board.HFile) << 1)
-	bCover := ((bFrontSpan & ^board.HFile) << 1) | ((bFrontSpan & ^board.AFile) >> 1)
-	p.holes[White] = sideOfBoard[White] & ^wCover
-	p.holes[Black] = sideOfBoard[Black] & ^bCover
-}
-
-func (p *pieceWise[T]) calcPassers() {
-	b := p.b
-
-	for color := White; color <= Black; color++ {
-		myPawns := b.Pieces[Pawn] & b.Colors[color]
-		myRearFill := frontFill(myPawns, color.Flip())
-		theirFrontSpan := p.frontSpan[color.Flip()]
-
-		var myRearSpan board.BitBoard
-		switch color {
-		case White:
-			myRearSpan = myRearFill >> 8
-
-		case Black:
-			myRearSpan = myRearFill << 8
-		}
-
-		frontLine := ^myRearSpan & myPawns
-
-		enemyCover := theirFrontSpan | ((theirFrontSpan & ^board.AFile) >> 1) | ((theirFrontSpan & ^board.HFile) << 1)
-
-		p.passers |= frontLine & ^enemyCover
 	}
 }
 
@@ -566,48 +585,6 @@ func (p *pieceWise[T]) Eval(pType Piece, color Color, sq Square, mg, eg []T) {
 	if p.kingNb[color.Flip()]&attack != 0 {
 		p.kingAScore[0][color] += p.c.KingAttackPieces[0][pType-Knight]
 		p.kingAScore[1][color] += p.c.KingAttackPieces[1][pType-Knight]
-	}
-}
-
-func (p *pieceWise[T]) pawns(color Color, mg, eg []T) {
-	b := p.b
-	passers := p.passers & b.Colors[color]
-
-	// if there is a sole passer
-	if passers != 0 && passers&(passers-1) == 0 {
-		sq := passers.LowestSet()
-
-		// KPR, KPNB
-		if p.b.Pieces[Knight]|p.b.Pieces[Bishop]|p.b.Pieces[Queen] == 0 || p.b.Pieces[Rook]|p.b.Pieces[Queen] == 0 {
-			qSq := sq % 8
-			if color == White {
-				qSq += 56
-			}
-
-			kingDist := Manhattan(qSq, p.kingSq[color.Flip()]) - Manhattan(qSq, p.kingSq[color])
-
-			mg[color] += p.c.PasserKingDist[0] * T(kingDist)
-			eg[color] += p.c.PasserKingDist[1] * T(kingDist)
-		}
-	}
-
-	for passer := board.BitBoard(0); passers != 0; passers ^= passer {
-		passer = passers & -passers
-		sq := passer.LowestSet()
-
-		rank := sq / 8
-		if color == Black {
-			rank ^= 7
-		}
-
-		// if protected passers add protection bonus
-		if passer&p.attacks[color][0] != 0 {
-			mg[color] += p.c.ProtectedPasser[0]
-			eg[color] += p.c.ProtectedPasser[1]
-		}
-
-		mg[color] += p.c.PasserRank[0][rank-1]
-		eg[color] += p.c.PasserRank[1][rank-1]
 	}
 }
 
