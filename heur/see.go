@@ -16,33 +16,26 @@ func SEE(b *board.Board, m *move.Move) Score {
 	fromBB, to := board.BitBoard(1)<<m.From(), m.To()
 	toBB := board.BitBoard(1) << m.To()
 
-	// replace pawns that are part of SEE with Queen if they are on the second /
-	// seventh rank.
-	pawnAttackers := [2]board.BitBoard{
-		movegen.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White],
-		movegen.PawnCaptureMoves(toBB, White) & b.Pieces[Pawn] & b.Colors[Black],
-	}
-
 	// attackers of square "to"
 	attackers := [2][7]board.BitBoard{
 		// White
 		{
 			0, // NoPiece
-			pawnAttackers[White] & ^board.SeventhRank,
+			movegen.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White],
 			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[White],
-			0,                                        // bishops
-			0,                                        // rooks
-			pawnAttackers[White] & board.SeventhRank, // queens
+			0, // bishops
+			0, // rooks
+			0, // queens
 			movegen.KingMoves(to) & b.Pieces[King] & b.Colors[White],
 		},
 		// Black
 		{
 			0, // NoPiece
-			pawnAttackers[Black] & ^board.SecondRank,
+			movegen.PawnCaptureMoves(toBB, White) & b.Pieces[Pawn] & b.Colors[Black],
 			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[Black],
-			0,                                       // bishops
-			0,                                       // rooks
-			pawnAttackers[Black] & board.SecondRank, // queens
+			0, // bishops
+			0, // rooks
+			0, // queens
 			movegen.KingMoves(to) & b.Pieces[King] & b.Colors[Black],
 		},
 	}
@@ -52,9 +45,6 @@ func SEE(b *board.Board, m *move.Move) Score {
 	// piece type of least valueable attacker per side
 	start := [2]Piece{Pawn, Pawn}
 	piece := m.Piece
-	if m.Promo() != NoPiece {
-		piece = m.Promo()
-	}
 	occ := b.Colors[White] | b.Colors[Black]
 	stm := b.STM
 
