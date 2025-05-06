@@ -18,7 +18,7 @@ var Targets = [...]string{
 	"TempoBonus",
 	"MobilityKnight", "MobilityBishop", "MobilityRook",
 	"KingAttackPieces", "SafeChecks", "KingShelter",
-	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns",
+	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
 	"KnightOutpost", "ConnectedRooks", "BishopPair",
 }
 
