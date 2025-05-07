@@ -601,9 +601,9 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 		case b.SquaresToPiece[m.To()] != NoPiece:
 			see := heur.SEE(b, &m)
 			if see < 0 {
-				moves[ix].Weight = see - heur.Captures - heur.MaxCaptures
+				moves[ix].Weight = -heur.Captures - heur.MaxCaptures
 			} else {
-				moves[ix].Weight = see + heur.Captures + heur.MaxCaptures
+				moves[ix].Weight = heur.Captures + heur.MaxCaptures
 			}
 			moves[ix].Weight += sst.captHist.Probe(m.Piece, m.To(), b.SquaresToPiece[m.To()])
 
