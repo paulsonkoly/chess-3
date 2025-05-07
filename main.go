@@ -7,8 +7,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/olekukonko/tablewriter"
-
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/uci"
@@ -22,7 +20,6 @@ var debugFEN = flag.String("debugFEN", "", "Debug a given fen to a given depth u
 var debugDepth = flag.Int("debugDepth", 3, "Debug a given depth")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
 var memProf = flag.String("memProf", "", "mem profile file name")
-var bench = flag.Bool("bench", false, "run benchmark instead of UCI")
 
 func main() {
 
@@ -49,12 +46,6 @@ func main() {
 
 	e := uci.NewEngine()
 
-	// our normal benchmark table
-	if *bench {
-		runBench(e)
-		return
-	}
-
 	// openbench compatibility bench
 	if slices.Contains(os.Args, "bench") {
 		runOBBench(e)
@@ -76,132 +67,74 @@ func main() {
 	}
 }
 
-// Stats contains search statistics. See search.State.
-type Stats struct {
-	Ok     bool
-	AWFail int
-	ABCnt  int
-	ABBF   float32
-	TTHit  int
-	QCnt   int
-	QDepth int
-	Time   int64
-	KNps   int
-}
-
-func runBench(e *uci.Engine) {
-	bratkoKopec := []struct {
-		fen string
-		bm  string
-	}{
-		{"1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - -0 1", "d6d1"},
-		{"3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - -0 1", "d4d5"},
-		{"2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - -0 1", "f6f5"},
-		{"rnbqkb1r/p3pppp/1p6/2ppP3/3N4/2P5/PPP1QPPP/R1B1KB1R w KQkq -0 1", "e5e6"},
-		{"r1b2rk1/2q1b1pp/p2ppn2/1p6/3QP3/1BN1B3/PPP3PP/R4RK1 w - -0 1", "c3d5"}, // a2a4
-		{"2r3k1/pppR1pp1/4p3/4P1P1/5P2/1P4K1/P1P5/8 w - -0 1", "g5g6"},
-		{"1nk1r1r1/pp2n1pp/4p3/q2pPp1N/b1pP1P2/B1P2R2/2P1B1PP/R2Q2K1 w - -0 1", "h5f6"},
-		{"4b3/p3kp2/6p1/3pP2p/2pP1P2/4K1P1/P3N2P/8 w - -0 1", "f4f5"},
-		{"2kr1bnr/pbpq4/2n1pp2/3p3p/3P1P1B/2N2N1Q/PPP3PP/2KR1B1R w - -0 1", "f4f5"},
-		{"3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - -0 1", "f3e5"},
-		{"2r1nrk1/p2q1ppp/bp1p4/n1pPp3/P1P1P3/2PBB1N1/4QPPP/R4RK1 w - -0 1", "f2f4"},
-		{"r3r1k1/ppqb1ppp/8/4p1NQ/8/2P5/PP3PPP/R3R1K1 b - -0 1", "d7f5"},
-		{"r2q1rk1/4bppp/p2p4/2pP4/3pP3/3Q4/PP1B1PPP/R3R1K1 w - -0 1", "b2b4"},
-		{"rnb2r1k/pp2p2p/2pp2p1/q2P1p2/8/1Pb2NP1/PB2PPBP/R2Q1RK1 w - -0 1", "d1d2 d1e1"},
-		{"2r3k1/1p2q1pp/2b1pr2/p1pp4/6Q1/1P1PP1R1/P1PN2PP/5RK1 w - -0 1", "g4g7"},
-		{"r1bqkb1r/4npp1/p1p4p/1p1pP1B1/8/1B6/PPPN1PPP/R2Q1RK1 w kq -0 1", "d2e4"},
-		{"r2q1rk1/1ppnbppp/p2p1nb1/3Pp3/2P1P1P1/2N2N1P/PPB1QP2/R1B2RK1 b - -0 1", "h7h5"},
-		{"r1bq1rk1/pp2ppbp/2np2p1/2n5/P3PP2/N1P2N2/1PB3PP/R1B1QRK1 b - -0 1", "c5b3"},
-		{"3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - -0 1", "e8e4"},
-		{"r4k2/pb2bp1r/1p1qp2p/3pNp2/3P1P2/2N3P1/PPP1Q2P/2KRR3 w - -0 1", "g3g4"},
-		{"3rn2k/ppb2rpp/2ppqp2/5N2/2P1P3/1P5Q/PB3PPP/3RR1K1 w - -0 1", "f5h6"},
-		{"2r2rk1/1bqnbpp1/1p1ppn1p/pP6/N1P1P3/P2B1N1P/1B2QPP1/R2R2K1 b - -0 1", "b7e4"},
-		{"r1bqk2r/pp2bppp/2p5/3pP3/P2Q1P2/2N1B3/1PP3PP/R4RK1 b kq -0 1", "f7f6"},
-		{"r2qnrnk/p2b2b1/1p1p2pp/2pPpp2/1PP1P3/PRNBB3/3QNPPP/5RK1 w - -0 1", "f5f4"},
-	}
-
-	stats := []Stats{}
-
-	for _, bk := range bratkoKopec {
-		e.Board = Must(board.FromFEN(bk.fen))
-		_, m := e.Search(9)
-
-		ok := m.String() == bk.bm
-
-		stats = append(stats, Stats{
-			ok,
-			e.SST.AWFail,
-			e.SST.ABCnt + e.SST.ABLeaf,
-			float32(e.SST.ABBreadth) / float32(e.SST.ABCnt),
-			e.SST.TTHit,
-			e.SST.QCnt,
-			int(e.SST.QDepth),
-			e.SST.Time,
-			(e.SST.ABCnt + e.SST.QCnt) / int(e.SST.Time),
-		})
-	}
-
-	avg := Stats{}
-
-	for _, stat := range stats {
-		avg.AWFail += stat.AWFail
-		avg.ABCnt += stat.ABCnt
-		avg.ABBF += stat.ABBF
-		avg.TTHit += stat.TTHit
-		avg.QCnt += stat.QCnt
-		avg.QDepth += stat.QDepth
-		avg.Time += stat.Time
-		avg.KNps += stat.KNps
-	}
-
-	table := tablewriter.NewWriter(os.Stdout)
-
-	okCnt := 0
-
-	for ix, stat := range stats {
-		var ok string
-		if stat.Ok {
-			ok = "✓"
-			okCnt++
-		} else {
-			ok = "❌"
-		}
-		aWFail := fmt.Sprintf("%d", stat.AWFail)
-		aBCnt := fmt.Sprintf("%d", stat.ABCnt)
-		abBF := fmt.Sprintf("%.4f", stat.ABBF)
-		tTHit := fmt.Sprintf("%d", stat.TTHit)
-		qCnt := fmt.Sprintf("%d", stat.QCnt)
-		qDepth := fmt.Sprintf("%d", stat.QDepth)
-		timeMs := fmt.Sprintf("%d", stat.Time)
-		kNps := fmt.Sprintf("%d", stat.KNps)
-
-		table.Append([]string{fmt.Sprintf("BK %d", ix+1), ok, aWFail, aBCnt, abBF, tTHit, qCnt, qDepth, timeMs, kNps})
-	}
-
-	table.Append([]string{"average",
-		fmt.Sprintf("%d / %d", okCnt, len(bratkoKopec)),
-		fmt.Sprintf("%.2f", float32(avg.AWFail)/float32(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float64(avg.ABCnt)/float64(len(bratkoKopec))),
-		fmt.Sprintf("%.4f", avg.ABBF/float32(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float64(avg.TTHit)/float64(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float64(avg.QCnt)/float64(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float32(avg.QDepth)/float32(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float64(avg.Time)/float64(len(bratkoKopec))),
-		fmt.Sprintf("%.2f", float64(avg.KNps)/float64(len(bratkoKopec))),
-	})
-
-	table.SetHeader([]string{"Test", "BM", "AWFail", "ABCnt", "ABBF", "TTHit", "QCnt", "QDepth", "Time (ms)", "Speed (Kn/s)"})
-	table.SetAutoWrapText(false)
-	table.Render()
+var OBBenchSet = [...]string{
+	"r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
+	"4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
+	"r3qbrk/6p1/2b2pPp/p3pP1Q/PpPpP2P/3P1B2/2PB3K/R5R1 w - - 16 42",
+	"6k1/1R3p2/6p1/2Bp3p/3P2q1/P7/1P2rQ1K/5R2 b - - 4 44",
+	"8/8/1p2k1p1/3p3p/1p1P1P1P/1P2PK2/8/8 w - - 3 54",
+	"7r/2p3k1/1p1p1qp1/1P1Bp3/p1P2r1P/P7/4R3/Q4RK1 w - - 0 36",
+	"r1bq1rk1/pp2b1pp/n1pp1n2/3P1p2/2P1p3/2N1P2N/PP2BPPP/R1BQ1RK1 b - - 2 10",
+	"3r3k/2r4p/1p1b3q/p4P2/P2Pp3/1B2P3/3BQ1RP/6K1 w - - 3 87",
+	"2r4r/1p4k1/1Pnp4/3Qb1pq/8/4BpPp/5P2/2RR1BK1 w - - 0 42",
+	"4q1bk/6b1/7p/p1p4p/PNPpP2P/KN4P1/3Q4/4R3 b - - 0 37",
+	"2q3r1/1r2pk2/pp3pp1/2pP3p/P1Pb1BbP/1P4Q1/R3NPP1/4R1K1 w - - 2 34",
+	"1r2r2k/1b4q1/pp5p/2pPp1p1/P3Pn2/1P1B1Q1P/2R3P1/4BR1K b - - 1 37",
+	"r3kbbr/pp1n1p1P/3ppnp1/q5N1/1P1pP3/P1N1B3/2P1QP2/R3KB1R b KQkq b3 0 17",
+	"8/6pk/2b1Rp2/3r4/1R1B2PP/P5K1/8/2r5 b - - 16 42",
+	"1r4k1/4ppb1/2n1b1qp/pB4p1/1n1BP1P1/7P/2PNQPK1/3RN3 w - - 8 29",
+	"8/p2B4/PkP5/4p1pK/4Pb1p/5P2/8/8 w - - 29 68",
+	"3r4/ppq1ppkp/4bnp1/2pN4/2P1P3/1P4P1/PQ3PBP/R4K2 b - - 2 20",
+	"5rr1/4n2k/4q2P/P1P2n2/3B1p2/4pP2/2N1P3/1RR1K2Q w - - 1 49",
+	"1r5k/2pq2p1/3p3p/p1pP4/4QP2/PP1R3P/6PK/8 w - - 1 51",
+	"q5k1/5ppp/1r3bn1/1B6/P1N2P2/BQ2P1P1/5K1P/8 b - - 2 34",
+	"r1b2k1r/5n2/p4q2/1ppn1Pp1/3pp1p1/NP2P3/P1PPBK2/1RQN2R1 w - - 0 22",
+	"r1bqk2r/pppp1ppp/5n2/4b3/4P3/P1N5/1PP2PPP/R1BQKB1R w KQkq - 0 5",
+	"r1bqr1k1/pp1p1ppp/2p5/8/3N1Q2/P2BB3/1PP2PPP/R3K2n b Q - 1 12",
+	"r1bq2k1/p4r1p/1pp2pp1/3p4/1P1B3Q/P2B1N2/2P3PP/4R1K1 b - - 2 19",
+	"r4qk1/6r1/1p4p1/2ppBbN1/1p5Q/P7/2P3PP/5RK1 w - - 2 25",
+	"r7/6k1/1p6/2pp1p2/7Q/8/p1P2K1P/8 w - - 0 32",
+	"r3k2r/ppp1pp1p/2nqb1pn/3p4/4P3/2PP4/PP1NBPPP/R2QK1NR w KQkq - 1 5",
+	"3r1rk1/1pp1pn1p/p1n1q1p1/3p4/Q3P3/2P5/PP1NBPPP/4RRK1 w - - 0 12",
+	"5rk1/1pp1pn1p/p3Brp1/8/1n6/5N2/PP3PPP/2R2RK1 w - - 2 20",
+	"8/1p2pk1p/p1p1r1p1/3n4/8/5R2/PP3PPP/4R1K1 b - - 3 27",
+	"8/4pk2/1p1r2p1/p1p4p/Pn5P/3R4/1P3PP1/4RK2 w - - 1 33",
+	"8/5k2/1pnrp1p1/p1p4p/P6P/4R1PK/1P3P2/4R3 b - - 1 38",
+	"8/8/1p1kp1p1/p1pr1n1p/P6P/1R4P1/1P3PK1/1R6 b - - 15 45",
+	"8/8/1p1k2p1/p1prp2p/P2n3P/6P1/1P1R1PK1/4R3 b - - 5 49",
+	"8/8/1p4p1/p1p2k1p/P2npP1P/4K1P1/1P6/3R4 w - - 6 54",
+	"8/8/1p4p1/p1p2k1p/P2n1P1P/4K1P1/1P6/6R1 b - - 6 59",
+	"8/5k2/1p4p1/p1pK3p/P2n1P1P/6P1/1P6/4R3 b - - 14 63",
+	"8/1R6/1p1K1kp1/p6p/P1p2P1P/6P1/1Pn5/8 w - - 0 67",
+	"1rb1rn1k/p3q1bp/2p3p1/2p1p3/2P1P2N/PP1RQNP1/1B3P2/4R1K1 b - - 4 23",
+	"4rrk1/pp1n1pp1/q5p1/P1pP4/2n3P1/7P/1P3PB1/R1BQ1RK1 w - - 3 22",
+	"r2qr1k1/pb1nbppp/1pn1p3/2ppP3/3P4/2PB1NN1/PP3PPP/R1BQR1K1 w - - 4 12",
+	"2r2k2/8/4P1R1/1p6/8/P4K1N/7b/2B5 b - - 0 55",
+	"6k1/5pp1/8/2bKP2P/2P5/p4PNb/B7/8 b - - 1 44",
+	"2rqr1k1/1p3p1p/p2p2p1/P1nPb3/2B1P3/5P2/1PQ2NPP/R1R4K w - - 3 25",
+	"r1b2rk1/p1q1ppbp/6p1/2Q5/8/4BP2/PPP3PP/2KR1B1R b - - 2 14",
+	"6r1/5k2/p1b1r2p/1pB1p1p1/1Pp3PP/2P1R1K1/2P2P2/3R4 w - - 1 36",
+	"rnbqkb1r/pppppppp/5n2/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",
+	"2rr2k1/1p4bp/p1q1p1p1/4Pp1n/2PB4/1PN3P1/P3Q2P/2RR2K1 w - f6 0 20",
+	"3br1k1/p1pn3p/1p3n2/5pNq/2P1p3/1PN3PP/P2Q1PB1/4R1K1 w - - 0 23",
+	"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 }
 
 func runOBBench(e *uci.Engine) {
-	fen := "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1"
-	e.Board = Must(board.FromFEN(fen))
-	e.Search(17)
+	nCnt := 0
+	allTime := int64(0)
+	for _, fen := range OBBenchSet {
+		e.Board = Must(board.FromFEN(fen))
+		e.Search(12)
 
-	nodes := e.SST.ABCnt + e.SST.ABLeaf + e.SST.QCnt
-	time := e.SST.Time
+		nodes := e.SST.ABCnt + e.SST.QCnt
+		time := e.SST.Time
 
-	fmt.Printf("%d nodes %d nps\n", nodes, 1000*nodes/int(time))
+		fmt.Printf("nodes %d time %d\n", nodes, time)
+
+		nCnt += nodes
+		allTime += time
+	}
+	fmt.Printf("nodes %d time %d\n", nCnt, allTime)
+	fmt.Printf("nps %d\n", 1000*nCnt/int(allTime))
 }
