@@ -22,11 +22,17 @@ const (
 	Captures = Score(8192)
 )
 
-const MaxHistory = 1024
+const (
+	MaxHistory  = 1024
+	MaxCaptures = 2048
+)
 
 func init() {
 	// 1 * history + 2 * continuation[1] + 3 * continuation[0]
 	if Captures < 6*MaxHistory {
 		panic("gap is not big enough in move weight layout for history scores")
+	}
+	if 2*MaxCaptures + Captures >= HashMove {
+		panic("gap for captures is too small")
 	}
 }

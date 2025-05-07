@@ -28,12 +28,13 @@ const (
 
 // State is a persistent state storage between searches.
 type State struct {
-	tt     *transp.Table
-	hist   *heur.History
-	cont   [2]*heur.Continuation
-	ms     *move.Store
-	hstack *historyStack
-	pv     *pv
+	tt       *transp.Table
+	hist     *heur.History
+	cont     [2]*heur.Continuation
+	captHist *heur.CaptHist
+	ms       *move.Store
+	hstack   *historyStack
+	pv       *pv
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
@@ -60,12 +61,13 @@ type State struct {
 // re-used between Search() calls.
 func NewState(ttSizeInMb int) *State {
 	return &State{
-		tt:     transp.New(ttSizeInMb),
-		ms:     move.NewStore(),
-		hist:   heur.NewHistory(),
-		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
-		hstack: newHistStack(),
-		pv:     newPV(),
+		tt:       transp.New(ttSizeInMb),
+		ms:       move.NewStore(),
+		hist:     heur.NewHistory(),
+		captHist: heur.NewCaptHist(),
+		cont:     [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
+		hstack:   newHistStack(),
+		pv:       newPV(),
 	}
 }
 
@@ -282,6 +284,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		sst.hist.Deflate()
 		sst.cont[0].Deflate()
 		sst.cont[1].Deflate()
+		sst.captHist.Deflate()
 	}
 
 	sst.ms.Push()
@@ -359,30 +362,52 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
-				hSize := sst.hstack.size()
 				bonus := -Score(d * d)
 
-				for i, m := range moves {
-					if i == ix {
-						bonus = -bonus
-					}
+				switch {
+				case m.Captured != NoPiece:
 
-					if m.Captured == NoPiece && m.Promo() == NoPiece {
-						sst.hist.Add(b.STM, m.From(), m.To(), bonus)
-
-						if hSize >= 1 {
-							hist := sst.hstack.top(0)
-							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+					for i, m := range moves {
+						if i == ix {
+							bonus = -bonus
 						}
 
-						if hSize >= 2 {
-							hist := sst.hstack.top(1)
-							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+						if m.Captured != NoPiece && m.Promo() == NoPiece {
+							sst.captHist.Add(m.Piece, m.To(), m.Captured, bonus)
+						}
+
+						if i == ix {
+							break
 						}
 					}
 
-					if i == ix {
-						break
+				case m.Promo() != NoPiece:
+
+				default:
+					hSize := sst.hstack.size()
+
+					for i, m := range moves {
+						if i == ix {
+							bonus = -bonus
+						}
+
+						if m.Captured == NoPiece && m.Promo() == NoPiece {
+							sst.hist.Add(b.STM, m.From(), m.To(), bonus)
+
+							if hSize >= 1 {
+								hist := sst.hstack.top(0)
+								sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							}
+
+							if hSize >= 2 {
+								hist := sst.hstack.top(1)
+								sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							}
+						}
+
+						if i == ix {
+							break
+						}
 					}
 				}
 
@@ -444,7 +469,7 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
-	value := (log[d] * log[min(mCount, len(log) - 1)]) >> 14
+	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
 	// if !quiet {
 	// 	value /= 2
@@ -570,13 +595,17 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece:
+		case m.Promo() != NoPiece:
+			moves[ix].Weight = heur.Captures + 2*heur.MaxCaptures + heur.PieceValues[m.Promo()]
+
+		case b.SquaresToPiece[m.To()] != NoPiece:
 			see := heur.SEE(b, &m)
 			if see < 0 {
-				moves[ix].Weight = see - heur.Captures
+				moves[ix].Weight = see - heur.Captures - heur.MaxCaptures
 			} else {
-				moves[ix].Weight = see + heur.Captures
+				moves[ix].Weight = see + heur.Captures + heur.MaxCaptures
 			}
+			moves[ix].Weight += sst.captHist.Probe(m.Piece, m.To(), b.SquaresToPiece[m.To()])
 
 		default:
 			score := sst.hist.Probe(b.STM, m.From(), m.To())
