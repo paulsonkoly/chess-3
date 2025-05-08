@@ -282,9 +282,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	// deflate history
 	if sst.ABCnt%10_000 == 0 {
 		sst.hist.Deflate()
-		sst.cont[0].Deflate()
-		sst.cont[1].Deflate()
-		sst.captHist.Deflate()
 	}
 
 	sst.ms.Push()
@@ -362,8 +359,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
-				bonus := -Score(d * d)
 				hSize := sst.hstack.size()
+				bonus := -Score(d * d)
 
 				for i, m := range moves {
 					if i == ix {
