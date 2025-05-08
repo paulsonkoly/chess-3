@@ -363,51 +363,38 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
 				bonus := -Score(d * d)
+				hSize := sst.hstack.size()
 
-				switch {
-				case m.Captured != NoPiece:
+				for i, m := range moves {
+					if i == ix {
+						bonus = -bonus
+					}
 
-					for i, m := range moves {
-						if i == ix {
-							bonus = -bonus
+					switch {
+					case m.Promo() != NoPiece:
+						// promotion move, do nothing with heuristics, the move ranking
+						// ignores heuristics for promo anyway
+
+					case m.Captured != NoPiece:
+						sst.captHist.Add(m.Piece, m.To(), m.Captured, bonus)
+
+					default:
+
+						sst.hist.Add(b.STM, m.From(), m.To(), bonus)
+
+						if hSize >= 1 {
+							hist := sst.hstack.top(0)
+							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
 						}
 
-						if m.Captured != NoPiece && m.Promo() == NoPiece {
-							sst.captHist.Add(m.Piece, m.To(), m.Captured, bonus)
-						}
-
-						if i == ix {
-							break
+						if hSize >= 2 {
+							hist := sst.hstack.top(1)
+							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
 						}
 					}
 
-				case m.Promo() != NoPiece:
-
-				default:
-					hSize := sst.hstack.size()
-
-					for i, m := range moves {
-						if i == ix {
-							bonus = -bonus
-						}
-
-						if m.Captured == NoPiece && m.Promo() == NoPiece {
-							sst.hist.Add(b.STM, m.From(), m.To(), bonus)
-
-							if hSize >= 1 {
-								hist := sst.hstack.top(0)
-								sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
-							}
-
-							if hSize >= 2 {
-								hist := sst.hstack.top(1)
-								sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
-							}
-						}
-
-						if i == ix {
-							break
-						}
+					if i == ix {
+						break
 					}
 				}
 
