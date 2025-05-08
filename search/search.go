@@ -581,19 +581,27 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 			moves[ix].Weight = heur.HashMove
 
 		case m.Promo() != NoPiece:
-			// place promo in good captures to the bucket for capturing promo piece
+			// place promo in good captures in the bucket for promo piece
 			score := heur.Captures + 2*heur.MaxCaptHist*(Score(m.Promo()-Pawn)) + heur.MaxCaptHist
 			moves[ix].Weight = score
 
 		case captured != NoPiece:
 			see := heur.SEE(b, &m)
-
+/*
 			bucket := captured - Pawn
 			captHist := sst.captHist.Probe(m.Piece, m.To(), captured)
 			score := heur.Captures + 2*heur.MaxCaptHist*(Score(bucket)) + heur.MaxCaptHist + captHist
 
 			if see < 0 {
 				score -= 2*heur.Captures + 12*heur.MaxCaptHist
+			}
+			*/
+			var score Score
+
+			if see < 0 {
+				score = see - heur.Captures
+			} else {
+				score = see + heur.Captures
 			}
 
 			moves[ix].Weight = score
