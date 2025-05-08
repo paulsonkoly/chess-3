@@ -379,7 +379,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 						sst.captHist.Add(m.Piece, m.To(), m.Captured, bonus)
 
 					default:
-
 						sst.hist.Add(b.STM, m.From(), m.To(), bonus)
 
 						if hSize >= 1 {
@@ -593,7 +592,7 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 			see := heur.SEE(b, &m)
 
 			bucket := captured - Pawn
-			captHist := sst.captHist.Probe(m.Piece, m.To(), b.SquaresToPiece[m.To()])
+			captHist := sst.captHist.Probe(m.Piece, m.To(), captured)
 			score := heur.Captures + 2*heur.MaxCaptHist*(Score(bucket)) + heur.MaxCaptHist + captHist
 
 			if see < 0 {
