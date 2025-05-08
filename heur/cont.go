@@ -30,7 +30,7 @@ func (c *Continuation) Add(stm Color, ptHist Piece, toHist Square, pt Piece, to 
 	ix := ix(stm, ptHist, toHist, pt, to)
 
 	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
-	c.data[ix] += clampedBonus - Score(int(c.data[ix])*int(Abs(clampedBonus))/MaxHistory)
+	c.data[ix] += clampedBonus - Score(int(c.data[ix])*int(Abs(clampedBonus))/int(MaxHistory))
 }
 
 // Probe returns the continuation history heuristics entry for the move.

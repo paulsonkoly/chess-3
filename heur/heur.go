@@ -9,30 +9,14 @@ import (
 // purposes.
 var PieceValues = [...]Score{0, 100, 300, 300, 500, 900, Inf}
 
-// Move ordering stages
-//
-// | hash | .. Good captures .. | .. Continuation .. | .. History .. | .. Quiet .. | .. unused .. | .. Bad captures .. |
-//
-//	 ^                         ^                                    ^       ^                      ^
-//	HashMove            Captures                                Quiet       0                      -Captures
 const (
+	// Captures is the minimal score for captures.
+	Captures = 6 * MaxHistory
 	// HashMove is assigned to a move from Hash, either PV or fail-high.
-	HashMove = Score(15000)
-	// Captures is the minimal score for captures, actual score is this plus SEE.
-	Captures = Score(8192)
+	HashMove = Captures + 12 * MaxCaptHist + 100
 )
 
 const (
-	MaxHistory  = 1024
-	MaxCaptures = 2048
+	MaxHistory  = Score(1024)
+	MaxCaptHist = Score(1024)
 )
-
-func init() {
-	// 1 * history + 2 * continuation[1] + 3 * continuation[0]
-	if Captures < 6*MaxHistory {
-		panic("gap is not big enough in move weight layout for history scores")
-	}
-	if 2*MaxCaptures + Captures >= HashMove {
-		panic("gap for captures is too small")
-	}
-}

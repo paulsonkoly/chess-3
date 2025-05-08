@@ -591,21 +591,29 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 
 	for ix, m := range moves {
 
+		captured := b.SquaresToPiece[m.To()]
+
 		switch {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
 		case m.Promo() != NoPiece:
-			moves[ix].Weight = heur.Captures + 2*heur.MaxCaptures + heur.PieceValues[m.Promo()]
+			// place promo in good captures to the bucket for capturing promo piece
+			score := heur.Captures + 2*heur.MaxCaptHist*(Score(m.Promo()-Pawn)) + heur.MaxCaptHist
+			moves[ix].Weight = score
 
-		case b.SquaresToPiece[m.To()] != NoPiece:
+		case captured != NoPiece:
 			see := heur.SEE(b, &m)
+
+			bucket := captured - Pawn
+			captHist := sst.captHist.Probe(m.Piece, m.To(), b.SquaresToPiece[m.To()])
+			score := heur.Captures + 2*heur.MaxCaptHist*(Score(bucket)) + heur.MaxCaptHist + captHist
+
 			if see < 0 {
-				moves[ix].Weight = -heur.Captures - heur.MaxCaptures
-			} else {
-				moves[ix].Weight = heur.Captures + heur.MaxCaptures
+				score -= 2*heur.Captures + 12*heur.MaxCaptHist
 			}
-			moves[ix].Weight += sst.captHist.Probe(m.Piece, m.To(), b.SquaresToPiece[m.To()])
+
+			moves[ix].Weight = score
 
 		default:
 			score := sst.hist.Probe(b.STM, m.From(), m.To())

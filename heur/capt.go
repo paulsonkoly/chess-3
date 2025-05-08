@@ -29,8 +29,8 @@ func (c *CaptHist) Deflate() {
 func (c *CaptHist) Add(piece Piece, to Square, captured Piece, bonus Score) {
 	ref := &c.data[piece-1][to][captured-1]
 
-	clampedBonus := Clamp(bonus, -MaxCaptures, MaxCaptures)
-	*ref += clampedBonus - Score(int(*ref)*int(Abs(clampedBonus))/MaxCaptures)
+	clampedBonus := Clamp(bonus, -MaxCaptHist, MaxCaptHist)
+	*ref += clampedBonus - Score(int(*ref)*int(Abs(clampedBonus))/int(MaxCaptHist))
 }
 
 // Probe returns the continuation history heuristics entry for the move.
