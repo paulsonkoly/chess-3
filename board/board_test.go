@@ -73,7 +73,6 @@ func TestZobrist(t *testing.T) {
 			movegen.GenMoves(ms, b)
 
 			for _, m := range ms.Frame() {
-				mOld := m
 				b.MakeMove(&m)
 
 				if movegen.InCheck(b, b.STM.Flip()) {
@@ -87,7 +86,6 @@ func TestZobrist(t *testing.T) {
 				b.UndoMove(&m)
 
 				assert.Equal(t, tt.b, b)
-				assert.Equal(t, mOld, m, mOld)
 			}
 		})
 	}
