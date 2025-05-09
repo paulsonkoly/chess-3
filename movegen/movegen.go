@@ -91,9 +91,6 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 			m.SetFrom(from)
 			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
-			m.Castle = 0
-			m.SetPromo(0)
-			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
 	}
@@ -118,9 +115,6 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 			m.SetFrom(from)
 			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
-			m.Castle = 0
-			m.SetPromo(0)
-			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
 	}
@@ -147,9 +141,6 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 			m.SetFrom(from)
 			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
-			m.Castle = 0
-			m.SetPromo(0)
-			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
 	}
@@ -179,9 +170,6 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 			m.SetFrom(from)
 			m.SetTo(to)
 			m.CRights = newC ^ b.CRights
-			m.Castle = 0
-			m.SetPromo(0)
-			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
 	}
@@ -214,9 +202,6 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boa
 			m.SetFrom(from)
 			m.SetTo(to)
 			m.CRights = cNew ^ b.CRights
-			m.Castle = 0
-			m.SetPromo(0)
-			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
 	}
@@ -239,10 +224,6 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board
 		m.Piece = Pawn
 		m.SetFrom(from)
 		m.SetTo(from + shift)
-		m.CRights = 0
-		m.Castle = 0
-		m.SetPromo(0)
-		m.EPP = 0
 		m.EPSq = b.EnPassant
 	}
 }
@@ -262,10 +243,7 @@ func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk board.
 			m.Piece = Pawn
 			m.SetFrom(from)
 			m.SetTo(from + shift)
-			m.CRights = 0
 			m.SetPromo(promo)
-			m.Castle = 0
-			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
 	}
@@ -287,14 +265,10 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 		m.Piece = Pawn
 		m.SetFrom(from)
 		m.SetTo(from + 2*shift)
-		m.CRights = 0
 		m.EPSq = b.EnPassant
 		if canEnPassant(b, m.To()) {
 			m.EPSq ^= m.To()
 		}
-		m.Castle = 0
-		m.SetPromo(0)
-		m.EPP = 0
 	}
 }
 
@@ -354,10 +328,6 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 			m.Piece = Pawn
 			m.SetFrom(from)
 			m.SetTo(to)
-			m.CRights = 0
-			m.Castle = 0
-			m.SetPromo(0)
-			m.EPP = 0
 			m.EPSq = b.EnPassant
 		}
 	}
@@ -394,8 +364,6 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 				m.SetTo(to)
 				m.SetPromo(promo)
 				m.CRights = cNew ^ b.CRights
-				m.Castle = 0
-				m.EPP = 0
 				m.EPSq = b.EnPassant
 			}
 		}
@@ -416,9 +384,6 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 		m.SetFrom(from)
 		m.SetTo(b.EnPassant + shift)
 		m.EPP = Pawn
-		m.CRights = 0
-		m.Castle = 0
-		m.SetPromo(0)
 		m.EPSq = b.EnPassant
 	}
 }
@@ -439,8 +404,6 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.Bit
 				m.SetTo(from + 2)
 				m.Castle = C(b.STM, Short)
 				m.CRights = b.CRights ^ newC
-				m.SetPromo(0)
-				m.EPP = 0
 				m.EPSq = b.EnPassant
 			}
 		}
@@ -460,8 +423,6 @@ func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitB
 				m.SetTo(from - 2)
 				m.Castle = C(b.STM, Long)
 				m.CRights = b.CRights ^ newC
-				m.SetPromo(0)
-				m.EPP = 0
 				m.EPSq = b.EnPassant
 			}
 		}

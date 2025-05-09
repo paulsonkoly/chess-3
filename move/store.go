@@ -24,7 +24,9 @@ func (s *Store) Clear() {
 
 func (s *Store) Alloc() *Move {
 	s.allocIx++
-	return &s.data[s.allocIx-1]
+	ptr := &s.data[s.allocIx-1]
+	*ptr = Move{} // reset to zero value
+	return ptr
 }
 
 func (s *Store) Push() {

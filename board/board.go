@@ -180,8 +180,6 @@ func (b *Board) UndoMove(m *move.Move) {
 	b.Pieces[Pawn] |= (1 << b.EnPassant) & epMask
 	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & epMask
 
-	m.Captured = 0
-
 	b.hashes = b.hashes[:len(b.hashes)-1]
 
 	// b.consistencyCheck()
