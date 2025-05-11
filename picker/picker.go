@@ -148,7 +148,3 @@ func (p *Picker) yield(ix int) *move.Move {
 	p.yix++
 	return result
 }
-
-func (p *Picker) Ix() int {
-	return p.yix - 1
-}
