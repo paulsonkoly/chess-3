@@ -305,7 +305,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	moves := sst.ms.Frame()
 
 	var (
-		ix       int
 		bestMove move.SimpleMove
 	)
 
@@ -375,7 +374,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				bonus := -Score(d * d)
 
 				for i, m := range moves {
-					if i == ix {
+					if i == picker.Ix() {
 						bonus = -bonus
 					}
 
@@ -393,7 +392,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 						}
 					}
 
-					if i == ix {
+					if i == picker.Ix() {
 						break
 					}
 				}
