@@ -517,7 +517,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		check := movegen.InCheck(b, b.STM)
 
 		if !check {
-			if m.Captured == NoPiece && m.Promo() == NoPiece {
+			if (m.Captured == NoPiece && m.Promo() == NoPiece) || m.Weight < 0 {
 				b.UndoMove(m)
 				continue
 			}
@@ -531,11 +531,6 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 			if gain+delta < alpha {
 				b.UndoMove(m)
 				break
-			}
-
-			if m.Weight < 0 {
-				b.UndoMove(m)
-				continue
 			}
 		}
 
