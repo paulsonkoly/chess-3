@@ -311,12 +311,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	hasLegal := false
 	failLow := true
 	maxim := -Inf - 1
-	moveCnt := 0
+	legalCnt := 0
 	quietCnt := 0
+	moveCnt := 0
 
 	picker := picker.NewPicker(b, hash, moves, sst.hist, sst.cont, sst.hstack)
 
 	for m := picker.Pick(); m != nil; m = picker.Pick() {
+		moveCnt++
 		b.MakeMove(m)
 
 		if movegen.InCheck(b, b.STM.Flip()) {
@@ -325,7 +327,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		hasLegal = true
-		moveCnt++
+		legalCnt++
 
 		sst.hstack.Push(m.Piece, m.To(), staticEval)
 
@@ -339,7 +341,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
 		if d > 1 && quietCnt > 2 && !inCheck {
-			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
+			rd := lmr(d, legalCnt-1, improving, pvN, cutN)
 			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst)
 
 			if value <= alpha {
@@ -374,7 +376,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				bonus := -Score(d * d)
 
 				for i, m := range moves {
-					if i == picker.Ix() {
+					if i == moveCnt-1 {
 						bonus = -bonus
 					}
 
@@ -392,12 +394,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 						}
 					}
 
-					if i == picker.Ix() {
+					if i == moveCnt-1 {
 						break
 					}
 				}
 
-				sst.ABBreadth += moveCnt
+				sst.ABBreadth += legalCnt
 
 				return value
 			}
@@ -413,7 +415,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 	}
 
-	sst.ABBreadth += moveCnt
+	sst.ABBreadth += legalCnt
 
 	if !hasLegal {
 		maxim = Score(0)
