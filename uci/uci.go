@@ -302,7 +302,7 @@ func (e *Engine) handleGo(args []string) {
 	stm := e.Board.STM
 
 	if tc.timedMode(stm) {
-		depth = search.MaxPlies
+		depth = MaxPlies
 	}
 
 	e.SST.Stop = make(chan struct{})
