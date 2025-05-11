@@ -8,8 +8,10 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/heur"
+	"github.com/paulsonkoly/chess-3/hist"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/picker"
 	"github.com/paulsonkoly/chess-3/transp"
 
 	//revive:disable-next-line
@@ -32,7 +34,7 @@ type State struct {
 	hist   *heur.History
 	cont   [2]*heur.Continuation
 	ms     *move.Store
-	hstack *historyStack
+	hstack *hist.Stack
 	pv     *pv
 
 	Debug bool // Debug determines if additional debug info output is enabled.
@@ -64,7 +66,7 @@ func NewState(ttSizeInMb int) *State {
 		ms:     move.NewStore(),
 		hist:   heur.NewHistory(),
 		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
-		hstack: newHistStack(),
+		hstack: hist.NewStack(),
 		pv:     newPV(),
 	}
 }
@@ -75,7 +77,7 @@ func (s *State) Clear() {
 	s.abort = false
 	s.tt.Clear()
 	s.ms.Clear()
-	s.hstack.reset()
+	s.hstack.Reset()
 	s.AWFail = 0
 	s.ABLeaf = 0
 	s.ABBreadth = 0
@@ -204,27 +206,35 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
-		sst.TTHit++
-		switch transpE.Type {
+	var hash move.SimpleMove
 
-		case transp.PVNode:
-			if transpE.SimpleMove != 0 {
-				sst.pv.setTip(ply, transpE.SimpleMove)
-			}
-			return transpE.Value
+	if transpE, ok := transpT.LookUp(b.Hash()); ok {
+		if transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+			sst.TTHit++
+			switch transpE.Type {
 
-		case transp.CutNode:
-			if transpE.Value >= beta {
+			case transp.PVNode:
+				if transpE.SimpleMove != 0 {
+					sst.pv.setTip(ply, transpE.SimpleMove)
+				}
 				return transpE.Value
-			}
 
-		case transp.AllNode:
-			if transpE.Value <= alpha {
-				return transpE.Value
+			case transp.CutNode:
+				if transpE.Value >= beta {
+					return transpE.Value
+				}
+
+			case transp.AllNode:
+				if transpE.Value <= alpha {
+					return transpE.Value
+				}
 			}
+			sst.TTHit--
 		}
-		sst.TTHit--
+
+		if transpE.Type != transp.AllNode {
+			hash = transpE.SimpleMove
+		}
 	}
 
 	if d == 0 {
@@ -241,7 +251,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	if !inCheck {
 		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
 
-		improving = sst.hstack.oldScore() < staticEval
+		improving = sst.hstack.OldScore() < staticEval
 
 		// RFP
 		if staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
@@ -294,10 +304,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	movegen.GenMoves(sst.ms, b)
 	moves := sst.ms.Frame()
 
-	rankMovesAB(b, moves, sst)
-
 	var (
-		m        *move.Move
 		ix       int
 		bestMove move.SimpleMove
 	)
@@ -308,8 +315,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	moveCnt := 0
 	quietCnt := 0
 
-	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
+	picker := picker.NewPicker(b, hash, moves, sst.hist, sst.cont, sst.hstack)
 
+	for m := picker.Pick(); m != nil; m = picker.Pick() {
 		b.MakeMove(m)
 
 		if movegen.InCheck(b, b.STM.Flip()) {
@@ -320,7 +328,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		hasLegal = true
 		moveCnt++
 
-		sst.hstack.push(m.Piece, m.To(), staticEval)
+		sst.hstack.Push(m.Piece, m.To(), staticEval)
 
 		var value Score
 
@@ -342,7 +350,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				}
 
 				b.UndoMove(m)
-				sst.hstack.pop()
+				sst.hstack.Pop()
 				continue
 			}
 		}
@@ -351,7 +359,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
 
 		b.UndoMove(m)
-		sst.hstack.pop()
+		sst.hstack.Pop()
 
 		if value > maxim {
 			maxim = value
@@ -363,7 +371,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
-				hSize := sst.hstack.size()
+				hSize := sst.hstack.Size()
 				bonus := -Score(d * d)
 
 				for i, m := range moves {
@@ -375,13 +383,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 						sst.hist.Add(b.STM, m.From(), m.To(), bonus)
 
 						if hSize >= 1 {
-							hist := sst.hstack.top(0)
-							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							hist := sst.hstack.Top(0)
+							sst.cont[0].Add(b.STM, hist.Piece, hist.To, m.Piece, m.To(), bonus)
 						}
 
 						if hSize >= 2 {
-							hist := sst.hstack.top(1)
-							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							hist := sst.hstack.Top(1)
+							sst.cont[1].Add(b.STM, hist.Piece, hist.To, m.Piece, m.To(), bonus)
 						}
 					}
 
@@ -448,7 +456,7 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
-	value := (log[d] * log[min(mCount, len(log) - 1)]) >> 14
+	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
 	// if !quiet {
 	// 	value /= 2
@@ -558,46 +566,6 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 	}
 
 	return maxim
-}
-
-func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
-	var transPE *transp.Entry
-
-	transPE, _ = sst.tt.LookUp(b.Hash())
-	if transPE != nil && transPE.Type == transp.AllNode {
-		transPE = nil
-	}
-
-	for ix, m := range moves {
-
-		switch {
-		case transPE != nil && transPE.Matches(&m):
-			moves[ix].Weight = heur.HashMove
-
-		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece:
-			see := heur.SEE(b, &m)
-			if see < 0 {
-				moves[ix].Weight = see - heur.Captures
-			} else {
-				moves[ix].Weight = see + heur.Captures
-			}
-
-		default:
-			score := sst.hist.Probe(b.STM, m.From(), m.To())
-
-			if sst.hstack.size() >= 1 {
-				hist := sst.hstack.top(0)
-				score += 3 * sst.cont[0].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
-			}
-
-			if sst.hstack.size() >= 2 {
-				hist := sst.hstack.top(1)
-				score += 2 * sst.cont[1].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
-			}
-
-			moves[ix].Weight = score
-		}
-	}
 }
 
 func rankMovesQ(b *board.Board, moves []move.Move) {

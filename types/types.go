@@ -6,6 +6,8 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
+const MaxPlies = 64
+
 type Depth int8
 
 type Score int16
