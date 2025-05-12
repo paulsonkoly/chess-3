@@ -5,6 +5,7 @@ import (
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/hist"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/movegen"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -12,7 +13,7 @@ import (
 
 type Picker struct {
 	b      *board.Board          // b is board pointer
-	moves  []move.Move           // moves is the slice of moves from which we pick
+	ms     *move.Store           // ms is the move store
 	yix    int                   // yix is the index of first move not yet picked
 	swapIx int                   // swapIx points to the end of good captures
 	hist   *heur.History         // hist is the pointer to history heuristics
@@ -35,7 +36,7 @@ const (
 func NewPicker(
 	b *board.Board,
 	hash move.SimpleMove,
-	moves []move.Move,
+	ms *move.Store,
 	hist *heur.History,
 	cont [2]*heur.Continuation,
 	hstack *hist.Stack,
@@ -44,11 +45,13 @@ func NewPicker(
 	if hash == 0 {
 		phase = weighCaptures
 	}
-	return &Picker{b: b, hash: hash, moves: moves, phase: phase, hist: hist, cont: cont, hstack: hstack}
+	return &Picker{b: b, hash: hash, ms: ms, phase: phase, hist: hist, cont: cont, hstack: hstack}
 }
 
 func (p *Picker) Pick() *move.Move {
 	var result *move.Move
+
+	moves := p.ms.Frame()
 
 	success := false
 	for !success {
@@ -57,21 +60,33 @@ func (p *Picker) Pick() *move.Move {
 		case hashMove:
 			p.phase = weighCaptures
 
-			for ix, m := range p.moves {
-				if p.hash.Matches(&m) {
-					m.Weight = heur.HashMove // this is not needed here, but helps understanding in debug
-					result = p.yield(ix)
-					success = true
-					break
-				}
-			}
+			// delay generating moves, construct the hash move from SimpleMove instead
+			result = p.ms.Alloc()
+			*result = movegen.FromSimple(p.b, p.hash)
+			p.yix++
+			success = true
 
 		case weighCaptures:
 			p.phase = goodCaptures
 
+			// generate all moves, remove the hash move, as it was already yielded in hashMove phase
+			movegen.GenMoves(p.ms, p.b)
+			// re-obtain the frame because we generated new moves
+			moves = p.ms.Frame()
+
+			if p.hash != 0 {
+				for ix := p.yix; ix < len(moves); ix++ {
+					if moves[ix].SimpleMove == p.hash {
+						moves[ix], moves[p.yix] = moves[p.yix], moves[ix]
+						p.yix++
+						break
+					}
+				}
+			}
+
 			p.swapIx = p.yix
-			for ix := p.yix; ix < len(p.moves); ix++ {
-				m := &p.moves[ix]
+			for ix := p.yix; ix < len(moves); ix++ {
+				m := &moves[ix]
 
 				if p.b.SquaresToPiece[m.To()] != NoPiece {
 					see := heur.SEE(p.b, m)
@@ -81,7 +96,7 @@ func (p *Picker) Pick() *move.Move {
 						m.Weight = see + heur.Captures
 						// bring good captures forward, so the good capture loop can
 						// terminate when the weight drops under the Capture threshold
-						p.moves[p.swapIx], p.moves[ix] = p.moves[ix], p.moves[p.swapIx]
+						moves[p.swapIx], moves[ix] = moves[ix], moves[p.swapIx]
 						p.swapIx++
 					}
 				}
@@ -96,13 +111,13 @@ func (p *Picker) Pick() *move.Move {
 			best := -1
 
 			for ix := p.yix; ix < p.swapIx; ix++ {
-				if maxim < p.moves[ix].Weight {
-					maxim = p.moves[ix].Weight
+				if maxim < moves[ix].Weight {
+					maxim = moves[ix].Weight
 					best = ix
 				}
 			}
 			if best != -1 && maxim >= heur.Captures {
-				result = p.yield(best)
+				result = p.yield(moves, best)
 				success = true
 			} else {
 				p.phase = weighNonCaptures
@@ -111,8 +126,8 @@ func (p *Picker) Pick() *move.Move {
 		case weighNonCaptures:
 			p.phase = rest
 
-			for ix := p.yix; ix < len(p.moves); ix++ {
-				m := &p.moves[ix]
+			for ix := p.yix; ix < len(moves); ix++ {
+				m := &moves[ix]
 
 				if m.Weight == 0 {
 
@@ -136,14 +151,14 @@ func (p *Picker) Pick() *move.Move {
 			maxim := -Inf - 1
 			best := -1
 
-			for ix := p.yix; ix < len(p.moves); ix++ {
-				if maxim < p.moves[ix].Weight {
-					maxim = p.moves[ix].Weight
+			for ix := p.yix; ix < len(moves); ix++ {
+				if maxim < moves[ix].Weight {
+					maxim = moves[ix].Weight
 					best = ix
 				}
 			}
 			if best != -1 {
-				result = p.yield(best)
+				result = p.yield(moves, best)
 			}
 			success = true
 		}
@@ -152,9 +167,9 @@ func (p *Picker) Pick() *move.Move {
 	return result
 }
 
-func (p *Picker) yield(ix int) *move.Move {
-	p.moves[p.yix], p.moves[ix] = p.moves[ix], p.moves[p.yix]
-	result := &p.moves[p.yix]
+func (p *Picker) yield(moves []move.Move, ix int) *move.Move {
+	moves[p.yix], moves[ix] = moves[ix], moves[p.yix]
+	result := &moves[p.yix]
 	p.yix++
 	return result
 }

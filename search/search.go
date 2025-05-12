@@ -301,9 +301,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	sst.ms.Push()
 	defer sst.ms.Pop()
 
-	movegen.GenMoves(sst.ms, b)
-	moves := sst.ms.Frame()
-
 	var (
 		bestMove move.SimpleMove
 	)
@@ -315,7 +312,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	quietCnt := 0
 	moveCnt := 0
 
-	picker := picker.NewPicker(b, hash, moves, sst.hist, sst.cont, sst.hstack)
+	picker := picker.NewPicker(b, hash, sst.ms, sst.hist, sst.cont, sst.hstack)
 
 	for m := picker.Pick(); m != nil; m = picker.Pick() {
 		moveCnt++
@@ -374,6 +371,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 				hSize := sst.hstack.Size()
 				bonus := -Score(d * d)
+				moves := sst.ms.Frame()
 
 				for i, m := range moves {
 					if i == moveCnt-1 {
