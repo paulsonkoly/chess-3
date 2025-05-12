@@ -14,6 +14,7 @@ type Picker struct {
 	b      *board.Board          // b is board pointer
 	moves  []move.Move           // moves is the slice of moves from which we pick
 	yix    int                   // yix is the index of first move not yet picked
+	swapIx int                   // swapIx points to the end of good captures
 	hist   *heur.History         // hist is the pointer to history heuristics
 	cont   [2]*heur.Continuation // cont is the pointers to continuation heuristics
 	hstack *hist.Stack           // hstack is the search stack
@@ -68,6 +69,7 @@ func (p *Picker) Pick() *move.Move {
 		case weighCaptures:
 			p.phase = goodCaptures
 
+			p.swapIx = p.yix
 			for ix := p.yix; ix < len(p.moves); ix++ {
 				m := &p.moves[ix]
 
@@ -77,15 +79,23 @@ func (p *Picker) Pick() *move.Move {
 						m.Weight = see - heur.Captures
 					} else {
 						m.Weight = see + heur.Captures
+						// bring good captures forward, so the good capture loop can
+						// terminate when the weight drops under the Capture threshold
+						p.moves[p.swapIx], p.moves[ix] = p.moves[ix], p.moves[p.swapIx]
+						p.swapIx++
 					}
 				}
+			}
+
+			if p.swapIx == p.yix {
+				p.phase = weighNonCaptures
 			}
 
 		case goodCaptures:
 			maxim := -Inf - 1
 			best := -1
 
-			for ix := p.yix; ix < len(p.moves); ix++ {
+			for ix := p.yix; ix < p.swapIx; ix++ {
 				if maxim < p.moves[ix].Weight {
 					maxim = p.moves[ix].Weight
 					best = ix
