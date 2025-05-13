@@ -272,6 +272,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			sst.pv.setNull(ply)
 
 			if value >= beta {
+				if value >= Inf - MaxPlies {
+					return beta
+				}
+
 				return value
 			}
 		}
