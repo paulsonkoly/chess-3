@@ -444,7 +444,7 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
-	value := (log[d] * log[min(mCount, len(log) - 1)]) >> 14
+	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
 	// if !quiet {
 	// 	value /= 2
@@ -467,14 +467,37 @@ func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
 func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Score {
-	if d > sst.QDepth {
+	if d < sst.QDepth {
 		sst.QDepth = d
 	}
 
 	sst.QCnt++
 
-	if b.FiftyCnt >= 100 || b.Threefold() >= 3 {
+	tfCnt := b.Threefold()
+	if b.FiftyCnt >= 100 || tfCnt >= 3 {
 		return 0
+	}
+
+	transpT := sst.tt
+
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+		sst.TTHit++
+		switch transpE.Type {
+
+		case transp.PVNode:
+			return transpE.Value
+
+		case transp.CutNode:
+			if transpE.Value >= beta {
+				return transpE.Value
+			}
+
+		case transp.AllNode:
+			if transpE.Value <= alpha {
+				return transpE.Value
+			}
+		}
+		sst.TTHit--
 	}
 
 	if movegen.IsCheckmate(b) {
@@ -503,7 +526,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 
 	moves := sst.ms.Frame()
 
-	rankMovesQ(b, moves)
+	rankMovesQ(b, moves, sst)
 
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -539,14 +562,17 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 			}
 		}
 
-		curr := -Quiescence(b, -beta, -alpha, d+1, ply+1, sst)
+		value := -Quiescence(b, -beta, -alpha, d-1, ply+1, sst)
 		b.UndoMove(m)
 
-		if curr >= beta {
-			return curr
+		if value >= beta {
+			// store node as fail high (cut-node)
+			transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
+
+			return value
 		}
-		maxim = max(maxim, curr)
-		alpha = max(alpha, curr)
+		maxim = max(maxim, value)
+		alpha = max(alpha, value)
 
 		if abort(sst) {
 			return maxim
@@ -596,9 +622,21 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	}
 }
 
-func rankMovesQ(b *board.Board, moves []move.Move) {
+func rankMovesQ(b *board.Board, moves []move.Move, sst *State) {
+
+	transPE, _ := sst.tt.LookUp(b.Hash())
+	if transPE != nil && transPE.Type == transp.AllNode {
+		transPE = nil
+	}
+
 	for ix, m := range moves {
-		if b.SquaresToPiece[m.To()] != NoPiece {
+
+		switch {
+
+		case transPE != nil && transPE.Matches(&m):
+			moves[ix].Weight = heur.HashMove
+
+		case b.SquaresToPiece[m.To()] != NoPiece:
 			see := heur.SEE(b, &m)
 			moves[ix].Weight = see
 		}
