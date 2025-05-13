@@ -526,7 +526,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 
 	moves := sst.ms.Frame()
 
-	rankMovesQ(b, moves, sst)
+	rankMovesQ(b, moves)
 
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -622,21 +622,9 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	}
 }
 
-func rankMovesQ(b *board.Board, moves []move.Move, sst *State) {
-
-	transPE, _ := sst.tt.LookUp(b.Hash())
-	if transPE != nil && transPE.Type == transp.AllNode {
-		transPE = nil
-	}
-
+func rankMovesQ(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
-
-		switch {
-
-		case transPE != nil && transPE.Matches(&m):
-			moves[ix].Weight = heur.HashMove
-
-		case b.SquaresToPiece[m.To()] != NoPiece:
+		if b.SquaresToPiece[m.To()] != NoPiece {
 			see := heur.SEE(b, &m)
 			moves[ix].Weight = see
 		}
