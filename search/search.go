@@ -364,7 +364,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
-				bonus := -Score(d) * Score(d)
+				bonus := -(Score(d) * 20 - 15) 
 
 				for i, m := range moves {
 					if i == ix {
