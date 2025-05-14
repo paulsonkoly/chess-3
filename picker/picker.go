@@ -15,7 +15,6 @@ type Picker struct {
 	b      *board.Board          // b is board pointer
 	ms     *move.Store           // ms is the move store
 	yix    int                   // yix is the index of first move not yet picked
-	swapIx int                   // swapIx points to the end of good captures
 	hist   *heur.History         // hist is the pointer to history heuristics
 	cont   [2]*heur.Continuation // cont is the pointers to continuation heuristics
 	hstack *hist.Stack           // hstack is the search stack
@@ -62,6 +61,7 @@ func (p *Picker) Pick() *move.Move {
 
 			// delay generating moves, construct the hash move from SimpleMove instead
 			result = p.ms.Alloc()
+			// TODO: the hash move is not necessarily valid in position
 			*result = movegen.FromSimple(p.b, p.hash)
 			p.yix++
 			success = true
@@ -69,40 +69,38 @@ func (p *Picker) Pick() *move.Move {
 		case weighCaptures:
 			p.phase = goodCaptures
 
-			// generate all moves, remove the hash move, as it was already yielded in hashMove phase
-			movegen.GenMoves(p.ms, p.b)
+			// Generate forcing moves first
+			movegen.GenForcing(p.ms, p.b)
 			// re-obtain the frame because we generated new moves
 			moves = p.ms.Frame()
 
-			if p.hash != 0 {
-				for ix := p.yix; ix < len(moves); ix++ {
-					if moves[ix].SimpleMove == p.hash {
-						moves[ix], moves[p.yix] = moves[p.yix], moves[ix]
-						p.yix++
-						break
-					}
-				}
-			}
+			goodCnt := 0
 
-			p.swapIx = p.yix
 			for ix := p.yix; ix < len(moves); ix++ {
 				m := &moves[ix]
 
-				if p.b.SquaresToPiece[m.To()] != NoPiece {
+				switch {
+
+				case p.hash.Matches(m):
+					// the hash move was already yielded, swap it forward.
+					moves[p.yix], moves[ix] = moves[ix], moves[p.yix]
+					p.yix++
+
+				case p.b.SquaresToPiece[m.To()] != NoPiece:
 					see := heur.SEE(p.b, m)
 					if see < 0 {
 						m.Weight = see - heur.Captures
 					} else {
 						m.Weight = see + heur.Captures
-						// bring good captures forward, so the good capture loop can
-						// terminate when the weight drops under the Capture threshold
-						moves[p.swapIx], moves[ix] = moves[ix], moves[p.swapIx]
-						p.swapIx++
+						goodCnt++
 					}
+
+				case m.Promo() != NoPiece:
+					m.Weight = heur.Captures + heur.PieceValues[m.Promo()]
 				}
 			}
 
-			if p.swapIx == p.yix {
+			if goodCnt == 0 {
 				p.phase = weighNonCaptures
 			}
 
@@ -110,7 +108,7 @@ func (p *Picker) Pick() *move.Move {
 			maxim := -Inf - 1
 			best := -1
 
-			for ix := p.yix; ix < p.swapIx; ix++ {
+			for ix := p.yix; ix < len(moves); ix++ {
 				if maxim < moves[ix].Weight {
 					maxim = moves[ix].Weight
 					best = ix
@@ -126,11 +124,23 @@ func (p *Picker) Pick() *move.Move {
 		case weighNonCaptures:
 			p.phase = rest
 
+			// generate quiet moves
+			movegen.GenQuiets(p.ms, p.b)
+			// re-obtain the frame
+			moves = p.ms.Frame()
+
 			for ix := p.yix; ix < len(moves); ix++ {
 				m := &moves[ix]
 
-				if m.Weight == 0 {
+				switch {
 
+				case p.hash.Matches(m):
+					// the hash move was already yielded, swap it forward.
+					moves[p.yix], moves[ix] = moves[ix], moves[p.yix]
+					p.yix++
+					continue
+
+				case m.Weight == 0:
 					score := p.hist.Probe(p.b.STM, m.From(), m.To())
 
 					if p.hstack.Size() >= 1 {

@@ -480,7 +480,30 @@ func GenForcing(ms *move.Store, b *board.Board) {
 	gen.pawnCaptureMoves(ms, b)
 	gen.pawnCapturePromoMoves(ms, b)
 	gen.enPassant(ms, b)
+}
 
+func GenQuiets(ms *move.Store, b *board.Board) {
+	self := b.Colors[b.STM]
+	them := b.Colors[b.STM.Flip()]
+	occ := b.Colors[White] | b.Colors[Black]
+
+	gen := generator{
+		self: self,
+		them: them,
+		occ:  occ,
+	}
+
+	gen.kingMoves(ms, b, board.Full, ^them)
+	gen.knightMoves(ms, b, board.Full, ^them)
+	gen.bishopMoves(ms, b, board.Full, ^them)
+	gen.rookMoves(ms, b, board.Full, ^them)
+	gen.queenMoves(ms, b, board.Full, ^them)
+
+	gen.singlePushMoves(ms, b, board.Full)
+	gen.doublePushMoves(ms, b, board.Full)
+
+	gen.shortCastle(ms, b, board.Full)
+	gen.longCastle(ms, b, board.Full)
 }
 
 func Attackers(b *board.Board, squares board.BitBoard, occ board.BitBoard, color Color) board.BitBoard {
