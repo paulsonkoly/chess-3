@@ -83,6 +83,9 @@ func (e *Engine) readInput() {
 		case "quit":
 			return
 
+		case "isready":
+			fmt.Println("readyok")
+
 		default:
 			e.inputLines <- line
 		}
@@ -109,9 +112,6 @@ func (e *Engine) handleCommand(command string) {
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		fmt.Println("uciok")
-
-	case "isready":
-		fmt.Println("readyok")
 
 	case "position":
 		e.handlePosition(parts[1:])
