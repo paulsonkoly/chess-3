@@ -179,7 +179,7 @@ func pvInfo(moves []move.SimpleMove) string {
 }
 
 func scInfo(score Score) string {
-	if Abs(score) >= Inf-MaxPlies {
+	if Abs(score) >= Inf-Score(MaxPlies) {
 		diff := Inf - score
 
 		if score < 0 {
@@ -212,16 +212,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			if transpE.SimpleMove != 0 {
 				sst.pv.setTip(ply, transpE.SimpleMove)
 			}
-			return transpE.Value
+			return adjustedScore(transpE.Value, ply)
 
 		case transp.CutNode:
 			if transpE.Value >= beta {
-				return transpE.Value
+				return adjustedScore(transpE.Value, ply)
 			}
 
 		case transp.AllNode:
 			if transpE.Value <= alpha {
-				return transpE.Value
+				return adjustedScore(transpE.Value, ply)
 			}
 		}
 		sst.TTHit--
@@ -244,7 +244,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
+		if staticEval >= beta+Score(d)*105 && beta > -Inf+Score(MaxPlies) {
 			return staticEval
 		}
 
@@ -259,7 +259,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				r++
 			}
 
-			r += Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
+			r += Clamp(Depth((staticEval-beta)/NMPDiffFactor), 0, MaxPlies)
 
 			value := -AlphaBeta(b, -beta, -beta+1, max(d-r, 0), ply, false, !cutN, sst)
 
@@ -272,7 +272,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			sst.pv.setNull(ply)
 
 			if value >= beta {
-				if value >= Inf - MaxPlies {
+				if value >= Inf-Score(MaxPlies) {
 					return beta
 				}
 
@@ -364,7 +364,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
-				bonus := -(Score(d) * 20 - 15) 
+				bonus := -(Score(d)*20 - 15)
 
 				for i, m := range moves {
 					if i == ix {
@@ -430,6 +430,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	return maxim
 }
 
+func adjustedScore(score Score, plies Depth) Score {
+	switch {
+	case score < -Inf+Score(MaxPlies):
+		return -Inf + Score(plies)
+	case score > Inf+Score(MaxPlies):
+		return score - Score(plies)
+	default:
+		return score
+	}
+}
+
 // (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
 var log = [...]int{
 	0,
@@ -448,7 +459,7 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
-	value := (log[d] * log[min(mCount, len(log) - 1)]) >> 14
+	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
 	// if !quiet {
 	// 	value /= 2
