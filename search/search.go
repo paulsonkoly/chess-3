@@ -338,7 +338,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			if value <= alpha {
 				if value > maxim {
 					maxim = value
-					bestMove = m.SimpleMove
 				}
 
 				b.UndoMove(m)
@@ -355,7 +354,6 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 		if value > maxim {
 			maxim = value
-			bestMove = m.SimpleMove
 		}
 
 		if value > alpha {
@@ -398,6 +396,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			// value > alpha
 			failLow = false
 			alpha = value
+			bestMove = m.SimpleMove
 			sst.pv.insert(ply, m.SimpleMove)
 		}
 
@@ -414,15 +413,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if inCheck {
 			maxim = -Inf + Score(ply)
 		}
-
-		if maxim > alpha {
-			failLow = false
-		}
 	}
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.AllNode)
+		transpT.Insert(b.Hash(), d, tfCnt, 0, maxim, transp.AllNode)
 	} else {
 		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
 	}
@@ -564,9 +559,6 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 	var transPE *transp.Entry
 
 	transPE, _ = sst.tt.LookUp(b.Hash())
-	if transPE != nil && transPE.Type == transp.AllNode {
-		transPE = nil
-	}
 
 	for ix, m := range moves {
 
