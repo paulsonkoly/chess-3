@@ -413,6 +413,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if inCheck {
 			maxim = -Inf + Score(ply)
 		}
+
+		failLow = false
 	}
 
 	if failLow {
