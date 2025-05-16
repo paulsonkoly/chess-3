@@ -272,7 +272,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			sst.pv.setNull(ply)
 
 			if value >= beta {
-				if value >= Inf - MaxPlies {
+				if value >= Inf-MaxPlies {
 					return beta
 				}
 
@@ -364,7 +364,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
-				bonus := -(Score(d) * 20 - 15) 
+				bonus := -(Score(d)*20 - 15)
 
 				for i, m := range moves {
 					if i == ix {
@@ -448,7 +448,7 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
-	value := (log[d] * log[min(mCount, len(log) - 1)]) >> 14
+	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
 	// if !quiet {
 	// 	value /= 2
@@ -526,6 +526,11 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 				continue
 			}
 
+			if m.Weight < 0 {
+				b.UndoMove(m)
+				break
+			}
+
 			gain := heur.PieceValues[m.Captured]
 
 			if m.Promo() != NoPiece {
@@ -535,11 +540,6 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 			if gain+delta < alpha {
 				b.UndoMove(m)
 				break
-			}
-
-			if m.Weight < 0 {
-				b.UndoMove(m)
-				continue
 			}
 		}
 
