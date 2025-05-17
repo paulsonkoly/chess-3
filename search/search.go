@@ -401,11 +401,11 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		}
 
 		// LMP
-		quietLimit := int(d)*int(d)
+		quietLimit := int(d) * int(d)
 		if !improving {
 			quietLimit /= 2
 		}
-		if !inCheck && alpha+1 == beta && quietCnt > quietLimit {
+		if !inCheck && alpha+1 == beta && quietCnt > 1+quietLimit {
 			break
 		}
 
