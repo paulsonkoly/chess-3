@@ -400,12 +400,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			sst.pv.insert(ply, m.SimpleMove)
 		}
 
-		// Late move pruning based on quiet move count
-		impDiv := 1
-		if improving {
-			impDiv = 0
+		// LMP
+		quietLimit := int(d)*int(d)
+		if !improving {
+			quietLimit /= 2
 		}
-		if !inCheck && alpha == beta-1 && quietCnt > 1+int(d)*int(d)>>impDiv {
+		if !inCheck && alpha+1 == beta && quietCnt > quietLimit {
 			break
 		}
 
