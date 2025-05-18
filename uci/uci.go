@@ -273,6 +273,11 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 	if stm == Black && tc.btime > 0 {
 		timeLeft = tc.btime
 	}
+	
+	if timeLeft <= TimeSafetyMargin {
+		// we are losing on time anyway, but at least allocate time
+		return timeLeft
+	}
 
 	return Clamp(3*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
 }
@@ -325,12 +330,16 @@ func (e *Engine) handleGo(args []string) {
 			finished = true
 
 		case <-time.After(time.Duration(tc.hardLimit(stm)) * time.Millisecond):
-			stopped = true
-			close(e.SST.Stop)
+			if !stopped {
+				stopped = true
+				close(e.SST.Stop)
+			}
 
 		case <-e.stop:
-			stopped = true
-			close(e.SST.Stop)
+			if !stopped {
+				stopped = true
+				close(e.SST.Stop)
+			}
 		}
 	}
 
