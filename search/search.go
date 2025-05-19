@@ -336,27 +336,30 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
 
 			// reduced depth first, then re-try with full depth and null window.
-			for value = Inf; value > alpha && rd < d-1; rd = d - 1 {
-				value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, rd < d-1 || !cutN, sst)
+			if rd < d-1 {
+				value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, true, sst)
 			}
 
 			if value <= alpha {
-				if value > maxim {
-					maxim = value
-				}
-
-				b.UndoMove(m)
-				sst.hstack.pop()
-				continue
+				goto Fin
 			}
 
-			fullSearched = beta == alpha+1 && rd == d-1
+			value = -AlphaBeta(b, -alpha-1, -alpha, d-1, ply+1, false, !cutN, sst)
+
+			if value <= alpha {
+				goto Fin
+			}
+
+			// if null window is the full window
+			fullSearched = beta == alpha+1
 		}
 
 		// null window search failed (meaning didn't fail low).
 		if !fullSearched {
 			value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
 		}
+
+		Fin:
 
 		b.UndoMove(m)
 		sst.hstack.pop()
