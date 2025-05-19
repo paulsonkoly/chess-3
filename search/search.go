@@ -331,23 +331,35 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
+		fullSearched := false
 		if d > 1 && quietCnt > 2 && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
-			value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, !cutN, sst)
+
+			// reduced depth first, then re-try with full depth and null window.
+			if rd < d-1 {
+				value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, false, true, sst)
+			}
 
 			if value <= alpha {
-				if value > maxim {
-					maxim = value
-				}
-
-				b.UndoMove(m)
-				sst.hstack.pop()
-				continue
+				goto Fin
 			}
+
+			value = -AlphaBeta(b, -alpha-1, -alpha, d-1, ply+1, false, !cutN, sst)
+
+			if value <= alpha {
+				goto Fin
+			}
+
+			// if null window is the full window
+			fullSearched = beta == alpha+1
 		}
 
 		// null window search failed (meaning didn't fail low).
-		value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
+		if !fullSearched {
+			value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
+		}
+
+		Fin:
 
 		b.UndoMove(m)
 		sst.hstack.pop()
