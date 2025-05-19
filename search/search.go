@@ -204,6 +204,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
+	var hashMove move.SimpleMove
+
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
 		switch transpE.Type {
@@ -225,6 +227,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			}
 		}
 		sst.TTHit--
+		hashMove = transpE.SimpleMove
 	}
 
 	if d == 0 {
@@ -286,6 +289,10 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		sst.hist.Deflate()
 		sst.cont[0].Deflate()
 		sst.cont[1].Deflate()
+	}
+
+	if (pvN || cutN) && hashMove == 0 && d > 2 {
+		d--
 	}
 
 	sst.ms.Push()
