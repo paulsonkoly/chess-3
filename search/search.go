@@ -291,7 +291,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		sst.cont[1].Deflate()
 	}
 
-	if (pvN || cutN) && hashMove == 0 && d > 2 {
+	if (pvN || cutN) && hashMove == 0 && d > 3 {
 		d--
 	}
 
