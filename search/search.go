@@ -16,19 +16,19 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-var (
-	WindowSize    = Score(50)
+const (
+	WindowSize    = Score(47)
 	NMPDiffFactor = Score(51)
 	NMPDepthLimit = Depth(1)
 	NMPInit       = Depth(4)
-	RFPMargin     = Score(105)
+	RFPMargin     = Score(104)
 	LMRDInit      = Depth(1)
-	LMRQCnt       = 2
+	LMRQCnt       = 3
 	LMRCntAdj     = 1
 	HistBonusMul  = Score(20)
-	HistBonusAdj  = Score(15)
+	HistBonusAdj  = Score(14)
 	LMPBase       = 1
-	DeltaMargin   = Score(110)
+	DeltaMargin   = Score(109)
 )
 
 // State is a persistent state storage between searches.
