@@ -16,14 +16,19 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const (
+var (
+	WindowSize    = Score(50)
 	NMPDiffFactor = Score(51)
 	NMPDepthLimit = Depth(1)
 	NMPInit       = Depth(4)
-)
-
-const (
-	WindowSize = 50 // half a pawn left and right around score
+	RFPMargin     = Score(105)
+	LMRDInit      = Depth(1)
+	LMRQCnt       = 2
+	LMRCntAdj     = 1
+	HistBonusMul  = Score(20)
+	HistBonusAdj  = Score(15)
+	LMPBase       = 1
+	DeltaMargin   = Score(110)
 )
 
 // State is a persistent state storage between searches.
@@ -244,7 +249,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
+		if staticEval >= beta+Score(d)*RFPMargin && beta > -Inf+MaxPlies {
 			return staticEval
 		}
 
@@ -332,7 +337,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
 		fullSearched := false
-		if d > 1 && quietCnt > 2 && !inCheck {
+		// if d > 1 && quietCnt > 2 && !inCheck {
+		if d > LMRDInit && quietCnt > LMRQCnt && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, pvN, cutN)
 
 			// reduced depth first, then re-try with full depth and null window.
@@ -359,7 +365,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
 		}
 
-		Fin:
+	Fin:
 
 		b.UndoMove(m)
 		sst.hstack.pop()
@@ -374,7 +380,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
-				bonus := -(Score(d)*20 - 15)
+				bonus := -(Score(d)*HistBonusMul - HistBonusAdj)
 
 				for i, m := range moves {
 					if i == ix {
@@ -417,7 +423,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if !improving {
 			quietLimit /= 2
 		}
-		if !inCheck && alpha+1 == beta && quietCnt > 1+quietLimit {
+		if !inCheck && alpha+1 == beta && quietCnt > LMPBase+quietLimit {
 			break
 		}
 
@@ -466,7 +472,7 @@ var log = [...]int{
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving, pvN, cutN bool) Depth {
-	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
+	value := (log[d] * log[min(mCount, len(log)-LMRCntAdj)]) >> 14
 
 	// if !quiet {
 	// 	value /= 2
@@ -518,7 +524,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 
 	movegen.GenForcing(sst.ms, b)
 
-	delta := standPat + 110
+	delta := standPat + DeltaMargin
 	// fail soft upper bound
 	maxim := standPat
 	alpha = max(alpha, standPat)

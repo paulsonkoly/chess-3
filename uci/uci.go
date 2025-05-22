@@ -111,6 +111,20 @@ func (e *Engine) handleCommand(command string) {
 		fmt.Printf("option name Hash type spin default %d min 1 max 128\n", defaultHash)
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
+
+		fmt.Printf("option name WindowSize type spin default %d min 0 max 100\n", search.WindowSize)
+		fmt.Printf("option name NMPDiffFactor type spin default %d min 0 max 100\n", search.NMPDiffFactor)
+		fmt.Printf("option name NMPDepthLimit type spin default %d min 0 max 5\n", search.NMPDepthLimit)
+		fmt.Printf("option name NMPInit type spin default %d min 0 max 5\n", search.NMPInit)
+		fmt.Printf("option name RFPMargin type spin default %d min 0 max 200\n", search.RFPMargin)
+		fmt.Printf("option name LMRDInit type spin default %d min 0 max 5\n", search.LMRDInit)
+		fmt.Printf("option name LMRQCnt type spin default %d min 0 max 5\n", search.LMRQCnt)
+		fmt.Printf("option name LMRCntAdj type spin default %d min 0 max 5\n", search.LMRCntAdj)
+		fmt.Printf("option name HistBonusMul type spin default %d min 0 max 50\n", search.HistBonusMul)
+		fmt.Printf("option name HistBonusAdj type spin default %d min 0 max 50\n", search.HistBonusAdj)
+		fmt.Printf("option name LMPBase type spin default %d min 0 max 5\n", search.LMPBase)
+		fmt.Printf("option name DeltaMargin type spin default %d min 0 max 200\n", search.DeltaMargin)
+
 		fmt.Println("uciok")
 
 	case "position":
@@ -156,6 +170,57 @@ func (e *Engine) handleSetOption(args []string) {
 		}
 
 		e.SST = search.NewState(val) // we need to re-allocate the hash table
+
+	case "WindowSize":
+		val := Must(strconv.Atoi(args[3]))
+		search.WindowSize = Score(val)
+
+	case "NMPDiffFactor":
+		val := Must(strconv.Atoi(args[3]))
+		search.NMPDiffFactor = Score(val)
+
+	case "NMPDepthLimit":
+		val := Must(strconv.Atoi(args[3]))
+		search.NMPDepthLimit = Depth(val)
+
+	case "NMPInit":
+		val := Must(strconv.Atoi(args[3]))
+		search.NMPInit = Depth(val)
+
+	case "RFPMargin":
+		val := Must(strconv.Atoi(args[3]))
+		search.RFPMargin = Score(val)
+
+	case "LMRDInit":
+		val := Must(strconv.Atoi(args[3]))
+		search.LMRDInit = Depth(val)
+
+	case "LMRQCnt":
+		val := Must(strconv.Atoi(args[3]))
+		search.LMRQCnt = val
+
+	case "LMRCntAdj":
+		val := Must(strconv.Atoi(args[3]))
+		search.LMRCntAdj = val
+
+	case "HistBonusMul":
+		val := Must(strconv.Atoi(args[3]))
+		search.HistBonusMul = Score(val)
+
+	case "HistBonusAdj":
+		val := Must(strconv.Atoi(args[3]))
+		search.HistBonusAdj = Score(val)
+
+	case "LMPBase":
+		val := Must(strconv.Atoi(args[3]))
+		search.LMPBase = val
+
+	case "DeltaMargin":
+		val := Must(strconv.Atoi(args[3]))
+		search.DeltaMargin = Score(val)
+
+	default:
+		panic("unkown option " + args[1])
 	}
 }
 
@@ -273,7 +338,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 	if stm == Black && tc.btime > 0 {
 		timeLeft = tc.btime
 	}
-	
+
 	if timeLeft <= TimeSafetyMargin {
 		// we are losing on time anyway, but at least allocate time
 		return timeLeft
