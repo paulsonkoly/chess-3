@@ -171,6 +171,8 @@ func (e *Engine) handleSetOption(args []string) {
 
 		e.SST = search.NewState(val) // we need to re-allocate the hash table
 
+	case "Threads":
+
 	case "WindowSize":
 		val := Must(strconv.Atoi(args[3]))
 		search.WindowSize = Score(val)
