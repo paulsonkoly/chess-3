@@ -17,18 +17,18 @@ import (
 )
 
 const (
-	WindowSize    = Score(47)
-	NMPDiffFactor = Score(51)
-	NMPDepthLimit = Depth(1)
+	WindowSize    = Score(46)
+	NMPDiffFactor = Score(49)
+	NMPDepthLimit = Depth(0)
 	NMPInit       = Depth(4)
-	RFPMargin     = Score(104)
+	RFPMargin     = Score(97)
 	LMRDInit      = Depth(1)
 	LMRQCnt       = 3
 	LMRCntAdj     = 1
-	HistBonusMul  = Score(20)
+	HistBonusMul  = Score(19)
 	HistBonusAdj  = Score(14)
 	LMPBase       = 1
-	DeltaMargin   = Score(109)
+	DeltaMargin   = Score(114)
 )
 
 // State is a persistent state storage between searches.
