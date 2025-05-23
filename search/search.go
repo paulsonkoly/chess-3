@@ -359,7 +359,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 			value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, true, false, sst)
 		}
 
-		Fin:
+	Fin:
 
 		b.UndoMove(m)
 		sst.hstack.pop()
@@ -536,9 +536,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 			continue
 		}
 
-		check := movegen.InCheck(b, b.STM)
-
-		if !check {
+		if !movegen.InCheck(b, b.STM) {
 			if m.Captured == NoPiece && m.Promo() == NoPiece {
 				b.UndoMove(m)
 				continue
@@ -550,14 +548,9 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 				gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
 			}
 
-			if gain+delta < alpha {
+			if gain+delta < alpha || m.Weight < 0 {
 				b.UndoMove(m)
 				break
-			}
-
-			if m.Weight < 0 {
-				b.UndoMove(m)
-				continue
 			}
 		}
 
