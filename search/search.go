@@ -518,20 +518,27 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 	sst.ms.Push()
 	defer sst.ms.Pop()
 
-	movegen.GenForcing(sst.ms, b)
+	var moves []move.Move
+
+	if inCheck {
+		// TODO: generate evasions
+		movegen.GenMoves(sst.ms, b)
+		moves = sst.ms.Frame()
+		rankMovesAB(b, moves, sst)
+	} else {
+		movegen.GenForcing(sst.ms, b)
+		moves = sst.ms.Frame()
+		rankMovesQ(b, moves)
+	}
 
 	delta := standPat + 110
 	// fail soft upper bound
 	maxim := standPat
 	alpha = max(alpha, standPat)
 
-	moves := sst.ms.Frame()
-
-	rankMovesQ(b, moves)
-
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
-		if m.Weight < 0 {
+		if !inCheck && m.Weight < 0 {
 			break
 		}
 
@@ -542,15 +549,17 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 			continue
 		}
 
-		gain := heur.PieceValues[m.Captured]
+		if !inCheck {
+			gain := heur.PieceValues[m.Captured]
 
-		if m.Promo() != NoPiece {
-			gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
-		}
+			if m.Promo() != NoPiece {
+				gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
+			}
 
-		if gain+delta < alpha {
-			b.UndoMove(m)
-			break
+			if gain+delta < alpha {
+				b.UndoMove(m)
+				break
+			}
 		}
 
 		curr := -Quiescence(b, -beta, -alpha, d+1, ply+1, sst)
