@@ -499,10 +499,6 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		return 0
 	}
 
-	if movegen.IsCheckmate(b) {
-		return -Inf + Score(ply)
-	}
-
 	if movegen.IsStalemate(b) {
 		return 0
 	}
@@ -535,6 +531,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 	// fail soft upper bound
 	maxim := standPat
 	alpha = max(alpha, standPat)
+	hasLegal := false
 
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -548,6 +545,8 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 			b.UndoMove(m)
 			continue
 		}
+
+		hasLegal = true
 
 		if !inCheck {
 			gain := heur.PieceValues[m.Captured]
@@ -574,6 +573,10 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		if abort(sst) {
 			return maxim
 		}
+	}
+
+	if !hasLegal && inCheck {
+		return -Inf + Score(ply)
 	}
 
 	return maxim
