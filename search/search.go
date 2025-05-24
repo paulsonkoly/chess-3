@@ -531,14 +531,13 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
+		if m.Weight < 0 {
+			break
+		}
+
 		b.MakeMove(m)
 
 		if movegen.InCheck(b, b.STM.Flip()) {
-			b.UndoMove(m)
-			continue
-		}
-
-		if m.Captured == NoPiece && m.Promo() == NoPiece {
 			b.UndoMove(m)
 			continue
 		}
@@ -552,11 +551,6 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		if gain+delta < alpha {
 			b.UndoMove(m)
 			break
-		}
-
-		if m.Weight < 0 {
-			b.UndoMove(m)
-			continue
 		}
 
 		curr := -Quiescence(b, -beta, -alpha, d+1, ply+1, sst)
@@ -615,9 +609,17 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 
 func rankMovesQ(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
-		if b.SquaresToPiece[m.To()] != NoPiece {
+		switch {
+
+		case b.SquaresToPiece[m.To()] != NoPiece:
 			see := heur.SEE(b, &m)
 			moves[ix].Weight = see
+
+		case m.Promo() != NoPiece:
+			moves[ix].Weight = 0
+
+		default:
+			moves[ix].Weight = -1
 		}
 	}
 }
