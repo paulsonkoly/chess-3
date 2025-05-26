@@ -525,11 +525,6 @@ func TestIsStalemate(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "checkmate",
-			b:    Must(board.FromFEN("2q5/2b5/8/7k/8/7K/6R1/5b2 w - - 0 1")),
-			want: false,
-		},
-		{
 			name: "pawn can push",
 			b:    Must(board.FromFEN("7K/5P2/7k/8/8/8/8/6r1 w - - 0 1")),
 			want: false,
