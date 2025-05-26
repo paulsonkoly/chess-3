@@ -499,17 +499,19 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		return 0
 	}
 
-	if movegen.IsCheckmate(b) {
-		return -Inf + Score(ply)
-	}
+	inCheck := movegen.InCheck(b, b.STM)
 
-	if movegen.IsStalemate(b) {
-		return 0
+	if inCheck {
+		if movegen.IsCheckmate(b) {
+			return -Inf + Score(ply)
+		}
+	} else {
+		if movegen.IsStalemate(b) {
+			return 0
+		}
 	}
 
 	standPat := eval.Eval(b, alpha, beta, &eval.Coefficients)
-
-	inCheck := movegen.InCheck(b, b.STM)
 
 	if !inCheck && standPat >= beta {
 		return standPat

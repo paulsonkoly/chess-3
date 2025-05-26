@@ -539,16 +539,14 @@ func Block(b *board.Board, squares board.BitBoard, color Color) board.BitBoard {
 	return res
 }
 
+// IsCheckmate determines whether the position is checkmate. The king should be
+// in check.
 func IsCheckmate(b *board.Board) bool {
 	king := b.Pieces[King] & b.Colors[b.STM]
 	occ := b.Colors[White] | b.Colors[Black]
 	opp := b.Colors[b.STM.Flip()]
 
 	attackers := Attackers(b, king, occ, b.STM.Flip())
-
-	if attackers == 0 {
-		return false
-	}
 
 	// making the king move first
 	kingSq := king.LowestSet()
@@ -635,16 +633,14 @@ func IsCheckmate(b *board.Board) bool {
 	return true
 }
 
+// IsStalemate determines whether the position is stalemate. The king shouldn't
+// be in check.
 func IsStalemate(b *board.Board) bool {
 	me := b.Colors[b.STM]
 	opp := b.Colors[b.STM.Flip()]
 	king := b.Pieces[King] & me
 	kingSq := king.LowestSet()
 	occ := me | opp
-
-	if IsAttacked(b, b.STM.Flip(), occ, king) {
-		return false
-	}
 
 	// look at pawns guaranteed not to be pinned first
 	maybePinned := (BishopMoves(kingSq, occ) | RookMoves(kingSq, occ)) & me
