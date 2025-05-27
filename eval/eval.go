@@ -450,6 +450,9 @@ func sigmoidal[T ScoreType](n T) T {
 }
 
 func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg []T) T {
+
+	fifty := b.FiftyCnt
+
 	mgScore := mg[b.STM] - mg[b.STM.Flip()]
 	egScore := eg[b.STM] - eg[b.STM.Flip()]
 
@@ -457,9 +460,14 @@ func TaperedScore[T ScoreType](b *board.Board, phase int, mg, eg []T) T {
 	egPhase := 24 - mgPhase
 
 	if _, ok := (any(mgScore)).(Score); ok {
-		return T((int(mgScore)*mgPhase + int(egScore)*egPhase) / 24)
+		v := int(mgScore)*mgPhase + int(egScore)*egPhase
+		v *= int(100 - fifty)
+
+		return T(v / 2400)
 	}
 
+	// The training set has all '0's for the halfmove counter. If that wasn't the
+	// case we should blend the fifty counter in like in real score.
 	return T((mgScore*T(mgPhase) + egScore*T(egPhase)) / 24)
 }
 
