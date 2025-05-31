@@ -20,6 +20,7 @@ var Targets = [...]string{
 	"KingAttackPieces", "SafeChecks", "KingShelter",
 	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
 	"KnightOutpost", "ConnectedRooks", "BishopPair",
+	"OppositeBishops",
 }
 
 type Coeffs eval.CoeffSet[float64]
@@ -160,9 +161,6 @@ func (t *Coeffs) Loop() iter.Seq[Index] {
 			}
 
 			e := v.Field(ix)
-			if e.Kind() != reflect.Array {
-				panic("expected array " + e.Kind().String())
-			}
 
 			if !recurse(yield, Index{[]int{ix}}, e) {
 				return
