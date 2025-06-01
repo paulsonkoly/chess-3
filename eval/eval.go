@@ -25,7 +25,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addPieceValues(b, c)
 	sp.addTempo(b, c)
 	sp.addBishopPair(b, c)
-	sp.addPSqT(b, c)
 
 	pw := pieceWise[T]{}
 
@@ -53,6 +52,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 			attacks := pw.calcQueenAttacks(color, sq)
 
 			ka.addAttackPieces(color, Queen, attacks, eKNb, c)
+
+			sp.addPSqT(color, Queen, sq, c)
 		}
 
 		// rooks
@@ -65,6 +66,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			ka.addAttackPieces(color, Rook, attacks, eKNb, c)
 			sp.addRookMobility(b, color, sq, attacks, c)
+			sp.addPSqT(color, Rook, sq, c)
 		}
 
 		// bishops
@@ -77,6 +79,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			ka.addAttackPieces(color, Bishop, attacks, eKNb, c)
 			sp.addBishopMobility(b, color, attacks, c)
+			sp.addPSqT(color, Bishop, sq, c)
 		}
 
 		// knights
@@ -90,7 +93,23 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
 			sp.addKnightOutposts(color, piece, sq, pw.holes[color.Flip()]&pw.attacks[color][0], c)
+			sp.addPSqT(color, Knight, sq, c)
 		}
+
+		// pawns
+		pieces = b.Pieces[Pawn] & b.Colors[color]
+		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+			piece = pieces & -pieces
+			sq := piece.LowestSet()
+
+			sp.addPSqT(color, Pawn, sq, c)
+		}
+
+		// king
+		piece := b.Pieces[King] & b.Colors[color]
+		sq:= piece.LowestSet()
+
+		sp.addPSqT(color, King, sq, c)
 	}
 
 	pw.calcCover()
@@ -199,28 +218,19 @@ func (sp *scorePair[T]) addBishopPair(b *board.Board, c *CoeffSet[T]) {
 	}
 }
 
-func (sp *scorePair[T]) addPSqT(b *board.Board, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet[T]) {
 	// add up PSqT
-	for pType := Pawn; pType <= King; pType++ {
-		for color := White; color <= Black; color++ {
 
-			pieces := b.Pieces[pType] & b.Colors[color]
-			for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
-				piece = pieces & -pieces
-				sq := piece.LowestSet()
-				sqIx := sq
+	sqIx := sq
 
-				if color == White {
-					sqIx ^= 56 // upside down
-				}
-
-				ix := pType - 1
-
-				sp.mg[color] += c.PSqT[2*ix][sqIx]
-				sp.eg[color] += c.PSqT[2*ix+1][sqIx]
-			}
-		}
+	if color == White {
+		sqIx ^= 56 // upside down
 	}
+
+	ix := pType - 1
+
+	sp.mg[color] += c.PSqT[2*ix][sqIx]
+	sp.eg[color] += c.PSqT[2*ix+1][sqIx]
 }
 
 func (sp *scorePair[T]) taperedScore(b *board.Board) T {
@@ -252,10 +262,9 @@ type pieceWise[T ScoreType] struct {
 	kingNb        [2]board.BitBoard
 	holes         [2]board.BitBoard
 	passers       [2]board.BitBoard
-	doubledPawns  [2]board.BitBoard // TODO rethink what we are storing
+	doubledPawns  [2]board.BitBoard
 	isolatedPawns [2]board.BitBoard
 	cover         [2]board.BitBoard
-	// kingAScore [2][2]T
 }
 
 func (pw *pieceWise[T]) calcOccupancy(b *board.Board) {
