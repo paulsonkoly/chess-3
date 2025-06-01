@@ -223,7 +223,7 @@ func parseUCIMove(uciM string) move.SimpleMove {
 }
 
 func (e *Engine) handleEval() {
-	fmt.Println(eval.Eval(e.Board, 0, 0, &eval.Coefficients))
+	fmt.Println(eval.Eval(e.Board, &eval.Coefficients))
 }
 
 type timeControl struct {

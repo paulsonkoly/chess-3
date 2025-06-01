@@ -239,7 +239,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	staticEval := Inv
 
 	if !inCheck {
-		staticEval = eval.Eval(b, alpha, beta, &eval.Coefficients)
+		staticEval = eval.Eval(b, &eval.Coefficients)
 
 		improving = sst.hstack.oldScore() < staticEval
 
@@ -511,7 +511,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		}
 	}
 
-	standPat := eval.Eval(b, alpha, beta, &eval.Coefficients)
+	standPat := eval.Eval(b, &eval.Coefficients)
 
 	if !inCheck && standPat >= beta {
 		return standPat
