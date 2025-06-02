@@ -125,7 +125,7 @@ func runOBBench(e *uci.Engine) {
 	allTime := int64(0)
 	for _, fen := range OBBenchSet {
 		e.Board = Must(board.FromFEN(fen))
-		e.Search(12)
+		e.Search(15)
 
 		nodes := e.SST.ABCnt + e.SST.QCnt
 		time := e.SST.Time
