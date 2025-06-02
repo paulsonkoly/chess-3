@@ -16,7 +16,7 @@ import (
 type ScoreType interface{ Score | float64 }
 
 func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
-	if insuffientMat(b) {
+	if insufficientMat(b) {
 		return 0
 	}
 
@@ -156,7 +156,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	return sp.taperedScore(b)
 }
 
-func insuffientMat(b *board.Board) bool {
+func insufficientMat(b *board.Board) bool {
 	if b.Pieces[Pawn]|b.Pieces[Queen]|b.Pieces[Rook] != 0 {
 		return false
 	}
