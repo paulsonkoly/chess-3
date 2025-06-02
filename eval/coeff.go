@@ -22,7 +22,7 @@ type CoeffSet[T ScoreType] struct {
 	// SafeChecks is the bonus per piece type for being able to give a safe check.
 	SafeChecks [2][4]T
 
-	// KingShelter is the bonus for damage on the oppoent's king shelter.
+	// KingShelter is the bonus for damage on the opponent's king shelter.
 	KingShelter [2]T
 
 	// Mobility* is per piece mobility bonus.
