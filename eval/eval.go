@@ -107,7 +107,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// king
 		piece := b.Pieces[King] & b.Colors[color]
-		sq:= piece.LowestSet()
+		sq := piece.LowestSet()
 
 		sp.addPSqT(color, King, sq, c)
 	}
@@ -361,7 +361,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise[T], c *CoeffSet[
 					qSq += 56
 				}
 
-				kingDist := Manhattan(qSq, pw.kingSq[color.Flip()]) - Manhattan(qSq, pw.kingSq[color])
+				kingDist := Chebishev(qSq, pw.kingSq[color.Flip()]) - Chebishev(qSq, pw.kingSq[color])
 
 				sp.mg[color] += c.PasserKingDist[0] * T(kingDist)
 				sp.eg[color] += c.PasserKingDist[1] * T(kingDist)
@@ -389,7 +389,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise[T], c *CoeffSet[
 	}
 }
 
-func Manhattan(a, b Square) int {
+func Chebishev(a, b Square) int {
 	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
 	return max(Abs(ax-bx), Abs(ay-by))
 }
