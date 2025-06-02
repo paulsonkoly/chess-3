@@ -260,7 +260,7 @@ func computeE(data []EPDEntry, k float64, coeffs *tuning.Coeffs) float64 {
 }
 
 func evalCoeffs(b *board.Board, coeffs *tuning.Coeffs) float64 {
-	score := eval.Eval(b, -10_001.0, 10_001.0, coeffs.ToEvalType())
+	score := eval.Eval(b, coeffs.ToEvalType())
 
 	if b.STM == Black {
 		score = -score
