@@ -26,7 +26,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addTempo(b, c)
 	sp.addBishopPair(b, c)
 
-	pw := pieceWise[T]{}
+	pw := pieceWise{}
 
 	pw.calcOccupancy(b)
 	pw.calcKingSquares(b)
@@ -254,7 +254,7 @@ func (sp *scorePair[T]) taperedScore(b *board.Board) T {
 	return T((mgScore*T(mgPhase) + egScore*T(egPhase)) / 24)
 }
 
-type pieceWise[T ScoreType] struct {
+type pieceWise struct {
 	occ           board.BitBoard
 	attacks       [2][6]board.BitBoard
 	kingRays      [2][2]board.BitBoard
@@ -267,11 +267,11 @@ type pieceWise[T ScoreType] struct {
 	cover         [2]board.BitBoard
 }
 
-func (pw *pieceWise[T]) calcOccupancy(b *board.Board) {
+func (pw *pieceWise) calcOccupancy(b *board.Board) {
 	pw.occ = b.Colors[White] | b.Colors[Black]
 }
 
-func (pw *pieceWise[T]) calcKingSquares(b *board.Board) {
+func (pw *pieceWise) calcKingSquares(b *board.Board) {
 	for color := White; color <= Black; color++ {
 		king := b.Colors[color] & b.Pieces[King]
 		kingSq := king.LowestSet()
@@ -289,7 +289,7 @@ func (pw *pieceWise[T]) calcKingSquares(b *board.Board) {
 // enemy side.
 var sideOfBoard = [2]board.BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
 
-func (pw *pieceWise[T]) calcPawnStructure(b *board.Board) {
+func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 
 	ps := [...]board.BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
 
@@ -344,7 +344,7 @@ func frontFill(b board.BitBoard, color Color) board.BitBoard {
 	return b
 }
 
-func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise[T], c *CoeffSet[T]) {
+func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T]) {
 
 	for color := White; color <= Black; color++ {
 
@@ -394,14 +394,14 @@ func Chebishev(a, b Square) int {
 	return max(Abs(ax-bx), Abs(ay-by))
 }
 
-func (sp *scorePair[T]) addDoubledPawns(pw pieceWise[T], c *CoeffSet[T]) {
+func (sp *scorePair[T]) addDoubledPawns(pw pieceWise, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
 		sp.mg[color] += c.DoubledPawns[0] * T(pw.doubledPawns[color].Count())
 		sp.eg[color] += c.DoubledPawns[1] * T(pw.doubledPawns[color].Count())
 	}
 }
 
-func (sp *scorePair[T]) addIsolatedPawns(pw pieceWise[T], c *CoeffSet[T]) {
+func (sp *scorePair[T]) addIsolatedPawns(pw pieceWise, c *CoeffSet[T]) {
 
 	for color := White; color <= Black; color++ {
 		sp.mg[color] += c.IsolatedPawns[0] * T(pw.isolatedPawns[color].Count())
@@ -462,14 +462,14 @@ func sigmoidal[T ScoreType](n T) T {
 	return T(600.0 / (1.0 + math.Exp(-0.2*(float64(n)-50.0))))
 }
 
-func (pw *pieceWise[T]) calcQueenAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcQueenAttacks(color Color, sq Square) board.BitBoard {
 	attacks := movegen.BishopMoves(sq, pw.occ) | movegen.RookMoves(sq, pw.occ)
 
 	pw.attacks[color][Queen-Pawn] |= attacks
 	return attacks
 }
 
-func (pw *pieceWise[T]) calcRookAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcRookAttacks(color Color, sq Square) board.BitBoard {
 	attacks := movegen.RookMoves(sq, pw.occ)
 
 	pw.attacks[color][Rook-Pawn] |= attacks
@@ -495,7 +495,7 @@ func (sp *scorePair[T]) addRookMobility(b *board.Board, color Color, sq Square, 
 	}
 }
 
-func (pw *pieceWise[T]) calcBishopAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcBishopAttacks(color Color, sq Square) board.BitBoard {
 	attacks := movegen.BishopMoves(sq, pw.occ)
 
 	pw.attacks[color][Bishop-Pawn] |= attacks
@@ -509,7 +509,7 @@ func (sp *scorePair[T]) addBishopMobility(b *board.Board, color Color, attacks b
 	sp.eg[color] += c.MobilityBishop[1][mobCnt]
 }
 
-func (pw *pieceWise[T]) calcKnightAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) board.BitBoard {
 	attacks := movegen.KnightMoves(sq)
 
 	pw.attacks[color][Knight-Pawn] |= attacks
@@ -537,7 +537,7 @@ func (sp *scorePair[T]) addKnightOutposts(color Color, knightBB board.BitBoard, 
 	}
 }
 
-func (pw *pieceWise[T]) calcCover() {
+func (pw *pieceWise) calcCover() {
 	for color := White; color <= Black; color++ {
 		pw.cover[color] = pw.attacks[color][0] |
 			pw.attacks[color][Knight-Pawn] |
