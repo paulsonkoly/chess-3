@@ -20,7 +20,7 @@ func TestCalcPawnStructure(t *testing.T) {
 			name: "Pawn endgame",
 			fen:  "8/2pp1k1p/5p2/5p2/8/P7/3P2P1/5K2 w - - 0 1",
 			want: pieceWise{
-				holes:         [2]board.BitBoard{0x18fd4bffff, 0xffffa18f08000000},
+				holes:         [2]board.BitBoard{0x8494bffff, 0xffffa1a100000000},
 				passers:       [2]board.BitBoard{board.BitBoardFromSquares(A3), 0},
 				doubledPawns:  [2]board.BitBoard{0, board.BitBoardFromSquares(F6)},
 				isolatedPawns: [2]board.BitBoard{board.BitBoardFromSquares(A3, D2, G2), board.BitBoardFromSquares(F6, F5, H7)},
@@ -38,6 +38,7 @@ func TestCalcPawnStructure(t *testing.T) {
 			actual := pieceWise{}
 			actual.calcPawnStructure(b)
 
+			assert.Equal(t, tt.want.holes, actual.holes, "holes")
 			assert.Equal(t, tt.want.passers, actual.passers, "passers")
 			assert.Equal(t, tt.want.doubledPawns, actual.doubledPawns, "doubledPawns")
 			assert.Equal(t, tt.want.isolatedPawns, actual.isolatedPawns, "isolatedPawns")
