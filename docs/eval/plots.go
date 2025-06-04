@@ -70,6 +70,7 @@ set title "{{.Title}}"
 set xlabel "X-axis (0-{{.MaxX}})"
 set ylabel "Values"
 set xrange [0:{{.MaxX}}]
+set yrange [0:*]  # Start at 0 but auto-scale upward
 set grid
 
 # Define the data
