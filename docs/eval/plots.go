@@ -176,11 +176,20 @@ func isPairedArray(field reflect.Value) bool {
 
 func processChessboard(field reflect.Value, name string, sections *[]MarkdownSection) {
 	if field.Type().Len() == 12 {
-		// Handle PSqT which has 12 chessboards
+		// Handle PSqT which has 12 chessboards (6 pieces × 2 phases)
+		pieceNames := [...]string{
+			"Pawn", "Knight", "Bishop", "Rook", "Queen", "King",
+		}
+		phaseNames := [...]string{
+			"MiddleGame", "EndGame", 
+		}
+
 		for i := range field.Type().Len() {
 			chessboard := field.Index(i)
-			outputFile := fmt.Sprintf("%s_%d.png", strings.ToLower(name), i)
-			title := fmt.Sprintf("%s %d", name, i)
+			pieceName := pieceNames[i / 2]
+			phaseName := phaseNames[i % 2]
+			outputFile := fmt.Sprintf("psqt_%s_%s.png", strings.ToLower(pieceName), strings.ToLower(phaseName))
+			title := fmt.Sprintf("PSqT %s %s", pieceName, phaseName)
 			generateChessboardPlot(chessboard, title, outputFile)
 			*sections = append(*sections, MarkdownSection{
 				Title:     title,
