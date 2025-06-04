@@ -10,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/paulsonkoly/chess-3/eval"
+	"github.com/paulsonkoly/chess-3/types"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -93,6 +94,7 @@ set boxwidth 0.9
 set xtics ("Middle Game" 0, "End Game" 1)
 set ylabel "Score Value"
 set grid y
+set yrange [{{.YMin}}:{{.YMax}}]
 
 # Define the data
 $DATA << EOD
@@ -100,8 +102,9 @@ $DATA << EOD
 1 {{.EGValue}}
 EOD
 
-# Plot the bar chart
-plot $DATA using 2:xtic(1) with boxes lc rgb "#3070B3" notitle
+# Plot with value labels
+plot $DATA using 2:xtic(1) with boxes lc rgb "#3070B3" notitle, \
+     '' using 0:2:(sprintf("%d", $2)) with labels offset 0,0.5 font ",10" notitle
 `
 
 const markdownTemplate = `# Chess Evaluation Coefficients Visualization
@@ -143,6 +146,8 @@ type BarChart struct {
     OutputFile string
     MGValue    int
     EGValue    int
+    YMin       float64
+    YMax       float64
 }
 
 type MarkdownSection struct {
@@ -469,33 +474,45 @@ func processSimplePairedArray(mg, eg reflect.Value, name, outputFile string, sec
 }
 
 func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
-    mgVal := mg.Interface().(Score)
-    egVal := eg.Interface().(Score)
+    mgVal := int(mg.Interface().(types.Score)) // or whatever type your Score actually is
+    egVal := int(eg.Interface().(types.Score))
+
+    // Calculate y-range in Go
+    minVal := min(float64(mgVal), float64(egVal))
+    maxVal := max(float64(mgVal), float64(egVal))
+    rangeVal := maxVal - minVal
+    buffer := 1.0
+    if rangeVal > 0 {
+        buffer = rangeVal * 0.2 // 20% buffer
+    }
+    
+    // Handle zero values
+    if minVal == 0 && maxVal == 0 {
+        buffer = 1.0
+    }
 
     data := BarChart{
         Title:      name,
         OutputFile: outputFile,
-        MGValue:    int(mgVal),
-        EGValue:    int(egVal),
+        MGValue:    mgVal,
+        EGValue:    egVal,
+        YMin:       minVal - buffer,
+        YMax:       maxVal + buffer,
     }
 
-    tmpl, err := template.New("barchart").Parse(barChartTemplate)
-    if err != nil {
-        fmt.Printf("Error creating template: %v\n", err)
-        return
-    }
-
+    tmpl := template.Must(template.New("barchart").Parse(barChartTemplate))
+    
     var script bytes.Buffer
     if err := tmpl.Execute(&script, data); err != nil {
-        fmt.Printf("Error executing template: %v\n", err)
+        fmt.Printf("Template error for %s: %v\n", name, err)
         return
     }
 
     runGnuplot(script.String(), outputFile)
 
     *sections = append(*sections, MarkdownSection{
-        Title:     name,
-        ImagePath: outputFile,
+        Title:       name,
+        ImagePath:   outputFile,
         Description: fmt.Sprintf("Middle Game: %d | End Game: %d", mgVal, egVal),
     })
 }
@@ -524,11 +541,18 @@ func processKnightOutpost(field reflect.Value, name string, sections *[]Markdown
 }
 
 func runGnuplot(script, outputFile string) {
-	cmd := exec.Command("gnuplot")
-	cmd.Stdin = strings.NewReader(script)
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running gnuplot for %s: %v\n", outputFile, err)
-	}
+    cmd := exec.Command("gnuplot")
+    cmd.Stdin = strings.NewReader(script)
+    
+    // Capture stderr for error reporting
+    var stderr bytes.Buffer
+    cmd.Stderr = &stderr
+    
+    if err := cmd.Run(); err != nil {
+        fmt.Printf("Error running gnuplot for %s: %v\n", outputFile, err)
+        fmt.Printf("Gnuplot stderr:\n%s\n", stderr.String())
+        fmt.Printf("Script content:\n%s\n", script)
+    }
 }
 
 func generateMarkdown(sections []MarkdownSection) {
