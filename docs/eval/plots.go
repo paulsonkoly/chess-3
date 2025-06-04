@@ -81,6 +81,28 @@ EOD
 plot $DATA using 1:2 with linespoints lt 1 pt 7 ps 1.5 lw 2 title "Values"
 `
 
+const barChartTemplate = `# Set up the bar chart
+set terminal pngcairo enhanced font "Arial,12" size 600,400
+set output '{{.OutputFile}}'
+set title "{{.Title}}"
+set style data histogram
+set style histogram cluster gap 1
+set style fill solid border -1
+set boxwidth 0.9
+set xtics ("Middle Game" 0, "End Game" 1)
+set ylabel "Score Value"
+set grid y
+
+# Define the data
+$DATA << EOD
+0 {{.MGValue}}
+1 {{.EGValue}}
+EOD
+
+# Plot the bar chart
+plot $DATA using 2:xtic(1) with boxes lc rgb "#3070B3" notitle
+`
+
 const markdownTemplate = `# Chess Evaluation Coefficients Visualization
 
 {{range .Sections}}
@@ -113,6 +135,13 @@ type SingleLinePlot struct {
 	OutputFile string
 	Data       string
 	MaxX       int
+}
+
+type BarChart struct {
+    Title      string
+    OutputFile string
+    MGValue    int
+    EGValue    int
 }
 
 type MarkdownSection struct {
@@ -439,9 +468,35 @@ func processSimplePairedArray(mg, eg reflect.Value, name, outputFile string, sec
 }
 
 func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
-	// For single value pairs, we'll just create a simple bar chart
-	// (implementation omitted for brevity, but similar to the other functions)
-	fmt.Printf("Single value pair detected for %s (not implemented)\n", name)
+    mgVal := mg.Interface().(Score)
+    egVal := eg.Interface().(Score)
+
+    data := BarChart{
+        Title:      name,
+        OutputFile: outputFile,
+        MGValue:    int(mgVal),
+        EGValue:    int(egVal),
+    }
+
+    tmpl, err := template.New("barchart").Parse(barChartTemplate)
+    if err != nil {
+        fmt.Printf("Error creating template: %v\n", err)
+        return
+    }
+
+    var script bytes.Buffer
+    if err := tmpl.Execute(&script, data); err != nil {
+        fmt.Printf("Error executing template: %v\n", err)
+        return
+    }
+
+    runGnuplot(script.String(), outputFile)
+
+    *sections = append(*sections, MarkdownSection{
+        Title:     name,
+        ImagePath: outputFile,
+        Description: fmt.Sprintf("Middle Game: %d | End Game: %d", mgVal, egVal),
+    })
 }
 
 func processKnightOutpost(field reflect.Value, name string, sections *[]MarkdownSection) {

@@ -79,6 +79,14 @@
 
 
 
+## TempoBonus
+
+![TempoBonus](tempobonus.png)
+
+
+Middle Game: 25 | End Game: 23
+
+
 ## KingAttackPieces
 
 ![KingAttackPieces](kingattackpieces.png)
@@ -89,6 +97,14 @@
 
 ![SafeChecks](safechecks.png)
 
+
+
+## KingShelter
+
+![KingShelter](kingshelter.png)
+
+
+Middle Game: 7 | End Game: -6
 
 
 ## MobilityKnight
@@ -121,15 +137,55 @@
 
 
 
+## ConnectedRooks
+
+![ConnectedRooks](connectedrooks.png)
+
+
+Middle Game: 1 | End Game: 7
+
+
 ## BishopPair
 
 ![BishopPair](bishoppair.png)
 
 
 
+## ProtectedPasser
+
+![ProtectedPasser](protectedpasser.png)
+
+
+Middle Game: 22 | End Game: 5
+
+
+## PasserKingDist
+
+![PasserKingDist](passerkingdist.png)
+
+
+Middle Game: 8 | End Game: 8
+
+
 ## PasserRank
 
 ![PasserRank](passerrank.png)
 
+
+
+## DoubledPawns
+
+![DoubledPawns](doubledpawns.png)
+
+
+Middle Game: -9 | End Game: -16
+
+
+## IsolatedPawns
+
+![IsolatedPawns](isolatedpawns.png)
+
+
+Middle Game: -16 | End Game: -11
 
 
