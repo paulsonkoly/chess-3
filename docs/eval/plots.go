@@ -10,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/paulsonkoly/chess-3/eval"
+	"github.com/paulsonkoly/chess-3/types"
 
 	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
@@ -63,6 +64,49 @@ plot $DATA1 using 1:2 with linespoints lt 1 pt 7 ps 1.5 lw 2 title "Middle Game"
      $DATA2 using 1:2 with linespoints lt 2 pt 7 ps 1.5 lw 2 title "End Game"
 `
 
+const singleLinePlotTemplate = `# Set up the plot
+set terminal pngcairo enhanced font "Arial,12" size 800,600
+set output '{{.OutputFile}}'
+set title "{{.Title}}"
+set xlabel "X-axis (0-{{.MaxX}})"
+set ylabel "Values"
+set xrange [0:{{.MaxX}}]
+set yrange [0:*]  # Start at 0 but auto-scale upward
+set grid
+
+# Define the data
+$DATA << EOD
+{{.Data}}
+EOD
+
+# Plot with connected points (no smoothing) and visible markers
+plot $DATA using 1:2 with linespoints lt 1 pt 7 ps 1.5 lw 2 title "Values"
+`
+
+const barChartTemplate = `# Set up the bar chart
+set terminal pngcairo enhanced font "Arial,12" size 600,400
+set output '{{.OutputFile}}'
+set title "{{.Title}}"
+set style data histogram
+set style histogram cluster gap 1
+set style fill solid border -1
+set boxwidth 0.9
+set xtics ("Middle Game" 0, "End Game" 1)
+set ylabel "Score Value"
+set grid y
+set yrange [{{.YMin}}:{{.YMax}}]
+
+# Define the data
+$DATA << EOD
+0 {{.MGValue}}
+1 {{.EGValue}}
+EOD
+
+# Plot with value labels
+plot $DATA using 2:xtic(1) with boxes lc rgb "#3070B3" notitle, \
+     '' using 0:2:(sprintf("%d", $2)) with labels offset 0,0.5 font ",10" notitle
+`
+
 const markdownTemplate = `# Chess Evaluation Coefficients Visualization
 
 {{range .Sections}}
@@ -88,6 +132,22 @@ type LinePlot struct {
 	Data1      string
 	Data2      string
 	MaxX       int
+}
+
+type SingleLinePlot struct {
+	Title      string
+	OutputFile string
+	Data       string
+	MaxX       int
+}
+
+type BarChart struct {
+    Title      string
+    OutputFile string
+    MGValue    int
+    EGValue    int
+    YMin       float64
+    YMax       float64
 }
 
 type MarkdownSection struct {
@@ -145,17 +205,26 @@ func isPairedArray(field reflect.Value) bool {
 		return false
 	}
 
-	// Check for [2]... pattern
-	return field.Type().Len() == 2
+	// Check for arrays that should be plotted (either paired or single sequences)
+	return true
 }
 
 func processChessboard(field reflect.Value, name string, sections *[]MarkdownSection) {
 	if field.Type().Len() == 12 {
-		// Handle PSqT which has 12 chessboards
+		// Handle PSqT which has 12 chessboards (6 pieces × 2 phases)
+		pieceNames := [...]string{
+			"Pawn", "Knight", "Bishop", "Rook", "Queen", "King",
+		}
+		phaseNames := [...]string{
+			"MiddleGame", "EndGame", 
+		}
+
 		for i := range field.Type().Len() {
 			chessboard := field.Index(i)
-			outputFile := fmt.Sprintf("%s_%d.png", strings.ToLower(name), i)
-			title := fmt.Sprintf("%s %d", name, i)
+			pieceName := pieceNames[i / 2]
+			phaseName := phaseNames[i % 2]
+			outputFile := fmt.Sprintf("psqt_%s_%s.png", strings.ToLower(pieceName), strings.ToLower(phaseName))
+			title := fmt.Sprintf("PSqT %s %s", pieceName, phaseName)
 			generateChessboardPlot(chessboard, title, outputFile)
 			*sections = append(*sections, MarkdownSection{
 				Title:     title,
@@ -250,15 +319,32 @@ func generateTruncatedChessboardPlot(field reflect.Value, title, outputFile stri
 }
 
 func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSection) {
-	mg := field.Index(0)
-	eg := field.Index(1)
-
-	outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
-
+	// Special case for KnightOutpost
 	if name == "KnightOutpost" {
 		processKnightOutpost(field, name, sections)
 		return
 	}
+
+	// Check if this is a paired array (middle game/end game)
+	if field.Type().Len() == 2 && field.Type().Elem().Kind() != reflect.Array {
+		mg := field.Index(0)
+		eg := field.Index(1)
+		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+		processSingleValuePair(mg, eg, name, outputFile, sections)
+		return
+	}
+
+	// Handle single sequence arrays (like BishopPair)
+	if field.Type().Len() != 2 {
+		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+		processSingleSequence(field, name, outputFile, sections)
+		return
+	}
+
+	// Handle regular paired arrays
+	mg := field.Index(0)
+	eg := field.Index(1)
+	outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
 
 	switch {
 	case mg.Kind() == reflect.Array && mg.Len() > 0 && mg.Index(0).Kind() == reflect.Array:
@@ -271,6 +357,42 @@ func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSe
 		// Single values like [2]Score (ConnectedRooks)
 		processSingleValuePair(mg, eg, name, outputFile, sections)
 	}
+}
+
+func processSingleSequence(field reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
+	var data bytes.Buffer
+	maxX := field.Len() - 1
+
+	for i := range field.Len() {
+		val := field.Index(i).Interface().(Score)
+		data.WriteString(fmt.Sprintf("%d %d\n", i, val))
+	}
+
+	plotData := SingleLinePlot{
+		Title:      name,
+		OutputFile: outputFile,
+		Data:       data.String(),
+		MaxX:       maxX,
+	}
+
+	tmpl, err := template.New("singlelineplot").Parse(singleLinePlotTemplate)
+	if err != nil {
+		fmt.Printf("Error creating template: %v\n", err)
+		return
+	}
+
+	var script bytes.Buffer
+	if err := tmpl.Execute(&script, plotData); err != nil {
+		fmt.Printf("Error executing template: %v\n", err)
+		return
+	}
+
+	runGnuplot(script.String(), outputFile)
+
+	*sections = append(*sections, MarkdownSection{
+		Title:     name,
+		ImagePath: outputFile,
+	})
 }
 
 func processNestedPairedArray(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
@@ -352,12 +474,49 @@ func processSimplePairedArray(mg, eg reflect.Value, name, outputFile string, sec
 }
 
 func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
-	// For single value pairs, we'll just create a simple bar chart
-	// (implementation omitted for brevity, but similar to the other functions)
-	fmt.Printf("Single value pair detected for %s (not implemented)\n", name)
+    mgVal := int(mg.Interface().(types.Score)) // or whatever type your Score actually is
+    egVal := int(eg.Interface().(types.Score))
+
+    // Calculate y-range in Go
+    minVal := min(float64(mgVal), float64(egVal))
+    maxVal := max(float64(mgVal), float64(egVal))
+    rangeVal := maxVal - minVal
+    buffer := 1.0
+    if rangeVal > 0 {
+        buffer = rangeVal * 0.2 // 20% buffer
+    }
+    
+    // Handle zero values
+    if minVal == 0 && maxVal == 0 {
+        buffer = 1.0
+    }
+
+    data := BarChart{
+        Title:      name,
+        OutputFile: outputFile,
+        MGValue:    mgVal,
+        EGValue:    egVal,
+        YMin:       minVal - buffer,
+        YMax:       maxVal + buffer,
+    }
+
+    tmpl := template.Must(template.New("barchart").Parse(barChartTemplate))
+    
+    var script bytes.Buffer
+    if err := tmpl.Execute(&script, data); err != nil {
+        fmt.Printf("Template error for %s: %v\n", name, err)
+        return
+    }
+
+    runGnuplot(script.String(), outputFile)
+
+    *sections = append(*sections, MarkdownSection{
+        Title:       name,
+        ImagePath:   outputFile,
+        Description: fmt.Sprintf("Middle Game: %d | End Game: %d", mgVal, egVal),
+    })
 }
 
-// Add this new function to handle KnightOutpost
 func processKnightOutpost(field reflect.Value, name string, sections *[]MarkdownSection) {
 	mg := field.Index(0)
 	eg := field.Index(1)
@@ -382,11 +541,18 @@ func processKnightOutpost(field reflect.Value, name string, sections *[]Markdown
 }
 
 func runGnuplot(script, outputFile string) {
-	cmd := exec.Command("gnuplot")
-	cmd.Stdin = strings.NewReader(script)
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running gnuplot for %s: %v\n", outputFile, err)
-	}
+    cmd := exec.Command("gnuplot")
+    cmd.Stdin = strings.NewReader(script)
+    
+    // Capture stderr for error reporting
+    var stderr bytes.Buffer
+    cmd.Stderr = &stderr
+    
+    if err := cmd.Run(); err != nil {
+        fmt.Printf("Error running gnuplot for %s: %v\n", outputFile, err)
+        fmt.Printf("Gnuplot stderr:\n%s\n", stderr.String())
+        fmt.Printf("Script content:\n%s\n", script)
+    }
 }
 
 func generateMarkdown(sections []MarkdownSection) {

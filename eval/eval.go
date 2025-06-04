@@ -209,11 +209,15 @@ func (sp *scorePair[T]) addTempo(b *board.Board, c *CoeffSet[T]) {
 func (sp *scorePair[T]) addBishopPair(b *board.Board, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
 		myBishops := b.Colors[color] & b.Pieces[Bishop]
-		theirBishops := b.Colors[color.Flip()] & b.Pieces[Bishop]
+		myPawnCnt := (b.Colors[color] & b.Pieces[Pawn]).Count()
 
-		if myBishops != 0 && theirBishops == 0 && myBishops&(myBishops-1) != 0 {
-			sp.mg[color] += c.BishopPair[0]
-			sp.eg[color] += c.BishopPair[1]
+		// technically FEN allows more than 8 pawns
+		myPawnCnt = min(myPawnCnt, len(c.BishopPair)-1)
+
+		// this fails in the rare case of having 2 matching colour complex bishops
+		if myBishops&(myBishops-1) != 0 {
+			sp.mg[color] += c.BishopPair[myPawnCnt]
+			sp.eg[color] += c.BishopPair[myPawnCnt]
 		}
 	}
 }

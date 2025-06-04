@@ -1,75 +1,75 @@
 # Chess Evaluation Coefficients Visualization
 
 
-## PSqT 0
+## PSqT Pawn MiddleGame
 
-![PSqT 0](psqt_0.png)
-
-
-
-## PSqT 1
-
-![PSqT 1](psqt_1.png)
+![PSqT Pawn MiddleGame](psqt_pawn_middlegame.png)
 
 
 
-## PSqT 2
+## PSqT Pawn EndGame
 
-![PSqT 2](psqt_2.png)
-
-
-
-## PSqT 3
-
-![PSqT 3](psqt_3.png)
+![PSqT Pawn EndGame](psqt_pawn_endgame.png)
 
 
 
-## PSqT 4
+## PSqT Knight MiddleGame
 
-![PSqT 4](psqt_4.png)
-
-
-
-## PSqT 5
-
-![PSqT 5](psqt_5.png)
+![PSqT Knight MiddleGame](psqt_knight_middlegame.png)
 
 
 
-## PSqT 6
+## PSqT Knight EndGame
 
-![PSqT 6](psqt_6.png)
-
-
-
-## PSqT 7
-
-![PSqT 7](psqt_7.png)
+![PSqT Knight EndGame](psqt_knight_endgame.png)
 
 
 
-## PSqT 8
+## PSqT Bishop MiddleGame
 
-![PSqT 8](psqt_8.png)
-
-
-
-## PSqT 9
-
-![PSqT 9](psqt_9.png)
+![PSqT Bishop MiddleGame](psqt_bishop_middlegame.png)
 
 
 
-## PSqT 10
+## PSqT Bishop EndGame
 
-![PSqT 10](psqt_10.png)
+![PSqT Bishop EndGame](psqt_bishop_endgame.png)
 
 
 
-## PSqT 11
+## PSqT Rook MiddleGame
 
-![PSqT 11](psqt_11.png)
+![PSqT Rook MiddleGame](psqt_rook_middlegame.png)
+
+
+
+## PSqT Rook EndGame
+
+![PSqT Rook EndGame](psqt_rook_endgame.png)
+
+
+
+## PSqT Queen MiddleGame
+
+![PSqT Queen MiddleGame](psqt_queen_middlegame.png)
+
+
+
+## PSqT Queen EndGame
+
+![PSqT Queen EndGame](psqt_queen_endgame.png)
+
+
+
+## PSqT King MiddleGame
+
+![PSqT King MiddleGame](psqt_king_middlegame.png)
+
+
+
+## PSqT King EndGame
+
+![PSqT King EndGame](psqt_king_endgame.png)
 
 
 
@@ -77,6 +77,14 @@
 
 ![PieceValues](piecevalues.png)
 
+
+
+## TempoBonus
+
+![TempoBonus](tempobonus.png)
+
+
+Middle Game: 25 | End Game: 23
 
 
 ## KingAttackPieces
@@ -89,6 +97,14 @@
 
 ![SafeChecks](safechecks.png)
 
+
+
+## KingShelter
+
+![KingShelter](kingshelter.png)
+
+
+Middle Game: 7 | End Game: -6
 
 
 ## MobilityKnight
@@ -121,9 +137,55 @@
 
 
 
+## ConnectedRooks
+
+![ConnectedRooks](connectedrooks.png)
+
+
+Middle Game: 1 | End Game: 7
+
+
+## BishopPair
+
+![BishopPair](bishoppair.png)
+
+
+
+## ProtectedPasser
+
+![ProtectedPasser](protectedpasser.png)
+
+
+Middle Game: 22 | End Game: 5
+
+
+## PasserKingDist
+
+![PasserKingDist](passerkingdist.png)
+
+
+Middle Game: 8 | End Game: 8
+
+
 ## PasserRank
 
 ![PasserRank](passerrank.png)
 
+
+
+## DoubledPawns
+
+![DoubledPawns](doubledpawns.png)
+
+
+Middle Game: -9 | End Game: -16
+
+
+## IsolatedPawns
+
+![IsolatedPawns](isolatedpawns.png)
+
+
+Middle Game: -16 | End Game: -11
 
 
