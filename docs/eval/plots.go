@@ -63,6 +63,24 @@ plot $DATA1 using 1:2 with linespoints lt 1 pt 7 ps 1.5 lw 2 title "Middle Game"
      $DATA2 using 1:2 with linespoints lt 2 pt 7 ps 1.5 lw 2 title "End Game"
 `
 
+const singleLinePlotTemplate = `# Set up the plot
+set terminal pngcairo enhanced font "Arial,12" size 800,600
+set output '{{.OutputFile}}'
+set title "{{.Title}}"
+set xlabel "X-axis (0-{{.MaxX}})"
+set ylabel "Values"
+set xrange [0:{{.MaxX}}]
+set grid
+
+# Define the data
+$DATA << EOD
+{{.Data}}
+EOD
+
+# Plot with connected points (no smoothing) and visible markers
+plot $DATA using 1:2 with linespoints lt 1 pt 7 ps 1.5 lw 2 title "Values"
+`
+
 const markdownTemplate = `# Chess Evaluation Coefficients Visualization
 
 {{range .Sections}}
@@ -87,6 +105,13 @@ type LinePlot struct {
 	OutputFile string
 	Data1      string
 	Data2      string
+	MaxX       int
+}
+
+type SingleLinePlot struct {
+	Title      string
+	OutputFile string
+	Data       string
 	MaxX       int
 }
 
@@ -145,8 +170,8 @@ func isPairedArray(field reflect.Value) bool {
 		return false
 	}
 
-	// Check for [2]... pattern
-	return field.Type().Len() == 2
+	// Check for arrays that should be plotted (either paired or single sequences)
+	return true
 }
 
 func processChessboard(field reflect.Value, name string, sections *[]MarkdownSection) {
@@ -250,15 +275,32 @@ func generateTruncatedChessboardPlot(field reflect.Value, title, outputFile stri
 }
 
 func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSection) {
-	mg := field.Index(0)
-	eg := field.Index(1)
-
-	outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
-
+	// Special case for KnightOutpost
 	if name == "KnightOutpost" {
 		processKnightOutpost(field, name, sections)
 		return
 	}
+
+	// Check if this is a paired array (middle game/end game)
+	if field.Type().Len() == 2 && field.Type().Elem().Kind() != reflect.Array {
+		mg := field.Index(0)
+		eg := field.Index(1)
+		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+		processSingleValuePair(mg, eg, name, outputFile, sections)
+		return
+	}
+
+	// Handle single sequence arrays (like BishopPair)
+	if field.Type().Len() != 2 {
+		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+		processSingleSequence(field, name, outputFile, sections)
+		return
+	}
+
+	// Handle regular paired arrays
+	mg := field.Index(0)
+	eg := field.Index(1)
+	outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
 
 	switch {
 	case mg.Kind() == reflect.Array && mg.Len() > 0 && mg.Index(0).Kind() == reflect.Array:
@@ -271,6 +313,42 @@ func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSe
 		// Single values like [2]Score (ConnectedRooks)
 		processSingleValuePair(mg, eg, name, outputFile, sections)
 	}
+}
+
+func processSingleSequence(field reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
+	var data bytes.Buffer
+	maxX := field.Len() - 1
+
+	for i := range field.Len() {
+		val := field.Index(i).Interface().(Score)
+		data.WriteString(fmt.Sprintf("%d %d\n", i, val))
+	}
+
+	plotData := SingleLinePlot{
+		Title:      name,
+		OutputFile: outputFile,
+		Data:       data.String(),
+		MaxX:       maxX,
+	}
+
+	tmpl, err := template.New("singlelineplot").Parse(singleLinePlotTemplate)
+	if err != nil {
+		fmt.Printf("Error creating template: %v\n", err)
+		return
+	}
+
+	var script bytes.Buffer
+	if err := tmpl.Execute(&script, plotData); err != nil {
+		fmt.Printf("Error executing template: %v\n", err)
+		return
+	}
+
+	runGnuplot(script.String(), outputFile)
+
+	*sections = append(*sections, MarkdownSection{
+		Title:     name,
+		ImagePath: outputFile,
+	})
 }
 
 func processNestedPairedArray(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
@@ -357,7 +435,6 @@ func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, secti
 	fmt.Printf("Single value pair detected for %s (not implemented)\n", name)
 }
 
-// Add this new function to handle KnightOutpost
 func processKnightOutpost(field reflect.Value, name string, sections *[]MarkdownSection) {
 	mg := field.Index(0)
 	eg := field.Index(1)

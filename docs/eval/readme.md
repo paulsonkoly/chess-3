@@ -121,6 +121,12 @@
 
 
 
+## BishopPair
+
+![BishopPair](bishoppair.png)
+
+
+
 ## PasserRank
 
 ![PasserRank](passerrank.png)
