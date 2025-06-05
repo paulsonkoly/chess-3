@@ -253,9 +253,10 @@ func (sp *scorePair[T]) taperedScore(b *board.Board) T {
 		return T(v / 2400)
 	}
 
-	// The training set has all '0's for the halfmove counter. If that wasn't the
-	// case we should blend the fifty counter in like in real score.
-	return T((mgScore*T(mgPhase) + egScore*T(egPhase)) / 24)
+	v := mgScore*T(mgPhase) + egScore*T(egPhase)
+	v *= 100 - T(fifty)
+
+	return v / 2400
 }
 
 type pieceWise struct {
