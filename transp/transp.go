@@ -70,7 +70,7 @@ func (t Table) HashFull() int {
 func (t *Table) Clear() {
 	t.cnt = 0
 	for ix := range t.data {
-		t.data[ix].Depth = 0
+		t.data[ix].Hash = 0
 	}
 }
 
@@ -79,16 +79,16 @@ func (t *Table) Clear() {
 func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, value Score, typ NodeT) {
 	ix := hash & t.ixMask
 
-	if t.data[ix].Depth > d {
-		return
-	}
-
-	if t.data[ix].Depth == d && t.data[ix].Type != AllNode && typ == AllNode {
-		return
-	}
-
-	if t.data[ix].Depth == 0 {
+	if t.data[ix].Hash == 0 {
 		t.cnt++
+	} else {
+		if t.data[ix].Depth > d {
+			return
+		}
+
+		if t.data[ix].Depth == d && t.data[ix].Type != AllNode && typ == AllNode {
+			return
+		}
 	}
 
 	t.data[ix] = Entry{
