@@ -36,11 +36,12 @@ const (
 //
 // We use up 16 bytes
 type Entry struct {
-	move.SimpleMove            // SimpleMove is the simplified move data.
-	Value           Score      // Value is the entry score value. Not valid for nodes where the score is not established.
-	Depth           Depth      // Depth of the entry.
-	TFCnt           Depth      // Three-fold repetation count of the entry.
-	Type            NodeT      // Type is the entry type.
+	move.SimpleMove       // SimpleMove is the simplified move data.
+	Value           Score // Value is the entry score value. Not valid for nodes where the score is not established.
+	Depth           Depth // Depth of the entry.
+	TFCnt           Depth // Three-fold repetation count of the entry.
+	Type            NodeT // Type is the entry type.
+	Age             uint8
 	Hash            board.Hash // Hash is the board Zobrist-hash.
 }
 
@@ -66,20 +67,12 @@ func (t Table) HashFull() int {
 	return 1000 * t.cnt / t.numE
 }
 
-// Clear clears the transposition table for the next search.Search().
-func (t *Table) Clear() {
-	t.cnt = 0
-	for ix := range t.data {
-		t.data[ix].Hash = 0
-	}
-}
-
 // Insert inserts an entry to the transposition table if the current hash in
 // the table has a lower depth than d.
-func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, value Score, typ NodeT) {
+func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, value Score, typ NodeT, age uint8) {
 	ix := hash & t.ixMask
 
-	if t.data[ix].Hash == 0 {
+	if t.data[ix].Hash == 0 || age != t.data[ix].Age {
 		t.cnt++
 	} else {
 		if t.data[ix].Depth > d {
@@ -97,6 +90,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 		Value:      value,
 		Type:       typ,
 		Depth:      d,
+		Age:        age,
 		TFCnt:      tfCnt,
 	}
 }

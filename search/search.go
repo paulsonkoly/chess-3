@@ -35,6 +35,8 @@ type State struct {
 	hstack *historyStack
 	pv     *pv
 
+	cnt    uint8
+
 	Debug bool // Debug determines if additional debug info output is enabled.
 
 	// Stop channel signals an immediate Stop request to the search. Current
@@ -73,7 +75,6 @@ func NewState(ttSizeInMb int) *State {
 // position.
 func (s *State) Clear() {
 	s.abort = false
-	s.tt.Clear()
 	s.ms.Clear()
 	s.hstack.reset()
 	s.AWFail = 0
@@ -91,6 +92,8 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
+
+	sst.cnt ++
 
 	start := time.Now()
 
@@ -371,7 +374,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode)
+				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode, sst.cnt)
 
 				hSize := sst.hstack.size()
 				bonus := -(Score(d)*20 - 15)
@@ -440,9 +443,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, 0, maxim, transp.AllNode)
+		transpT.Insert(b.Hash(), d, tfCnt, 0, maxim, transp.AllNode, sst.cnt)
 	} else {
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode)
+		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode, sst.cnt)
 	}
 
 	return maxim
