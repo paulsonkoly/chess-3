@@ -32,6 +32,8 @@ const (
 	CutNode
 )
 
+type Age uint8
+
 // Entry is a transposition table entry.
 //
 // We use up 16 bytes
@@ -41,7 +43,7 @@ type Entry struct {
 	Depth           Depth // Depth of the entry.
 	TFCnt           Depth // Three-fold repetation count of the entry.
 	Type            NodeT // Type is the entry type.
-	Age             uint8
+	Age             Age
 	Hash            board.Hash // Hash is the board Zobrist-hash.
 }
 
@@ -69,7 +71,7 @@ func (t Table) HashFull() int {
 
 // Insert inserts an entry to the transposition table if the current hash in
 // the table has a lower depth than d.
-func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, value Score, typ NodeT, age uint8) {
+func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleMove, value Score, typ NodeT) {
 	ix := hash & t.ixMask
 
 	if t.data[ix].Hash == 0 || age != t.data[ix].Age {
@@ -93,6 +95,11 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 		Age:        age,
 		TFCnt:      tfCnt,
 	}
+}
+
+func (e *Entry) UsableFor(d Depth, age Age) bool {
+	ageDiff := age - e.Age
+	return e.Depth >= d + Depth(ageDiff) << 1
 }
 
 // Lookup looks up the transposition table entry, using hash as the key.

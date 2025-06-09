@@ -35,7 +35,7 @@ type State struct {
 	hstack *historyStack
 	pv     *pv
 
-	cnt    uint8
+	cnt transp.Age
 
 	Debug bool // Debug determines if additional debug info output is enabled.
 
@@ -93,7 +93,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 	alpha := -Inf - 1
 	beta := Inf + 1
 
-	sst.cnt ++
+	sst.cnt++
 
 	start := time.Now()
 
@@ -207,7 +207,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.UsableFor(d, sst.cnt) && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
 		switch transpE.Type {
 
@@ -374,7 +374,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), d, tfCnt, m.SimpleMove, value, transp.CutNode, sst.cnt)
+				transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
 				bonus := -(Score(d)*20 - 15)
@@ -443,9 +443,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, 0, maxim, transp.AllNode, sst.cnt)
+		transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, 0, maxim, transp.AllNode)
 	} else {
-		transpT.Insert(b.Hash(), d, tfCnt, bestMove, maxim, transp.PVNode, sst.cnt)
+		transpT.Insert(b.Hash(), d, tfCnt, sst.cnt, bestMove, maxim, transp.PVNode)
 	}
 
 	return maxim
