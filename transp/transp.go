@@ -18,7 +18,6 @@ type Table struct {
 	data   []Entry
 	numE   int
 	ixMask board.Hash
-	cnt    int
 }
 
 type NodeT byte
@@ -65,8 +64,22 @@ func New(sizeInMb int) *Table {
 }
 
 // HashFull is the permill count of the hash usage.
-func (t Table) HashFull() int {
-	return 1000 * t.cnt / t.numE
+func (t Table) HashFull(age Age) int {
+	l := min(1000, len(t.data))
+	cnt := 0
+	for i := range l {
+		if t.data[i].Hash != 0 && t.data[i].Age == age {
+			cnt++
+		}
+	}
+	return cnt
+}
+
+// Clear clears the transposition table.
+func (t *Table) Clear() {
+	for ix := range t.data {
+		t.data[ix].Hash = 0
+	}
 }
 
 // Insert inserts an entry to the transposition table if the current hash in
@@ -74,9 +87,7 @@ func (t Table) HashFull() int {
 func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleMove, value Score, typ NodeT) {
 	ix := hash & t.ixMask
 
-	if t.data[ix].Hash == 0 || age != t.data[ix].Age {
-		t.cnt++
-	} else {
+	if t.data[ix].Hash != 0 && age == t.data[ix].Age {
 		if t.data[ix].Depth > d {
 			return
 		}
@@ -95,11 +106,6 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleM
 		Age:        age,
 		TFCnt:      tfCnt,
 	}
-}
-
-func (e *Entry) UsableFor(d Depth, age Age) bool {
-	ageDiff := age - e.Age
-	return e.Depth >= d + Depth(ageDiff) << 1
 }
 
 // Lookup looks up the transposition table entry, using hash as the key.

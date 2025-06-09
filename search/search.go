@@ -86,6 +86,10 @@ func (s *State) Clear() {
 	s.QDepth = 0
 }
 
+func (s *State) NewGame() {
+	s.tt.Clear()
+}
+
 // Search is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window.
 func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleMove) {
@@ -139,7 +143,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
+			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(sst.cnt), pvInfo(sst.pv.active()))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
@@ -207,7 +211,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.UsableFor(d, sst.cnt) && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
 		switch transpE.Type {
 
