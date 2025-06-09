@@ -73,7 +73,6 @@ func NewState(ttSizeInMb int) *State {
 // position.
 func (s *State) Clear() {
 	s.abort = false
-	s.tt.Clear()
 	s.ms.Clear()
 	s.hstack.reset()
 	s.AWFail = 0
@@ -83,6 +82,10 @@ func (s *State) Clear() {
 	s.TTHit = 0
 	s.QCnt = 0
 	s.QDepth = 0
+}
+
+func (s * State) NewGame() {
+	s.tt.Clear()
 }
 
 // Search is the main entry point to the engine. It performs and
