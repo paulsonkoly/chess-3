@@ -108,6 +108,11 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, age Age, sm move.SimpleM
 	}
 }
 
+func (e *Entry) UsableFor(d Depth, age Age) bool {
+	ageDiff := age - e.Age
+	return e.Depth >= d + Depth(ageDiff) << 1
+}
+
 // Lookup looks up the transposition table entry, using hash as the key.
 func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
 	ix := hash & t.ixMask
