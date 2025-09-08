@@ -37,11 +37,24 @@ const (
 // We use up 16 bytes
 type Entry struct {
 	move.SimpleMove            // SimpleMove is the simplified move data.
-	Value           Score      // Value is the entry score value. Not valid for nodes where the score is not established.
+	value           Score      // value is the score for the entry where one is present.
 	Depth           Depth      // Depth of the entry.
 	TFCnt           Depth      // Three-fold repetation count of the entry.
 	Type            NodeT      // Type is the entry type.
 	Hash            board.Hash // Hash is the board Zobrist-hash.
+}
+
+// Value is the score of the entry corrected for current ply in case of mate score.
+func (e Entry) Value(ply Depth) Score {
+	if e.value > Inf-MaxPlies {
+		return e.value - Score(ply)
+	}
+
+	if e.value < -Inf+MaxPlies {
+		return e.value + Score(ply)
+	}
+
+	return e.value
 }
 
 // New creates a new transposition table.
@@ -94,7 +107,7 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 	t.data[ix] = Entry{
 		SimpleMove: sm,
 		Hash:       hash,
-		Value:      value,
+		value:      value,
 		Type:       typ,
 		Depth:      d,
 		TFCnt:      tfCnt,

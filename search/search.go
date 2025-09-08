@@ -206,22 +206,25 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
 		sst.TTHit++
+
+		tpVal := transpE.Value(ply)
+
 		switch transpE.Type {
 
 		case transp.PVNode:
 			if transpE.SimpleMove != 0 {
 				sst.pv.setTip(ply, transpE.SimpleMove)
 			}
-			return transpE.Value
+			return tpVal
 
 		case transp.CutNode:
-			if transpE.Value >= beta {
-				return transpE.Value
+			if tpVal >= beta {
+				return tpVal
 			}
 
 		case transp.AllNode:
-			if transpE.Value <= alpha {
-				return transpE.Value
+			if tpVal <= alpha {
+				return tpVal
 			}
 		}
 		sst.TTHit--
