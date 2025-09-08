@@ -89,7 +89,7 @@ func (t *Table) Clear() {
 
 // Insert inserts an entry to the transposition table if the current hash in
 // the table has a lower depth than d.
-func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, value Score, typ NodeT) {
+func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, ply Depth, sm move.SimpleMove, value Score, typ NodeT) {
 	ix := hash & t.ixMask
 
 	if t.data[ix].Depth > d {
@@ -102,6 +102,14 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, sm move.SimpleMove, valu
 
 	if t.data[ix].Depth == 0 {
 		t.cnt++
+	}
+
+	if value < -Inf + MaxPlies {
+		value -= Score(ply)
+	}
+
+	if value > Inf - MaxPlies {
+		value += Score(ply)
 	}
 
 	t.data[ix] = Entry{
