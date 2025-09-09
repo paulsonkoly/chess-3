@@ -193,8 +193,8 @@ func KNBvK(b *board.Board) bool {
 	blackB := b.Pieces[Bishop] & b.Colors[Black]
 
 	return b.Pieces[Pawn]|b.Pieces[Rook]|b.Pieces[Queen] == 0 &&
-		(whiteN.IsPow2() && whiteB.IsPow2() && (blackN|blackB) == 0) ||
-		(blackN.IsPow2() && blackB.IsPow2() && (whiteN|whiteB) == 0)
+		((whiteN.IsPow2() && whiteB.IsPow2() && (blackN|blackB) == 0) ||
+			(blackN.IsPow2() && blackB.IsPow2() && (whiteN|whiteB) == 0))
 }
 
 // Phase is game phase.
