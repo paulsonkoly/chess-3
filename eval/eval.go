@@ -23,6 +23,14 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp := scorePair[T]{}
 
 	sp.addPieceValues(b, c)
+
+	// special case checkmate patterns
+	if KNBvK(b) { // knight and bishop checkmate
+		sp.KNBvK(b, c)
+
+		return sp.endgameScore(b)
+	}
+
 	sp.addTempo(b, c)
 	sp.addBishopPair(b, c)
 
@@ -178,6 +186,14 @@ func insufficientMat(b *board.Board) bool {
 	return false
 }
 
+func KNBvK(b *board.Board) bool {
+	return b.Pieces[Pawn]|b.Pieces[Rook]|b.Pieces[Queen] == 0 &&
+		(((b.Pieces[Knight] & b.Colors[White]).IsPow2() &&
+			(b.Pieces[Bishop] & b.Colors[White]).IsPow2()) ||
+			((b.Pieces[Knight] & b.Colors[Black]).IsPow2() &&
+				(b.Pieces[Bishop] & b.Colors[Black]).IsPow2()))
+}
+
 // Phase is game phase.
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
@@ -186,6 +202,34 @@ type scorePair[T ScoreType] struct {
 	eg [2]T
 
 	phase int
+}
+
+// KBCorners are knight-bishop checkmate corners based on parity of square.
+var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
+
+func (sp *scorePair[T]) KNBvK(b *board.Board, c *CoeffSet[T]) {
+	bishopSq := b.Pieces[Bishop].LowestSet()
+	knightSq := b.Pieces[Knight].LowestSet()
+
+	victim := White
+	if b.Pieces[Bishop]&b.Colors[White] != 0 {
+		victim = Black
+	}
+	victimKSq := (b.Pieces[King] & b.Colors[victim]).LowestSet()
+	attackKSq := (b.Pieces[King] & b.Colors[victim.Flip()]).LowestSet()
+
+	sp.addPSqT(victim, King, victimKSq, c)
+	sp.addPSqT(victim.Flip(), King, attackKSq, c)
+	sp.addPSqT(victim.Flip(), Knight, knightSq, c)
+	sp.addPSqT(victim.Flip(), Bishop, bishopSq, c)
+
+	parity := (bishopSq.File() + bishopSq.Rank()) & 1
+
+	cornerDist := min(Chebishev(victimKSq, KBCorners[parity][0]), Chebishev(victimKSq, KBCorners[parity][1]))
+	cornerDist = 7 - cornerDist
+	cornerDist *= cornerDist
+
+	sp.eg[victim.Flip()] += T(cornerDist) * 30
 }
 
 func (sp *scorePair[T]) addPieceValues(b *board.Board, c *CoeffSet[T]) {
@@ -257,6 +301,10 @@ func (sp *scorePair[T]) taperedScore(b *board.Board) T {
 	v *= 100 - T(fifty)
 
 	return v / 2400
+}
+
+func (sp *scorePair[T]) endgameScore(b *board.Board) T {
+	return sp.eg[b.STM] - sp.eg[b.STM.Flip()]
 }
 
 type pieceWise struct {
