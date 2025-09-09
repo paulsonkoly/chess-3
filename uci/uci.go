@@ -164,12 +164,15 @@ func (e *Engine) handlePosition(args []string) {
 		return
 	}
 
-	if args[0] == "startpos" {
+	switch args[0] {
+
+	case "startpos":
 		e.Board = Must(board.FromFEN(startPos))
 		if len(args) > 2 && args[1] == "moves" {
 			e.applyMoves(args[2:])
 		}
-	} else if args[0] == "fen" {
+
+	case "fen":
 		fen := strings.Join(args[1:], " ")
 		spaceIndex := strings.Index(fen, " moves ")
 		if spaceIndex != -1 {
@@ -273,7 +276,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 	if stm == Black && tc.btime > 0 {
 		timeLeft = tc.btime
 	}
-	
+
 	if timeLeft <= TimeSafetyMargin {
 		// we are losing on time anyway, but at least allocate time
 		return timeLeft
@@ -307,7 +310,7 @@ func (e *Engine) handleGo(args []string) {
 	stm := e.Board.STM
 
 	if tc.timedMode(stm) {
-		depth = search.MaxPlies
+		depth = MaxPlies
 	}
 
 	e.SST.Stop = make(chan struct{})

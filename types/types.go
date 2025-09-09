@@ -8,6 +8,8 @@ import (
 
 type Depth int8
 
+const MaxPlies = 64
+
 type Score int16
 
 const (
