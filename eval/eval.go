@@ -187,11 +187,14 @@ func insufficientMat(b *board.Board) bool {
 }
 
 func KNBvK(b *board.Board) bool {
+	whiteN := b.Pieces[Knight] & b.Colors[White]
+	blackN := b.Pieces[Knight] & b.Colors[Black]
+	whiteB := b.Pieces[Bishop] & b.Colors[White]
+	blackB := b.Pieces[Bishop] & b.Colors[Black]
+
 	return b.Pieces[Pawn]|b.Pieces[Rook]|b.Pieces[Queen] == 0 &&
-		(((b.Pieces[Knight] & b.Colors[White]).IsPow2() &&
-			(b.Pieces[Bishop] & b.Colors[White]).IsPow2()) ||
-			((b.Pieces[Knight] & b.Colors[Black]).IsPow2() &&
-				(b.Pieces[Bishop] & b.Colors[Black]).IsPow2()))
+		(whiteN.IsPow2() && whiteB.IsPow2() && (blackN|blackB) == 0) ||
+		(blackN.IsPow2() && blackB.IsPow2() && (whiteN|whiteB) == 0)
 }
 
 // Phase is game phase.
