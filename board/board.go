@@ -28,6 +28,10 @@ func (bb BitBoard) Count() int {
 	return bits.OnesCount64(uint64(bb))
 }
 
+func (bb BitBoard) IsPow2() bool {
+	return bb&(bb-1) == 0 && bb != 0
+}
+
 const (
 	AFile = BitBoard(0x0101010101010101)
 	BFile = BitBoard(0x0202020202020202)

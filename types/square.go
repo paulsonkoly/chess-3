@@ -74,3 +74,11 @@ const (
 func (s Square) String() string {
 	return fmt.Sprintf("%c%c", s%8+'a', s/8+'1')
 }
+
+func (s Square) File() Square {
+	return s & 7
+}
+
+func (s Square) Rank() Square {
+	return (s >> 3) & 7
+}
