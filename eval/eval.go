@@ -39,10 +39,12 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	pw.calcOccupancy(b)
 	pw.calcKingSquares(b)
 	pw.calcPawnStructure(b)
+	pw.calcOCB(b)
 
 	sp.addPassers(b, pw, c)
 	sp.addDoubledPawns(pw, c)
 	sp.addIsolatedPawns(pw, c)
+	sp.addOCBEndgame(b, pw, c)
 
 	ka := kingAttacks[T]{}
 
@@ -248,6 +250,20 @@ func (sp *scorePair[T]) addPieceValues(b *board.Board, c *CoeffSet[T]) {
 	}
 }
 
+func (sp *scorePair[T]) addOCBEndgame(b *board.Board, pw pieceWise, _ *CoeffSet[T]) {
+	if pw.ocb && b.Pieces[Knight]|b.Pieces[Rook]|b.Pieces[Queen] == 0 {
+		wPCnt := (b.Pieces[Pawn] & b.Colors[White]).Count()
+		bPCnt := (b.Pieces[Pawn] & b.Colors[Black]).Count()
+
+		switch wPCnt - bPCnt {
+		case 1:
+			sp.eg[White] -= 44
+		case -1:
+			sp.mg[Black] -= 44
+		}
+	}
+}
+
 func (sp *scorePair[T]) addTempo(b *board.Board, c *CoeffSet[T]) {
 	sp.mg[b.STM] += c.TempoBonus[0]
 	sp.eg[b.STM] += c.TempoBonus[1]
@@ -314,13 +330,14 @@ type pieceWise struct {
 	occ           board.BitBoard
 	attacks       [2][6]board.BitBoard
 	kingRays      [2][2]board.BitBoard
-	kingSq        [2]Square
 	kingNb        [2]board.BitBoard
 	holes         [2]board.BitBoard
 	passers       [2]board.BitBoard
 	doubledPawns  [2]board.BitBoard
 	isolatedPawns [2]board.BitBoard
 	cover         [2]board.BitBoard
+	kingSq        [2]Square
+	ocb           bool
 }
 
 func (pw *pieceWise) calcOccupancy(b *board.Board) {
@@ -443,6 +460,23 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 			sp.eg[color] += c.PasserRank[1][rank-1]
 		}
 	}
+}
+
+func (pw *pieceWise) calcOCB(b *board.Board) {
+	wBishop := b.Pieces[Bishop] & b.Colors[White]
+	bBishop := b.Pieces[Bishop] & b.Colors[Black]
+
+	if !wBishop.IsPow2() || !bBishop.IsPow2() {
+		return
+	}
+	wBishopSq := wBishop.LowestSet()
+	bBishopSq := bBishop.LowestSet()
+
+	if (wBishopSq.File()+wBishopSq.Rank())&1 == (bBishopSq.File()+bBishopSq.Rank())&1 {
+		return
+	}
+
+	pw.ocb = true
 }
 
 func Chebishev(a, b Square) int {
