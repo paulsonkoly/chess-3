@@ -259,7 +259,7 @@ func (sp *scorePair[T]) addOCBEndgame(b *board.Board, pw pieceWise, _ *CoeffSet[
 		case 1:
 			sp.eg[White] -= 44
 		case -1:
-			sp.mg[Black] -= 44
+			sp.eg[Black] -= 44
 		}
 	}
 }
