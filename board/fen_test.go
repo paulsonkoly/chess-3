@@ -74,7 +74,7 @@ func TestFENConversion(t *testing.T) {
 		{
 			name: "Invalid castling rights character",
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KA e6 0 1",
-			err:  errors.New("K, Q, k, q or - expected got A"),
+			err:  errors.New("expecting K, Q, k, q or - got A"),
 		},
 		{
 			name: "En passant square invalid (a9)",
@@ -114,7 +114,7 @@ func TestFENConversion(t *testing.T) {
 		{
 			name: "Invalid castling rights mix",
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQx e6 0 1",
-			err:  errors.New("K, Q, k, q or - expected got x"),
+			err:  errors.New("expecting K, Q, k, q or - got x"),
 		},
 		{
 			name: "Incomplete en passant square",
@@ -154,7 +154,7 @@ func TestFENConversion(t *testing.T) {
 		{
 			name: "Invalid castling mix",
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KX - 0 1",
-			err:  errors.New("K, Q, k, q or - expected got X"),
+			err:  errors.New("expecting K, Q, k, q or - got X"),
 		},
 		{
 			name: "Invalid rank structure",

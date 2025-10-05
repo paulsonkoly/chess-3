@@ -8,7 +8,6 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 
-	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 

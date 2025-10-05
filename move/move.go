@@ -1,6 +1,5 @@
 package move
 
-//revive:disable-next-line
 import . "github.com/paulsonkoly/chess-3/types"
 
 // Move represents a chess move.

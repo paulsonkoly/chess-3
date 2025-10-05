@@ -10,9 +10,6 @@ import (
 	"text/template"
 
 	"github.com/paulsonkoly/chess-3/eval"
-	"github.com/paulsonkoly/chess-3/types"
-
-	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
@@ -276,7 +273,7 @@ func generateChessboardPlot(field reflect.Value, title, outputFile string) {
 	runGnuplot(script.String(), outputFile)
 }
 
-func generateTruncatedChessboardPlot(field reflect.Value, title, outputFile string, startRank, endRank int) {
+func generateTruncatedChessboardPlot(field reflect.Value, title, outputFile string, _, _ int) {
 	var buf bytes.Buffer
 
 	// Add the actual data for ranks 3-7
@@ -474,8 +471,8 @@ func processSimplePairedArray(mg, eg reflect.Value, name, outputFile string, sec
 }
 
 func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
-    mgVal := int(mg.Interface().(types.Score)) // or whatever type your Score actually is
-    egVal := int(eg.Interface().(types.Score))
+    mgVal := int(mg.Interface().(Score))
+    egVal := int(eg.Interface().(Score))
 
     // Calculate y-range in Go
     minVal := min(float64(mgVal), float64(egVal))

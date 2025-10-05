@@ -1,0 +1,38 @@
+version: "2"
+run:
+  relative-path-mode: gitroot
+linters:
+  enable:
+    - revive
+  settings:
+    staticcheck:
+      checks:
+        - all
+      dot-import-whitelist:
+        - "github.com/paulsonkoly/chess-3/types"
+    revive:
+      rules:
+        - name: dot-imports
+          severity: warning
+          disabled: false
+          exclude: [""]
+          arguments:
+            - allowed-packages: ["github.com/paulsonkoly/chess-3/types"]
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
