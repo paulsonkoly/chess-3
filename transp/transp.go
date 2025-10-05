@@ -38,7 +38,6 @@ type Entry struct {
 	move.SimpleMove            // SimpleMove is the simplified move data.
 	value           Score      // value is the score for the entry where one is present.
 	Depth           Depth      // Depth of the entry.
-	TFCnt           Depth      // Three-fold repetation count of the entry.
 	Type            NodeT      // Type is the entry type.
 	Hash            board.Hash // Hash is the board Zobrist-hash.
 }
@@ -88,7 +87,7 @@ func (t *Table) Clear() {
 
 // Insert inserts an entry to the transposition table if the current hash in
 // the table has a lower depth than d.
-func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, ply Depth, sm move.SimpleMove, value Score, typ NodeT) {
+func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ NodeT) {
 	ix := hash & t.ixMask
 
 	if t.data[ix].Depth > d {
@@ -117,7 +116,6 @@ func (t *Table) Insert(hash board.Hash, d, tfCnt Depth, ply Depth, sm move.Simpl
 		value:      value,
 		Type:       typ,
 		Depth:      d,
-		TFCnt:      tfCnt,
 	}
 }
 

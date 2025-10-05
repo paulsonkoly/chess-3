@@ -374,7 +374,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), d, tfCnt, ply, m.SimpleMove, value, transp.CutNode)
+				transpT.Insert(b.Hash(), d, ply, m.SimpleMove, value, transp.CutNode)
 
 				hSize := sst.hstack.size()
 				bonus := -(Score(d)*20 - 15)
@@ -443,9 +443,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, tfCnt, ply, 0, maxim, transp.AllNode)
+		transpT.Insert(b.Hash(), d, ply, 0, maxim, transp.AllNode)
 	} else {
-		transpT.Insert(b.Hash(), d, tfCnt, ply, bestMove, maxim, transp.PVNode)
+		transpT.Insert(b.Hash(), d, ply, bestMove, maxim, transp.PVNode)
 	}
 
 	return maxim
