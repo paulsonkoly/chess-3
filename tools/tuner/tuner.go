@@ -182,7 +182,7 @@ func main() {
 			m := momentum.At(ixs)
 			*m = beta1*(*m) + (1-beta1)*g
 			v := velocity.At(ixs)
-			*v = beta2*(*v) + (1-beta2)*math.Pow(g, 2)
+			*v = beta2*(*v) + (1-beta2)*g*g
 
 			mHat := *m / (1 - math.Pow(beta1, float64(epoch)))
 			vHat := *v / (1 - math.Pow(beta2, float64(epoch)))

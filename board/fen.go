@@ -142,7 +142,7 @@ func (fp *fenParser) cRights() error {
 		case '-':
 
 		default:
-			return fmt.Errorf("K, Q, k, q or - expected got %c", fp.fen[fp.ix])
+			return fmt.Errorf("expecting K, Q, k, q or - got %c", fp.fen[fp.ix])
 		}
 
 		fp.ix++
@@ -157,9 +157,10 @@ func (fp *fenParser) enPassant() error {
 		}
 		file := fp.fen[fp.ix] - 'a'
 		rank := fp.fen[fp.ix+1] - '1'
-		if rank == 2 {
+		switch rank {
+		case 2:
 			rank = 3
-		} else if rank == 5 {
+		case 5:
 			rank = 4
 		}
 		fp.b.EnPassant = Square(rank*8 + file)
