@@ -204,7 +204,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d && transpE.TFCnt >= tfCnt {
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d {
 		sst.TTHit++
 
 		tpVal := transpE.Value(ply)
