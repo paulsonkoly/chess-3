@@ -1,7 +1,6 @@
 package heur
 
 import (
-	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 

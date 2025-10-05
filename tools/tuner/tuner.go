@@ -18,7 +18,6 @@ import (
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 
-	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 

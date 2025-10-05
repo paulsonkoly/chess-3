@@ -7,7 +7,6 @@ import (
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 
-	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 	"github.com/stretchr/testify/assert"
 )

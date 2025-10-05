@@ -12,7 +12,6 @@ import (
 	"github.com/paulsonkoly/chess-3/uci"
 	"slices"
 
-	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 

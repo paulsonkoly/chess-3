@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	//revive:disable-next-line
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
