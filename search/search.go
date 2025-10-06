@@ -199,7 +199,8 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, pvN, cutN bool, 
 	sst.pv.setNull(ply)
 
 	tfCnt := b.Threefold()
-	if b.FiftyCnt >= 100 || tfCnt >= 3 {
+	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetation
+	if b.FiftyCnt >= 100 || tfCnt >= 3 - min(ply, 1) {
 		return 0
 	}
 
