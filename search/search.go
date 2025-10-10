@@ -195,7 +195,7 @@ func scInfo(score Score) string {
 type Node = byte
 
 const (
-	// PVNode expects the sore to be in the window.
+	// PVNode expects the score to be in the window.
 	PVNode Node = iota
 	// CutNode expects the node to fail high.
 	CutNode
