@@ -464,14 +464,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 func nextNodeType(nType Node, cnt int) Node {
 	switch nType {
 	case PVNode:
-		if cnt == 0 {
+		if cnt == 1 {
 			return PVNode
 		} else {
 			return CutNode
 		}
 
 	case CutNode:
-		if cnt == 0 {
+		if cnt == 1 {
 			return AllNode
 		} else {
 			return CutNode
