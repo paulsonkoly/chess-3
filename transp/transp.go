@@ -20,15 +20,15 @@ type Table struct {
 	cnt    int
 }
 
-type NodeT byte
+type Type byte
 
 const (
-	// PVNode type entry is an exact score entry for positions that are in the alpha-beta window.
-	PVNode NodeT = iota
-	// AllNode type entry is a fail-low node, score failed under alpha.
-	AllNode
-	// CutNode type entry is a fail-high node, score failed above beta.
-	CutNode
+	// Exact is an exact score.
+	Exact Type = iota
+	// UpperBound is an upper bound for the score.
+	UpperBound
+	// LowerBound is a lower bound for the score.
+	LowerBound
 )
 
 // Entry is a transposition table entry.
@@ -38,7 +38,7 @@ type Entry struct {
 	move.SimpleMove            // SimpleMove is the simplified move data.
 	value           Score      // value is the score for the entry where one is present.
 	Depth           Depth      // Depth of the entry.
-	Type            NodeT      // Type is the entry type.
+	Type            Type       // Type is the entry type.
 	Hash            board.Hash // Hash is the board Zobrist-hash.
 }
 
@@ -87,14 +87,14 @@ func (t *Table) Clear() {
 
 // Insert inserts an entry to the transposition table if the current hash in
 // the table has a lower depth than d.
-func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ NodeT) {
+func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
 	ix := hash & t.ixMask
 
 	if t.data[ix].Depth > d {
 		return
 	}
 
-	if t.data[ix].Depth == d && t.data[ix].Type != AllNode && typ == AllNode {
+	if t.data[ix].Depth == d && t.data[ix].Type != UpperBound && typ == UpperBound {
 		return
 	}
 
@@ -102,11 +102,11 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 		t.cnt++
 	}
 
-	if value < -Inf + MaxPlies {
+	if value < -Inf+MaxPlies {
 		value -= Score(ply)
 	}
 
-	if value > Inf - MaxPlies {
+	if value > Inf-MaxPlies {
 		value += Score(ply)
 	}
 
