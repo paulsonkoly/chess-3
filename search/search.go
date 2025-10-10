@@ -340,26 +340,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 			quietCnt++
 		}
 
-		var next Node
-		switch nType {
-		case PVNode:
-			if ix == 0 {
-				next = PVNode
-			} else {
-				next = CutNode
-			}
-
-		case CutNode:
-			if moveCnt == 0 {
-				next = AllNode
-			} else {
-				next = CutNode
-			}
-
-		case AllNode:
-			// Children of ALL-nodes are CUT-nodes
-			next = CutNode
-		}
+		next := nextNodeType(nType, moveCnt)
 
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
@@ -480,6 +461,29 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 	return maxim
 }
 
+func nextNodeType(nType Node, cnt int) Node {
+	switch nType {
+	case PVNode:
+		if cnt == 0 {
+			return PVNode
+		} else {
+			return CutNode
+		}
+
+	case CutNode:
+		if cnt == 0 {
+			return AllNode
+		} else {
+			return CutNode
+		}
+
+	case AllNode:
+		return CutNode
+	}
+
+	return CutNode
+}
+
 // (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
 var log = [...]int{
 	0,
@@ -505,7 +509,7 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 	// }
 	//
 
-	if nType == CutNode || nType == AllNode {
+	if nType != PVNode {
 		value++
 	}
 
