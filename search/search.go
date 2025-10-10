@@ -191,11 +191,15 @@ func scInfo(score Score) string {
 	return fmt.Sprintf("cp %d", score)
 }
 
+// Node is the predicted type of the node.
 type Node = byte
 
 const (
+	// PVNode expects the sore to be in the window.
 	PVNode Node = iota
+	// CutNode expects the node to fail high.
 	CutNode
+	// AllNode expects the node to fail low.
 	AllNode
 )
 
@@ -279,7 +283,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 			// In case the null move search left a PV fragment this removes it,
 			// normally, it shouldn't matter because it's expected to fail low higher
 			// up anyway. But going up the window can widen, and it would be possible
-			// a nullmove line bubbles up.
+			// that a nullmove line bubbles up.
 			sst.pv.setNull(ply)
 
 			if value >= beta {
