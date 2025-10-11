@@ -517,8 +517,8 @@ func lmr(d Depth, mCount int, improving, quiet bool, nType Node, histScore Score
 	// reverse histScore so higher score yields less reduction
 	histScore = heur.MaxHistory - histScore
 
-	// scale it down to the range of the log table
-	value += int(histScore) / 256
+	// scale it down to 0..1
+	value += int(histScore) / (heur.MaxHistory / 2)
 
 	if nType != PVNode {
 		value++
