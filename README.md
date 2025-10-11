@@ -6,9 +6,11 @@ Currently I'm using chess-2's [lichess account](http://lichess.org/@/chess-2-bot
 
 ## CCRL
 
-| version | ccrl | ccrl elo |
-|---------|------|----------|
-| 2.0     | [results](https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%202.0%2064-bit#Chess-3_2_0_64-bit) | 2769 |
-| 1.0     | [results](https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%201.47%2064-bit#Chess-3_1_47_64-bit) | 2630 |
+| version | ccrl elo    |
+|---------|-------------|
+| 2.0     | [2804][2.0] |
+| 1.0     | [2630][1.0] |
 
+[2.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%202.0%2064-bit#Chess-3_2_0_64-bit
+[1.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%201.47%2064-bit#Chess-3_1_47_64-bit
 
