@@ -350,7 +350,9 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 		// move, which is likely to be the hash move.
 		fullSearched := false
 		if d > 1 && quietCnt > 2 && !inCheck {
-			rd := lmr(d, moveCnt-1, improving, nType)
+
+			histScore := sst.hist.Probe(b.STM, m.From(), m.To())
+			rd := lmr(d, moveCnt-1, improving, quiet, nType, histScore)
 
 			// reduced depth first, then re-try with full depth and null window.
 			if rd < d-1 {
@@ -505,13 +507,18 @@ var log = [...]int{
 
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
-func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
+func lmr(d Depth, mCount int, improving, quiet bool, nType Node, histScore Score) Depth {
 	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
-	// if !quiet {
-	// 	value /= 2
-	// }
-	//
+	// TODO: this doesn't exist for captures atm.
+	if !quiet {
+		histScore = heur.MaxHistory
+	}
+	// reverse histScore so higher score yields less reduction
+	histScore = heur.MaxHistory - histScore
+
+	// scale it down to the range of the log table
+	value += int(histScore) / 256
 
 	if nType != PVNode {
 		value++
