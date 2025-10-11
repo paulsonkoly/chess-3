@@ -352,7 +352,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 		if d > 1 && quietCnt > 2 && !inCheck {
 
 			histScore := sst.hist.Probe(b.STM.Flip(), m.From(), m.To())
-			rd := lmr(d, moveCnt-1, improving, quiet, nType, histScore)
+			rd := lmr(d, moveCnt-1, improving, nType, histScore)
 
 			// reduced depth first, then re-try with full depth and null window.
 			if rd < d-1 {
@@ -507,18 +507,13 @@ var log = [...]int{
 
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
 // 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
-func lmr(d Depth, mCount int, improving, quiet bool, nType Node, histScore Score) Depth {
+func lmr(d Depth, mCount int, improving bool, nType Node, histScore Score) Depth {
 	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
 	// TODO: this doesn't exist for captures atm.
-	if !quiet {
-		histScore = heur.MaxHistory
+	if histScore < 0 {
+		value++
 	}
-	// reverse histScore so higher score yields less reduction
-	histScore = heur.MaxHistory - histScore
-
-	// scale it down to 0..1
-	value += int(histScore) / (heur.MaxHistory / 2)
 
 	if nType != PVNode {
 		value++
