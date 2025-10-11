@@ -351,7 +351,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 		fullSearched := false
 		if d > 1 && quietCnt > 2 && !inCheck {
 
-			histScore := sst.hist.Probe(b.STM, m.From(), m.To())
+			histScore := sst.hist.Probe(b.STM.Flip(), m.From(), m.To())
 			rd := lmr(d, moveCnt-1, improving, quiet, nType, histScore)
 
 			// reduced depth first, then re-try with full depth and null window.
