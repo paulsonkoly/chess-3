@@ -276,7 +276,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 
 			r += Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
 
-			value := -AlphaBeta(b, -beta, -beta+1, max(d-r, 0), ply, CutNode, sst)
+			value := -AlphaBeta(b, -beta, -beta+1, max(d-r, 0), ply+1, CutNode, sst)
 
 			b.UndoNullMove(enP)
 
