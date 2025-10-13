@@ -19,6 +19,9 @@ const (
 	NMPDiffFactor = Score(51)
 	NMPDepthLimit = Depth(1)
 	NMPInit       = Depth(4)
+
+	RFPMarginNotImproving = Score(105)
+	RFPMarginImproving    = Score(70)
 )
 
 const (
@@ -259,8 +262,17 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
-			return staticEval
+		if beta > -Inf+MaxPlies {
+			var margin Score
+			if improving {
+				margin = Score(d) * RFPMarginImproving
+			} else {
+				margin = Score(d) * RFPMarginNotImproving
+			}
+
+			if staticEval >= beta+margin && beta > -Inf+MaxPlies {
+				return staticEval
+			}
 		}
 
 		// null move pruning
