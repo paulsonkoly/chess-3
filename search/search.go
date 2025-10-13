@@ -19,6 +19,8 @@ const (
 	NMPDiffFactor = Score(51)
 	NMPDepthLimit = Depth(1)
 	NMPInit       = Depth(4)
+
+	HistScoreLMRLimit = Score(-200)
 )
 
 const (
@@ -510,8 +512,7 @@ var log = [...]int{
 func lmr(d Depth, mCount int, improving, quiet bool, nType Node, histScore Score) Depth {
 	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
-	// TODO: this doesn't exist for captures atm.
-	if quiet && histScore < 0 {
+	if quiet && histScore < HistScoreLMRLimit {
 		value++
 	}
 
