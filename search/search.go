@@ -20,8 +20,7 @@ const (
 	NMPDepthLimit = Depth(1)
 	NMPInit       = Depth(4)
 
-	RFPMarginNotImproving = Score(105)
-	RFPMarginImproving    = Score(70)
+	RFPMargin = Score(105)
 )
 
 const (
@@ -263,14 +262,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 
 		// RFP
 		if beta > -Inf+MaxPlies {
-			var margin Score
+			dFactor := Score(d)
 			if improving {
-				margin = Score(d) * RFPMarginImproving
-			} else {
-				margin = Score(d) * RFPMarginNotImproving
+				dFactor--
 			}
 
-			if staticEval >= beta+margin && beta > -Inf+MaxPlies {
+			if staticEval >= beta+dFactor*RFPMargin && beta > -Inf+MaxPlies {
 				return staticEval
 			}
 		}
