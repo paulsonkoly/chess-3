@@ -19,6 +19,8 @@ const (
 	NMPDiffFactor = Score(51)
 	NMPDepthLimit = Depth(1)
 	NMPInit       = Depth(4)
+
+	RFPDepthLimit = Depth(8)
 )
 
 const (
@@ -259,7 +261,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 		improving = sst.hstack.oldScore() < staticEval
 
 		// RFP
-		if d < 8 && staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
+		if d < RFPDepthLimit && staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
 			return staticEval
 		}
 
