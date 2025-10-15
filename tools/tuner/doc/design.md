@@ -64,11 +64,11 @@ Jobs map to chunks in our original design.
 Once a server registers that a batch is fully completed, it moves to the next batch and updates the current coefficients, in line with the original implementation.
 The server cannot give jobs to requesting clients if there are no more chunks left in a batch to give out, and thus has to stall clients when this happens. This is needed because new jobs would require the updated coefficients.
 
-#### EPD shuffle conundrum
+#### EPD shuffle
 
 The EPD files are distributed to new joining clients that can request a streaming API to obtain their local copy of the EPD data. They can also cache the EPD on local hardrive and verify their content on startup with checksum, avoiding re-downloads on client startup.
 
-At the end of the epoch currently there is a random shuffle of the EPD data. The shuffle needs to be implemented with a deterministic random generator. Each client can independently perform their own shuffle, based on the current epoch number and they should get the same order. The epoch number has to be part of the job structure thus the job incorporates the EPD order.
+At the end of the epoch there is a random shuffle of the EPD data. The shuffle needs to be consistent across all clients. The current epoch number uniquely identifies the shuffle order. The epoch number has to be part of the job structure thus the job incorporates the EPD order.
 
 Once the EPD is shuffled, the client can store a local copy of the shuffled data to a new epd file..
 
@@ -77,6 +77,8 @@ We can implement the Job as
 ```go
 type Job struct {
   epoch int // identifies the shuffle sequence of the EPD file
+  checksum string // the checksum of the shuffled chunk
+  coefficients []float64 // the current coefficients
   start int // line index of the chunk start
   end int // line index of the chunk end
 }
@@ -86,3 +88,4 @@ Once the shuffled data is stored on disk, the client can unload it from memory a
 
 The shuffling can be based on lines, instead of parsed EPD entries thus we should get out of memory errors when a client does the shuffling. The current design keeps board representation in the slice that holds the EPD data, because it loads only once.
 
+The shuffle is verified by the Job checksum, which is sent back to the server on completion. Then the server can also verify the result.
