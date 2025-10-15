@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"os"
 	"slices"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/client"
@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	if slices.Contains(flag.Args(), "server") {
+	if slices.Contains(os.Args, "server") {
 		server.Run()
 	} else {
 		client.Run()

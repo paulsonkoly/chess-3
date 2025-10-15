@@ -1,6 +1,7 @@
 package server
 
 import (
+	"flag"
 	"fmt"
 	"iter"
 	"net"
@@ -124,12 +125,18 @@ type Result struct {
 }
 
 func Run() {
+	var epdFileName string
+
+	flag.StringVar(&epdFileName, "epd", "", "epd file name")
+
+	flag.Parse()
+
 	jobQueue := make(chan Job, JobQueueDepth)
 	resultQueue := make(chan Result, ResultQueueDepth)
 
 	s := tunerServer{jobQueue: jobQueue, resultQueue: resultQueue}
 
-	go epdProcess(jobQueue, resultQueue)
+	go epdProcess(epdFileName, jobQueue, resultQueue)
 
 	// listen via GRPC
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 9999))
@@ -137,14 +144,16 @@ func Run() {
 		panic("failed to listen")
 	}
 
+	fmt.Println("listening on port...")
+
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterTunerServer(grpcServer, s)
 	grpcServer.Serve(lis)
 }
 
-func epdProcess(jobQueue chan<- Job, resultQueue <-chan Result) {
-	epdFile, err := epd.Load("filename.epd")
+func epdProcess(epdFileName string, jobQueue chan<- Job, resultQueue <-chan Result) {
+	epdFile, err := epd.Load(epdFileName)
 	if err != nil {
 		panic(err)
 	}
@@ -202,6 +211,6 @@ func epdProcess(jobQueue chan<- Job, resultQueue <-chan Result) {
 		fmt.Println(coeffs)
 
 		// shuffle
-		epdFile.Shuffle(epoch)
+		epdFile.Shuffle()
 	}
 }
