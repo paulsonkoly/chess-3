@@ -6,17 +6,13 @@ import (
 	"net"
 	"time"
 
+	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
+	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 	"google.golang.org/grpc"
 )
 
 const (
-	// NumLinesInBatch determines how the epd file is split into batches. A batch
-	// completion implies the coefficients update.
-	NumLinesInBatch = 100_000
-	// NumChunksInBatch determines how a batch is split into chunks. A chunk is a
-	// unique work iterm handed over to clients.
-	NumChunksInBatch = 16
 	// JobTTL is job time to live duration in seconds.
 	JobTTL = 600
 	// JobQueueDepth determines how many jobs the EPD processor can produce
@@ -31,15 +27,8 @@ const (
 	ClientWaitTime = 100
 )
 
-type Coeffs []float64
-
-type Chunk struct {
-	start int
-	end   int
-}
-
 type ServerChunk struct {
-	Chunk
+	tuning.Chunk
 	completed bool
 	jobs      []ServerJob
 }
@@ -121,7 +110,7 @@ func (bc batchChunks) Match(r Result) (ix int, ok bool) {
 
 type Job struct {
 	UUID string
-	Chunk
+	tuning.Chunk
 }
 
 type ServerJob struct {
@@ -155,18 +144,21 @@ func Run() {
 }
 
 func epdProcess(jobQueue chan<- Job, resultQueue <-chan Result) {
-	epdFile := epd.Load("filename.epd")
+	epdFile, err := epd.Load("filename.epd")
+	if err != nil {
+		panic(err)
+	}
 
-	coeffs := initialCoeffs
+	coeffs := tuning.Coeffs{}
 
 	for epoch := 1; true; epoch++ {
-		for batch := range epdFile.Batches(NumLinesInBatch) {
+		for batch := range epdFile.Batches() {
 
-			grads := Coeffs{}
+			grads := tuning.Coeffs{}
 
 			// gather the chunks in the batch and create server tracking structures
-			chunks := make(batchChunks, 0, NumChunksInBatch)
-			for chunk := range batch.Chunks(NumChunksInBatch) {
+			chunks := make(batchChunks, 0, tuning.NumChunksInBatch)
+			for chunk := range batch.Chunks() {
 				chunks = append(chunks, ServerChunk{Chunk: chunk})
 			}
 
@@ -210,6 +202,6 @@ func epdProcess(jobQueue chan<- Job, resultQueue <-chan Result) {
 		fmt.Println(coeffs)
 
 		// shuffle
-		epdFile.Shuffle()
+		epdFile.Shuffle(epoch)
 	}
 }
