@@ -64,6 +64,32 @@ Jobs map to chunks in our original design.
 Once a server registers that a batch is fully completed, it moves to the next batch and updates the current coefficients, in line with the original implementation.
 The server cannot give jobs to requesting clients if there are no more chunks left in a batch to give out, and thus has to stall clients when this happens. This is needed because new jobs would require the updated coefficients.
 
+We can implement the Job as
+
+```go
+type Job struct {
+  jobUUID string // a unique JOB id, different if the same job is given to other clients or the same client again
+  epoch int // identifies the shuffle sequence of the EPD file
+  checksum string // the checksum of the shuffled chunk
+  coefficients []float64 // the current coefficients
+  start int // line index of the chunk start
+  end int // line index of the chunk end
+}
+
+```
+
+End the Result structure would look like
+
+```go
+type Result struct {
+   jobUUID string // same UUID that the client received
+   checksum // the chunk checksum
+   gradients []float64 // the computed gradients
+}
+```
+
+
+
 #### EPD shuffle
 
 The EPD files are distributed to new joining clients that can request a streaming API to obtain their local copy of the EPD data. They can also cache the EPD on local hardrive and verify their content on startup with checksum, avoiding re-downloads on client startup.
@@ -71,18 +97,6 @@ The EPD files are distributed to new joining clients that can request a streamin
 At the end of the epoch there is a random shuffle of the EPD data. The shuffle needs to be consistent across all clients. The current epoch number uniquely identifies the shuffle order. The epoch number has to be part of the job structure thus the job incorporates the EPD order.
 
 Once the EPD is shuffled, the client can store a local copy of the shuffled data to a new epd file..
-
-We can implement the Job as
-
-```go
-type Job struct {
-  epoch int // identifies the shuffle sequence of the EPD file
-  checksum string // the checksum of the shuffled chunk
-  coefficients []float64 // the current coefficients
-  start int // line index of the chunk start
-  end int // line index of the chunk end
-}
-```
 
 Once the shuffled data is stored on disk, the client can unload it from memory and on Job request it can reload the relevant part to memory.
 
