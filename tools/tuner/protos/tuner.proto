@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package tuner;
+
+option go_package = "./grpc/tuner;tuner";
+
+// The tuner service that clients communicate with.
+service Tuner {
+  // Client requests a new job (chunk of work)
+  rpc RequestJob(JobRequest) returns (JobResponse);
+
+  // Client sends back the computed gradients
+  rpc RegisterResult(ResultRequest) returns (ResultAck);
+}
+
+// Empty request since the server assigns next job automatically
+message JobRequest {}
+
+// A chunk of work to be processed by a client
+message JobResponse {
+  string job_uuid = 1;
+  int32 epoch = 2;
+  int32 start = 3;
+  int32 end = 4;
+  string checksum = 5;
+  repeated double coefficients = 6;
+}
+
+// Client sends back the result of processing a chunk
+message ResultRequest {
+  string job_uuid = 1;
+  string checksum = 2;
+  repeated double gradients = 3;
+}
+
+// Optional acknowledgement from the server
+message ResultAck {
+  bool accepted = 1;
+}
