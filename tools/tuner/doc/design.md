@@ -55,8 +55,10 @@ The new system should adhere to the followings:
 
 A mostly stateless client server architecture based on the simplest design that can fulfill our goals. There would be one server - the orchestrator, and multiple clients - the workers. The server does not register connecting clients, or keep client state. This simplifies the architecture and makes it resilient to arbitrary client failures. The server has to however keep track of jobs needed to be done. The main idea is the following protocol between clients and server:
 
+```
 client --- request job ---> server
 client --- job results ---> server
+```
 
 The server never initiates communication with the client. It simply distributes jobs to be done, and registers job results when a client finishes one. In case of a client failure the server would have a time out detection on the job, and simply would give it out to the next client upon request.
 
