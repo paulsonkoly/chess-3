@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	Tuner_RequestEPDInfo_FullMethodName = "/tuner.Tuner/RequestEPDInfo"
 	Tuner_RequestJob_FullMethodName     = "/tuner.Tuner/RequestJob"
 	Tuner_RegisterResult_FullMethodName = "/tuner.Tuner/RegisterResult"
 )
@@ -26,12 +27,9 @@ const (
 // TunerClient is the client API for Tuner service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// The tuner service that clients communicate with.
 type TunerClient interface {
-	// Client requests a new job (chunk of work)
+	RequestEPDInfo(ctx context.Context, in *EPDInfoRequest, opts ...grpc.CallOption) (*EPDInfo, error)
 	RequestJob(ctx context.Context, in *JobRequest, opts ...grpc.CallOption) (*JobResponse, error)
-	// Client sends back the computed gradients
 	RegisterResult(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*ResultAck, error)
 }
 
@@ -41,6 +39,16 @@ type tunerClient struct {
 
 func NewTunerClient(cc grpc.ClientConnInterface) TunerClient {
 	return &tunerClient{cc}
+}
+
+func (c *tunerClient) RequestEPDInfo(ctx context.Context, in *EPDInfoRequest, opts ...grpc.CallOption) (*EPDInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EPDInfo)
+	err := c.cc.Invoke(ctx, Tuner_RequestEPDInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *tunerClient) RequestJob(ctx context.Context, in *JobRequest, opts ...grpc.CallOption) (*JobResponse, error) {
@@ -66,12 +74,9 @@ func (c *tunerClient) RegisterResult(ctx context.Context, in *ResultRequest, opt
 // TunerServer is the server API for Tuner service.
 // All implementations must embed UnimplementedTunerServer
 // for forward compatibility.
-//
-// The tuner service that clients communicate with.
 type TunerServer interface {
-	// Client requests a new job (chunk of work)
+	RequestEPDInfo(context.Context, *EPDInfoRequest) (*EPDInfo, error)
 	RequestJob(context.Context, *JobRequest) (*JobResponse, error)
-	// Client sends back the computed gradients
 	RegisterResult(context.Context, *ResultRequest) (*ResultAck, error)
 	mustEmbedUnimplementedTunerServer()
 }
@@ -83,6 +88,9 @@ type TunerServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTunerServer struct{}
 
+func (UnimplementedTunerServer) RequestEPDInfo(context.Context, *EPDInfoRequest) (*EPDInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestEPDInfo not implemented")
+}
 func (UnimplementedTunerServer) RequestJob(context.Context, *JobRequest) (*JobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestJob not implemented")
 }
@@ -108,6 +116,24 @@ func RegisterTunerServer(s grpc.ServiceRegistrar, srv TunerServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&Tuner_ServiceDesc, srv)
+}
+
+func _Tuner_RequestEPDInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EPDInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TunerServer).RequestEPDInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Tuner_RequestEPDInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TunerServer).RequestEPDInfo(ctx, req.(*EPDInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Tuner_RequestJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -153,6 +179,10 @@ var Tuner_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "tuner.Tuner",
 	HandlerType: (*TunerServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "RequestEPDInfo",
+			Handler:    _Tuner_RequestEPDInfo_Handler,
+		},
 		{
 			MethodName: "RequestJob",
 			Handler:    _Tuner_RequestJob_Handler,

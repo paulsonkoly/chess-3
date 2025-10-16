@@ -142,9 +142,9 @@ func Run(args []string) {
 
 	go epdProcess(epdFileName, jobQueue, resultQueue)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, 9999))
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		slog.Error("Failed to bind port.", "host", host, "port", port)
+		slog.Error("failed to bind port", "host", host, "port", port)
 		os.Exit(1)
 	}
 
