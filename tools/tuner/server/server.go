@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"iter"
+	"log/slog"
 	"net"
+	"os"
 	"time"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
@@ -124,30 +126,33 @@ type Result struct {
 	Gradients []float64
 }
 
-func Run() {
+func Run(args []string) {
 	var epdFileName string
+	var host string
+	var port int
 
-	flag.StringVar(&epdFileName, "epd", "", "epd file name")
-
-	flag.Parse()
+	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
+	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
+	sFlags.StringVar(&host, "host", "localhost", "host to listen on")
+	sFlags.IntVar(&port, "port", 9001, "port to listen on")
+	sFlags.Parse(args)
 
 	jobQueue := make(chan Job, JobQueueDepth)
 	resultQueue := make(chan Result, ResultQueueDepth)
 
-	s := tunerServer{jobQueue: jobQueue, resultQueue: resultQueue}
-
 	go epdProcess(epdFileName, jobQueue, resultQueue)
 
-	// listen via GRPC
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 9999))
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, 9999))
 	if err != nil {
-		panic("failed to listen")
+		slog.Error("Failed to bind port.", "host", host, "port", port)
+		os.Exit(1)
 	}
 
-	fmt.Println("listening on port...")
+	slog.Info("Listening for incoming connections", "host", host, "port", port)
 
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
+	s := tunerServer{jobQueue: jobQueue, resultQueue: resultQueue}
 	pb.RegisterTunerServer(grpcServer, s)
 	grpcServer.Serve(lis)
 }
@@ -161,6 +166,8 @@ func epdProcess(epdFileName string, jobQueue chan<- Job, resultQueue <-chan Resu
 	coeffs := tuning.Coeffs{}
 
 	for epoch := 1; true; epoch++ {
+		slog.Debug("new epoch", "epoch", epoch)
+
 		for batch := range epdFile.Batches() {
 
 			grads := tuning.Coeffs{}
@@ -183,6 +190,12 @@ func epdProcess(epdFileName string, jobQueue chan<- Job, resultQueue <-chan Resu
 				// put the job in the tracking structures
 				chunks[i].jobs = append(chunks[i].jobs, job)
 
+				slog.Debug("queueing job",
+					"uuid", job.UUID,
+					"deadline", job.deadline,
+					"chunk.start", chunk.Start,
+					"chunk.end", chunk.End)
+
 				// send the job to the client handler
 				jobQueue <- job.Job
 
@@ -193,6 +206,7 @@ func epdProcess(epdFileName string, jobQueue chan<- Job, resultQueue <-chan Resu
 					if ix, ok := chunks.Match(result); ok {
 						// if already completed ignore
 						if !chunks[ix].completed {
+							slog.Debug("received results", "uuid", result.UUID)
 							grads.Add(result.Gradients)
 							chunks[ix].completed = true
 						}
