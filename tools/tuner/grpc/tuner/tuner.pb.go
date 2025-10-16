@@ -60,7 +60,7 @@ func (*EPDInfoRequest) Descriptor() ([]byte, []int) {
 type EPDInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	Checksum      string                 `protobuf:"bytes,2,opt,name=checksum,proto3" json:"checksum,omitempty"`
+	Checksum      []byte                 `protobuf:"bytes,2,opt,name=checksum,proto3" json:"checksum,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -102,11 +102,11 @@ func (x *EPDInfo) GetFilename() string {
 	return ""
 }
 
-func (x *EPDInfo) GetChecksum() string {
+func (x *EPDInfo) GetChecksum() []byte {
 	if x != nil {
 		return x.Checksum
 	}
-	return ""
+	return nil
 }
 
 type JobRequest struct {
@@ -333,7 +333,7 @@ const file_protos_tuner_proto_rawDesc = "" +
 	"\x0eEPDInfoRequest\"A\n" +
 	"\aEPDInfo\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1a\n" +
-	"\bchecksum\x18\x02 \x01(\tR\bchecksum\"\f\n" +
+	"\bchecksum\x18\x02 \x01(\fR\bchecksum\"\f\n" +
 	"\n" +
 	"JobRequest\"\xa6\x01\n" +
 	"\vJobResponse\x12\x19\n" +

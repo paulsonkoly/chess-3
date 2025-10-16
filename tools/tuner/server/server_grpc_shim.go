@@ -10,6 +10,12 @@ type tunerServer struct {
 	pb.UnimplementedTunerServer
 	jobQueue    chan Job
 	resultQueue chan Result
+	epdFilename string
+	epdChecksum []byte
+}
+
+func (s tunerServer) RequestEPDInfo(context.Context, *pb.EPDInfoRequest) (*pb.EPDInfo, error) {
+	return &pb.EPDInfo{Filename: s.epdFilename, Checksum: s.epdChecksum}, nil
 }
 
 func (s tunerServer) RequestJob(_ context.Context, _ *pb.JobRequest) (*pb.JobResponse, error) {

@@ -2,9 +2,12 @@ package epd
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"io"
 	"iter"
 	"math/rand/v2"
 	"os"
+	"path"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 )
@@ -12,6 +15,7 @@ import (
 type EPD struct {
 	lines    []string
 	filename string
+	Checksum []byte
 }
 
 func Load(fn string) (*EPD, error) {
@@ -21,14 +25,24 @@ func Load(fn string) (*EPD, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	scn := bufio.NewScanner(f)
 	for scn.Scan() {
 		lines = append(lines, scn.Text())
 	}
 
-	return &EPD{lines: lines, filename: fn}, nil
+	f.Seek(0, io.SeekStart)
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return nil, err
+	}
+
+	return &EPD{lines: lines, filename: fn, Checksum: h.Sum(nil)}, nil
 }
+
+func (e EPD) Basename() string { return path.Base(e.filename) }
 
 func (e *EPD) Batches() iter.Seq[tuning.Batch] {
 	return func(yield func(tuning.Batch) bool) {

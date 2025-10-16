@@ -140,7 +140,13 @@ func Run(args []string) {
 	jobQueue := make(chan Job, JobQueueDepth)
 	resultQueue := make(chan Result, ResultQueueDepth)
 
-	go epdProcess(epdFileName, jobQueue, resultQueue)
+	epd, err := epd.Load(epdFileName)
+	if err != nil {
+		slog.Error("failed to load epd file", "filename", epdFileName)
+	}
+	slog.Debug("loaded epd", "filename", epd.Basename(), "checksum", epd.Checksum)
+
+	go epdProcess(epd, jobQueue, resultQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
@@ -148,27 +154,27 @@ func Run(args []string) {
 		os.Exit(1)
 	}
 
-	slog.Info("Listening for incoming connections", "host", host, "port", port)
+	slog.Info("listening for incoming connections", "host", host, "port", port)
 
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	s := tunerServer{jobQueue: jobQueue, resultQueue: resultQueue}
+	s := tunerServer{
+		jobQueue:    jobQueue,
+		resultQueue: resultQueue,
+		epdFilename: epd.Basename(),
+		epdChecksum: epd.Checksum,
+	}
 	pb.RegisterTunerServer(grpcServer, s)
 	grpcServer.Serve(lis)
 }
 
-func epdProcess(epdFileName string, jobQueue chan<- Job, resultQueue <-chan Result) {
-	epdFile, err := epd.Load(epdFileName)
-	if err != nil {
-		panic(err)
-	}
-
+func epdProcess(epd *epd.EPD, jobQueue chan<- Job, resultQueue <-chan Result) {
 	coeffs := tuning.Coeffs{}
 
 	for epoch := 1; true; epoch++ {
 		slog.Debug("new epoch", "epoch", epoch)
 
-		for batch := range epdFile.Batches() {
+		for batch := range epd.Batches() {
 
 			grads := tuning.Coeffs{}
 
@@ -225,6 +231,6 @@ func epdProcess(epdFileName string, jobQueue chan<- Job, resultQueue <-chan Resu
 		fmt.Println(coeffs)
 
 		// shuffle
-		epdFile.Shuffle()
+		epd.Shuffle()
 	}
 }

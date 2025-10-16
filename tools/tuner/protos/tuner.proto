@@ -14,7 +14,7 @@ message EPDInfoRequest {}
 
 message EPDInfo {
   string filename = 1;
-  string checksum = 2;
+  bytes checksum = 2;
 }
 
 message JobRequest {}
