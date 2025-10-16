@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Tuner_RequestEPDInfo_FullMethodName = "/tuner.Tuner/RequestEPDInfo"
+	Tuner_StreamEPD_FullMethodName      = "/tuner.Tuner/StreamEPD"
 	Tuner_RequestJob_FullMethodName     = "/tuner.Tuner/RequestJob"
 	Tuner_RegisterResult_FullMethodName = "/tuner.Tuner/RegisterResult"
 )
@@ -29,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TunerClient interface {
 	RequestEPDInfo(ctx context.Context, in *EPDInfoRequest, opts ...grpc.CallOption) (*EPDInfo, error)
+	StreamEPD(ctx context.Context, in *EPDStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EPDLine], error)
 	RequestJob(ctx context.Context, in *JobRequest, opts ...grpc.CallOption) (*JobResponse, error)
 	RegisterResult(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*ResultAck, error)
 }
@@ -50,6 +52,25 @@ func (c *tunerClient) RequestEPDInfo(ctx context.Context, in *EPDInfoRequest, op
 	}
 	return out, nil
 }
+
+func (c *tunerClient) StreamEPD(ctx context.Context, in *EPDStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EPDLine], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Tuner_ServiceDesc.Streams[0], Tuner_StreamEPD_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[EPDStreamRequest, EPDLine]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Tuner_StreamEPDClient = grpc.ServerStreamingClient[EPDLine]
 
 func (c *tunerClient) RequestJob(ctx context.Context, in *JobRequest, opts ...grpc.CallOption) (*JobResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -76,6 +97,7 @@ func (c *tunerClient) RegisterResult(ctx context.Context, in *ResultRequest, opt
 // for forward compatibility.
 type TunerServer interface {
 	RequestEPDInfo(context.Context, *EPDInfoRequest) (*EPDInfo, error)
+	StreamEPD(*EPDStreamRequest, grpc.ServerStreamingServer[EPDLine]) error
 	RequestJob(context.Context, *JobRequest) (*JobResponse, error)
 	RegisterResult(context.Context, *ResultRequest) (*ResultAck, error)
 	mustEmbedUnimplementedTunerServer()
@@ -90,6 +112,9 @@ type UnimplementedTunerServer struct{}
 
 func (UnimplementedTunerServer) RequestEPDInfo(context.Context, *EPDInfoRequest) (*EPDInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestEPDInfo not implemented")
+}
+func (UnimplementedTunerServer) StreamEPD(*EPDStreamRequest, grpc.ServerStreamingServer[EPDLine]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamEPD not implemented")
 }
 func (UnimplementedTunerServer) RequestJob(context.Context, *JobRequest) (*JobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestJob not implemented")
@@ -135,6 +160,17 @@ func _Tuner_RequestEPDInfo_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _Tuner_StreamEPD_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(EPDStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(TunerServer).StreamEPD(m, &grpc.GenericServerStream[EPDStreamRequest, EPDLine]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Tuner_StreamEPDServer = grpc.ServerStreamingServer[EPDLine]
 
 func _Tuner_RequestJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JobRequest)
@@ -192,6 +228,12 @@ var Tuner_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Tuner_RegisterResult_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamEPD",
+			Handler:       _Tuner_StreamEPD_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "protos/tuner.proto",
 }

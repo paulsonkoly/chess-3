@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"iter"
@@ -139,19 +140,22 @@ func Run(args []string) {
 
 	jobQueue := make(chan Job, JobQueueDepth)
 	resultQueue := make(chan Result, ResultQueueDepth)
+	streamQueue := make(chan grpc.ServerStreamingServer[pb.EPDLine])
 
 	epd, err := epd.Load(epdFileName)
 	if err != nil {
 		slog.Error("failed to load epd file", "filename", epdFileName)
+		os.Exit(tuning.ExitFailure)
 	}
 	slog.Debug("loaded epd", "filename", epd.Basename(), "checksum", epd.Checksum)
 
 	go epdProcess(epd, jobQueue, resultQueue)
+	go epdStreamer(epdFileName, streamQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		slog.Error("failed to bind port", "host", host, "port", port)
-		os.Exit(1)
+		os.Exit(tuning.ExitFailure)
 	}
 
 	slog.Info("listening for incoming connections", "host", host, "port", port)
@@ -161,6 +165,7 @@ func Run(args []string) {
 	s := tunerServer{
 		jobQueue:    jobQueue,
 		resultQueue: resultQueue,
+		streamQueue: streamQueue,
 		epdFilename: epd.Basename(),
 		epdChecksum: epd.Checksum,
 	}
@@ -234,3 +239,5 @@ func epdProcess(epd *epd.EPD, jobQueue chan<- Job, resultQueue <-chan Result) {
 		epd.Shuffle()
 	}
 }
+
+

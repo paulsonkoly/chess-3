@@ -6,6 +6,7 @@ option go_package = "./grpc/tuner;tuner";
 
 service Tuner {
   rpc RequestEPDInfo(EPDInfoRequest) returns (EPDInfo);
+  rpc StreamEPD(EPDStreamRequest) returns (stream EPDLine); 
   rpc RequestJob(JobRequest) returns (JobResponse);
   rpc RegisterResult(ResultRequest) returns (ResultAck);
 }
@@ -15,6 +16,12 @@ message EPDInfoRequest {}
 message EPDInfo {
   string filename = 1;
   bytes checksum = 2;
+}
+
+message EPDStreamRequest {}
+
+message EPDLine {
+  string line = 1;
 }
 
 message JobRequest {}

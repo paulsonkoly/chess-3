@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
+	"google.golang.org/grpc"
 )
 
 type tunerServer struct {
@@ -16,6 +17,10 @@ type tunerServer struct {
 
 func (s tunerServer) RequestEPDInfo(context.Context, *pb.EPDInfoRequest) (*pb.EPDInfo, error) {
 	return &pb.EPDInfo{Filename: s.epdFilename, Checksum: s.epdChecksum}, nil
+}
+
+func (s tunerServer) StreamEPD(_ *pb.EPDStreamRequest, stream grpc.ServerStreamingServer[pb.EPDLine]) error {
+	return nil
 }
 
 func (s tunerServer) RequestJob(_ context.Context, _ *pb.JobRequest) (*pb.JobResponse, error) {

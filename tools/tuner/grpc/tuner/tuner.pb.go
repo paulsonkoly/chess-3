@@ -109,6 +109,86 @@ func (x *EPDInfo) GetChecksum() []byte {
 	return nil
 }
 
+type EPDStreamRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EPDStreamRequest) Reset() {
+	*x = EPDStreamRequest{}
+	mi := &file_protos_tuner_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EPDStreamRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EPDStreamRequest) ProtoMessage() {}
+
+func (x *EPDStreamRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_tuner_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EPDStreamRequest.ProtoReflect.Descriptor instead.
+func (*EPDStreamRequest) Descriptor() ([]byte, []int) {
+	return file_protos_tuner_proto_rawDescGZIP(), []int{2}
+}
+
+type EPDLine struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Line          string                 `protobuf:"bytes,1,opt,name=line,proto3" json:"line,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EPDLine) Reset() {
+	*x = EPDLine{}
+	mi := &file_protos_tuner_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EPDLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EPDLine) ProtoMessage() {}
+
+func (x *EPDLine) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_tuner_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EPDLine.ProtoReflect.Descriptor instead.
+func (*EPDLine) Descriptor() ([]byte, []int) {
+	return file_protos_tuner_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EPDLine) GetLine() string {
+	if x != nil {
+		return x.Line
+	}
+	return ""
+}
+
 type JobRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -117,7 +197,7 @@ type JobRequest struct {
 
 func (x *JobRequest) Reset() {
 	*x = JobRequest{}
-	mi := &file_protos_tuner_proto_msgTypes[2]
+	mi := &file_protos_tuner_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -129,7 +209,7 @@ func (x *JobRequest) String() string {
 func (*JobRequest) ProtoMessage() {}
 
 func (x *JobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tuner_proto_msgTypes[2]
+	mi := &file_protos_tuner_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -142,7 +222,7 @@ func (x *JobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobRequest.ProtoReflect.Descriptor instead.
 func (*JobRequest) Descriptor() ([]byte, []int) {
-	return file_protos_tuner_proto_rawDescGZIP(), []int{2}
+	return file_protos_tuner_proto_rawDescGZIP(), []int{4}
 }
 
 type JobResponse struct {
@@ -159,7 +239,7 @@ type JobResponse struct {
 
 func (x *JobResponse) Reset() {
 	*x = JobResponse{}
-	mi := &file_protos_tuner_proto_msgTypes[3]
+	mi := &file_protos_tuner_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -171,7 +251,7 @@ func (x *JobResponse) String() string {
 func (*JobResponse) ProtoMessage() {}
 
 func (x *JobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tuner_proto_msgTypes[3]
+	mi := &file_protos_tuner_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -184,7 +264,7 @@ func (x *JobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobResponse.ProtoReflect.Descriptor instead.
 func (*JobResponse) Descriptor() ([]byte, []int) {
-	return file_protos_tuner_proto_rawDescGZIP(), []int{3}
+	return file_protos_tuner_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *JobResponse) GetJobUuid() string {
@@ -240,7 +320,7 @@ type ResultRequest struct {
 
 func (x *ResultRequest) Reset() {
 	*x = ResultRequest{}
-	mi := &file_protos_tuner_proto_msgTypes[4]
+	mi := &file_protos_tuner_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -252,7 +332,7 @@ func (x *ResultRequest) String() string {
 func (*ResultRequest) ProtoMessage() {}
 
 func (x *ResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tuner_proto_msgTypes[4]
+	mi := &file_protos_tuner_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -265,7 +345,7 @@ func (x *ResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResultRequest.ProtoReflect.Descriptor instead.
 func (*ResultRequest) Descriptor() ([]byte, []int) {
-	return file_protos_tuner_proto_rawDescGZIP(), []int{4}
+	return file_protos_tuner_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ResultRequest) GetJobUuid() string {
@@ -297,7 +377,7 @@ type ResultAck struct {
 
 func (x *ResultAck) Reset() {
 	*x = ResultAck{}
-	mi := &file_protos_tuner_proto_msgTypes[5]
+	mi := &file_protos_tuner_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -309,7 +389,7 @@ func (x *ResultAck) String() string {
 func (*ResultAck) ProtoMessage() {}
 
 func (x *ResultAck) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tuner_proto_msgTypes[5]
+	mi := &file_protos_tuner_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -322,7 +402,7 @@ func (x *ResultAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResultAck.ProtoReflect.Descriptor instead.
 func (*ResultAck) Descriptor() ([]byte, []int) {
-	return file_protos_tuner_proto_rawDescGZIP(), []int{5}
+	return file_protos_tuner_proto_rawDescGZIP(), []int{7}
 }
 
 var File_protos_tuner_proto protoreflect.FileDescriptor
@@ -333,7 +413,10 @@ const file_protos_tuner_proto_rawDesc = "" +
 	"\x0eEPDInfoRequest\"A\n" +
 	"\aEPDInfo\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1a\n" +
-	"\bchecksum\x18\x02 \x01(\fR\bchecksum\"\f\n" +
+	"\bchecksum\x18\x02 \x01(\fR\bchecksum\"\x12\n" +
+	"\x10EPDStreamRequest\"\x1d\n" +
+	"\aEPDLine\x12\x12\n" +
+	"\x04line\x18\x01 \x01(\tR\x04line\"\f\n" +
 	"\n" +
 	"JobRequest\"\xa6\x01\n" +
 	"\vJobResponse\x12\x19\n" +
@@ -347,9 +430,10 @@ const file_protos_tuner_proto_rawDesc = "" +
 	"\bjob_uuid\x18\x01 \x01(\tR\ajobUuid\x12\x1a\n" +
 	"\bchecksum\x18\x02 \x01(\tR\bchecksum\x12\x1c\n" +
 	"\tgradients\x18\x03 \x03(\x01R\tgradients\"\v\n" +
-	"\tResultAck2\xaf\x01\n" +
+	"\tResultAck2\xe7\x01\n" +
 	"\x05Tuner\x127\n" +
-	"\x0eRequestEPDInfo\x12\x15.tuner.EPDInfoRequest\x1a\x0e.tuner.EPDInfo\x123\n" +
+	"\x0eRequestEPDInfo\x12\x15.tuner.EPDInfoRequest\x1a\x0e.tuner.EPDInfo\x126\n" +
+	"\tStreamEPD\x12\x17.tuner.EPDStreamRequest\x1a\x0e.tuner.EPDLine0\x01\x123\n" +
 	"\n" +
 	"RequestJob\x12\x11.tuner.JobRequest\x1a\x12.tuner.JobResponse\x128\n" +
 	"\x0eRegisterResult\x12\x14.tuner.ResultRequest\x1a\x10.tuner.ResultAckB\x14Z\x12./grpc/tuner;tunerb\x06proto3"
@@ -366,24 +450,28 @@ func file_protos_tuner_proto_rawDescGZIP() []byte {
 	return file_protos_tuner_proto_rawDescData
 }
 
-var file_protos_tuner_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_protos_tuner_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_protos_tuner_proto_goTypes = []any{
-	(*EPDInfoRequest)(nil), // 0: tuner.EPDInfoRequest
-	(*EPDInfo)(nil),        // 1: tuner.EPDInfo
-	(*JobRequest)(nil),     // 2: tuner.JobRequest
-	(*JobResponse)(nil),    // 3: tuner.JobResponse
-	(*ResultRequest)(nil),  // 4: tuner.ResultRequest
-	(*ResultAck)(nil),      // 5: tuner.ResultAck
+	(*EPDInfoRequest)(nil),   // 0: tuner.EPDInfoRequest
+	(*EPDInfo)(nil),          // 1: tuner.EPDInfo
+	(*EPDStreamRequest)(nil), // 2: tuner.EPDStreamRequest
+	(*EPDLine)(nil),          // 3: tuner.EPDLine
+	(*JobRequest)(nil),       // 4: tuner.JobRequest
+	(*JobResponse)(nil),      // 5: tuner.JobResponse
+	(*ResultRequest)(nil),    // 6: tuner.ResultRequest
+	(*ResultAck)(nil),        // 7: tuner.ResultAck
 }
 var file_protos_tuner_proto_depIdxs = []int32{
 	0, // 0: tuner.Tuner.RequestEPDInfo:input_type -> tuner.EPDInfoRequest
-	2, // 1: tuner.Tuner.RequestJob:input_type -> tuner.JobRequest
-	4, // 2: tuner.Tuner.RegisterResult:input_type -> tuner.ResultRequest
-	1, // 3: tuner.Tuner.RequestEPDInfo:output_type -> tuner.EPDInfo
-	3, // 4: tuner.Tuner.RequestJob:output_type -> tuner.JobResponse
-	5, // 5: tuner.Tuner.RegisterResult:output_type -> tuner.ResultAck
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	2, // 1: tuner.Tuner.StreamEPD:input_type -> tuner.EPDStreamRequest
+	4, // 2: tuner.Tuner.RequestJob:input_type -> tuner.JobRequest
+	6, // 3: tuner.Tuner.RegisterResult:input_type -> tuner.ResultRequest
+	1, // 4: tuner.Tuner.RequestEPDInfo:output_type -> tuner.EPDInfo
+	3, // 5: tuner.Tuner.StreamEPD:output_type -> tuner.EPDLine
+	5, // 6: tuner.Tuner.RequestJob:output_type -> tuner.JobResponse
+	7, // 7: tuner.Tuner.RegisterResult:output_type -> tuner.ResultAck
+	4, // [4:8] is the sub-list for method output_type
+	0, // [0:4] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -400,7 +488,7 @@ func file_protos_tuner_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_tuner_proto_rawDesc), len(file_protos_tuner_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

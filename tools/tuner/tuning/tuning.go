@@ -3,6 +3,7 @@ package tuning
 import "iter"
 
 const (
+	ExitFailure = 1
 	// NumLinesInBatch determines how the epd file is split into batches. A batch
 	// completion implies the coefficients update.
 	NumLinesInBatch = 100_000
