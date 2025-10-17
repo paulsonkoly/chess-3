@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"errors"
+	"hash"
 	"io"
 	"math/rand/v2"
 	"os"
@@ -110,7 +111,7 @@ type Streamer interface {
 	Send(line string) error
 }
 
-// Stream streams all content from e on a line basis.
+// Stream streams all content from e on a per line basis.
 func (e *File) Stream(s Streamer) error {
 	fd, err := unix.Dup(int(e.f.Fd()))
 	if err != nil {
@@ -146,21 +147,79 @@ type Entry struct {
 // Chunk returns the lines of an EPD chunk, identified by the starting and
 // ending line indices. As it usually happens in go; start is inclusive, end is
 // non-inclusive.
-func (e *File) Chunk(start, end int) ([]Entry, error) {
+func (epdF *File) Chunk(start, end int) ([]Entry, error) {
+	e := make(entries, 0)
+
+	err := epdF.chunkReader(start, end, e)
+	if err != nil {
+		return nil, err
+	}
+
+	return e, err
+}
+
+// ChunkChecksum returns the sha256 checksum of the given chunk.
+func (epdF *File) ChunkChecksum(start, end int) ([]byte, error) {
+	ch := checksum{sha256.New()}
+
+	err := epdF.chunkReader(start, end, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	return ch.h.Sum(nil), nil
+}
+
+type entries []Entry
+
+func (e entries) Collect(line string) error {
+	splits := strings.Split(line, "; ")
+	if len(splits) != 2 {
+		return ErrLineInvalid
+	}
+
+	b, err := board.FromFEN(splits[0])
+	if err != nil {
+		return err
+	}
+
+	r, err := strconv.ParseFloat(splits[1], 64)
+	if err != nil {
+		return err
+	}
+
+	e = append(e, Entry{Board: b, Result: r})
+	return nil
+}
+
+type checksum struct {
+	h hash.Hash
+}
+
+func (c checksum) Collect(line string) error {
+	c.h.Write([]byte(line))
+	return nil
+}
+
+type collector interface {
+	Collect(line string) error
+}
+
+func (e *File) chunkReader(start, end int, c collector) error {
 	if start < 0 || end < 0 || start > len(e.lineManifest)-1 || end > len(e.lineManifest) || start > end {
-		return nil, ErrChunkInvalid
+		return ErrChunkInvalid
 	}
 
 	var fd int
 	fd, err := unix.Dup(int(e.f.Fd()))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	f := os.NewFile(uintptr(fd), e.filename)
 	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	chunkLines := make([]lineAddr, 0)
@@ -175,11 +234,10 @@ func (e *File) Chunk(start, end int) ([]Entry, error) {
 		return int(a.start - b.start)
 	})
 
-	entries := make([]Entry, 0)
 	pageSize := int64(unix.Getpagesize())
 
 	if pageSize&(pageSize-1) != 0 {
-		return nil, ErrPageSize
+		return ErrPageSize
 	}
 
 	mapStart := int64(0)
@@ -198,7 +256,7 @@ func (e *File) Chunk(start, end int) ([]Entry, error) {
 			if mapBytes != nil {
 				err := unix.Munmap(mapBytes)
 				if err != nil {
-					return nil, err
+					return err
 				}
 			}
 
@@ -209,7 +267,7 @@ func (e *File) Chunk(start, end int) ([]Entry, error) {
 				unix.PROT_READ,
 				unix.MAP_SHARED)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			mapStart = reqMapStart
 			mapEnd = reqMapEnd
@@ -217,32 +275,17 @@ func (e *File) Chunk(start, end int) ([]Entry, error) {
 
 		line := string(mapBytes[addr.start-mapStart : addr.end-mapStart])
 
-		splits := strings.Split(line, "; ")
-		if len(splits) != 2 {
-			return nil, ErrLineInvalid
-		}
-
-		b, err := board.FromFEN(splits[0])
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := strconv.ParseFloat(splits[1], 64)
-		if err != nil {
-			return nil, err
-		}
-
-		entries = append(entries, Entry{Board: b, Result: r})
+		c.Collect(line)
 	}
 
 	if mapBytes != nil {
 		err := unix.Munmap(mapBytes)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return entries, nil
+	return nil
 }
 
 // Shuffle shuffles the line order in the file, the order is determined by seed.

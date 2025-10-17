@@ -34,6 +34,7 @@ const (
 
 type ServerChunk struct {
 	tuning.Range
+	checksum  []byte
 	completed bool
 	jobs      []serverJob
 }
@@ -214,7 +215,11 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- queueJob, resultQueue
 			// gather the chunks in the batch and create server tracking structures
 			chunks := make(batchChunks, 0, tuning.NumChunksInBatch)
 			for chunk := range tuning.Chunks(batch) {
-				chunks = append(chunks, ServerChunk{Range: chunk})
+				checksum, err := epdF.ChunkChecksum(chunk.Start, chunk.End)
+				if err != nil {
+					slog.Error("checksum calculation error", "error", err)
+				}
+				chunks = append(chunks, ServerChunk{Range: chunk, checksum: checksum})
 			}
 
 			// while there is an incomplete chunk in the batch
@@ -224,12 +229,12 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- queueJob, resultQueue
 				job := serverJob{
 					deadline: time.Now().Add(600 * time.Second),
 					queueJob: queueJob{
-						uuid:  uuid.New(),
-						epoch: epoch,
-						start: chunk.Start,
-						end:   chunk.End,
-						// checksum: []byte,
-						k: k,
+						uuid:     uuid.New(),
+						epoch:    epoch,
+						start:    chunk.Start,
+						end:      chunk.End,
+						checksum: chunk.checksum,
+						k:        k,
 					},
 				}
 

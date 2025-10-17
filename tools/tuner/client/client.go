@@ -118,13 +118,32 @@ func Run(args []string) {
 		}
 	}
 
+	epoch := 1
+
 	for {
 		slog.Debug("requesting job")
-		_, err := c.RequestJob(context.Background(), &pb.JobRequest{})
+		job, err := c.RequestJob(context.Background(), &pb.JobRequest{})
 		if err != nil {
 			slog.Error("job request error", "error", err)
 			continue
 		}
-		// slog.Info("received job", "uuid", r.JobUuid)
+		slog.Info("received job", "uuid", job.Uuid)
+
+		if int(job.Epoch) != epoch {
+			slog.Info("shuffling epd", "epoch", epoch)
+			epdF.Shuffle(epoch)
+		}
+
+		checksum, err := epdF.ChunkChecksum(int(job.Start), int(job.End))
+		if err != nil {
+			slog.Error("checksum calculation error", "error", err)
+			os.Exit(tuning.ExitFailure)
+		}
+
+		if !slices.Equal(checksum, job.Checksum) {
+			slog.Warn("chunk checksum mismatch") // TODO args
+		}
+
+		slog.Info("checksum match", "checksum", base64.URLEncoding.EncodeToString(job.Checksum))
 	}
 }
