@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"slices"
@@ -46,8 +47,10 @@ func Run(args []string) {
 		os.Exit(tuning.ExitFailure)
 	}
 
+	var epdF *epd.File
+
 	for haveEPD := false; !haveEPD; {
-		epd, err := epd.Load(epdInfo.Filename)
+		epdF, err = epd.Open(epdInfo.Filename)
 		if err != nil {
 			if !errors.Is(err, unix.ENOENT) {
 				slog.Error("unexpected error on epd load", "error", err)
@@ -58,20 +61,59 @@ func Run(args []string) {
 				"downloading epd",
 				"filename", epdInfo.Filename,
 				"checksum", base64.URLEncoding.EncodeToString(epdInfo.Checksum))
+
+			stream, err := c.StreamEPD(context.Background(), &pb.EPDStreamRequest{})
+			if err != nil {
+				slog.Error("stream error", "error", err)
+				os.Exit(tuning.ExitFailure)
+			}
+
+			f, err := os.Create(epdInfo.Filename)
+			if err != nil {
+				slog.Error("file creation error", "error", err, "filename", epdInfo.Filename)
+				os.Exit(tuning.ExitFailure)
+			}
+
+			for {
+				line, err := stream.Recv()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					slog.Warn("stream error", "error", err)
+				}
+
+				_, err = f.WriteString(line.Line + "\n")
+				if err != nil {
+					slog.Warn("write error", "error", err)
+				}
+			}
+
+			f.Close()
 		} else {
-			if !slices.Equal(epd.Checksum, epdInfo.Checksum) {
+			myChecksum, err := epdF.Checksum()
+			if err != nil {
+				slog.Error("checksum calculation error", "error", err)
+				os.Exit(tuning.ExitFailure)
+			}
+
+			if !slices.Equal(myChecksum, epdInfo.Checksum) {
+				epdF.Close()
+
 				slog.Warn(
 					"epd checksum mismatch",
 					"filename", epdInfo.Filename,
 					"received.Checksum", epdInfo.Checksum,
-					"local.Checksum", epd.Checksum)
-				slog.Debug("deleting local epd", "filename", epd.Basename())
-				if err := os.Remove(epd.Basename()); err != nil {
+					"local.Checksum", myChecksum)
+
+				slog.Debug("deleting local epd", "filename", epdF.Basename())
+				if err := os.Remove(epdF.Basename()); err != nil {
 					slog.Error("can't remove bad epd file", "error", err)
 					os.Exit(tuning.ExitFailure)
 				}
 			} else {
 				haveEPD = true
+				defer epdF.Close()
 			}
 		}
 	}

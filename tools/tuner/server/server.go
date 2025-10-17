@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"iter"
@@ -32,7 +31,7 @@ const (
 )
 
 type ServerChunk struct {
-	tuning.Chunk
+	tuning.Range
 	completed bool
 	jobs      []ServerJob
 }
@@ -114,7 +113,7 @@ func (bc batchChunks) Match(r Result) (ix int, ok bool) {
 
 type Job struct {
 	UUID string
-	tuning.Chunk
+	tuning.Range
 }
 
 type ServerJob struct {
@@ -140,17 +139,16 @@ func Run(args []string) {
 
 	jobQueue := make(chan Job, JobQueueDepth)
 	resultQueue := make(chan Result, ResultQueueDepth)
-	streamQueue := make(chan grpc.ServerStreamingServer[pb.EPDLine])
 
-	epd, err := epd.Load(epdFileName)
+	epdF, err := epd.Open(epdFileName)
 	if err != nil {
 		slog.Error("failed to load epd file", "filename", epdFileName)
 		os.Exit(tuning.ExitFailure)
 	}
-	slog.Debug("loaded epd", "filename", epd.Basename(), "checksum", epd.Checksum)
+	defer epdF.Close()
+	slog.Debug("loaded epd", "filename", epdF.Basename(), "checksum", epdF.Checksum)
 
-	go epdProcess(epd, jobQueue, resultQueue)
-	go epdStreamer(epdFileName, streamQueue)
+	go epdProcess(epdF, jobQueue, resultQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
@@ -165,28 +163,26 @@ func Run(args []string) {
 	s := tunerServer{
 		jobQueue:    jobQueue,
 		resultQueue: resultQueue,
-		streamQueue: streamQueue,
-		epdFilename: epd.Basename(),
-		epdChecksum: epd.Checksum,
+		epdF:        epdF,
 	}
 	pb.RegisterTunerServer(grpcServer, s)
 	grpcServer.Serve(lis)
 }
 
-func epdProcess(epd *epd.EPD, jobQueue chan<- Job, resultQueue <-chan Result) {
+func epdProcess(epdF *epd.File, jobQueue chan<- Job, resultQueue <-chan Result) {
 	coeffs := tuning.Coeffs{}
 
 	for epoch := 1; true; epoch++ {
 		slog.Debug("new epoch", "epoch", epoch)
 
-		for batch := range epd.Batches() {
+		for batch := range tuning.Batches(epdF.LineCount()) {
 
 			grads := tuning.Coeffs{}
 
 			// gather the chunks in the batch and create server tracking structures
 			chunks := make(batchChunks, 0, tuning.NumChunksInBatch)
-			for chunk := range batch.Chunks() {
-				chunks = append(chunks, ServerChunk{Chunk: chunk})
+			for chunk := range tuning.Chunks(batch) {
+				chunks = append(chunks, ServerChunk{Range: chunk})
 			}
 
 			// while there is an incomplete chunk in the batch
@@ -195,7 +191,7 @@ func epdProcess(epd *epd.EPD, jobQueue chan<- Job, resultQueue <-chan Result) {
 				//create a job for the batch
 				job := ServerJob{
 					deadline: time.Now().Add(600 * time.Second),
-					Job:      Job{Chunk: chunk.Chunk},
+					Job:      Job{Range: chunk.Range},
 				}
 
 				// put the job in the tracking structures
@@ -236,8 +232,6 @@ func epdProcess(epd *epd.EPD, jobQueue chan<- Job, resultQueue <-chan Result) {
 		fmt.Println(coeffs)
 
 		// shuffle
-		epd.Shuffle()
+		epdF.Shuffle(epoch)
 	}
 }
-
-

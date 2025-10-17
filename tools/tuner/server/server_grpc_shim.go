@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 
+	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"google.golang.org/grpc"
 )
@@ -11,15 +12,27 @@ type tunerServer struct {
 	pb.UnimplementedTunerServer
 	jobQueue    chan Job
 	resultQueue chan Result
-	epdFilename string
-	epdChecksum []byte
+	epdF        *epd.File
 }
 
 func (s tunerServer) RequestEPDInfo(context.Context, *pb.EPDInfoRequest) (*pb.EPDInfo, error) {
-	return &pb.EPDInfo{Filename: s.epdFilename, Checksum: s.epdChecksum}, nil
+	chkSum, err := s.epdF.Checksum()
+	if err != nil {
+		return nil, err
+	}
+	return &pb.EPDInfo{Filename: s.epdF.Basename(), Checksum: chkSum}, nil
+}
+
+type ShimStreamer struct {
+	stream grpc.ServerStreamingServer[pb.EPDLine]
+}
+
+func (s ShimStreamer) Send(line string) error {
+	return s.stream.Send(&pb.EPDLine{Line: line})
 }
 
 func (s tunerServer) StreamEPD(_ *pb.EPDStreamRequest, stream grpc.ServerStreamingServer[pb.EPDLine]) error {
+	s.epdF.Stream(ShimStreamer{stream})
 	return nil
 }
 

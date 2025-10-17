@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"os"
+	"path"
 	"slices"
 
 	"golang.org/x/sys/unix"
@@ -17,21 +18,29 @@ type lineAddr struct {
 	end   int64
 }
 
-type EPD struct {
+type File struct {
 	filename     string
 	f            *os.File
 	lineManifest []lineAddr
 	checksum     []byte
 }
 
+func (e File) Basename() string {
+	return path.Base(e.filename)
+}
+
+func (e File) LineCount() int {
+	return len(e.lineManifest)
+}
+
 // Open opens an EPD file.
-func Open(filename string) (*EPD, error) {
+func Open(filename string) (*File, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	e := EPD{f: f, filename: filename, lineManifest: make([]lineAddr, 0)}
+	e := File{f: f, filename: filename, lineManifest: make([]lineAddr, 0)}
 
 	scn := bufio.NewReader(f)
 	count := int64(0)
@@ -60,14 +69,14 @@ func Open(filename string) (*EPD, error) {
 }
 
 // Close closes the epd file and frees up associated resources.
-func (e *EPD) Close() {
+func (e *File) Close() {
 	e.f.Close()
 	// free the lineManifest it can be massive
 	e.lineManifest = nil
 }
 
 // Checksum is the sha256 checksum of the whole content of the epd file.
-func (e *EPD) Checksum() ([]byte, error) {
+func (e *File) Checksum() ([]byte, error) {
 	if e.checksum != nil {
 		return e.checksum, nil
 	}
@@ -99,7 +108,7 @@ type Streamer interface {
 }
 
 // Stream streams all content from e on a line basis.
-func (e *EPD) Stream(s Streamer) error {
+func (e *File) Stream(s Streamer) error {
 	fd, err := unix.Dup(int(e.f.Fd()))
 	if err != nil {
 		return err
@@ -127,7 +136,7 @@ var ErrPageSize = errors.New("invalid page size")
 // Chunk returns the lines of an EPD chunk, identified by the starting and
 // ending line indices. As it usually happens in go; start is inclusive, end is
 // non-inclusive.
-func (e *EPD) Chunk(start, end int) ([]string, error) {
+func (e *File) Chunk(start, end int) ([]string, error) {
 	if start < 0 || end < 0 || start > len(e.lineManifest)-1 || end > len(e.lineManifest) || start > end {
 		return nil, ErrChunkInvalid
 	}
@@ -212,7 +221,7 @@ func (e *EPD) Chunk(start, end int) ([]string, error) {
 }
 
 // Shuffle shuffles the line order in the file, the order is determined by seed.
-func (e *EPD) Shuffle(seed int) {
+func (e *File) Shuffle(seed int) {
 	src := rand.NewPCG(uint64(seed), uint64(seed)^uint64(0x9e3779b97f4a7c15))
 	r := rand.New(src)
 
