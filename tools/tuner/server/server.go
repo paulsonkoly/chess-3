@@ -11,11 +11,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
-	. "github.com/paulsonkoly/chess-3/types"
 	"google.golang.org/grpc"
 )
 
@@ -126,6 +124,16 @@ type queueJob struct {
 	k        float64
 }
 
+func (qj queueJob) String() string {
+	return fmt.Sprintf("{uuid = %s, epoch = %d, start = %d, end = %d, checksum = %s, k = %f}",
+		qj.uuid.String(),
+		qj.epoch,
+		qj.start,
+		qj.end,
+		base64.URLEncoding.EncodeToString(qj.checksum),
+		qj.k)
+}
+
 // serverJob is what the server tracks about a job
 type serverJob struct {
 	deadline time.Time
@@ -149,9 +157,6 @@ func Run(args []string) {
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
 	sFlags.Parse(args)
 
-	jobQueue := make(chan queueJob, JobQueueDepth)
-	resultQueue := make(chan result, ResultQueueDepth)
-
 	epdF, err := epd.Open(epdFileName)
 	if err != nil {
 		slog.Error("failed to load epd file", "filename", epdFileName)
@@ -163,8 +168,15 @@ func Run(args []string) {
 		slog.Error("checksum calculation error", "error", err)
 	}
 	slog.Debug("loaded epd", "filename", epdF.Basename(), "checksum", base64.URLEncoding.EncodeToString(checksum))
+	k, err := minimizeK(epdF)
+	if err != nil {
+		slog.Error("k minimization error", "error", err)
+	}
 
-	go epdProcess(epdF, jobQueue, resultQueue)
+	jobQueue := make(chan queueJob, JobQueueDepth)
+	resultQueue := make(chan result, ResultQueueDepth)
+
+	go epdProcess(epdF, k, jobQueue, resultQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
@@ -185,12 +197,10 @@ func Run(args []string) {
 	grpcServer.Serve(lis)
 }
 
-func epdProcess(epdF *epd.File, jobQueue chan<- queueJob, resultQueue <-chan result) {
-	coeffs := tuning.Coeffs{}
-
-	k, err := minimizeK(epdF, &coeffs)
+func epdProcess(epdF *epd.File, k float64, jobQueue chan<- queueJob, resultQueue <-chan result) {
+	coeffs, err := tuning.EngineCoeffs()
 	if err != nil {
-		slog.Error("k minimization error", "error", err)
+		slog.Error("error loading engine coeffs", "error", err)
 		os.Exit(tuning.ExitFailure)
 	}
 
@@ -239,7 +249,7 @@ func epdProcess(epdF *epd.File, jobQueue chan<- queueJob, resultQueue <-chan res
 						// if already completed ignore
 						if !chunks[ix].completed {
 							slog.Debug("received results", "uuid", result.uuid)
-							grads.Add(result.gradients)
+							// grads.Add(result.gradients)
 							chunks[ix].completed = true
 						}
 					}
@@ -261,24 +271,29 @@ func epdProcess(epdF *epd.File, jobQueue chan<- queueJob, resultQueue <-chan res
 	}
 }
 
-func minimizeK(epdF *epd.File, coeffs *tuning.Coeffs) (float64, error) {
-	k := 0.832 // a scaling constant
+func minimizeK(epdF *epd.File) (float64, error) {
+	coeffs, err := tuning.EngineCoeffs()
+	if err != nil {
+		return 0, err
+	}
+
+	k := 2.839 // a scaling constant
 	improved := true
 	step := 1.0
 
-	bestE, err := fileMSE(epdF, k, coeffs)
-	slog.Info("minimizing k", "k", k, "bestE", bestE)
+	mse, err := fileMSE(epdF, k, &coeffs)
+	slog.Info("minimizing mse with k", "k", k, "mse", mse)
 	if err != nil {
 		return 0, err
 	}
 	for step > 0.0001 {
 		slog.Info("k step", "k", k, "step", step)
 		for improved {
-			eHigh, err := fileMSE(epdF, k+step, coeffs)
+			eHigh, err := fileMSE(epdF, k+step, &coeffs)
 			if err != nil {
 				return 0, err
 			}
-			eLow, err := fileMSE(epdF, k-step, coeffs)
+			eLow, err := fileMSE(epdF, k-step, &coeffs)
 			if err != nil {
 				return 0, err
 			}
@@ -291,11 +306,11 @@ func minimizeK(epdF *epd.File, coeffs *tuning.Coeffs) (float64, error) {
 				nE = eHigh
 			}
 
-			if nE < bestE {
+			if nE < mse {
 				improved = true
-				bestE = nE
+				mse = nE
 				k = nK
-				slog.Info("minimizing k", "k", k, "bestE", bestE)
+				slog.Info("minimizing mse with k", "k", k, "mse", mse)
 			}
 		}
 		step /= 10.0
@@ -317,7 +332,7 @@ func fileMSE(epdF *epd.File, k float64, coeffs *tuning.Coeffs) (float64, error) 
 				b := epdE.Board
 				r := epdE.Result
 
-				score := evalCoeffs(b, coeffs)
+				score := coeffs.Eval(b)
 
 				sgm := tuning.Sigmoid(score, k)
 
@@ -326,14 +341,4 @@ func fileMSE(epdF *epd.File, k float64, coeffs *tuning.Coeffs) (float64, error) 
 		}
 	}
 	return sum / float64(epdF.LineCount()), nil
-}
-
-func evalCoeffs(b *board.Board, coeffs *tuning.Coeffs) float64 {
-	// score := eval.Eval(b, coeffs.ToEvalType())
-	score := 0.
-
-	if b.STM == Black {
-		score = -score
-	}
-	return score
 }
