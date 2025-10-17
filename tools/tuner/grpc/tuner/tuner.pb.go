@@ -227,12 +227,13 @@ func (*JobRequest) Descriptor() ([]byte, []int) {
 
 type JobResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobUuid       string                 `protobuf:"bytes,1,opt,name=job_uuid,json=jobUuid,proto3" json:"job_uuid,omitempty"`
+	Uuid          []byte                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
 	Epoch         int32                  `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	Start         int32                  `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
 	End           int32                  `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
-	Checksum      string                 `protobuf:"bytes,5,opt,name=checksum,proto3" json:"checksum,omitempty"`
-	Coefficients  []float64              `protobuf:"fixed64,6,rep,packed,name=coefficients,proto3" json:"coefficients,omitempty"`
+	Checksum      []byte                 `protobuf:"bytes,5,opt,name=checksum,proto3" json:"checksum,omitempty"`
+	K             float64                `protobuf:"fixed64,6,opt,name=k,proto3" json:"k,omitempty"`
+	Coefficients  []float64              `protobuf:"fixed64,7,rep,packed,name=coefficients,proto3" json:"coefficients,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -267,11 +268,11 @@ func (*JobResponse) Descriptor() ([]byte, []int) {
 	return file_protos_tuner_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *JobResponse) GetJobUuid() string {
+func (x *JobResponse) GetUuid() []byte {
 	if x != nil {
-		return x.JobUuid
+		return x.Uuid
 	}
-	return ""
+	return nil
 }
 
 func (x *JobResponse) GetEpoch() int32 {
@@ -295,11 +296,18 @@ func (x *JobResponse) GetEnd() int32 {
 	return 0
 }
 
-func (x *JobResponse) GetChecksum() string {
+func (x *JobResponse) GetChecksum() []byte {
 	if x != nil {
 		return x.Checksum
 	}
-	return ""
+	return nil
+}
+
+func (x *JobResponse) GetK() float64 {
+	if x != nil {
+		return x.K
+	}
+	return 0
 }
 
 func (x *JobResponse) GetCoefficients() []float64 {
@@ -311,8 +319,8 @@ func (x *JobResponse) GetCoefficients() []float64 {
 
 type ResultRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobUuid       string                 `protobuf:"bytes,1,opt,name=job_uuid,json=jobUuid,proto3" json:"job_uuid,omitempty"`
-	Checksum      string                 `protobuf:"bytes,2,opt,name=checksum,proto3" json:"checksum,omitempty"`
+	Uuid          []byte                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	Checksum      []byte                 `protobuf:"bytes,2,opt,name=checksum,proto3" json:"checksum,omitempty"`
 	Gradients     []float64              `protobuf:"fixed64,3,rep,packed,name=gradients,proto3" json:"gradients,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -348,18 +356,18 @@ func (*ResultRequest) Descriptor() ([]byte, []int) {
 	return file_protos_tuner_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ResultRequest) GetJobUuid() string {
+func (x *ResultRequest) GetUuid() []byte {
 	if x != nil {
-		return x.JobUuid
+		return x.Uuid
 	}
-	return ""
+	return nil
 }
 
-func (x *ResultRequest) GetChecksum() string {
+func (x *ResultRequest) GetChecksum() []byte {
 	if x != nil {
 		return x.Checksum
 	}
-	return ""
+	return nil
 }
 
 func (x *ResultRequest) GetGradients() []float64 {
@@ -418,17 +426,18 @@ const file_protos_tuner_proto_rawDesc = "" +
 	"\aEPDLine\x12\x12\n" +
 	"\x04line\x18\x01 \x01(\tR\x04line\"\f\n" +
 	"\n" +
-	"JobRequest\"\xa6\x01\n" +
-	"\vJobResponse\x12\x19\n" +
-	"\bjob_uuid\x18\x01 \x01(\tR\ajobUuid\x12\x14\n" +
+	"JobRequest\"\xad\x01\n" +
+	"\vJobResponse\x12\x12\n" +
+	"\x04uuid\x18\x01 \x01(\fR\x04uuid\x12\x14\n" +
 	"\x05epoch\x18\x02 \x01(\x05R\x05epoch\x12\x14\n" +
 	"\x05start\x18\x03 \x01(\x05R\x05start\x12\x10\n" +
 	"\x03end\x18\x04 \x01(\x05R\x03end\x12\x1a\n" +
-	"\bchecksum\x18\x05 \x01(\tR\bchecksum\x12\"\n" +
-	"\fcoefficients\x18\x06 \x03(\x01R\fcoefficients\"d\n" +
-	"\rResultRequest\x12\x19\n" +
-	"\bjob_uuid\x18\x01 \x01(\tR\ajobUuid\x12\x1a\n" +
-	"\bchecksum\x18\x02 \x01(\tR\bchecksum\x12\x1c\n" +
+	"\bchecksum\x18\x05 \x01(\fR\bchecksum\x12\f\n" +
+	"\x01k\x18\x06 \x01(\x01R\x01k\x12\"\n" +
+	"\fcoefficients\x18\a \x03(\x01R\fcoefficients\"]\n" +
+	"\rResultRequest\x12\x12\n" +
+	"\x04uuid\x18\x01 \x01(\fR\x04uuid\x12\x1a\n" +
+	"\bchecksum\x18\x02 \x01(\fR\bchecksum\x12\x1c\n" +
 	"\tgradients\x18\x03 \x03(\x01R\tgradients\"\v\n" +
 	"\tResultAck2\xe7\x01\n" +
 	"\x05Tuner\x127\n" +

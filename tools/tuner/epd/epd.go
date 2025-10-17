@@ -9,7 +9,10 @@ import (
 	"os"
 	"path"
 	"slices"
+	"strconv"
+	"strings"
 
+	"github.com/paulsonkoly/chess-3/board"
 	"golang.org/x/sys/unix"
 )
 
@@ -132,11 +135,18 @@ func (e *File) Stream(s Streamer) error {
 
 var ErrChunkInvalid = errors.New("invalid chunk")
 var ErrPageSize = errors.New("invalid page size")
+var ErrLineInvalid = errors.New("invalid epd line")
+
+// Entry is a parsed entry from the EPD file.
+type Entry struct {
+	Board  *board.Board // Board is a chess position structure.
+	Result float64      // Result is the WDL label.
+}
 
 // Chunk returns the lines of an EPD chunk, identified by the starting and
 // ending line indices. As it usually happens in go; start is inclusive, end is
 // non-inclusive.
-func (e *File) Chunk(start, end int) ([]string, error) {
+func (e *File) Chunk(start, end int) ([]Entry, error) {
 	if start < 0 || end < 0 || start > len(e.lineManifest)-1 || end > len(e.lineManifest) || start > end {
 		return nil, ErrChunkInvalid
 	}
@@ -165,7 +175,7 @@ func (e *File) Chunk(start, end int) ([]string, error) {
 		return int(a.start - b.start)
 	})
 
-	lines := make([]string, 0)
+	entries := make([]Entry, 0)
 	pageSize := int64(unix.Getpagesize())
 
 	if pageSize&(pageSize-1) != 0 {
@@ -207,7 +217,22 @@ func (e *File) Chunk(start, end int) ([]string, error) {
 
 		line := string(mapBytes[addr.start-mapStart : addr.end-mapStart])
 
-		lines = append(lines, line)
+		splits := strings.Split(line, "; ")
+		if len(splits) != 2 {
+			return nil, ErrLineInvalid
+		}
+
+		b, err := board.FromFEN(splits[0])
+		if err != nil {
+			return nil, err
+		}
+
+		r, err := strconv.ParseFloat(splits[1], 64)
+		if err != nil {
+			return nil, err
+		}
+
+		entries = append(entries, Entry{Board: b, Result: r})
 	}
 
 	if mapBytes != nil {
@@ -217,7 +242,7 @@ func (e *File) Chunk(start, end int) ([]string, error) {
 		}
 	}
 
-	return lines, nil
+	return entries, nil
 }
 
 // Shuffle shuffles the line order in the file, the order is determined by seed.

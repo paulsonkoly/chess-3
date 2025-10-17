@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"google.golang.org/grpc"
@@ -10,8 +11,8 @@ import (
 
 type tunerServer struct {
 	pb.UnimplementedTunerServer
-	jobQueue    chan Job
-	resultQueue chan Result
+	jobQueue    chan queueJob
+	resultQueue chan result
 	epdF        *epd.File
 }
 
@@ -39,16 +40,29 @@ func (s tunerServer) StreamEPD(_ *pb.EPDStreamRequest, stream grpc.ServerStreami
 func (s tunerServer) RequestJob(_ context.Context, _ *pb.JobRequest) (*pb.JobResponse, error) {
 	job := <-s.jobQueue
 
+	uuidBytes, err := job.uuid.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
 	result := pb.JobResponse{
-		JobUuid: job.UUID,
+		Uuid:     uuidBytes,
+		Epoch:    int32(job.epoch),
+		Start:    int32(job.start),
+		End:      int32(job.end),
+		Checksum: job.checksum,
+		K:        job.k,
 	}
 
 	return &result, nil
 }
 
 func (s tunerServer) RegisterResult(_ context.Context, r *pb.ResultRequest) (*pb.ResultAck, error) {
-	result := Result{UUID: r.JobUuid}
-	s.resultQueue <- result
+	uuid, err := uuid.ParseBytes(r.Uuid)
+	if err != nil {
+		return nil, err
+	}
+	s.resultQueue <- result{uuid: uuid}
 
 	return nil, nil
 }

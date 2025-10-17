@@ -27,17 +27,18 @@ message EPDLine {
 message JobRequest {}
 
 message JobResponse {
-  string job_uuid = 1;
+  bytes uuid = 1;
   int32 epoch = 2;
   int32 start = 3;
   int32 end = 4;
-  string checksum = 5;
-  repeated double coefficients = 6;
+  bytes checksum = 5;
+  double k = 6;
+  repeated double coefficients = 7;
 }
 
 message ResultRequest {
-  string job_uuid = 1;
-  string checksum = 2;
+  bytes uuid = 1;
+  bytes checksum = 2;
   repeated double gradients = 3;
 }
 

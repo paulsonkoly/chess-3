@@ -10,9 +10,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
+	. "github.com/paulsonkoly/chess-3/types"
 	"google.golang.org/grpc"
 )
 
@@ -34,7 +37,7 @@ const (
 type ServerChunk struct {
 	tuning.Range
 	completed bool
-	jobs      []ServerJob
+	jobs      []serverJob
 }
 
 type batchChunks []ServerChunk
@@ -101,10 +104,11 @@ func (bc batchChunks) Incomplete() iter.Seq2[int, ServerChunk] {
 	}
 }
 
-func (bc batchChunks) Match(r Result) (ix int, ok bool) {
+func (bc batchChunks) Match(r result) (ix int, ok bool) {
 	for i, chunk := range bc {
 		for _, job := range chunk.jobs {
-			if job.UUID == r.UUID {
+
+			if job.uuid == r.uuid {
 				return i, true
 			}
 		}
@@ -112,19 +116,26 @@ func (bc batchChunks) Match(r Result) (ix int, ok bool) {
 	return 0, false
 }
 
-type Job struct {
-	UUID string
-	tuning.Range
+// queueJob is what the server emits to the grpc shim for serialisation
+type queueJob struct {
+	uuid     uuid.UUID
+	epoch    int
+	start    int
+	end      int
+	checksum []byte
+	k        float64
 }
 
-type ServerJob struct {
+// serverJob is what the server tracks about a job
+type serverJob struct {
 	deadline time.Time
-	Job
+	queueJob
 }
 
-type Result struct {
-	UUID      string
-	Gradients []float64
+// result is what we receive deserialised from the grpc shim
+type result struct {
+	uuid      uuid.UUID
+	gradients []float64
 }
 
 func Run(args []string) {
@@ -138,8 +149,8 @@ func Run(args []string) {
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
 	sFlags.Parse(args)
 
-	jobQueue := make(chan Job, JobQueueDepth)
-	resultQueue := make(chan Result, ResultQueueDepth)
+	jobQueue := make(chan queueJob, JobQueueDepth)
+	resultQueue := make(chan result, ResultQueueDepth)
 
 	epdF, err := epd.Open(epdFileName)
 	if err != nil {
@@ -174,10 +185,14 @@ func Run(args []string) {
 	grpcServer.Serve(lis)
 }
 
-func epdProcess(epdF *epd.File, jobQueue chan<- Job, resultQueue <-chan Result) {
+func epdProcess(epdF *epd.File, jobQueue chan<- queueJob, resultQueue <-chan result) {
 	coeffs := tuning.Coeffs{}
 
-	// minimize k
+	k, err := minimizeK(epdF, &coeffs)
+	if err != nil {
+		slog.Error("k minimization error", "error", err)
+		os.Exit(tuning.ExitFailure)
+	}
 
 	for epoch := 1; true; epoch++ {
 		slog.Debug("new epoch", "epoch", epoch)
@@ -196,22 +211,25 @@ func epdProcess(epdF *epd.File, jobQueue chan<- Job, resultQueue <-chan Result) 
 			for i, chunk := range chunks.Incomplete() {
 
 				//create a job for the batch
-				job := ServerJob{
+				job := serverJob{
 					deadline: time.Now().Add(600 * time.Second),
-					Job:      Job{Range: chunk.Range},
+					queueJob: queueJob{
+						uuid:  uuid.New(),
+						epoch: epoch,
+						start: chunk.Start,
+						end:   chunk.End,
+						// checksum: []byte,
+						k: k,
+					},
 				}
 
 				// put the job in the tracking structures
 				chunks[i].jobs = append(chunks[i].jobs, job)
 
-				slog.Debug("queueing job",
-					"uuid", job.UUID,
-					"deadline", job.deadline,
-					"chunk.start", chunk.Start,
-					"chunk.end", chunk.End)
+				slog.Debug("queueing job", "job", job.queueJob)
 
 				// send the job to the client handler
-				jobQueue <- job.Job
+				jobQueue <- job.queueJob
 
 				// register results
 				select {
@@ -220,8 +238,8 @@ func epdProcess(epdF *epd.File, jobQueue chan<- Job, resultQueue <-chan Result) 
 					if ix, ok := chunks.Match(result); ok {
 						// if already completed ignore
 						if !chunks[ix].completed {
-							slog.Debug("received results", "uuid", result.UUID)
-							grads.Add(result.Gradients)
+							slog.Debug("received results", "uuid", result.uuid)
+							grads.Add(result.gradients)
 							chunks[ix].completed = true
 						}
 					}
@@ -241,4 +259,81 @@ func epdProcess(epdF *epd.File, jobQueue chan<- Job, resultQueue <-chan Result) 
 		// shuffle
 		epdF.Shuffle(epoch)
 	}
+}
+
+func minimizeK(epdF *epd.File, coeffs *tuning.Coeffs) (float64, error) {
+	k := 0.832 // a scaling constant
+	improved := true
+	step := 1.0
+
+	bestE, err := fileMSE(epdF, k, coeffs)
+	slog.Info("minimizing k", "k", k, "bestE", bestE)
+	if err != nil {
+		return 0, err
+	}
+	for step > 0.0001 {
+		slog.Info("k step", "k", k, "step", step)
+		for improved {
+			eHigh, err := fileMSE(epdF, k+step, coeffs)
+			if err != nil {
+				return 0, err
+			}
+			eLow, err := fileMSE(epdF, k-step, coeffs)
+			if err != nil {
+				return 0, err
+			}
+			improved = false
+
+			nK := k - step
+			nE := eLow
+			if eHigh < eLow {
+				nK = k + step
+				nE = eHigh
+			}
+
+			if nE < bestE {
+				improved = true
+				bestE = nE
+				k = nK
+				slog.Info("minimizing k", "k", k, "bestE", bestE)
+			}
+		}
+		step /= 10.0
+		improved = true
+	}
+	return k, nil
+}
+
+func fileMSE(epdF *epd.File, k float64, coeffs *tuning.Coeffs) (float64, error) {
+	sum := float64(0)
+	for batch := range tuning.Batches(epdF.LineCount()) {
+		for chunk := range tuning.Chunks(batch) {
+			chunkEntries, err := epdF.Chunk(chunk.Start, chunk.End)
+			if err != nil {
+				return 0, err
+			}
+
+			for _, epdE := range chunkEntries {
+				b := epdE.Board
+				r := epdE.Result
+
+				score := evalCoeffs(b, coeffs)
+
+				sgm := tuning.Sigmoid(score, k)
+
+				sum += (r - sgm) * (r - sgm)
+			}
+		}
+	}
+	return sum / float64(epdF.LineCount()), nil
+}
+
+func evalCoeffs(b *board.Board, coeffs *tuning.Coeffs) float64 {
+	// score := eval.Eval(b, coeffs.ToEvalType())
+	score := 0.
+
+	if b.STM == Black {
+		score = -score
+	}
+	return score
 }

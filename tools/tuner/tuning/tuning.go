@@ -1,5 +1,7 @@
 package tuning
 
+import "math"
+
 const (
 	ExitFailure = 1
 	// NumLinesInBatch determines how the epd file is split into batches. A batch
@@ -18,3 +20,7 @@ func (c *Coeffs) Add(other Coeffs) {
 		(*c)[i] += other[i]
 	}
 }
+func Sigmoid(v, k float64) float64 {
+	return 1 / (1 + math.Exp(-k*v/400))
+}
+

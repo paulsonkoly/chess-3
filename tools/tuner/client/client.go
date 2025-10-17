@@ -120,11 +120,11 @@ func Run(args []string) {
 
 	for {
 		slog.Debug("requesting job")
-		r, err := c.RequestJob(context.Background(), &pb.JobRequest{})
+		_, err := c.RequestJob(context.Background(), &pb.JobRequest{})
 		if err != nil {
 			slog.Error("job request error", "error", err)
 			continue
 		}
-		slog.Info("received job", "uuid", r.JobUuid)
+		// slog.Info("received job", "uuid", r.JobUuid)
 	}
 }
