@@ -103,8 +103,8 @@ func Run(args []string) {
 				slog.Warn(
 					"epd checksum mismatch",
 					"filename", epdInfo.Filename,
-					"received.Checksum", epdInfo.Checksum,
-					"local.Checksum", myChecksum)
+					"received.Checksum", base64.URLEncoding.EncodeToString(epdInfo.Checksum),
+					"local.Checksum", base64.URLEncoding.EncodeToString(myChecksum))
 
 				slog.Debug("deleting local epd", "filename", epdF.Basename())
 				if err := os.Remove(epdF.Basename()); err != nil {

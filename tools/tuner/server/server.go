@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"iter"
@@ -146,7 +147,11 @@ func Run(args []string) {
 		os.Exit(tuning.ExitFailure)
 	}
 	defer epdF.Close()
-	slog.Debug("loaded epd", "filename", epdF.Basename(), "checksum", epdF.Checksum)
+	checksum, err := epdF.Checksum()
+	if err != nil {
+		slog.Error("checksum calculation error", "error", err)
+	}
+	slog.Debug("loaded epd", "filename", epdF.Basename(), "checksum", base64.URLEncoding.EncodeToString(checksum))
 
 	go epdProcess(epdF, jobQueue, resultQueue)
 
@@ -171,6 +176,8 @@ func Run(args []string) {
 
 func epdProcess(epdF *epd.File, jobQueue chan<- Job, resultQueue <-chan Result) {
 	coeffs := tuning.Coeffs{}
+
+	// minimize k
 
 	for epoch := 1; true; epoch++ {
 		slog.Debug("new epoch", "epoch", epoch)
