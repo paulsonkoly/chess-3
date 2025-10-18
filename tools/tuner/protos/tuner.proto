@@ -38,8 +38,7 @@ message JobResponse {
 
 message ResultRequest {
   bytes uuid = 1;
-  bytes checksum = 2;
-  repeated double gradients = 3;
+  repeated double gradients = 2;
 }
 
 message ResultAck {}

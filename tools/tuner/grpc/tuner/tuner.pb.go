@@ -320,8 +320,7 @@ func (x *JobResponse) GetCoefficients() []float64 {
 type ResultRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Uuid          []byte                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
-	Checksum      []byte                 `protobuf:"bytes,2,opt,name=checksum,proto3" json:"checksum,omitempty"`
-	Gradients     []float64              `protobuf:"fixed64,3,rep,packed,name=gradients,proto3" json:"gradients,omitempty"`
+	Gradients     []float64              `protobuf:"fixed64,2,rep,packed,name=gradients,proto3" json:"gradients,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -359,13 +358,6 @@ func (*ResultRequest) Descriptor() ([]byte, []int) {
 func (x *ResultRequest) GetUuid() []byte {
 	if x != nil {
 		return x.Uuid
-	}
-	return nil
-}
-
-func (x *ResultRequest) GetChecksum() []byte {
-	if x != nil {
-		return x.Checksum
 	}
 	return nil
 }
@@ -434,11 +426,10 @@ const file_protos_tuner_proto_rawDesc = "" +
 	"\x03end\x18\x04 \x01(\x05R\x03end\x12\x1a\n" +
 	"\bchecksum\x18\x05 \x01(\fR\bchecksum\x12\f\n" +
 	"\x01k\x18\x06 \x01(\x01R\x01k\x12\"\n" +
-	"\fcoefficients\x18\a \x03(\x01R\fcoefficients\"]\n" +
+	"\fcoefficients\x18\a \x03(\x01R\fcoefficients\"A\n" +
 	"\rResultRequest\x12\x12\n" +
-	"\x04uuid\x18\x01 \x01(\fR\x04uuid\x12\x1a\n" +
-	"\bchecksum\x18\x02 \x01(\fR\bchecksum\x12\x1c\n" +
-	"\tgradients\x18\x03 \x03(\x01R\tgradients\"\v\n" +
+	"\x04uuid\x18\x01 \x01(\fR\x04uuid\x12\x1c\n" +
+	"\tgradients\x18\x02 \x03(\x01R\tgradients\"\v\n" +
 	"\tResultAck2\xe7\x01\n" +
 	"\x05Tuner\x127\n" +
 	"\x0eRequestEPDInfo\x12\x15.tuner.EPDInfoRequest\x1a\x0e.tuner.EPDInfo\x126\n" +
