@@ -46,19 +46,20 @@ func (s tunerServer) RequestJob(_ context.Context, _ *pb.JobRequest) (*pb.JobRes
 	}
 
 	result := pb.JobResponse{
-		Uuid:     uuidBytes,
-		Epoch:    int32(job.epoch),
-		Start:    int32(job.start),
-		End:      int32(job.end),
-		Checksum: job.checksum,
-		K:        job.k,
+		Uuid:         uuidBytes,
+		Epoch:        int32(job.epoch),
+		Start:        int32(job.start),
+		End:          int32(job.end),
+		Checksum:     job.checksum,
+		Coefficients: job.coefficients,
+		K:            job.k,
 	}
 
 	return &result, nil
 }
 
 func (s tunerServer) RegisterResult(_ context.Context, r *pb.ResultRequest) (*pb.ResultAck, error) {
-	uuid, err := uuid.ParseBytes(r.Uuid)
+	uuid, err := uuid.FromBytes(r.Uuid)
 	if err != nil {
 		return nil, err
 	}

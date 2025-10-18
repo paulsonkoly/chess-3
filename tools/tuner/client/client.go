@@ -120,6 +120,12 @@ func Run(args []string) {
 
 	epoch := 1
 
+	coeffs, err := tuning.EngineCoeffs()
+	if err != nil {
+		slog.Error("coeff conversion error", "error", err)
+		os.Exit(tuning.ExitFailure)
+	}
+
 	for {
 		slog.Debug("requesting job")
 		job, err := c.RequestJob(context.Background(), &pb.JobRequest{})
@@ -130,7 +136,8 @@ func Run(args []string) {
 		slog.Info("received job", "uuid", job.Uuid)
 
 		if int(job.Epoch) != epoch {
-			slog.Info("shuffling epd", "epoch", epoch)
+			slog.Info("shuffling epd", "epoch", job.Epoch)
+			epoch = int(job.Epoch)
 			epdF.Shuffle(epoch)
 		}
 
@@ -142,8 +149,51 @@ func Run(args []string) {
 
 		if !slices.Equal(checksum, job.Checksum) {
 			slog.Warn("chunk checksum mismatch") // TODO args
+			os.Exit(tuning.ExitFailure)
 		}
 
 		slog.Info("checksum match", "checksum", base64.URLEncoding.EncodeToString(job.Checksum))
+
+		err = coeffs.SetFloats(tuning.DefaultTargets, job.Coefficients)
+		if err != nil {
+			slog.Error("coeff conversion error", "error", err)
+			os.Exit(tuning.ExitFailure)
+		}
+
+		k := job.K
+		chunk, err := epdF.Chunk(int(job.Start), int(job.End))
+		if err != nil {
+			slog.Error("chunking error", "error", err)
+			os.Exit(tuning.ExitFailure)
+		}
+
+		floats := job.Coefficients
+		grad := make([]float64, len(floats))
+
+		for _, entry := range chunk {
+			score := coeffs.Eval(entry.Board)
+			sigm := tuning.Sigmoid(score, k)
+			loss := (entry.Result - sigm) * (entry.Result - sigm)
+			for i, float := range floats {
+				floats[i] += tuning.Epsilon
+				coeffs.SetFloats(tuning.DefaultTargets, floats)
+
+				score2 := coeffs.Eval(entry.Board)
+				sigm2 := tuning.Sigmoid(score2, k)
+				loss2 := (entry.Result - sigm2) * (entry.Result - sigm2)
+				floats[i] = float
+				// TODO this is really bad...
+				coeffs.SetFloats(tuning.DefaultTargets, floats)
+
+				g := (loss2 - loss) / tuning.Epsilon
+
+				grad[i] += g
+			}
+		}
+
+		c.RegisterResult(context.Background(), &pb.ResultRequest{
+			Uuid:      job.Uuid,
+			Gradients: grad,
+		})
 	}
 }

@@ -2,8 +2,10 @@ package tuning
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
+	"slices"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/eval"
@@ -19,6 +21,8 @@ const (
 	// NumChunksInBatch determines how a batch is split into chunks. A chunk is a
 	// unique work iterm handed over to clients.
 	NumChunksInBatch = 16
+
+	Epsilon    = 0.001
 )
 
 type Coeffs eval.CoeffSet[float64]
@@ -33,7 +37,7 @@ func Sigmoid(v, k float64) float64 {
 	return 1 / (1 + math.Exp(-k*v/400))
 }
 
-func (c Coeffs)Eval(b *board.Board) float64 {
+func (c Coeffs) Eval(b *board.Board) float64 {
 	score := eval.Eval(b, (*eval.CoeffSet[float64])(&c))
 
 	if b.STM == Black {
@@ -53,8 +57,23 @@ var DefaultTargets = []string{
 	// "KingAttackPieces", "SafeChecks", "KingShelter",
 	// "ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
 	// "KnightOutpost", "ConnectedRooks", "BishopPair",
+	"KingAttackPieces",
 	"BishopPair",
 }
+
+var ErrBadStruct = errors.New("bad struct")
+
+type ErrInvalidField struct{ kind reflect.Kind }
+
+func (e ErrInvalidField) Error() string { return fmt.Sprintf("invalid kind %s", e.kind) }
+
+type ErrInvalidField2 struct{ a, b reflect.Kind }
+
+func (e ErrInvalidField2) Error() string { return fmt.Sprintf("invalid kind %s %s", e.a, e.b) }
+
+type ErrLengthMismatch struct{ a, b int }
+
+func (e ErrLengthMismatch) Error() string { return fmt.Sprintf("length mismatch %d %d", e.a, e.b) }
 
 // EngineCoeffs is the value set saved in the engine (int16) and
 // converted to a float64 CoeffSet.
@@ -67,7 +86,7 @@ func EngineCoeffs() (Coeffs, error) {
 	srcV := reflect.ValueOf(engineSet)
 
 	if dstV.NumField() != srcV.NumField() {
-		return result, errors.New("field count mismatch")
+		return result, ErrBadStruct
 	}
 
 	for i := range t.NumField() {
@@ -81,7 +100,7 @@ func convert(dst, src reflect.Value) error {
 	switch {
 	case src.Kind() == reflect.Array && dst.Kind() == reflect.Array:
 		if src.Len() != dst.Len() {
-			return errors.New("mismatched array length")
+			return ErrLengthMismatch{src.Len(), dst.Len()}
 		}
 
 		for i := range src.Len() {
@@ -95,37 +114,107 @@ func convert(dst, src reflect.Value) error {
 		dst.Set(reflect.ValueOf(float64(src.Int())))
 
 	default:
-		return errors.New("invlid structure field kind")
+		return ErrInvalidField2{src.Kind(), dst.Kind()}
 	}
 
 	return nil
 }
 
-// func getFieldFloats(v reflect.Value) ([]float64, error) {
-// 	switch v.Kind() {
-//
-// 	case reflect.Int16:
-// 		return []float64{float64(v.Int())}, nil
-//
-// 	case reflect.Array:
-// 		floats := make([]float64, 0)
-// 		for i := range v.Len() {
-// 			sub, err := getFieldFloats(v.Index(i))
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			floats = append(floats, sub...)
-// 		}
-//
-// 		return floats, nil
-//
-// 	default:
-// 		return nil, ErrInvalidField{kind: v.Kind()}
-// 	}
-// }
-//
-// // ToCoeffSet converts c to the engine representation.
-// func (c Coeffs) ToCoeffSet(targets TuningTargets) eval.CoeffSet[float64] {
-// 	result := eval.Co
-//
-// }
+// Floats extract the target related floats from c.
+func (c Coeffs) Floats(target TuningTargets) ([]float64, error) {
+	result := make([]float64, 0)
+
+	unWrap := eval.CoeffSet[float64](c)
+	structV := reflect.ValueOf(unWrap)
+	structT := reflect.TypeOf(unWrap)
+
+	for i := range structT.NumField() {
+		if slices.Contains(target, structT.Field(i).Name) {
+			floats, err := getFieldFloats(structV.Field(i))
+
+			if err != nil {
+				return nil, err
+			}
+
+			result = append(result, floats...)
+		}
+	}
+
+	return result, nil
+}
+
+func getFieldFloats(v reflect.Value) ([]float64, error) {
+	switch v.Kind() {
+
+	case reflect.Float64:
+		return []float64{v.Float()}, nil
+
+	case reflect.Array:
+		floats := make([]float64, 0)
+		for i := range v.Len() {
+			sub, err := getFieldFloats(v.Index(i))
+			if err != nil {
+				return nil, err
+			}
+			floats = append(floats, sub...)
+		}
+
+		return floats, nil
+
+	default:
+		return nil, ErrInvalidField{kind: v.Kind()}
+	}
+}
+
+// SetFloats sets the target values in c to floats.
+func (c *Coeffs) SetFloats(target TuningTargets, floats []float64) error {
+
+	unWrap := (*eval.CoeffSet[float64])(c)
+	structV := reflect.ValueOf(unWrap).Elem()
+	structT := reflect.TypeOf(unWrap).Elem()
+
+	for i := range structT.NumField() {
+		if slices.Contains(target, structT.Field(i).Name) {
+			numUsed, err := setFieldFloats(structV.Field(i), floats)
+			if err != nil {
+				return err
+			}
+
+			floats = floats[numUsed:]
+		}
+	}
+
+	return nil
+}
+
+func setFieldFloats(dst reflect.Value, floats []float64) (int, error) {
+	switch dst.Kind() {
+	case reflect.Array:
+		if dst.Len() > len(floats) {
+			return 0, ErrLengthMismatch{dst.Len(), len(floats)}
+		}
+
+		numUsed := 0
+		for i := range dst.Len() {
+			rec, err := setFieldFloats(dst.Index(i), floats)
+			if err != nil {
+				return 0, err
+			}
+
+			floats = floats[rec:]
+			numUsed += rec
+		}
+		return numUsed, nil
+
+	case reflect.Float64:
+		if len(floats) < 1 {
+			return 0, ErrLengthMismatch{1, len(floats)}
+		}
+		dst.Set(reflect.ValueOf(floats[0]))
+
+		return 1, nil
+
+	default:
+		return 0, ErrInvalidField{dst.Kind()}
+	}
+}

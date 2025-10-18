@@ -117,12 +117,13 @@ func (bc batchChunks) Match(r result) (ix int, ok bool) {
 
 // queueJob is what the server emits to the grpc shim for serialisation
 type queueJob struct {
-	uuid     uuid.UUID
-	epoch    int
-	start    int
-	end      int
-	checksum []byte
-	k        float64
+	uuid         uuid.UUID
+	epoch        int
+	start        int
+	end          int
+	coefficients []float64
+	checksum     []byte
+	k            float64
 }
 
 func (qj queueJob) String() string {
@@ -225,16 +226,23 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- queueJob, resultQueue
 			// while there is an incomplete chunk in the batch
 			for i, chunk := range chunks.Incomplete() {
 
+				floats, err := coeffs.Floats(tuning.DefaultTargets)
+				if err != nil {
+					slog.Error("coeff conversion error", "error", err)
+					os.Exit(tuning.ExitFailure)
+				}
+
 				//create a job for the batch
 				job := serverJob{
 					deadline: time.Now().Add(600 * time.Second),
 					queueJob: queueJob{
-						uuid:     uuid.New(),
-						epoch:    epoch,
-						start:    chunk.Start,
-						end:      chunk.End,
-						checksum: chunk.checksum,
-						k:        k,
+						uuid:         uuid.New(),
+						epoch:        epoch,
+						start:        chunk.Start,
+						end:          chunk.End,
+						checksum:     chunk.checksum,
+						coefficients: floats,
+						k:            k,
 					},
 				}
 
