@@ -1,21 +1,16 @@
 package client
 
 import (
-	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
-	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 	"golang.org/x/sys/unix"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func Run(args []string) {
@@ -27,27 +22,17 @@ func Run(args []string) {
 	sFlags.IntVar(&port, "port", 9001, "port to connect to")
 	sFlags.Parse(args)
 
-	addr := fmt.Sprintf("%s:%d", host, port)
-
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	client, err := shim.NewClient(host, port)
 	if err != nil {
-		slog.Error("failed to connect", "host", host, "port", port)
-		os.Exit(tuning.ExitFailure)
+		slog.Error("error creating client", "error", err)
 	}
-	defer conn.Close()
-
+	defer client.Close()
 	slog.Info("connected to server", "host", host, "port", port)
-	c := pb.NewTunerClient(conn)
 
 	slog.Debug("requesting epd info")
-	gepdInfo, err := c.RequestEPDInfo(context.Background(), &pb.EPDInfoRequest{})
+	epdInfo, err := client.RequestEPDInfo()
 	if err != nil {
 		slog.Error("failed requesting epd info", "error", err)
-		os.Exit(tuning.ExitFailure)
-	}
-	epdInfo, err := shim.EPDInfoFromGrpc(gepdInfo)
-	if err != nil {
-		slog.Error("epdInfo conversion error", "error", err)
 		os.Exit(tuning.ExitFailure)
 	}
 
@@ -63,7 +48,7 @@ func Run(args []string) {
 
 			slog.Info("downloading epd", "filename", epdInfo.Filename, "checksum", epdInfo.Checksum)
 
-			stream, err := c.StreamEPD(context.Background(), &pb.EPDStreamRequest{})
+			stream, err := client.StreamEPD()
 			if err != nil {
 				slog.Error("stream error", "error", err)
 				os.Exit(tuning.ExitFailure)
@@ -84,7 +69,7 @@ func Run(args []string) {
 					slog.Warn("stream error", "error", err)
 				}
 
-				_, err = f.WriteString(line.Line + "\n")
+				_, err = f.WriteString(line + "\n")
 				if err != nil {
 					slog.Warn("write error", "error", err)
 				}
@@ -123,15 +108,9 @@ func Run(args []string) {
 
 	for {
 		slog.Debug("requesting job")
-		gJob, err := c.RequestJob(context.Background(), &pb.JobRequest{})
+		job, err := client.RequestJob()
 		if err != nil {
 			slog.Error("job request error", "error", err)
-			os.Exit(tuning.ExitFailure)
-		}
-
-		job, err := shim.JobFromGrpc(gJob)
-		if err != nil {
-			slog.Error("job conversion error", "error", err)
 			os.Exit(tuning.ExitFailure)
 		}
 		slog.Info("received job", "job", job)
@@ -156,8 +135,8 @@ func Run(args []string) {
 		slog.Info("checksum match", "checksum", job.Checksum)
 
 		coeffs := job.Coefficients
-		k := gJob.K
-		chunk, err := epdF.Chunk(int(gJob.Start), int(gJob.End))
+		k := job.K
+		chunk, err := epdF.Chunk(job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("chunking error", "error", err)
 			os.Exit(tuning.ExitFailure)
@@ -191,9 +170,12 @@ func Run(args []string) {
 			}
 		}
 
-		c.RegisterResult(context.Background(), &pb.ResultRequest{
-			Uuid:      gJob.Uuid,
-			Gradients: grad,
+		// TODO
+		gradStruct := tuning.Coeffs{}
+		gradStruct.SetFloats(tuning.DefaultTargets, grad)
+		client.RegisterResult(shim.Result{
+			UUID:      job.UUID,
+			Gradients: &gradStruct,
 		})
 	}
 }

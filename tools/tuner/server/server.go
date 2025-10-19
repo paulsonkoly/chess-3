@@ -12,10 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
-	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -161,16 +159,7 @@ func Run(args []string) {
 	}
 
 	slog.Info("listening for incoming connections", "host", host, "port", port)
-
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
-	s := tunerServer{
-		jobQueue:    jobQueue,
-		resultQueue: resultQueue,
-		epdF:        epdF,
-	}
-	pb.RegisterTunerServer(grpcServer, s)
-	grpcServer.Serve(lis)
+	shim.NewServer(epdF, jobQueue, resultQueue ).Serve(lis)
 }
 
 func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
