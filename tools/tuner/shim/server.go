@@ -68,8 +68,9 @@ func (s tunerServer) RequestJob(_ context.Context, _ *pb.JobRequest) (*pb.JobRes
 func (s tunerServer) RegisterResult(_ context.Context, r *pb.ResultRequest) (*pb.ResultAck, error) {
 	result, err := resultFromGrpc(r)
 	if err != nil {
-		s.resultQueue <- result
+		return nil, err
 	}
 
-	return nil, err
+	s.resultQueue <- result
+	return nil, nil
 }

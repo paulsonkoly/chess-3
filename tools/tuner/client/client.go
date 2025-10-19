@@ -132,8 +132,6 @@ func Run(args []string) {
 			os.Exit(tuning.ExitFailure)
 		}
 
-		slog.Info("checksum match", "checksum", job.Checksum)
-
 		coeffs := job.Coefficients
 		k := job.K
 		chunk, err := epdF.Chunk(job.Range.Start, job.Range.End)
@@ -148,6 +146,8 @@ func Run(args []string) {
 			os.Exit(tuning.ExitFailure)
 		}
 		grad := make([]float64, len(floats))
+
+		slog.Info("working on job", "job", job)
 
 		for _, entry := range chunk {
 			score := coeffs.Eval(entry.Board)
@@ -173,9 +173,13 @@ func Run(args []string) {
 		// TODO
 		gradStruct := tuning.Coeffs{}
 		gradStruct.SetFloats(tuning.DefaultTargets, grad)
-		client.RegisterResult(shim.Result{
+		result := shim.Result{
 			UUID:      job.UUID,
 			Gradients: &gradStruct,
-		})
+		}
+
+		slog.Info("sending result", "result", result)
+
+		client.RegisterResult(result)
 	}
 }

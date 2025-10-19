@@ -169,7 +169,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 		os.Exit(tuning.ExitFailure)
 	}
 
-	for epoch := 1; true; epoch++ {
+	for epoch := 1; true; {
 		slog.Debug("new epoch", "epoch", epoch)
 
 		for batch := range tuning.Batches(epdF.LineCount()) {
@@ -214,10 +214,10 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 				select {
 				case result := <-resultQueue:
 					// validate result coming from client and search for a matching job in our structures
+					slog.Debug("received results", "result", result)
 					if ix, ok := chunks.Match(result); ok {
 						// if already completed ignore
 						if !chunks[ix].completed {
-							slog.Debug("received results", "result", result)
 							// grads.Add(result.gradients)
 							chunks[ix].completed = true
 						}
@@ -234,6 +234,8 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 
 		// epoch completed, output coeffs
 		fmt.Println(coeffs)
+
+		epoch++
 
 		// shuffle
 		epdF.Shuffle(epoch)

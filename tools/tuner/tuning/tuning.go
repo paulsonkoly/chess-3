@@ -16,7 +16,7 @@ const (
 	ExitFailure = 1
 	// NumLinesInBatch determines how the epd file is split into batches. A batch
 	// completion implies the coefficients update.
-	NumLinesInBatch = 100_000
+	NumLinesInBatch = 100 //= 100_000
 
 	// NumChunksInBatch determines how a batch is split into chunks. A chunk is a
 	// unique work iterm handed over to clients.
@@ -50,14 +50,14 @@ func (c Coeffs) Eval(b *board.Board) float64 {
 type TuningTargets []string
 
 var DefaultTargets = []string{
-	"PSqT",
-	"PieceValues",
-	"TempoBonus",
-	"MobilityKnight", "MobilityBishop", "MobilityRook",
-	"KingAttackPieces", "SafeChecks", "KingShelter",
-	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
-	"KnightOutpost", "ConnectedRooks", "BishopPair",
-	"KingAttackPieces",
+	// "PSqT",
+	// "PieceValues",
+	// "TempoBonus",
+	// "MobilityKnight", "MobilityBishop", "MobilityRook",
+	// "KingAttackPieces", "SafeChecks", "KingShelter",
+	// "ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
+	// "KnightOutpost", "ConnectedRooks", "BishopPair",
+	// "KingAttackPieces",
 	"BishopPair",
 }
 
