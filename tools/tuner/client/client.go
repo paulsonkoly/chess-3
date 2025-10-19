@@ -2,17 +2,16 @@ package client
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"slices"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
+	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
@@ -41,9 +40,14 @@ func Run(args []string) {
 	c := pb.NewTunerClient(conn)
 
 	slog.Debug("requesting epd info")
-	epdInfo, err := c.RequestEPDInfo(context.Background(), &pb.EPDInfoRequest{})
+	gepdInfo, err := c.RequestEPDInfo(context.Background(), &pb.EPDInfoRequest{})
 	if err != nil {
 		slog.Error("failed requesting epd info", "error", err)
+		os.Exit(tuning.ExitFailure)
+	}
+	epdInfo, err := shim.EPDInfoFromGrpc(gepdInfo)
+	if err != nil {
+		slog.Error("epdInfo conversion error", "error", err)
 		os.Exit(tuning.ExitFailure)
 	}
 
@@ -57,10 +61,7 @@ func Run(args []string) {
 				os.Exit(tuning.ExitFailure)
 			}
 
-			slog.Info(
-				"downloading epd",
-				"filename", epdInfo.Filename,
-				"checksum", base64.URLEncoding.EncodeToString(epdInfo.Checksum))
+			slog.Info("downloading epd", "filename", epdInfo.Filename, "checksum", epdInfo.Checksum)
 
 			stream, err := c.StreamEPD(context.Background(), &pb.EPDStreamRequest{})
 			if err != nil {
@@ -91,20 +92,20 @@ func Run(args []string) {
 
 			f.Close()
 		} else {
-			myChecksum, err := epdF.Checksum()
+			fChecksum, err := epdF.Checksum()
 			if err != nil {
 				slog.Error("checksum calculation error", "error", err)
 				os.Exit(tuning.ExitFailure)
 			}
 
-			if !slices.Equal(myChecksum, epdInfo.Checksum) {
+			if !epdInfo.Checksum.Matches(fChecksum) {
 				epdF.Close()
 
 				slog.Warn(
 					"epd checksum mismatch",
 					"filename", epdInfo.Filename,
-					"received.Checksum", base64.URLEncoding.EncodeToString(epdInfo.Checksum),
-					"local.Checksum", base64.URLEncoding.EncodeToString(myChecksum))
+					"epdF.Checksum", fChecksum,
+					"epdInfo.Checksum", epdInfo.Checksum)
 
 				slog.Debug("deleting local epd", "filename", epdF.Basename())
 				if err := os.Remove(epdF.Basename()); err != nil {
@@ -120,54 +121,53 @@ func Run(args []string) {
 
 	epoch := 1
 
-	coeffs, err := tuning.EngineCoeffs()
-	if err != nil {
-		slog.Error("coeff conversion error", "error", err)
-		os.Exit(tuning.ExitFailure)
-	}
-
 	for {
 		slog.Debug("requesting job")
-		job, err := c.RequestJob(context.Background(), &pb.JobRequest{})
+		gJob, err := c.RequestJob(context.Background(), &pb.JobRequest{})
 		if err != nil {
 			slog.Error("job request error", "error", err)
-			continue
+			os.Exit(tuning.ExitFailure)
 		}
-		slog.Info("received job", "uuid", job.Uuid)
+
+		job, err := shim.JobFromGrpc(gJob)
+		if err != nil {
+			slog.Error("job conversion error", "error", err)
+			os.Exit(tuning.ExitFailure)
+		}
+		slog.Info("received job", "job", job)
 
 		if int(job.Epoch) != epoch {
 			slog.Info("shuffling epd", "epoch", job.Epoch)
-			epoch = int(job.Epoch)
+			epoch = job.Epoch
 			epdF.Shuffle(epoch)
 		}
 
-		checksum, err := epdF.ChunkChecksum(int(job.Start), int(job.End))
+		checksum, err := epdF.ChunkChecksum(job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("checksum calculation error", "error", err)
 			os.Exit(tuning.ExitFailure)
 		}
 
-		if !slices.Equal(checksum, job.Checksum) {
+		if !job.Checksum.Matches(checksum) {
 			slog.Warn("chunk checksum mismatch") // TODO args
 			os.Exit(tuning.ExitFailure)
 		}
 
-		slog.Info("checksum match", "checksum", base64.URLEncoding.EncodeToString(job.Checksum))
+		slog.Info("checksum match", "checksum", job.Checksum)
 
-		err = coeffs.SetFloats(tuning.DefaultTargets, job.Coefficients)
-		if err != nil {
-			slog.Error("coeff conversion error", "error", err)
-			os.Exit(tuning.ExitFailure)
-		}
-
-		k := job.K
-		chunk, err := epdF.Chunk(int(job.Start), int(job.End))
+		coeffs := job.Coefficients
+		k := gJob.K
+		chunk, err := epdF.Chunk(int(gJob.Start), int(gJob.End))
 		if err != nil {
 			slog.Error("chunking error", "error", err)
 			os.Exit(tuning.ExitFailure)
 		}
 
-		floats := job.Coefficients
+		floats, err := coeffs.Floats(tuning.DefaultTargets)
+		if err != nil {
+			slog.Error("floats error", "error", err)
+			os.Exit(tuning.ExitFailure)
+		}
 		grad := make([]float64, len(floats))
 
 		for _, entry := range chunk {
@@ -192,7 +192,7 @@ func Run(args []string) {
 		}
 
 		c.RegisterResult(context.Background(), &pb.ResultRequest{
-			Uuid:      job.Uuid,
+			Uuid:      gJob.Uuid,
 			Gradients: grad,
 		})
 	}

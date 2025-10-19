@@ -2,9 +2,7 @@ package epd
 
 import (
 	"bufio"
-	"crypto/sha256"
 	"errors"
-	"hash"
 	"io"
 	"math/rand/v2"
 	"os"
@@ -14,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"golang.org/x/sys/unix"
 )
 
@@ -26,7 +25,6 @@ type File struct {
 	filename     string
 	f            *os.File
 	lineManifest []lineAddr
-	checksum     []byte
 }
 
 func (e File) Basename() string {
@@ -80,14 +78,10 @@ func (e *File) Close() {
 }
 
 // Checksum is the sha256 checksum of the whole content of the epd file.
-func (e *File) Checksum() ([]byte, error) {
-	if e.checksum != nil {
-		return e.checksum, nil
-	}
-
+func (e *File) Checksum() (checksum.Checksum, error) {
 	fd, err := unix.Dup(int(e.f.Fd()))
 	if err != nil {
-		return nil, err
+		return checksum.Checksum{}, err
 	}
 
 	f := os.NewFile(uintptr(fd), e.filename)
@@ -95,14 +89,7 @@ func (e *File) Checksum() ([]byte, error) {
 
 	f.Seek(0, io.SeekStart)
 
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return nil, err
-	}
-
-	e.checksum = h.Sum(nil)
-
-	return e.checksum, nil
+	return checksum.ReadFrom(f)
 }
 
 // Streamer represents a stream object for the lines of the file. Probably
@@ -150,7 +137,7 @@ type Entry struct {
 func (epdF *File) Chunk(start, end int) ([]Entry, error) {
 	e := make(entries, 0)
 
-	err := epdF.chunkReader(start, end, e)
+	err := epdF.chunkReader(start, end, &e)
 	if err != nil {
 		return nil, err
 	}
@@ -159,20 +146,20 @@ func (epdF *File) Chunk(start, end int) ([]Entry, error) {
 }
 
 // ChunkChecksum returns the sha256 checksum of the given chunk.
-func (epdF *File) ChunkChecksum(start, end int) ([]byte, error) {
-	ch := checksum{sha256.New()}
+func (epdF *File) ChunkChecksum(start, end int) (checksum.Checksum, error) {
+	collector := checksum.NewCollector()
 
-	err := epdF.chunkReader(start, end, ch)
+	err := epdF.chunkReader(start, end, &collector)
 	if err != nil {
-		return nil, err
+		return checksum.Checksum{}, err
 	}
 
-	return ch.h.Sum(nil), nil
+	return collector.Checksum(), nil
 }
 
 type entries []Entry
 
-func (e entries) Collect(line string) error {
+func (e *entries) Collect(line string) error {
 	splits := strings.Split(line, "; ")
 	if len(splits) != 2 {
 		return ErrLineInvalid
@@ -188,16 +175,7 @@ func (e entries) Collect(line string) error {
 		return err
 	}
 
-	e = append(e, Entry{Board: b, Result: r})
-	return nil
-}
-
-type checksum struct {
-	h hash.Hash
-}
-
-func (c checksum) Collect(line string) error {
-	c.h.Write([]byte(line))
+	*e = append(*e, Entry{Board: b, Result: r})
 	return nil
 }
 

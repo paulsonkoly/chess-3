@@ -50,13 +50,13 @@ func (c Coeffs) Eval(b *board.Board) float64 {
 type TuningTargets []string
 
 var DefaultTargets = []string{
-	// "PSqT",
-	// "PieceValues",
-	// "TempoBonus",
-	// "MobilityKnight", "MobilityBishop", "MobilityRook",
-	// "KingAttackPieces", "SafeChecks", "KingShelter",
-	// "ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
-	// "KnightOutpost", "ConnectedRooks", "BishopPair",
+	"PSqT",
+	"PieceValues",
+	"TempoBonus",
+	"MobilityKnight", "MobilityBishop", "MobilityRook",
+	"KingAttackPieces", "SafeChecks", "KingShelter",
+	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
+	"KnightOutpost", "ConnectedRooks", "BishopPair",
 	"KingAttackPieces",
 	"BishopPair",
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"iter"
@@ -11,8 +10,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
+	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 	"google.golang.org/grpc"
 )
@@ -25,8 +26,8 @@ const (
 	// otherwise we can create jobs for a whole batch simultaniously. It can be
 	// bigger slightly, allowing jobs with passed TTL to live together with newly
 	// dispatched jobs, in case a passed TTL job eventually finishes.
-	JobQueueDepth    = 20
-	ResultQueueDepth = 10
+	JobQueueDepth    = 1 //20
+	ResultQueueDepth = 1 // 10
 	// ClientWaitTime is the duration in ms the server waits for results before
 	// creating new jobs.
 	ClientWaitTime = 100
@@ -34,7 +35,7 @@ const (
 
 type ServerChunk struct {
 	tuning.Range
-	checksum  []byte
+	checksum  checksum.Checksum
 	completed bool
 	jobs      []serverJob
 }
@@ -103,11 +104,11 @@ func (bc batchChunks) Incomplete() iter.Seq2[int, ServerChunk] {
 	}
 }
 
-func (bc batchChunks) Match(r result) (ix int, ok bool) {
+func (bc batchChunks) Match(r shim.Result) (ix int, ok bool) {
 	for i, chunk := range bc {
 		for _, job := range chunk.jobs {
 
-			if job.uuid == r.uuid {
+			if job.UUID == r.UUID {
 				return i, true
 			}
 		}
@@ -115,37 +116,10 @@ func (bc batchChunks) Match(r result) (ix int, ok bool) {
 	return 0, false
 }
 
-// queueJob is what the server emits to the grpc shim for serialisation
-type queueJob struct {
-	uuid         uuid.UUID
-	epoch        int
-	start        int
-	end          int
-	coefficients []float64
-	checksum     []byte
-	k            float64
-}
-
-func (qj queueJob) String() string {
-	return fmt.Sprintf("{uuid = %s, epoch = %d, start = %d, end = %d, checksum = %s, k = %f}",
-		qj.uuid.String(),
-		qj.epoch,
-		qj.start,
-		qj.end,
-		base64.URLEncoding.EncodeToString(qj.checksum),
-		qj.k)
-}
-
 // serverJob is what the server tracks about a job
 type serverJob struct {
 	deadline time.Time
-	queueJob
-}
-
-// result is what we receive deserialised from the grpc shim
-type result struct {
-	uuid      uuid.UUID
-	gradients []float64
+	shim.Job
 }
 
 func Run(args []string) {
@@ -169,14 +143,14 @@ func Run(args []string) {
 	if err != nil {
 		slog.Error("checksum calculation error", "error", err)
 	}
-	slog.Debug("loaded epd", "filename", epdF.Basename(), "checksum", base64.URLEncoding.EncodeToString(checksum))
+	slog.Debug("loaded epd", "filename", epdF.Basename(), "checksum", checksum)
 	k, err := minimizeK(epdF)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)
 	}
 
-	jobQueue := make(chan queueJob, JobQueueDepth)
-	resultQueue := make(chan result, ResultQueueDepth)
+	jobQueue := make(chan shim.Job, JobQueueDepth)
+	resultQueue := make(chan shim.Result, ResultQueueDepth)
 
 	go epdProcess(epdF, k, jobQueue, resultQueue)
 
@@ -199,7 +173,7 @@ func Run(args []string) {
 	grpcServer.Serve(lis)
 }
 
-func epdProcess(epdF *epd.File, k float64, jobQueue chan<- queueJob, resultQueue <-chan result) {
+func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
 	coeffs, err := tuning.EngineCoeffs()
 	if err != nil {
 		slog.Error("error loading engine coeffs", "error", err)
@@ -226,33 +200,26 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- queueJob, resultQueue
 			// while there is an incomplete chunk in the batch
 			for i, chunk := range chunks.Incomplete() {
 
-				floats, err := coeffs.Floats(tuning.DefaultTargets)
-				if err != nil {
-					slog.Error("coeff conversion error", "error", err)
-					os.Exit(tuning.ExitFailure)
-				}
-
-				//create a job for the batch
-				job := serverJob{
+				//create a sJob for the batch
+				sJob := serverJob{
 					deadline: time.Now().Add(600 * time.Second),
-					queueJob: queueJob{
-						uuid:         uuid.New(),
-						epoch:        epoch,
-						start:        chunk.Start,
-						end:          chunk.End,
-						checksum:     chunk.checksum,
-						coefficients: floats,
-						k:            k,
+					Job: shim.Job{
+						UUID:         uuid.New(),
+						Epoch:        epoch,
+						Range:        chunk.Range,
+						Checksum:     chunk.checksum,
+						Coefficients: &coeffs,
+						K:            k,
 					},
 				}
 
 				// put the job in the tracking structures
-				chunks[i].jobs = append(chunks[i].jobs, job)
+				chunks[i].jobs = append(chunks[i].jobs, sJob)
 
-				slog.Debug("queueing job", "job", job.queueJob)
+				slog.Debug("queueing job", "job", sJob)
 
 				// send the job to the client handler
-				jobQueue <- job.queueJob
+				jobQueue <- sJob.Job
 
 				// register results
 				select {
@@ -261,7 +228,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- queueJob, resultQueue
 					if ix, ok := chunks.Match(result); ok {
 						// if already completed ignore
 						if !chunks[ix].completed {
-							slog.Debug("received results", "uuid", result.uuid)
+							slog.Debug("received results", "result", result)
 							// grads.Add(result.gradients)
 							chunks[ix].completed = true
 						}
