@@ -277,7 +277,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 func minimizeK(epdF *epd.File) (float64, error) {
 	coeffs := tuning.EngineCoeffs()
 
-	k := 2.839 // a scaling constant
+	k := 2.832 // a scaling constant
 	improved := true
 	step := 1.0
 

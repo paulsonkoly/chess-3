@@ -153,6 +153,8 @@ func Run(args []string) {
 
 			grads.CombinePerturbed(coeffs, tuning.Epsilon,
 				func(g float64, c tuning.Vector) float64 {
+					// we need to work on a local copy of eCoeffs.
+					eCoeffs := eCoeffs
 					eCoeffs.SetVector(c, tuning.DefaultTargets)
 
 					score2 := eCoeffs.Eval(entry.Board)
@@ -163,7 +165,6 @@ func Run(args []string) {
 				})
 		}
 
-		// TODO
 		result := shim.Result{
 			UUID:      job.UUID,
 			Gradients: grads,
