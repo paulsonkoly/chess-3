@@ -18,13 +18,13 @@ type Job struct {
 	UUID         uuid.UUID         // UUID uniquely identifies a job request/response.
 	Epoch        int               // Epoch is the tuning epoch.
 	Range        tuning.Range      // Range is the EPD range for the workload.
-	Coefficients *tuning.Coeffs    // Coefficients are the tuned coefficients for the current batch.
+	Coefficients tuning.Vector     // Coefficients are the tuned coefficients for the current batch.
 	Checksum     checksum.Checksum // Checksum is the EPD chunk checksum.
 	K            float64           // K is the sigmoid constant.
 }
 
 // Result is the workload result.
 type Result struct {
-	UUID      uuid.UUID      // UUID identifies which workload request this is a result of.
-	Gradients *tuning.Coeffs // Gradients is the computed gradient vector.
+	UUID      uuid.UUID     // UUID identifies which workload request this is a result of.
+	Gradients tuning.Vector // Gradients is the computed gradient vector.
 }

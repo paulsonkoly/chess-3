@@ -132,50 +132,41 @@ func Run(args []string) {
 			os.Exit(tuning.ExitFailure)
 		}
 
-		coeffs := job.Coefficients
-		k := job.K
 		chunk, err := epdF.Chunk(job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("chunking error", "error", err)
 			os.Exit(tuning.ExitFailure)
 		}
 
-		floats, err := coeffs.Floats(tuning.DefaultTargets)
-		if err != nil {
-			slog.Error("floats error", "error", err)
-			os.Exit(tuning.ExitFailure)
-		}
-		grad := make([]float64, len(floats))
+		coeffs := job.Coefficients
+		eCoeffs := tuning.EngineCoeffs()
+		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
+		grads := tuning.NullVector(tuning.DefaultTargets)
+		k := job.K
 
 		slog.Info("working on job", "job", job)
 
 		for _, entry := range chunk {
-			score := coeffs.Eval(entry.Board)
+			score := eCoeffs.Eval(entry.Board)
 			sigm := tuning.Sigmoid(score, k)
 			loss := (entry.Result - sigm) * (entry.Result - sigm)
-			for i, float := range floats {
-				floats[i] += tuning.Epsilon
-				coeffs.SetFloats(tuning.DefaultTargets, floats)
 
-				score2 := coeffs.Eval(entry.Board)
-				sigm2 := tuning.Sigmoid(score2, k)
-				loss2 := (entry.Result - sigm2) * (entry.Result - sigm2)
-				floats[i] = float
-				// TODO this is really bad...
-				coeffs.SetFloats(tuning.DefaultTargets, floats)
+			grads.CombinePerturbed(coeffs, tuning.Epsilon,
+				func(g float64, c tuning.Vector) float64 {
+					eCoeffs.SetVector(c, tuning.DefaultTargets)
 
-				g := (loss2 - loss) / tuning.Epsilon
+					score2 := eCoeffs.Eval(entry.Board)
+					sigm2 := tuning.Sigmoid(score2, k)
+					loss2 := (entry.Result - sigm2) * (entry.Result - sigm2)
 
-				grad[i] += g
-			}
+					return g + (loss2-loss)/tuning.Epsilon
+				})
 		}
 
 		// TODO
-		gradStruct := tuning.Coeffs{}
-		gradStruct.SetFloats(tuning.DefaultTargets, grad)
 		result := shim.Result{
 			UUID:      job.UUID,
-			Gradients: &gradStruct,
+			Gradients: grads,
 		}
 
 		slog.Info("sending result", "result", result)

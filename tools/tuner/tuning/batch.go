@@ -8,6 +8,9 @@ type Range struct {
 	End   int
 }
 
+// Number of elements in r.
+func (r Range) Len() int { return r.End - r.Start }
+
 func Batches(numEntries int) iter.Seq[Range] {
 	return func(yield func(Range) bool) {
 		for start := 0; start < numEntries; start += NumLinesInBatch {

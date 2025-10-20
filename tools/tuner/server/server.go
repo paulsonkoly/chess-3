@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
+	"math"
 	"net"
 	"os"
 	"time"
@@ -159,22 +160,28 @@ func Run(args []string) {
 	}
 
 	slog.Info("listening for incoming connections", "host", host, "port", port)
-	shim.NewServer(epdF, jobQueue, resultQueue ).Serve(lis)
+	shim.NewServer(epdF, jobQueue, resultQueue).Serve(lis)
 }
 
 func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
-	coeffs, err := tuning.EngineCoeffs()
+	eCoeffs := tuning.EngineCoeffs()
+	coeffs := eCoeffs.ToVector(tuning.DefaultTargets)
+
+	mse, err := fileMSE(epdF, k, &eCoeffs)
 	if err != nil {
-		slog.Error("error loading engine coeffs", "error", err)
-		os.Exit(tuning.ExitFailure)
+		slog.Error("mse calculation error", "error", err)
 	}
+
+	momentum := tuning.NullVector(tuning.DefaultTargets)
+	velocity := tuning.NullVector(tuning.DefaultTargets)
+	lr := tuning.InitialLearningRate
 
 	for epoch := 1; true; {
 		slog.Debug("new epoch", "epoch", epoch)
 
 		for batch := range tuning.Batches(epdF.LineCount()) {
 
-			grads := tuning.Coeffs{}
+			grads := tuning.NullVector(tuning.DefaultTargets)
 
 			// gather the chunks in the batch and create server tracking structures
 			chunks := make(batchChunks, 0, tuning.NumChunksInBatch)
@@ -197,7 +204,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 						Epoch:        epoch,
 						Range:        chunk.Range,
 						Checksum:     chunk.checksum,
-						Coefficients: &coeffs,
+						Coefficients: coeffs,
 						K:            k,
 					},
 				}
@@ -218,7 +225,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 					if ix, ok := chunks.Match(result); ok {
 						// if already completed ignore
 						if !chunks[ix].completed {
-							// grads.Add(result.gradients)
+							grads.Add(result.Gradients)
 							chunks[ix].completed = true
 						}
 					}
@@ -228,12 +235,37 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 				}
 			}
 
-			// batch completed, add the gradient vector to the coeffs
-			coeffs.Add(grads)
+			// batch completed, apply ADAM algo
+			grads.DivConst(float64(batch.Len())) // average over the batch
+
+			momentum.Combine(grads, func(m, g float64) float64 { return tuning.Beta1*m + (1-tuning.Beta1)*g })
+			velocity.Combine(grads, func(v, g float64) float64 { return tuning.Beta2*v + (1-tuning.Beta2)*g*g })
+
+			mHat := momentum.Map(func(m float64) float64 { return m / (1 - math.Pow(tuning.Beta1, float64(epoch))) })
+			vHat := velocity.Map(func(v float64) float64 { return v / (1 - math.Pow(tuning.Beta2, float64(epoch))) })
+
+			step := mHat
+			step.Combine(vHat, func(mh, vh float64) float64 { return lr * mh / (1e-8 + math.Sqrt(vh)) })
+
+			coeffs.Sub(step)
 		}
 
-		// epoch completed, output coeffs
-		fmt.Println(coeffs)
+		// epoch completed, output coeffs and drop learning rate based on MSE change
+
+		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
+		fmt.Println(eCoeffs)
+
+		newMSE, err := fileMSE(epdF, k, &eCoeffs)
+		if err != nil {
+			slog.Error("mse calculation error", "error", err)
+			os.Exit(tuning.ExitFailure)
+		}
+		fmt.Printf("error drop %.10f , bestE %.10f\n", mse-newMSE, newMSE)
+		if newMSE > mse {
+			fmt.Printf("drop negative, LR %.4f -> %.4f\n", lr, lr/2.0)
+			lr /= 2
+		}
+		mse = newMSE
 
 		epoch++
 
@@ -243,10 +275,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 }
 
 func minimizeK(epdF *epd.File) (float64, error) {
-	coeffs, err := tuning.EngineCoeffs()
-	if err != nil {
-		return 0, err
-	}
+	coeffs := tuning.EngineCoeffs()
 
 	k := 2.839 // a scaling constant
 	improved := true
@@ -290,7 +319,7 @@ func minimizeK(epdF *epd.File) (float64, error) {
 	return k, nil
 }
 
-func fileMSE(epdF *epd.File, k float64, coeffs *tuning.Coeffs) (float64, error) {
+func fileMSE(epdF *epd.File, k float64, coeffs *tuning.EngineRep) (float64, error) {
 	sum := float64(0)
 	for batch := range tuning.Batches(epdF.LineCount()) {
 		for chunk := range tuning.Chunks(batch) {

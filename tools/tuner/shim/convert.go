@@ -29,17 +29,9 @@ func (e EPDInfo) toGrpc() (*pb.EPDInfo, error) {
 func jobFromGrpc(jr *pb.JobResponse) (Job, error) {
 	result := Job{}
 
-	coeffs, err := tuning.EngineCoeffs()
-	if err != nil {
-		return result, err
-	}
+	result.Coefficients = tuning.VectorFromSlice(jr.Coefficients)
 
-	err = coeffs.SetFloats(tuning.DefaultTargets, jr.Coefficients)
-	if err != nil {
-		return result, err
-	}
-	result.Coefficients = &coeffs
-
+	var err error
 	result.UUID, err = uuid.FromBytes(jr.Uuid)
 	if err != nil {
 		return result, err
@@ -64,17 +56,12 @@ func (j Job) toGrpc() (*pb.JobResponse, error) {
 		return nil, err
 	}
 
-	floats, err := j.Coefficients.Floats(tuning.DefaultTargets)
-	if err != nil {
-		return nil, err
-	}
-
 	return &pb.JobResponse{
 		Uuid:         uuidBytes,
 		Epoch:        int32(j.Epoch),
 		Start:        int32(j.Range.Start),
 		End:          int32(j.Range.End),
-		Coefficients: floats,
+		Coefficients: j.Coefficients.VectorToSlice(),
 		Checksum:     j.Checksum.Bytes(),
 		K:            j.K,
 	}, nil
@@ -87,26 +74,16 @@ func (r Result) toGrpc() (*pb.ResultRequest, error) {
 		return nil, err
 	}
 
-	floats, err := r.Gradients.Floats(tuning.DefaultTargets)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.ResultRequest{Uuid: uuidBytes, Gradients: floats}, nil
+	return &pb.ResultRequest{Uuid: uuidBytes, Gradients: r.Gradients.VectorToSlice()}, nil
 }
 
 // resultFromGrpc converts GRPC representation to Result type.
 func resultFromGrpc(rr *pb.ResultRequest) (Result, error) {
 	result := Result{}
 
-	grads := tuning.Coeffs{}
+	result.Gradients = tuning.VectorFromSlice(rr.Gradients)
 
-	err := grads.SetFloats(tuning.DefaultTargets, rr.Gradients)
-	if err != nil {
-		return result, err
-	}
-	result.Gradients = &grads
-
+	var err error
 	result.UUID, err = uuid.FromBytes(rr.Uuid)
 	if err != nil {
 		return result, err
