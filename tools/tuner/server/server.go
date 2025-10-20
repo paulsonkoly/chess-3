@@ -186,7 +186,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 			// gather the chunks in the batch and create server tracking structures
 			chunks := make(batchChunks, 0, tuning.NumChunksInBatch)
 			for chunk := range tuning.Chunks(batch) {
-				checksum, err := epdF.ChunkChecksum(chunk.Start, chunk.End)
+				checksum, err := epdF.ChunkChecksum(epoch , chunk.Start, chunk.End)
 				if err != nil {
 					slog.Error("checksum calculation error", "error", err)
 				}
@@ -268,9 +268,6 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 			lr /= 2
 		}
 		mse = newMSE
-
-		// shuffle
-		epdF.Shuffle(epoch)
 	}
 }
 
@@ -323,7 +320,7 @@ func fileMSE(epdF *epd.File, k float64, coeffs *tuning.EngineRep) (float64, erro
 	sum := float64(0)
 	for batch := range tuning.Batches(epdF.LineCount()) {
 		for chunk := range tuning.Chunks(batch) {
-			chunkEntries, err := epdF.Chunk(chunk.Start, chunk.End)
+			chunkEntries, err := epdF.Chunk(1, chunk.Start, chunk.End)
 			if err != nil {
 				return 0, err
 			}

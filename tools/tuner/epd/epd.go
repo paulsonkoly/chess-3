@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
-	"math/rand/v2"
+	"math/bits"
 	"os"
 	"path"
 	"slices"
@@ -78,6 +78,7 @@ func (e *File) Close() {
 }
 
 // Checksum is the sha256 checksum of the whole content of the epd file.
+// Concurrency safe.
 func (e *File) Checksum() (checksum.Checksum, error) {
 	fd, err := unix.Dup(int(e.f.Fd()))
 	if err != nil {
@@ -98,7 +99,7 @@ type Streamer interface {
 	Send(line string) error
 }
 
-// Stream streams all content from e on a per line basis.
+// Stream streams all content from e on a per line basis. Concurrency safe.
 func (e *File) Stream(s Streamer) error {
 	fd, err := unix.Dup(int(e.f.Fd()))
 	if err != nil {
@@ -126,18 +127,19 @@ var ErrPageSize = errors.New("invalid page size")
 var ErrLineInvalid = errors.New("invalid epd line")
 
 // Entry is a parsed entry from the EPD file.
+// TODO: should this be here?
 type Entry struct {
 	Board  *board.Board // Board is a chess position structure.
 	Result float64      // Result is the WDL label.
 }
 
 // Chunk returns the lines of an EPD chunk, identified by the starting and
-// ending line indices. As it usually happens in go; start is inclusive, end is
-// non-inclusive.
-func (epdF *File) Chunk(start, end int) ([]Entry, error) {
+// ending line indices within a given epoch (shuffle). As it usually happens in
+// go; start is inclusive, end is non-inclusive. Concurrency safe.
+func (epdF *File) Chunk(epoch, start, end int) ([]Entry, error) {
 	e := make(entries, 0)
 
-	err := epdF.chunkReader(start, end, &e)
+	err := epdF.chunkReader(epoch, start, end, &e)
 	if err != nil {
 		return nil, err
 	}
@@ -145,11 +147,13 @@ func (epdF *File) Chunk(start, end int) ([]Entry, error) {
 	return e, err
 }
 
-// ChunkChecksum returns the sha256 checksum of the given chunk.
-func (epdF *File) ChunkChecksum(start, end int) (checksum.Checksum, error) {
+// Chunk returns the checksum of an EPD chunk, identified by the starting and
+// ending line indices within a given epoch (shuffle). As it usually happens in
+// go; start is inclusive, end is non-inclusive. Concurrency safe.
+func (epdF *File) ChunkChecksum(epoch, start, end int) (checksum.Checksum, error) {
 	collector := checksum.NewCollector()
 
-	err := epdF.chunkReader(start, end, &collector)
+	err := epdF.chunkReader(epoch, start, end, &collector)
 	if err != nil {
 		return checksum.Checksum{}, err
 	}
@@ -183,7 +187,7 @@ type collector interface {
 	Collect(line string) error
 }
 
-func (e *File) chunkReader(start, end int, c collector) error {
+func (e *File) chunkReader(epoch, start, end int, c collector) error {
 	if start < 0 || end < 0 || start > len(e.lineManifest)-1 || end > len(e.lineManifest) || start > end {
 		return ErrChunkInvalid
 	}
@@ -201,12 +205,13 @@ func (e *File) chunkReader(start, end int, c collector) error {
 	}
 
 	chunkLines := make([]lineAddr, 0)
-	for _, addr := range e.lineManifest[start:end] {
-		chunkLines = append(chunkLines, addr)
+	for ix := start; ix < end; ix++ {
+		line := e.lineManifest[shuffleIndex(uint64(ix), uint64(len(e.lineManifest)), uint64(epoch))]
+		chunkLines = append(chunkLines, line)
 	}
 
-	// sort the chunk line manifest so we can read at a reasonable rate. We are
-	// accessing at random non-consecutive locations, but in the order of the
+	// sort chunkLines so we can read at a reasonable rate. We are accessing at
+	// random non-consecutive locations, but at least in the order of the
 	// physical file.
 	slices.SortFunc(chunkLines, func(a, b lineAddr) int {
 		return int(a.start - b.start)
@@ -266,14 +271,51 @@ func (e *File) chunkReader(start, end int, c collector) error {
 	return nil
 }
 
-// Shuffle shuffles the line order in the file, the order is determined by seed.
-func (e *File) Shuffle(seed int) {
-	src := rand.NewPCG(uint64(seed), uint64(seed)^uint64(0x9e3779b97f4a7c15))
-	r := rand.New(src)
-
-	// Fisher–Yates shuffle
-	for i := len(e.lineManifest) - 1; i > 0; i-- {
-		j := r.IntN(i + 1)
-		e.lineManifest[i], e.lineManifest[j] = e.lineManifest[j], e.lineManifest[i]
+// shuffleIndex returns a pseudo-random permutation of x in [0, n)
+// determined by the given seed. It’s a Feistel network, bijective for any n.
+func shuffleIndex(x, n, seed uint64) uint64 {
+	if n <= 1 {
+		return 0
 	}
+
+	// Find smallest power of two ≥ n
+	bitsNeeded := bits.Len64(n - 1)
+	size := uint64(1) << bitsNeeded
+	mask := size - 1
+
+	for {
+		y := feistel(x, seed, bitsNeeded)
+		if y < n {
+			return y
+		}
+		// Rejection sampling: try again with new x
+		x = y & mask
+	}
+}
+
+// Internal Feistel permutation on [0, 2^bits)
+func feistel(x, seed uint64, bits int) uint64 {
+	half := bits / 2
+	leftMask := (uint64(1) << half) - 1
+	rightMask := (uint64(1) << (bits - half)) - 1
+
+	left := x & leftMask
+	right := (x >> half) & rightMask
+
+	const rounds = 4
+	for i := range rounds {
+		k := seed + uint64(i)*0x9e3779b97f4a7c15
+		f := roundFunc(right, k) & leftMask
+		left, right = right, left^f
+	}
+
+	return ((right & rightMask) << half) | (left & leftMask)
+}
+
+func roundFunc(x, k uint64) uint64 {
+	z := x + k
+	z ^= z >> 21
+	z *= 0x9e3779b97f4a7c15
+	z ^= z >> 33
+	return z
 }

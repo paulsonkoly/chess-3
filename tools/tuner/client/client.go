@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
-	"time"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
@@ -38,48 +37,11 @@ func Run(args []string) {
 	epdF := optainEPD(epdInfo, client)
 	defer epdF.Close()
 
-	resultQueue := make(chan shim.Result, numThreads)
-	jobQueue := make(chan shim.Job, numThreads)
 	for range numThreads {
-		go clientWorker(epdF, jobQueue, resultQueue)
+		go clientWorker(epdF, client)
 	}
 
-	// clientWorker orchestration logic
-	epoch := 1
-	jobs := 0
-	for {
-		slog.Debug("requesting job")
-		job, err := client.RequestJob()
-		if err != nil {
-			slog.Error("job request error", "error", err)
-			os.Exit(tuning.ExitFailure)
-		}
-		slog.Info("received job", "job", job)
-
-		if job.Epoch != epoch {
-			// drain the queues. the epdF line manifest is a shared resource. we
-			// cannot have workers running while performing a shuffle.
-			for jobs != 0 {
-				results := <-resultQueue
-				slog.Info("sending results", "results", results)
-				client.RegisterResult(results)
-				jobs--
-			}
-
-			epdF.Shuffle(job.Epoch)
-			epoch = job.Epoch
-		}
-		jobQueue <- job
-		jobs++
-
-		select {
-		case results := <-resultQueue:
-			slog.Info("sending results", "results", results)
-			client.RegisterResult(results)
-			jobs--
-		case <-time.After(100 * time.Millisecond):
-		}
-	}
+	select {}
 }
 
 func obtainEPDInfo(client shim.Client) shim.EPDInfo {
@@ -164,20 +126,28 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 	return epdF
 }
 
-func clientWorker(epdF *epd.File, jobQueue <-chan shim.Job, resultQueue chan<- shim.Result) {
-	for job := range jobQueue {
-		checksum, err := epdF.ChunkChecksum(job.Range.Start, job.Range.End)
+func clientWorker(epdF *epd.File, client shim.Client) {
+	for {
+		slog.Debug("requesting job")
+		job, err := client.RequestJob()
+		if err != nil {
+			slog.Error("job request error", "error", err)
+			os.Exit(tuning.ExitFailure)
+		}
+		slog.Info("received job", "job", job)
+
+		checksum, err := epdF.ChunkChecksum(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("checksum calculation error", "error", err)
 			os.Exit(tuning.ExitFailure)
 		}
 
 		if !job.Checksum.Matches(checksum) {
-			slog.Warn("chunk checksum mismatch") // TODO args
+			slog.Error("chunk checksum mismatch") // TODO args
 			os.Exit(tuning.ExitFailure)
 		}
 
-		chunk, err := epdF.Chunk(job.Range.Start, job.Range.End)
+		chunk, err := epdF.Chunk(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("chunking error", "error", err)
 			os.Exit(tuning.ExitFailure)
@@ -210,9 +180,10 @@ func clientWorker(epdF *epd.File, jobQueue <-chan shim.Job, resultQueue chan<- s
 				})
 		}
 
-		resultQueue <- shim.Result{
+		results := shim.Result{
 			UUID:      job.UUID,
 			Gradients: grads,
 		}
+		client.RegisterResult(results)
 	}
 }
