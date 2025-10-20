@@ -165,13 +165,13 @@ func Run(args []string) {
 
 func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
 	eCoeffs := tuning.EngineCoeffs()
-	coeffs := eCoeffs.ToVector(tuning.DefaultTargets)
 
 	mse, err := fileMSE(epdF, k, &eCoeffs)
 	if err != nil {
 		slog.Error("mse calculation error", "error", err)
 	}
 
+	coeffs := eCoeffs.ToVector(tuning.DefaultTargets)
 	momentum := tuning.NullVector(tuning.DefaultTargets)
 	velocity := tuning.NullVector(tuning.DefaultTargets)
 	lr := tuning.InitialLearningRate
@@ -251,6 +251,8 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 		}
 
 		// epoch completed, output coeffs and drop learning rate based on MSE change
+		epoch++
+		fmt.Println(epoch)
 
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
 		fmt.Println(eCoeffs)
@@ -266,8 +268,6 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 			lr /= 2
 		}
 		mse = newMSE
-
-		epoch++
 
 		// shuffle
 		epdF.Shuffle(epoch)
