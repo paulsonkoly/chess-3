@@ -25,8 +25,8 @@ const (
 	// otherwise we can create jobs for a whole batch simultaniously. It can be
 	// bigger slightly, allowing jobs with passed TTL to live together with newly
 	// dispatched jobs, in case a passed TTL job eventually finishes.
-	JobQueueDepth    = 1 //20
-	ResultQueueDepth = 1 // 10
+	JobQueueDepth    = 20
+	ResultQueueDepth = 10
 	// ClientWaitTime is the duration in ms the server waits for results before
 	// creating new jobs.
 	ClientWaitTime = 100

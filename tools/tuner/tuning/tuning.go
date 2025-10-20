@@ -9,7 +9,7 @@ const (
 	ExitFailure = 1
 	// NumLinesInBatch determines how the epd file is split into batches. A batch
 	// completion implies the coefficients update.
-	NumLinesInBatch = 100 //= 100_000
+	NumLinesInBatch = 1_600_000
 
 	// NumChunksInBatch determines how a batch is split into chunks. A chunk is a
 	// unique work iterm handed over to clients.
