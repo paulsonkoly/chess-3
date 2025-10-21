@@ -33,6 +33,4 @@ var DefaultTargets = []string{
 	"KingAttackPieces", "SafeChecks", "KingShelter",
 	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
 	"KnightOutpost", "ConnectedRooks", "BishopPair",
-	"KingAttackPieces",
-	"BishopPair",
 }

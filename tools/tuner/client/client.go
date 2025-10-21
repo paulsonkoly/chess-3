@@ -29,6 +29,7 @@ func Run(args []string) {
 	client, err := shim.NewClient(host, port)
 	if err != nil {
 		slog.Error("error creating client", "error", err)
+		os.Exit(app.ExitFailure)
 	}
 	defer client.Close()
 
@@ -84,10 +85,10 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 			for {
 				line, err := stream.Recv()
 				if err != nil {
-					if err == io.EOF {
-						break
+					if err != io.EOF {
+						slog.Warn("stream error", "error", err)
 					}
-					slog.Warn("stream error", "error", err)
+					break
 				}
 
 				_, err = f.WriteString(line + "\n")
@@ -182,6 +183,8 @@ func clientWorker(epdF *epd.File, client shim.Client) {
 			UUID:      job.UUID,
 			Gradients: grads,
 		}
-		client.RegisterResult(results)
+		if err := client.RegisterResult(results); err != nil {
+			slog.Warn("failed to register results", "error", err)
+		}
 	}
 }
