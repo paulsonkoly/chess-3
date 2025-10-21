@@ -28,13 +28,13 @@ func Sigmoid(v, k float64) float64 {
 }
 
 var DefaultTargets = []string{
-	// "PSqT",
-	// "PieceValues",
-	// "TempoBonus",
-	// "MobilityKnight", "MobilityBishop", "MobilityRook",
-	// "KingAttackPieces", "SafeChecks", "KingShelter",
-	// "ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
-	// "KnightOutpost", "ConnectedRooks", "BishopPair",
-	// "KingAttackPieces",
+	"PSqT",
+	"PieceValues",
+	"TempoBonus",
+	"MobilityKnight", "MobilityBishop", "MobilityRook",
+	"KingAttackPieces", "SafeChecks", "KingShelter",
+	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
+	"KnightOutpost", "ConnectedRooks", "BishopPair",
+	"KingAttackPieces",
 	"BishopPair",
 }
