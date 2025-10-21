@@ -34,7 +34,7 @@ func Run(args []string) {
 	slog.Info("connected to server", "host", host, "port", port)
 
 	epdInfo := obtainEPDInfo(client)
-	epdF := optainEPD(epdInfo, client)
+	epdF := obtainEPD(epdInfo, client)
 
 	for range numThreads {
 		go clientWorker(epdF, client)
@@ -53,7 +53,7 @@ func obtainEPDInfo(client shim.Client) shim.EPDInfo {
 	return epdInfo
 }
 
-func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
+func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 	var epdF *epd.File
 
 	for haveEPD := false; !haveEPD; {
