@@ -11,6 +11,7 @@ import (
 
 	"github.com/essentialkaos/ek/v13/fmtutil/table"
 	"github.com/google/uuid"
+	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
@@ -46,7 +47,7 @@ func Run(args []string) {
 	epdF, err := epd.New(epdFileName)
 	if err != nil {
 		slog.Error("failed to load epd file", "filename", epdFileName)
-		os.Exit(tuning.ExitFailure)
+		os.Exit(app.ExitFailure)
 	}
 	slog.Debug("loaded epd", "filename", epdF.Basename())
 	k, err := minimizeK(epdF)
@@ -62,7 +63,7 @@ func Run(args []string) {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		slog.Error("failed to bind port", "host", host, "port", port)
-		os.Exit(tuning.ExitFailure)
+		os.Exit(app.ExitFailure)
 	}
 
 	slog.Info("listening for incoming connections", "host", host, "port", port)
@@ -126,10 +127,6 @@ func (b batchTracker) matchingChunk(r shim.Result) (chunk *serverChunk, ok bool)
 //   - if there is a non-completed chunk with jobs, we should find the chunk with earliest deadline.
 //   - if the earliest deadline chunk deadline has passed schedule that one.
 //   - otherwise no job to schedule.
-//
-// TODO we could also return the deadline of the earliest chunk, as that would
-// be useful while waiting on results to decide how long to sleep. However, in
-// the server thread we might also want to do UI, in which case it's fine.
 func (b batchTracker) schedule() (chunk *serverChunk, ok bool) {
 	for i, chunk := range b {
 		if len(chunk.jobs) == 0 {
@@ -292,7 +289,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 		newMSE, err := fileMSE(epdF, k, &eCoeffs)
 		if err != nil {
 			slog.Error("mse calculation error", "error", err)
-			os.Exit(tuning.ExitFailure)
+			os.Exit(app.ExitFailure)
 		}
 		fmt.Printf("error drop %.10f , bestE %.10f\n", mse-newMSE, newMSE)
 		if newMSE > mse {

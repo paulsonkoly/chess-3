@@ -122,7 +122,6 @@ var ErrPageSize = errors.New("invalid page size")
 var ErrLineInvalid = errors.New("invalid epd line")
 
 // Entry is a parsed entry from the EPD file.
-// TODO: should this be here?
 type Entry struct {
 	Board  *board.Board // Board is a chess position structure.
 	Result float64      // Result is the WDL label.

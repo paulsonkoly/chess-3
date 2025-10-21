@@ -5,8 +5,6 @@ import (
 )
 
 const (
-	// TODO this shouldnt be here
-	ExitFailure = 1
 	// NumLinesInBatch determines how the epd file is split into batches. A batch
 	// completion implies the coefficients update.
 	NumLinesInBatch = 1_600_000

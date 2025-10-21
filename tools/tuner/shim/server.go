@@ -47,7 +47,6 @@ func (s tunerServer) RequestEPDInfo(context.Context, *pb.EPDInfoRequest) (*pb.EP
 	return &pb.EPDInfo{Filename: s.epdF.Basename(), Checksum: chkSum.Bytes()}, nil
 }
 
-// TODO this shouldn't be here
 type streamer struct {
 	stream grpc.ServerStreamingServer[pb.EPDLine]
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
@@ -48,7 +49,7 @@ func obtainEPDInfo(client shim.Client) shim.EPDInfo {
 	epdInfo, err := client.RequestEPDInfo()
 	if err != nil {
 		slog.Error("failed requesting epd info", "error", err)
-		os.Exit(tuning.ExitFailure)
+		os.Exit(app.ExitFailure)
 	}
 	return epdInfo
 }
@@ -63,7 +64,7 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 		if err != nil {
 			if !errors.Is(err, unix.ENOENT) {
 				slog.Error("unexpected error on epd load", "error", err)
-				os.Exit(tuning.ExitFailure)
+				os.Exit(app.ExitFailure)
 			}
 
 			slog.Info("downloading epd", "filename", epdInfo.Filename, "checksum", epdInfo.Checksum)
@@ -71,13 +72,13 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 			stream, err := client.StreamEPD()
 			if err != nil {
 				slog.Error("stream error", "error", err)
-				os.Exit(tuning.ExitFailure)
+				os.Exit(app.ExitFailure)
 			}
 
 			f, err := os.Create(epdInfo.Filename)
 			if err != nil {
 				slog.Error("file creation error", "error", err, "filename", epdInfo.Filename)
-				os.Exit(tuning.ExitFailure)
+				os.Exit(app.ExitFailure)
 			}
 
 			for {
@@ -100,7 +101,7 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 			fChecksum, err := epdF.Checksum()
 			if err != nil {
 				slog.Error("checksum calculation error", "error", err)
-				os.Exit(tuning.ExitFailure)
+				os.Exit(app.ExitFailure)
 			}
 
 			if !epdInfo.Checksum.Matches(fChecksum) {
@@ -113,7 +114,7 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 				slog.Debug("deleting local epd", "filename", epdF.Basename())
 				if err := os.Remove(epdF.Basename()); err != nil {
 					slog.Error("can't remove bad epd file", "error", err)
-					os.Exit(tuning.ExitFailure)
+					os.Exit(app.ExitFailure)
 				}
 			} else {
 				haveEPD = true
@@ -129,25 +130,25 @@ func clientWorker(epdF *epd.File, client shim.Client) {
 		job, err := client.RequestJob()
 		if err != nil {
 			slog.Error("job request error", "error", err)
-			os.Exit(tuning.ExitFailure)
+			os.Exit(app.ExitFailure)
 		}
 		slog.Info("received job", "job", job)
 
 		checksum, err := epdF.ChunkChecksum(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("checksum calculation error", "error", err)
-			os.Exit(tuning.ExitFailure)
+			os.Exit(app.ExitFailure)
 		}
 
 		if !job.Checksum.Matches(checksum) {
-			slog.Error("chunk checksum mismatch") // TODO args
-			os.Exit(tuning.ExitFailure)
+			slog.Error("chunk checksum mismatch", "checksum", checksum, "job.checksum", job.Checksum)
+			os.Exit(app.ExitFailure)
 		}
 
 		chunk, err := epdF.Chunk(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("chunking error", "error", err)
-			os.Exit(tuning.ExitFailure)
+			os.Exit(app.ExitFailure)
 		}
 
 		coeffs := job.Coefficients
