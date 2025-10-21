@@ -20,7 +20,7 @@ func Run(args []string) {
 	var port int
 	var numThreads int
 
-	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
+	sFlags := flag.NewFlagSet("client", flag.ExitOnError)
 	sFlags.StringVar(&host, "host", "localhost", "host to connect to")
 	sFlags.IntVar(&port, "port", 9001, "port to connect to")
 	sFlags.IntVar(&numThreads, "threads", runtime.NumCPU(), "number of worker threads")
