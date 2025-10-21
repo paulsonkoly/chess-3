@@ -2,6 +2,12 @@
 
 `tuner` is the HCE coefficient tuner for chess-3. It is a client-server program, where the server orchestrates the tuning process, while the clients are performing gradient calculations on chunks of the given epd file.
 
+- **Distributed architecture**: Client-server model with multiple workers to handle large datasets that exceed single-machine memory limits
+- **EPD caching**: Clients download and cache EPD data locally, with checksum validation to ensure consistency
+- **Deterministic shuffling**: Epoch-based shuffle mechanism ensures all clients process the same permuted dataset
+- **Batch processing**: Work is divided into batches and chunks, with job assignment, timeout handling, and result aggregation managed by the server
+- **ADAM optimization**: Gradient-based coefficient updates with adaptive learning rates
+
 ## EPD
 
 epd is a tuning data set, with each line comprising of a position epd, and a 0.0, 0.5 or 1.0 WDL label separated by `;`.
