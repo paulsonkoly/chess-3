@@ -100,7 +100,10 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 				}
 			}
 
-			f.Close()
+			if err := f.Close(); err != nil {
+				slog.Error("error closing file", "error", err)
+				os.Exit(app.ExitFailure)
+			}
 		} else {
 			fChecksum, err := epdF.Checksum()
 			if err != nil {
