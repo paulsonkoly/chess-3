@@ -3,13 +3,13 @@ package server
 import (
 	"flag"
 	"fmt"
-	"iter"
 	"log/slog"
 	"math"
 	"net"
 	"os"
 	"time"
 
+	"github.com/essentialkaos/ek/v13/fmtutil/table"
 	"github.com/google/uuid"
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
@@ -31,95 +31,6 @@ const (
 	// creating new jobs.
 	ClientWaitTime = 100
 )
-
-type ServerChunk struct {
-	tuning.Range
-	checksum  checksum.Checksum
-	completed bool
-	jobs      []serverJob
-}
-
-type batchChunks []ServerChunk
-
-func (bc batchChunks) ConsistencyCheck() {
-	// consistency check
-	for _, c := range bc {
-		if c.completed && len(c.jobs) == 0 {
-			panic("chunk is marked completed, with no associated jobs")
-		}
-	}
-}
-
-func (bc batchChunks) Incomplete() iter.Seq2[int, ServerChunk] {
-	return func(yield func(int, ServerChunk) bool) {
-
-		// first look for a chunk that has no jobs
-		for i, chunk := range bc {
-			if len(chunk.jobs) == 0 {
-				if !yield(i, chunk) {
-					return
-				}
-			}
-		}
-
-		// all chunks must have jobs at this point
-		allCompleted := false
-		for !allCompleted {
-
-			allCompleted = true
-
-			// look for the chunk that has earliest deadline, if a chunk has multiple
-			// jobs its deadline is the latest of its jobs deadlines. Ignore
-			// completed chunks.
-			minTime := time.Now().Add(time.Duration(10) * time.Hour)
-			minIx := -1
-
-			for i, chunk := range bc {
-				if !chunk.completed {
-					maxTime := time.Now().Add(time.Duration(-10) * time.Hour)
-					for _, j := range chunk.jobs {
-						if j.deadline.After(maxTime) {
-							maxTime = j.deadline
-						}
-					}
-
-					// TODO we can add extra conditions here that prevent scheduling jobs
-					// for recently scheduled chunks.
-					if maxTime.Before(minTime) {
-						minTime = maxTime
-						minIx = i
-					}
-
-					allCompleted = false
-				}
-			}
-
-			if minIx != -1 {
-				if !yield(minIx, bc[minIx]) {
-					return
-				}
-			}
-		}
-	}
-}
-
-func (bc batchChunks) Match(r shim.Result) (ix int, ok bool) {
-	for i, chunk := range bc {
-		for _, job := range chunk.jobs {
-
-			if job.UUID == r.UUID {
-				return i, true
-			}
-		}
-	}
-	return 0, false
-}
-
-// serverJob is what the server tracks about a job
-type serverJob struct {
-	deadline time.Time
-	shim.Job
-}
 
 func Run(args []string) {
 	var epdFileName string
@@ -158,6 +69,91 @@ func Run(args []string) {
 	shim.NewServer(epdF, jobQueue, resultQueue).Serve(lis)
 }
 
+// serverJob is what the server tracks about a job.
+type serverJob struct {
+	deadline time.Time
+	shim.Job
+}
+
+type serverChunk struct {
+	tuning.Range
+	checksum  checksum.Checksum
+	completed bool
+	jobs      []serverJob
+}
+
+// deadline is the latest deadline of the deadlines of the chunks job. does
+// not function properly if there are no jobs for the chunk, but we should
+// schedule jobs on jobless chunks first anyway.
+func (c serverChunk) deadline() time.Time {
+	maxTime := time.Now().Add(time.Duration(-10) * time.Hour)
+	for _, j := range c.jobs {
+		if j.deadline.After(maxTime) {
+			maxTime = j.deadline
+		}
+	}
+	return maxTime
+}
+
+type batchTracker []serverChunk
+
+// completed determines if all chunks are completed in the batch.
+func (b batchTracker) completed() bool {
+	for _, chunk := range b {
+		if !chunk.completed {
+			return false
+		}
+	}
+	return true
+}
+
+func (b batchTracker) matchingChunk(r shim.Result) (chunk *serverChunk, ok bool) {
+	for i, chunk := range b {
+		for _, job := range chunk.jobs {
+
+			if job.UUID == r.UUID {
+				return &b[i], true
+			}
+		}
+	}
+	return nil, false
+}
+
+// schedule contains our job scheduling rules.
+//
+//   - while there are jobless chunks we should immediately schedule those.
+//   - if there is no job less chunk, we should only look at chunks that are not completed.
+//   - if there is a non-completed chunk with jobs, we should find the chunk with earliest deadline.
+//   - if the earliest deadline chunk deadline has passed schedule that one.
+//   - otherwise no job to schedule.
+//
+// TODO we could also return the deadline of the earliest chunk, as that would
+// be useful while waiting on results to decide how long to sleep. However, in
+// the server thread we might also want to do UI, in which case it's fine.
+func (b batchTracker) schedule() (chunk *serverChunk, ok bool) {
+	for i, chunk := range b {
+		if len(chunk.jobs) == 0 {
+			return &b[i], true
+		}
+	}
+
+	// there are no jobless chunks. find the earliest deadline
+	minTime := time.Now().Add(time.Duration(10) * time.Hour)
+	ix := -1
+	for i, chunk := range b {
+		if deadline := chunk.deadline(); !chunk.completed && chunk.deadline().Before(minTime) {
+			minTime = deadline
+			ix = i
+		}
+	}
+
+	if ix != -1 && minTime.Before(time.Now()) {
+		return &b[ix], true
+	}
+
+	return nil, false
+}
+
 func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
 	eCoeffs := tuning.EngineCoeffs()
 
@@ -179,49 +175,90 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 			grads := tuning.NullVector(tuning.DefaultTargets)
 
 			// gather the chunks in the batch and create server tracking structures
-			chunks := make(batchChunks, 0, tuning.NumChunksInBatch)
+			tracker := make(batchTracker, 0, tuning.NumChunksInBatch)
 			for chunk := range tuning.Chunks(batch) {
-				checksum, err := epdF.ChunkChecksum(epoch , chunk.Start, chunk.End)
+				checksum, err := epdF.ChunkChecksum(epoch, chunk.Start, chunk.End)
 				if err != nil {
 					slog.Error("checksum calculation error", "error", err)
 				}
-				chunks = append(chunks, ServerChunk{Range: chunk, checksum: checksum})
+				tracker = append(tracker, serverChunk{Range: chunk, checksum: checksum})
 			}
 
 			// while there is an incomplete chunk in the batch
-			for i, chunk := range chunks.Incomplete() {
+			for !tracker.completed() {
 
-				//create a sJob for the batch
-				sJob := serverJob{
-					deadline: time.Now().Add(600 * time.Second),
-					Job: shim.Job{
-						UUID:         uuid.New(),
-						Epoch:        epoch,
-						Range:        chunk.Range,
-						Checksum:     chunk.checksum,
-						Coefficients: coeffs,
-						K:            k,
-					},
+				// TODO this is throw away code for now, I envisage some cool tui
+				// interface for this
+				tbl := table.NewTable()
+				headers := make([]string, 0)
+				maxJobs := 0
+				for _, chunk := range tracker {
+					if chunk.completed {
+						headers = append(headers, "D") // done
+					} else if len(chunk.jobs) == 0 {
+						headers = append(headers, "N") // new
+					} else {
+						headers = append(headers, "P") // in progress
+					}
+					if len(chunk.jobs) > maxJobs {
+						maxJobs = len(chunk.jobs)
+					}
 				}
+				tbl.SetHeaders(headers...)
 
-				// put the job in the tracking structures
-				chunks[i].jobs = append(chunks[i].jobs, sJob)
+				lines := make([][]any, maxJobs)
+				for i := range lines {
+					lines[i] = make([]any, len(tracker))
+				}
+				now := time.Now()
+				for cIx, chunk := range tracker {
+					for jIx := range maxJobs {
+						if jIx >= len(chunk.jobs) {
+							lines[jIx][cIx] = "-"
+						} else {
+							diff := chunk.jobs[jIx].deadline.Sub(now)
+							lines[jIx][cIx] = fmt.Sprintf("%.0f", diff.Seconds())
+						}
+					}
+				}
+				for _, line := range lines {
+					tbl.Add(line...)
+				}
+				tbl.Render()
 
-				slog.Debug("queueing job", "job", sJob)
+				if chunk, ok := tracker.schedule(); ok {
+					//create a sJob for the batch
+					sJob := serverJob{
+						deadline: time.Now().Add(JobTTL * time.Second),
+						Job: shim.Job{
+							UUID:         uuid.New(),
+							Epoch:        epoch,
+							Range:        chunk.Range,
+							Checksum:     chunk.checksum,
+							Coefficients: coeffs,
+							K:            k,
+						},
+					}
 
-				// send the job to the client handler
-				jobQueue <- sJob.Job
+					// put the job in the tracking structures
+					chunk.jobs = append(chunk.jobs, sJob)
+
+					slog.Debug("queueing job", "job", sJob)
+
+					// send the job to the client handler
+					jobQueue <- sJob.Job
+				}
 
 				// register results
 				select {
 				case result := <-resultQueue:
 					// validate result coming from client and search for a matching job in our structures
 					slog.Debug("received results", "result", result)
-					if ix, ok := chunks.Match(result); ok {
+					if chunk, ok := tracker.matchingChunk(result); ok {
 						// if already completed ignore
-						if !chunks[ix].completed {
+						if !chunk.completed {
 							grads.Add(result.Gradients)
-							chunks[ix].completed = true
+							chunk.completed = true
 						}
 					}
 

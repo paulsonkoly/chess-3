@@ -3,9 +3,10 @@ module github.com/paulsonkoly/chess-3/tools/tuner
 go 1.25.0
 
 require (
+	github.com/essentialkaos/ek/v13 v13.35.3
 	github.com/google/uuid v1.6.0
 	github.com/paulsonkoly/chess-3 v0.0.0
-	golang.org/x/sys v0.34.0
+	golang.org/x/sys v0.36.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 )
