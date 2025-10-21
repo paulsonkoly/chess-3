@@ -13,6 +13,10 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 )
 
+const (
+	EPDRetryCount = 10
+)
+
 func Run(args []string) {
 	var host string
 	var port int
@@ -55,8 +59,9 @@ func obtainEPDInfo(client shim.Client) shim.EPDInfo {
 
 func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 	var epdF *epd.File
+	var retry int
 
-	for haveEPD := false; !haveEPD; {
+	for haveEPD := false; !haveEPD && retry < EPDRetryCount; {
 		var err error
 		epdF, err = epd.New(epdInfo.Filename)
 
@@ -119,6 +124,8 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 				haveEPD = true
 			}
 		}
+
+		retry++
 	}
 	return epdF
 }
