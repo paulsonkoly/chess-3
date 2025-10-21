@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"flag"
 	"io"
 	"log/slog"
@@ -12,7 +11,6 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
-	"golang.org/x/sys/unix"
 )
 
 func Run(args []string) {
@@ -63,7 +61,7 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 		epdF, err = epd.New(epdInfo.Filename)
 
 		if err != nil {
-			if !errors.Is(err, unix.ENOENT) {
+			if !os.IsNotExist(err) {
 				slog.Error("unexpected error on epd load", "error", err)
 				os.Exit(app.ExitFailure)
 			}

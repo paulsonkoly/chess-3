@@ -10,7 +10,7 @@ const (
 	NumLinesInBatch = 1_600_000
 
 	// NumChunksInBatch determines how a batch is split into chunks. A chunk is a
-	// unique work iterm handed over to clients.
+	// unique work item handed over to clients.
 	NumChunksInBatch = 16
 
 	// Perturbation

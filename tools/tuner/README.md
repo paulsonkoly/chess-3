@@ -20,7 +20,7 @@ r2q1rk1/3n1p2/2pp3p/1pb1p1p1/p3P3/P1NP1N1P/RPP2PP1/5QK1 b - - 0 2; 0.0
 rn2r2k/p1R4p/4bp2/8/1Q6/6P1/1P3P1P/6K1 w - - 0 1; 0.0
 ```
 
-WDL is side relative: 0.0 means black wins.
+WDL is player relative: 0.0 means black wins.
 
 ## Usage
 
