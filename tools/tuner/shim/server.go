@@ -2,6 +2,7 @@ package shim
 
 import (
 	"context"
+	"log/slog"
 	"net"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
@@ -42,6 +43,7 @@ func (s tunerServer) RequestEPDInfo(context.Context, *pb.EPDInfoRequest) (*pb.EP
 	if err != nil {
 		return nil, err
 	}
+	slog.Info("responding epdInfo", "Filename", s.epdF.Basename(), "Checksum", chkSum)
 	return &pb.EPDInfo{Filename: s.epdF.Basename(), Checksum: chkSum.Bytes()}, nil
 }
 

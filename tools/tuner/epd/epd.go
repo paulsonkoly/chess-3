@@ -1,3 +1,13 @@
+// package epd is designed to read large and potentially shuffled EPD + WDL
+// data sets.
+//
+// No portable way exists to keep a reusable FD open for concurrency-safe reads
+// to the same inode. On Linux, /proc/self/fd/%d works, but Dup-ed FDs share
+// read offsets and don’t solve concurrency. We accept potential errors if an
+// EPD file is deleted or moved while open.
+//
+// Therefore one should not move / modify the underlying file while working
+// with EPD.
 package epd
 
 import (
@@ -23,7 +33,6 @@ type lineAddr struct {
 
 type File struct {
 	filename     string
-	f            *os.File
 	lineManifest []lineAddr
 }
 
@@ -35,14 +44,15 @@ func (e File) LineCount() int {
 	return len(e.lineManifest)
 }
 
-// Open opens an EPD file.
-func Open(filename string) (*File, error) {
+// New creates an EPD file reader.
+func New(filename string) (*File, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	e := File{f: f, filename: filename, lineManifest: make([]lineAddr, 0)}
+	e := File{filename: filename, lineManifest: make([]lineAddr, 0)}
 
 	scn := bufio.NewReader(f)
 	count := int64(0)
@@ -70,26 +80,14 @@ func Open(filename string) (*File, error) {
 	return &e, nil
 }
 
-// Close closes the epd file and frees up associated resources.
-func (e *File) Close() {
-	e.f.Close()
-	// free the lineManifest it can be massive
-	e.lineManifest = nil
-}
-
 // Checksum is the sha256 checksum of the whole content of the epd file.
 // Concurrency safe.
 func (e *File) Checksum() (checksum.Checksum, error) {
-	fd, err := unix.Dup(int(e.f.Fd()))
+	f, err := os.Open(e.filename)
 	if err != nil {
 		return checksum.Checksum{}, err
 	}
-
-	f := os.NewFile(uintptr(fd), e.filename)
 	defer f.Close()
-
-	f.Seek(0, io.SeekStart)
-
 	return checksum.ReadFrom(f)
 }
 
@@ -101,15 +99,12 @@ type Streamer interface {
 
 // Stream streams all content from e on a per line basis. Concurrency safe.
 func (e *File) Stream(s Streamer) error {
-	fd, err := unix.Dup(int(e.f.Fd()))
+
+	f, err := os.Open(e.filename)
 	if err != nil {
 		return err
 	}
-
-	f := os.NewFile(uintptr(fd), e.filename)
 	defer f.Close()
-
-	f.Seek(0, io.SeekStart)
 
 	scn := bufio.NewScanner(f)
 	for scn.Scan() {
@@ -192,14 +187,7 @@ func (e *File) chunkReader(epoch, start, end int, c collector) error {
 		return ErrChunkInvalid
 	}
 
-	var fd int
-	fd, err := unix.Dup(int(e.f.Fd()))
-	if err != nil {
-		return err
-	}
-
-	f := os.NewFile(uintptr(fd), e.filename)
-	_, err = f.Seek(0, io.SeekStart)
+	f, err := os.Open(e.filename)
 	if err != nil {
 		return err
 	}

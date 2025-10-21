@@ -132,17 +132,12 @@ func Run(args []string) {
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
 	sFlags.Parse(args)
 
-	epdF, err := epd.Open(epdFileName)
+	epdF, err := epd.New(epdFileName)
 	if err != nil {
 		slog.Error("failed to load epd file", "filename", epdFileName)
 		os.Exit(tuning.ExitFailure)
 	}
-	defer epdF.Close()
-	checksum, err := epdF.Checksum()
-	if err != nil {
-		slog.Error("checksum calculation error", "error", err)
-	}
-	slog.Debug("loaded epd", "filename", epdF.Basename(), "checksum", checksum)
+	slog.Debug("loaded epd", "filename", epdF.Basename())
 	k, err := minimizeK(epdF)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)

@@ -35,7 +35,6 @@ func Run(args []string) {
 
 	epdInfo := obtainEPDInfo(client)
 	epdF := optainEPD(epdInfo, client)
-	defer epdF.Close()
 
 	for range numThreads {
 		go clientWorker(epdF, client)
@@ -59,7 +58,7 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 
 	for haveEPD := false; !haveEPD; {
 		var err error
-		epdF, err = epd.Open(epdInfo.Filename)
+		epdF, err = epd.New(epdInfo.Filename)
 
 		if err != nil {
 			if !errors.Is(err, unix.ENOENT) {
@@ -105,8 +104,6 @@ func optainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 			}
 
 			if !epdInfo.Checksum.Matches(fChecksum) {
-				epdF.Close()
-
 				slog.Warn(
 					"epd checksum mismatch",
 					"filename", epdInfo.Filename,

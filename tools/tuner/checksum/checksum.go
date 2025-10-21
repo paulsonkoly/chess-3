@@ -19,7 +19,7 @@ var ErrLengthInvalid = errors.New("length invalid")
 
 // FromBytes converts a slice of bytes to checksum. The byte slice can be
 // extracted from an existing checksum with Checksum.Bytes.
-func FromBytes(bytes [] byte) (Checksum, error) {
+func FromBytes(bytes []byte) (Checksum, error) {
 	if len(bytes) != sha256.Size {
 		return Checksum{}, ErrLengthInvalid
 	}
