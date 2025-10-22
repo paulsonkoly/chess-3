@@ -19,14 +19,11 @@ import (
 )
 
 const (
-	// JobTTL is job time to live duration in seconds.
-	JobTTL = 600
+	// JobTTLInit is the initial job time to live duration in seconds.
+	JobTTLInit = 600
 	// JobQueueDepth determines how many jobs the EPD processor can produce
-	// before its stalled back. Should not be smaller than NumChunksInBatch
-	// otherwise we can create jobs for a whole batch simultaniously. It can be
-	// bigger slightly, allowing jobs with passed TTL to live together with newly
-	// dispatched jobs, in case a passed TTL job eventually finishes.
-	JobQueueDepth    = 20
+	// before its stalled back.
+	JobQueueDepth    = tuning.NumChunksInBatch / 2
 	ResultQueueDepth = 10
 	// ClientWaitTime is the duration in ms the server waits for results before
 	// creating new jobs.
@@ -72,9 +69,12 @@ func Run(args []string) {
 
 // serverJob is what the server tracks about a job.
 type serverJob struct {
-	deadline time.Time
+	startTime time.Time     // startTime is the stamp this job was scheduled in the jobQueue.
+	ttl       time.Duration // ttl is the allocated time for this job to finish.
 	shim.Job
 }
+
+func (j serverJob) deadline() time.Time { return j.startTime.Add(j.ttl) }
 
 type serverChunk struct {
 	tuning.Range
@@ -89,8 +89,8 @@ type serverChunk struct {
 func (c serverChunk) deadline() time.Time {
 	maxTime := time.Now().Add(time.Duration(-10) * time.Hour)
 	for _, j := range c.jobs {
-		if j.deadline.After(maxTime) {
-			maxTime = j.deadline
+		if j.deadline().After(maxTime) {
+			maxTime = j.deadline()
 		}
 	}
 	return maxTime
@@ -108,12 +108,17 @@ func (b batchTracker) completed() bool {
 	return true
 }
 
-func (b batchTracker) matchingChunk(r shim.Result) (chunk *serverChunk, ok bool) {
+type match struct {
+	chunk *serverChunk
+	job   *serverJob
+}
+
+func (b batchTracker) match(r shim.Result) (matched *match, ok bool) {
 	for i, chunk := range b {
-		for _, job := range chunk.jobs {
+		for j, job := range chunk.jobs {
 
 			if job.UUID == r.UUID {
-				return &b[i], true
+				return &match{chunk: &b[i], job: &b[i].jobs[j]}, true
 			}
 		}
 	}
@@ -163,6 +168,8 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 	momentum := tuning.NullVector(tuning.DefaultTargets)
 	velocity := tuning.NullVector(tuning.DefaultTargets)
 	lr := tuning.InitialLearningRate
+	sumJobTimes := 0 * time.Second
+	completeJobCnt := 0
 
 	for epoch := 1; true; {
 		slog.Debug("new epoch", "epoch", epoch)
@@ -213,7 +220,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 						if jIx >= len(chunk.jobs) {
 							lines[jIx][cIx] = "-"
 						} else {
-							diff := chunk.jobs[jIx].deadline.Sub(now)
+							diff := chunk.jobs[jIx].deadline().Sub(now)
 							lines[jIx][cIx] = fmt.Sprintf("%.0f", diff.Seconds())
 						}
 					}
@@ -225,8 +232,20 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 
 				if chunk, ok := tracker.schedule(); ok {
 					//create a sJob for the batch
+					var ttl time.Duration
+					if completeJobCnt == 0 {
+						ttl = JobTTLInit * time.Second
+					} else {
+						// 2x the running average of our job times. If everything is in
+						// order this should prevent us from scheduling an other job for
+						// this chunk, but if something bad happens, we will schedule
+						// another job once the deadline passes.
+						ttl = 2 * sumJobTimes / time.Duration(completeJobCnt)
+					}
+
 					sJob := serverJob{
-						deadline: time.Now().Add(JobTTL * time.Second),
+						startTime: time.Now(),
+						ttl:       ttl,
 						Job: shim.Job{
 							UUID:         uuid.New(),
 							Epoch:        epoch,
@@ -251,12 +270,15 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 				case result := <-resultQueue:
 					// validate result coming from client and search for a matching job in our structures
 					slog.Debug("received results", "result", result)
-					if chunk, ok := tracker.matchingChunk(result); ok {
+					if match, ok := tracker.match(result); ok {
 						// if already completed ignore
-						if !chunk.completed {
+						if !match.chunk.completed {
 							grads.Add(result.Gradients)
-							chunk.completed = true
+							match.chunk.completed = true
 						}
+						// either way it's a data point for the running average of job times.
+						sumJobTimes += time.Since(match.job.startTime)
+						completeJobCnt++
 					}
 
 				case <-time.After(ClientWaitTime * time.Millisecond):
