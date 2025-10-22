@@ -317,13 +317,13 @@ func epdProcess(epdF *epd.File, outFn string, k float64, jobQueue chan<- shim.Jo
 			os.Exit(app.ExitFailure)
 		}
 
-		if f, err := os.Create(outFn); err != nil {
-			eCoeffs.Save(f, epoch, mse)
-			f.Close()
-		} else {
+		f, err := os.Create(outFn)
+		if err != nil {
 			slog.Error("coeffs.go", "error", err)
 			os.Exit(app.ExitFailure)
 		}
+		eCoeffs.Save(f, epoch, newMSE)
+		f.Close()
 
 		fmt.Printf("error drop %.10f , bestE %.10f\n", mse-newMSE, newMSE)
 		if newMSE > mse {
