@@ -70,11 +70,11 @@ func Run(args []string) {
 // serverJob is what the server tracks about a job.
 type serverJob struct {
 	startTime time.Time     // startTime is the stamp this job was scheduled in the jobQueue.
-	ttlInSec  time.Duration // ttlInSec is the allocated time for this job to finish.
+	ttl       time.Duration // ttl is the allocated time for this job to finish.
 	shim.Job
 }
 
-func (j serverJob) deadline() time.Time { return j.startTime.Add(j.ttlInSec) }
+func (j serverJob) deadline() time.Time { return j.startTime.Add(j.ttl) }
 
 type serverChunk struct {
 	tuning.Range
@@ -168,7 +168,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 	momentum := tuning.NullVector(tuning.DefaultTargets)
 	velocity := tuning.NullVector(tuning.DefaultTargets)
 	lr := tuning.InitialLearningRate
-	sumJobTimeInSec := 0 * time.Second
+	sumJobTimes := 0 * time.Second
 	completeJobCnt := 0
 
 	for epoch := 1; true; {
@@ -232,20 +232,20 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 
 				if chunk, ok := tracker.schedule(); ok {
 					//create a sJob for the batch
-					var maxDuration time.Duration
+					var ttl time.Duration
 					if completeJobCnt == 0 {
-						maxDuration = JobTTLInit * time.Second
+						ttl = JobTTLInit * time.Second
 					} else {
 						// 2x the running average of our job times. If everything is in
 						// order this should prevent us from scheduling an other job for
 						// this chunk, but if something bad happens, we will schedule
 						// another job once the deadline passes.
-						maxDuration = 2 * sumJobTimeInSec / time.Duration(completeJobCnt)
+						ttl = 2 * sumJobTimes / time.Duration(completeJobCnt)
 					}
 
 					sJob := serverJob{
 						startTime: time.Now(),
-						ttlInSec:  maxDuration,
+						ttl:       ttl,
 						Job: shim.Job{
 							UUID:         uuid.New(),
 							Epoch:        epoch,
@@ -277,8 +277,7 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 							match.chunk.completed = true
 						}
 						// either way it's a data point for the running average of job times.
-						runTime := time.Since(match.job.startTime) * time.Second
-						sumJobTimeInSec += runTime
+						sumJobTimes += time.Since(match.job.startTime)
 						completeJobCnt++
 					}
 
