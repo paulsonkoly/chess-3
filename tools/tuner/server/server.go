@@ -34,12 +34,17 @@ func Run(args []string) {
 	var epdFileName string
 	var host string
 	var port int
+	var outFn string
 
 	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
 	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
 	sFlags.StringVar(&host, "host", "localhost", "host to listen on")
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
+	sFlags.StringVar(&outFn, "out", "coeffs.go", "coeff output file")
 	sFlags.Parse(args)
+
+	eCoeffs := tuning.EngineCoeffs()
+	eCoeffs.Save(os.Stdout, 1, 2.345)
 
 	epdF, err := epd.New(epdFileName)
 	if err != nil {
@@ -55,7 +60,7 @@ func Run(args []string) {
 	jobQueue := make(chan shim.Job, JobQueueDepth)
 	resultQueue := make(chan shim.Result, ResultQueueDepth)
 
-	go epdProcess(epdF, k, jobQueue, resultQueue)
+	go epdProcess(epdF, outFn, k, jobQueue, resultQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
@@ -156,7 +161,7 @@ func (b batchTracker) schedule() (chunk *serverChunk, ok bool) {
 	return nil, false
 }
 
-func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
+func epdProcess(epdF *epd.File, outFn string, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
 	eCoeffs := tuning.EngineCoeffs()
 
 	mse, err := fileMSE(epdF, k, &eCoeffs)
@@ -306,13 +311,20 @@ func epdProcess(epdF *epd.File, k float64, jobQueue chan<- shim.Job, resultQueue
 		fmt.Println(epoch)
 
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
-		fmt.Println(eCoeffs)
-
 		newMSE, err := fileMSE(epdF, k, &eCoeffs)
 		if err != nil {
 			slog.Error("mse calculation error", "error", err)
 			os.Exit(app.ExitFailure)
 		}
+
+		f, err := os.Create(outFn)
+		if err != nil {
+			slog.Error("coeffs.go", "error", err)
+			os.Exit(app.ExitFailure)
+		}
+		eCoeffs.Save(f, epoch, newMSE)
+		f.Close()
+
 		fmt.Printf("error drop %.10f , bestE %.10f\n", mse-newMSE, newMSE)
 		if newMSE > mse {
 			fmt.Printf("drop negative, LR %.4f -> %.4f\n", lr, lr/2.0)
