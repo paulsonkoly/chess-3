@@ -7,7 +7,7 @@ import (
 const (
 	// NumLinesInBatch determines how the epd file is split into batches. A batch
 	// completion implies the coefficients update.
-	NumLinesInBatch = 1_600_000
+	NumLinesInBatch = 100_000
 
 	// NumChunksInBatch determines how a batch is split into chunks. A chunk is a
 	// unique work item handed over to clients.
