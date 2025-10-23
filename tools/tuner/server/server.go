@@ -43,9 +43,6 @@ func Run(args []string) {
 	sFlags.StringVar(&outFn, "out", "coeffs.go", "coeff output file")
 	sFlags.Parse(args)
 
-	eCoeffs := tuning.EngineCoeffs()
-	eCoeffs.Save(os.Stdout, 1, 2.345)
-
 	epdF, err := epd.New(epdFileName)
 	if err != nil {
 		slog.Error("failed to load epd file", "filename", epdFileName)
