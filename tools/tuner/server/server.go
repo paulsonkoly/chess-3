@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/essentialkaos/ek/v13/fmtutil/table"
@@ -35,12 +36,14 @@ func Run(args []string) {
 	var host string
 	var port int
 	var outFn string
+	var minKPProf string
 
 	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
 	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
 	sFlags.StringVar(&host, "host", "localhost", "host to listen on")
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
 	sFlags.StringVar(&outFn, "out", "coeffs.go", "coeff output file")
+	sFlags.StringVar(&minKPProf, "kpprof", "", "filename for gathering cpu profiling data from the mse minimization with k")
 	sFlags.Parse(args)
 
 	epdF, err := epd.New(epdFileName)
@@ -49,7 +52,7 @@ func Run(args []string) {
 		os.Exit(app.ExitFailure)
 	}
 	slog.Debug("loaded epd", "filename", epdF.Basename())
-	k, err := minimizeK(epdF)
+	k, err := minimizeK(epdF, minKPProf)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)
 	}
@@ -331,7 +334,21 @@ func epdProcess(epdF *epd.File, outFn string, k float64, jobQueue chan<- shim.Jo
 	}
 }
 
-func minimizeK(epdF *epd.File) (float64, error) {
+func minimizeK(epdF *epd.File, pprofFile string) (float64, error) {
+	if pprofFile != "" {
+		f, err := os.Create(pprofFile)
+		if err != nil {
+			slog.Error("pprof file creation error", "error", err)
+			os.Exit(app.ExitFailure)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			slog.Error("pprof start error", "error", err)
+			os.Exit(app.ExitFailure)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	coeffs := tuning.EngineCoeffs()
 
 	k := 2.832 // a scaling constant
