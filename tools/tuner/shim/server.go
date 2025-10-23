@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net"
+	"path"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
@@ -15,13 +16,13 @@ type Server struct {
 	tuner tunerServer
 }
 
-func NewServer(epdF *epd.File, jobQueue <-chan Job, resultQueue chan<- Result) Server {
+func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result) Server {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	s := tunerServer{
 		jobQueue:    jobQueue,
 		resultQueue: resultQueue,
-		epdF:        epdF,
+		filename:    fn,
 	}
 	pb.RegisterTunerServer(grpcServer, s)
 	return Server{tuner: s, grpc: grpcServer}
@@ -35,16 +36,17 @@ type tunerServer struct {
 	pb.UnimplementedTunerServer
 	jobQueue    <-chan Job
 	resultQueue chan<- Result
-	epdF        *epd.File
+	filename    string
 }
 
 func (s tunerServer) RequestEPDInfo(context.Context, *pb.EPDInfoRequest) (*pb.EPDInfo, error) {
-	chkSum, err := s.epdF.Checksum()
+	chkSum, err := epd.Checksum(s.filename)
 	if err != nil {
 		return nil, err
 	}
-	slog.Info("responding epdInfo", "Filename", s.epdF.Basename(), "Checksum", chkSum)
-	return &pb.EPDInfo{Filename: s.epdF.Basename(), Checksum: chkSum.Bytes()}, nil
+	base := path.Base(s.filename)
+	slog.Info("responding epdInfo", "Filename", base, "Checksum", chkSum)
+	return &pb.EPDInfo{Filename: base, Checksum: chkSum.Bytes()}, nil
 }
 
 type streamer struct {
@@ -56,7 +58,7 @@ func (s streamer) Send(line string) error {
 }
 
 func (s tunerServer) StreamEPD(_ *pb.EPDStreamRequest, stream grpc.ServerStreamingServer[pb.EPDLine]) error {
-	s.epdF.Stream(streamer{stream})
+	epd.Stream(s.filename, streamer{stream})
 	return nil
 }
 
