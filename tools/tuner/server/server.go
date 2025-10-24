@@ -8,11 +8,13 @@ import (
 	"math"
 	"net"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"time"
 
 	"github.com/essentialkaos/ek/v13/fmtutil/table"
 	"github.com/google/uuid"
+	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
@@ -38,6 +40,7 @@ func Run(args []string) {
 	var port int
 	var outFn string
 	var minKPProf string
+	var minKMProf string
 
 	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
 	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
@@ -45,9 +48,10 @@ func Run(args []string) {
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
 	sFlags.StringVar(&outFn, "out", "coeffs.go", "coeff output file")
 	sFlags.StringVar(&minKPProf, "kpprof", "", "filename for gathering cpu profiling data from the mse minimization with k")
+	sFlags.StringVar(&minKMProf, "kmprof", "", "filename for gathering mem profiling data from the mse minimization with k")
 	sFlags.Parse(args)
 
-	k, err := minimizeK(epdFileName, minKPProf)
+	k, err := minimizeK(epdFileName, minKPProf, minKMProf)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)
 	}
@@ -171,33 +175,33 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 	sumJobTimes := 0 * time.Second
 	completeJobCnt := 0
 
-	r, err := epd.Open(fn)
+	chunker, err := epd.NewChunker(fn)
 	if err != nil {
 		slog.Error("open error", "error", err)
 		os.Exit(app.ExitFailure)
 	}
-	defer r.Close()
 
 	for epoch := 1; true; {
 		slog.Debug("new epoch", "epoch", epoch)
 
-		for batch := range tuning.Batches(r.LineCount()) {
+		for batch := range tuning.Batches(chunker.LineCount()) {
 
 			grads := tuning.NullVector(tuning.DefaultTargets)
 
 			// gather the chunks in the batch and create server tracking structures
 			tracker := make(batchTracker, 0, tuning.NumChunksInBatch)
 			for chunk := range tuning.Chunks(batch) {
-				m, err := r.Map(epoch, chunk.Start, chunk.End)
+				fChunk, err := chunker.Open(epoch, chunk.Start, chunk.End)
 				if err != nil {
 					slog.Error("map error", "error", err)
 					os.Exit(app.ExitFailure)
 				}
 				cSumCol := checksum.NewCollector()
 				for {
-					line, err := m.Read()
+					line, err := fChunk.Read()
 					if err != nil {
 						if err == io.EOF {
+							fChunk.Close()
 							break
 						}
 						slog.Warn("read error", "error", err)
@@ -351,7 +355,7 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 	}
 }
 
-func minimizeK(fn string, pprofFile string) (float64, error) {
+func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 	if pprofFile != "" {
 		f, err := os.Create(pprofFile)
 		if err != nil {
@@ -377,17 +381,43 @@ func minimizeK(fn string, pprofFile string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
+
+	b := board.Board{}
+	res := 0.0
+	byLines, err := epd.OpenByLines(fn)
+	if err != nil {
+		return 0, err
+	}
+	defer byLines.Close()
+
 	for step > 0.0001 {
 		slog.Info("k step", "k", k, "step", step)
 		for improved {
-			eHigh, err := fileMSE(fn, k+step, &coeffs)
-			if err != nil {
-				return 0, err
+			eHigh := 0.0
+			eLow := 0.0
+			cnt := 0
+			for {
+				line, err := byLines.Read()
+				if err != nil {
+					if err == io.EOF {
+						byLines.Rewind()
+						break
+					}
+					return 0, nil
+				}
+
+				if err := epd.Parse(line, &b, &res); err != nil {
+					return 0, err
+				}
+				score := coeffs.Eval(&b)
+				sgm := tuning.Sigmoid(score, k+step)
+				eHigh += (res - sgm) * (res - sgm)
+				sgm = tuning.Sigmoid(score, k-step)
+				eLow += (res - sgm) * (res - sgm)
+				cnt++
 			}
-			eLow, err := fileMSE(fn, k-step, &coeffs)
-			if err != nil {
-				return 0, err
-			}
+			eHigh /= float64(cnt)
+			eLow /= float64(cnt)
 			improved = false
 
 			nK := k - step
@@ -407,41 +437,53 @@ func minimizeK(fn string, pprofFile string) (float64, error) {
 		step /= 10.0
 		improved = true
 	}
+	if memprofFile != "" {
+		f, err := os.Create(memprofFile)
+		if err != nil {
+			slog.Error("memory profile error", "error", err)
+			os.Exit(app.ExitFailure)
+		}
+		defer f.Close() // error handling omitted for example
+		runtime.GC()    // get up-to-date statistics
+		// Lookup("allocs") creates a profile similar to go test -memprofile.
+		// Alternatively, use Lookup("heap") for a profile
+		// that has inuse_space as the default index.
+		if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
+			slog.Error("memory profile error", "error", err)
+			os.Exit(app.ExitFailure)
+		}
+	}
 	return k, nil
 }
 
 func fileMSE(fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
-	r, err := epd.Open(fn)
+	byLines, err := epd.OpenByLines(fn)
 	if err != nil {
 		return 0, err
 	}
-	defer r.Close()
+	defer byLines.Close()
 
 	sum := 0.0
+	cnt := 0
+	b := board.Board{}
+	res := 0.0
 
-	for batch := range tuning.Batches(r.LineCount()) {
-		for chunk := range tuning.Chunks(batch) {
-			m, err := r.Map(1, chunk.Start, chunk.End)
-			if err != nil {
-				return 0, err
+	for {
+		line, err := byLines.Read()
+		if err != nil {
+			if err == io.EOF {
+				return sum / float64(cnt), nil
 			}
-			for {
-				line, err := m.Read()
-				if err != nil {
-					if err == io.EOF {
-						break
-					}
-					return 0, err
-				}
-				entry, err := epd.Parse(line)
-				if err != nil {
-					return 0, err
-				}
-				score := coeffs.Eval(entry.Board)
-				sgm := tuning.Sigmoid(score, k)
-				sum += (entry.Result - sgm) * (entry.Result - sgm)
-			}
+			return 0, err
 		}
+
+		err = epd.Parse(line, &b, &res)
+		if err != nil {
+			return 0, err
+		}
+		score := coeffs.Eval(&b)
+		sgm := tuning.Sigmoid(score, k)
+		sum += (res - sgm) * (res - sgm)
+		cnt++
 	}
-	return sum / float64(r.LineCount()), nil
 }

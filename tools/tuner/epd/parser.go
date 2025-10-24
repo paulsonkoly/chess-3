@@ -1,35 +1,41 @@
 package epd
 
 import (
+	"bytes"
 	"errors"
-	"strconv"
-	"strings"
 
 	"github.com/paulsonkoly/chess-3/board"
 )
 
-type Entry struct {
-	Board  *board.Board
-	Result float64
-}
-
+// ErrLineInvalid indicates parse error of the epd line.
 var ErrLineInvalid = errors.New("invalid epd line")
 
-func Parse(line string) (Entry, error) {
-	splits := strings.Split(line, "; ")
-	if len(splits) != 2 {
-		return Entry{}, ErrLineInvalid
+// Parse helper function provides an allocation free epd line parser.
+func Parse(line []byte, b *board.Board, res *float64) error {
+	if len(line) < 5 {
+		return ErrLineInvalid
+	}
+	splitIx := len(line) - 5 // index of ';'
+
+	if err := board.ParseFEN(b, line[:splitIx]); err != nil {
+		return ErrLineInvalid
 	}
 
-	b, err := board.FromFEN(splits[0])
-	if err != nil {
-		return Entry{}, ErrLineInvalid
+	switch {
+
+	case bytes.Equal(line[splitIx:], []byte("; 1.0")):
+		*res = 1.0
+
+	case bytes.Equal(line[splitIx:], []byte("; 0.5")):
+		*res = 0.5
+
+	case bytes.Equal(line[splitIx:], []byte("; 0.0")):
+		*res = 0.0
+
+	default:
+		return ErrLineInvalid
+
 	}
 
-	r, err := strconv.ParseFloat(splits[1], 64)
-	if err != nil {
-		return Entry{}, ErrLineInvalid
-	}
-
-	return Entry{Board: b, Result: r}, nil
+	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
@@ -41,15 +42,14 @@ func Run(args []string) {
 	epdInfo := obtainEPDInfo(client)
 	obtainEPD(epdInfo, client)
 
-	r, err := epd.Open(epdInfo.Filename)
+	chunker, err := epd.NewChunker(epdInfo.Filename)
 	if err != nil {
-		slog.Error("open error", "error", err)
+		slog.Error("chunker error", "error", err)
 		os.Exit(app.ExitFailure)
 	}
-	defer r.Close()
 
 	for range numThreads {
-		go clientWorker(r, client)
+		go clientWorker(chunker, client)
 	}
 
 	select {}
@@ -140,7 +140,7 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) {
 	os.Exit(app.ExitFailure)
 }
 
-func clientWorker(r *epd.Reader, client shim.Client) {
+func clientWorker(chunker *epd.Chunker, client shim.Client) {
 	for {
 		slog.Debug("requesting job")
 		job, err := client.RequestJob()
@@ -150,7 +150,7 @@ func clientWorker(r *epd.Reader, client shim.Client) {
 		}
 		slog.Info("received job", "job", job)
 
-		m, err := r.Map(job.Epoch, job.Range.Start, job.Range.End)
+		fChunk,err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("chunk mapping error", "error", err)
 			os.Exit(app.ExitFailure)
@@ -158,7 +158,7 @@ func clientWorker(r *epd.Reader, client shim.Client) {
 
 		cSumCol := checksum.NewCollector()
 		for {
-			line, err := m.Read()
+			line, err := fChunk.Read()
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -183,25 +183,28 @@ func clientWorker(r *epd.Reader, client shim.Client) {
 
 		slog.Info("working on job", "job", job)
 
-		m.Reset()
+		fChunk.Rewind()
+		b := board.Board{}
+		res := 0.0
+
 		for {
-			line, err := m.Read()
+			line, err := fChunk.Read()
 			if err != nil {
 				if err == io.EOF {
+					fChunk.Close()
 					break
 				}
 				slog.Warn("read error", "error", err)
 				continue
 			}
-			entry, err := epd.Parse(line)
-			if err != nil {
+			if err := epd.Parse([]byte(line), &b, &res); err != nil {
 				slog.Warn("parse error", "error", err)
 				continue
 			}
 
-			score := eCoeffs.Eval(entry.Board)
+			score := eCoeffs.Eval(&b)
 			sigm := tuning.Sigmoid(score, k)
-			loss := (entry.Result - sigm) * (entry.Result - sigm)
+			loss := (res - sigm) * (res - sigm)
 
 			grads.CombinePerturbed(coeffs, tuning.Epsilon,
 				func(g float64, c tuning.Vector) float64 {
@@ -209,9 +212,9 @@ func clientWorker(r *epd.Reader, client shim.Client) {
 					eCoeffs := eCoeffs
 					eCoeffs.SetVector(c, tuning.DefaultTargets)
 
-					score2 := eCoeffs.Eval(entry.Board)
+					score2 := eCoeffs.Eval(&b)
 					sigm2 := tuning.Sigmoid(score2, k)
-					loss2 := (entry.Result - sigm2) * (entry.Result - sigm2)
+					loss2 := (res - sigm2) * (res - sigm2)
 
 					return g + (loss2-loss)/tuning.Epsilon
 				})
@@ -226,4 +229,3 @@ func clientWorker(r *epd.Reader, client shim.Client) {
 		}
 	}
 }
-

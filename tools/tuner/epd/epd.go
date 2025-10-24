@@ -1,24 +1,18 @@
 // package epd is designed to read large and potentially shuffled EPD + WDL
 // data sets.
 //
-// No portable way exists to keep a reusable FD open for concurrency-safe reads
-// to the same inode. On Linux, /proc/self/fd/%d works, but Dup-ed FDs share
-// read offsets and don’t solve concurrency. We accept potential errors if an
-// EPD file is deleted or moved while open.
-//
-// Therefore one should not move / modify the underlying file while working
-// with EPD.
+// While working with epd files, one must not modify the underlying physical
+// file, including deleting, modifying data or any other file op.
 package epd
 
 import (
-	"bufio"
+	"io"
 	"os"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 )
 
 // Checksum is the sha256 checksum of the whole content of a file.
-// Concurrency safe.
 func Checksum(fn string) (checksum.Checksum, error) {
 	f, err := os.Open(fn)
 	if err != nil {
@@ -34,21 +28,23 @@ type Streamer interface {
 	Send(line string) error
 }
 
-// Stream streams all content from a file on a per line basis. Concurrency safe.
+// Stream streams all content from a file on a per line basis.
 func Stream(fn string, s Streamer) error {
-	f, err := os.Open(fn)
+	byLines, err := OpenByLines(fn)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer byLines.Close()
 
-	scn := bufio.NewScanner(f)
-	for scn.Scan() {
-		err := s.Send(scn.Text())
+	for {
+		bytes, err := byLines.Read()
 		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
 			return err
 		}
-	}
 
-	return nil
+		s.Send(string(bytes))
+	}
 }
