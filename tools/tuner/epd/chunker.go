@@ -48,7 +48,7 @@ type Chunker struct {
 
 type lineAddr struct {
 	start int64
-	end   int64
+	end   int64 // non inclusive, and addresses the physical file which includes the '\n'
 }
 
 func NewChunker(fn string) (*Chunker, error) {
@@ -68,7 +68,7 @@ func NewChunker(fn string) (*Chunker, error) {
 			}
 			return nil, err
 		}
-		end := curr + int64(len(line))
+		end := curr + int64(len(line)) + 1 // +1 for '\n'
 		lineManifest = append(lineManifest, lineAddr{curr, end})
 		curr = end
 	}
@@ -78,10 +78,10 @@ func (c Chunker) LineCount() int { return len(c.lineManifest) }
 
 // Chunk is a virtual window to the physical file as if the order of the lines
 // were shuffled based on the epoch. It limits reading between a start and end
-// index. The indices are indexing in the shuffled order. Therefor a line might
-// be returned that is outside of the start end range in the physical file
-// order. Lines are read in the order of the phisical file, potentially with
-// gaps.
+// index. The indices are indexing in the shuffled order. Therefore a line
+// might be returned that is outside of the start end range in the physical
+// file order. Lines are read in the order of the physical file, potentially
+// with gaps.
 //
 // For examples see Chunker.
 type Chunk struct {
@@ -148,7 +148,7 @@ func (c *Chunk) Read() ([]byte, error) {
 			c.mapStart = addr.start
 			c.mapEnd = addr.start + int64(cnt)
 		} else {
-			bytes := c.mapBytes[:addr.end-addr.start]
+			bytes := c.mapBytes[:addr.end-addr.start-1]
 
 			cnt, err := c.f.ReadAt(bytes, addr.start)
 			if err != nil && err != io.EOF {
@@ -164,7 +164,7 @@ func (c *Chunk) Read() ([]byte, error) {
 	}
 
 	c.chunkLinesIx++
-	return c.mapBytes[addr.start-c.mapStart : addr.end-c.mapStart], nil
+	return c.mapBytes[addr.start-c.mapStart : addr.end-c.mapStart-1], nil
 }
 
 // Reset resets reading from a mapping.
