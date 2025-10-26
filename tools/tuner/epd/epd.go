@@ -45,6 +45,8 @@ func Stream(fn string, s Streamer) error {
 			return err
 		}
 
-		s.Send(string(bytes))
+		if err := s.Send(string(bytes)); err != nil {
+			return err
+		}
 	}
 }

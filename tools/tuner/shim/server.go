@@ -58,8 +58,7 @@ func (s streamer) Send(line string) error {
 }
 
 func (s tunerServer) StreamEPD(_ *pb.EPDStreamRequest, stream grpc.ServerStreamingServer[pb.EPDLine]) error {
-	epd.Stream(s.filename, streamer{stream})
-	return nil
+	return epd.Stream(s.filename, streamer{stream})
 }
 
 func (s tunerServer) RequestJob(_ context.Context, _ *pb.JobRequest) (*pb.JobResponse, error) {

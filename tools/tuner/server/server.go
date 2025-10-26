@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -50,6 +51,11 @@ func Run(args []string) {
 	sFlags.StringVar(&minKPProf, "kpprof", "", "filename for gathering cpu profiling data from the mse minimization with k")
 	sFlags.StringVar(&minKMProf, "kmprof", "", "filename for gathering mem profiling data from the mse minimization with k")
 	sFlags.Parse(args)
+
+	if epdFileName == "" {
+		slog.Error("no epd file given")
+		os.Exit(app.ExitFailure)
+	}
 
 	k, err := minimizeK(epdFileName, minKPProf, minKMProf)
 	if err != nil {
@@ -377,10 +383,10 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 	step := 1.0
 
 	mse, err := fileMSE(fn, k, &coeffs)
-	slog.Info("minimizing mse with k", "k", k, "mse", mse)
 	if err != nil {
 		return 0, err
 	}
+	slog.Info("minimizing mse with k", "k", k, "mse", mse)
 
 	b := board.Board{}
 	res := 0.0
@@ -456,6 +462,8 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 	return k, nil
 }
 
+var ErrInvalidEpd = errors.New("invalid epd file")
+
 func fileMSE(fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 	byLines, err := epd.OpenByLines(fn)
 	if err != nil {
@@ -472,7 +480,7 @@ func fileMSE(fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 		line, err := byLines.Read()
 		if err != nil {
 			if err == io.EOF {
-				return sum / float64(cnt), nil
+				break
 			}
 			return 0, err
 		}
@@ -486,4 +494,9 @@ func fileMSE(fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 		sum += (res - sgm) * (res - sgm)
 		cnt++
 	}
+	if cnt == 0 {
+		slog.Error("no lines in epd", "filename", fn)
+		return 0, ErrInvalidEpd
+	}
+	return sum / float64(cnt), nil
 }
