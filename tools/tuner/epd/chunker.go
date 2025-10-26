@@ -137,30 +137,13 @@ func (c *Chunk) Read() ([]byte, error) {
 
 	// is the line outside of the backing buffer
 	if c.mapStart > addr.start || c.mapEnd < addr.end {
-		// if there is a next line and it would be in the backing buffer read the backing buffer
-		if c.chunkLinesIx+1 < len(c.chunkLines) &&
-			c.chunkLines[c.chunkLinesIx+1].end <= addr.start+backingBytes {
-			cnt, err := c.f.ReadAt(c.mapBytes, addr.start)
-			if err != nil && err != io.EOF {
-				return nil, err
-			}
-
-			c.mapStart = addr.start
-			c.mapEnd = addr.start + int64(cnt)
-		} else {
-			bytes := c.mapBytes[:addr.end-addr.start-1]
-
-			cnt, err := c.f.ReadAt(bytes, addr.start)
-			if err != nil && err != io.EOF {
-				return nil, err
-			}
-			if cnt != int(addr.end-addr.start) {
-				return nil, ErrTruncatedRead
-			}
-
-			c.chunkLinesIx++
-			return bytes, nil
+		cnt, err := c.f.ReadAt(c.mapBytes, addr.start)
+		if err != nil && err != io.EOF {
+			return nil, err
 		}
+
+		c.mapStart = addr.start
+		c.mapEnd = addr.start + int64(cnt)
 	}
 
 	c.chunkLinesIx++
