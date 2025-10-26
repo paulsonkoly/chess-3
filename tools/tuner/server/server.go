@@ -173,6 +173,7 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 	mse, err := fileMSE(fn, k, &eCoeffs)
 	if err != nil {
 		slog.Error("mse calculation error", "error", err)
+		os.Exit(app.ExitFailure)
 	}
 
 	coeffs := eCoeffs.ToVector(tuning.DefaultTargets)
