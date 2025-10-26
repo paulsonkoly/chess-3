@@ -60,6 +60,7 @@ func Run(args []string) {
 	k, err := minimizeK(epdFileName, minKPProf, minKMProf)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)
+		os.Exit(app.ExitFailure)
 	}
 
 	jobQueue := make(chan shim.Job, JobQueueDepth)
@@ -206,12 +207,12 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 				for {
 					line, err := fChunk.Read()
 					if err != nil {
+						fChunk.Close()
 						if err == io.EOF {
-							fChunk.Close()
 							break
 						}
-						slog.Warn("read error", "error", err)
-						continue
+						slog.Error("read error", "error", err)
+						os.Exit(app.ExitFailure)
 					}
 
 					cSumCol.Collect(line)
@@ -409,7 +410,7 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 						byLines.Rewind()
 						break
 					}
-					return 0, nil
+					return 0, err
 				}
 
 				if err := epd.Parse(line, &b, &res); err != nil {
@@ -421,6 +422,9 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 				sgm = tuning.Sigmoid(score, k-step)
 				eLow += (res - sgm) * (res - sgm)
 				cnt++
+			}
+			if cnt == 0 {
+				return 0, ErrInvalidEpd
 			}
 			eHigh /= float64(cnt)
 			eLow /= float64(cnt)
