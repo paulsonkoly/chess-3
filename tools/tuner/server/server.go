@@ -453,7 +453,7 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 			slog.Error("memory profile error", "error", err)
 			os.Exit(app.ExitFailure)
 		}
-		defer f.Close() // error handling omitted for example
+		defer f.Close()
 		runtime.GC()    // get up-to-date statistics
 		// Lookup("allocs") creates a profile similar to go test -memprofile.
 		// Alternatively, use Lookup("heap") for a profile
