@@ -7,7 +7,7 @@ commit_message_check(){
       currentbranch=$(git branch --show-current)
 
       # Gets the commits for the current branch and outputs to file
-      git log $currentbranch --pretty=format:"%H" --not main > shafile.txt
+      git log $currentbranch --pretty=format:"%H" --not origin/main > shafile.txt
 
       failed=0
 
