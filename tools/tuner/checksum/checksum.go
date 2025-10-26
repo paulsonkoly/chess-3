@@ -53,8 +53,8 @@ type Collector struct {
 func NewCollector() Collector { return Collector{sha256.New()} }
 
 // Collect feeds a single line data to c.
-func (c *Collector) Collect(line string) error {
-	c.sha.Write([]byte(line))
+func (c *Collector) Collect(line []byte) error {
+	c.sha.Write(line)
 	return nil
 }
 

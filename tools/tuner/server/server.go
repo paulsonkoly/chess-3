@@ -1,17 +1,21 @@
 package server
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"net"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"time"
 
 	"github.com/essentialkaos/ek/v13/fmtutil/table"
 	"github.com/google/uuid"
+	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
@@ -37,6 +41,7 @@ func Run(args []string) {
 	var port int
 	var outFn string
 	var minKPProf string
+	var minKMProf string
 
 	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
 	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
@@ -44,23 +49,24 @@ func Run(args []string) {
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
 	sFlags.StringVar(&outFn, "out", "coeffs.go", "coeff output file")
 	sFlags.StringVar(&minKPProf, "kpprof", "", "filename for gathering cpu profiling data from the mse minimization with k")
+	sFlags.StringVar(&minKMProf, "kmprof", "", "filename for gathering mem profiling data from the mse minimization with k")
 	sFlags.Parse(args)
 
-	epdF, err := epd.New(epdFileName)
-	if err != nil {
-		slog.Error("failed to load epd file", "filename", epdFileName)
+	if epdFileName == "" {
+		slog.Error("no epd file given")
 		os.Exit(app.ExitFailure)
 	}
-	slog.Debug("loaded epd", "filename", epdF.Basename())
-	k, err := minimizeK(epdF, minKPProf)
+
+	k, err := minimizeK(epdFileName, minKPProf, minKMProf)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)
+		os.Exit(app.ExitFailure)
 	}
 
 	jobQueue := make(chan shim.Job, JobQueueDepth)
 	resultQueue := make(chan shim.Result, ResultQueueDepth)
 
-	go epdProcess(epdF, outFn, k, jobQueue, resultQueue)
+	go epdProcess(epdFileName, outFn, k, jobQueue, resultQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
@@ -69,7 +75,7 @@ func Run(args []string) {
 	}
 
 	slog.Info("listening for incoming connections", "host", host, "port", port)
-	shim.NewServer(epdF, jobQueue, resultQueue).Serve(lis)
+	shim.NewServer(epdFileName, jobQueue, resultQueue).Serve(lis)
 }
 
 // serverJob is what the server tracks about a job.
@@ -161,12 +167,13 @@ func (b batchTracker) schedule() (chunk *serverChunk, ok bool) {
 	return nil, false
 }
 
-func epdProcess(epdF *epd.File, outFn string, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
+func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
 	eCoeffs := tuning.EngineCoeffs()
 
-	mse, err := fileMSE(epdF, k, &eCoeffs)
+	mse, err := fileMSE(fn, k, &eCoeffs)
 	if err != nil {
 		slog.Error("mse calculation error", "error", err)
+		os.Exit(app.ExitFailure)
 	}
 
 	coeffs := eCoeffs.ToVector(tuning.DefaultTargets)
@@ -176,21 +183,43 @@ func epdProcess(epdF *epd.File, outFn string, k float64, jobQueue chan<- shim.Jo
 	sumJobTimes := 0 * time.Second
 	completeJobCnt := 0
 
+	chunker, err := epd.NewChunker(fn)
+	if err != nil {
+		slog.Error("open error", "error", err)
+		os.Exit(app.ExitFailure)
+	}
+
 	for epoch := 1; true; {
 		slog.Debug("new epoch", "epoch", epoch)
 
-		for batch := range tuning.Batches(epdF.LineCount()) {
+		for batch := range tuning.Batches(chunker.LineCount()) {
 
 			grads := tuning.NullVector(tuning.DefaultTargets)
 
 			// gather the chunks in the batch and create server tracking structures
 			tracker := make(batchTracker, 0, tuning.NumChunksInBatch)
 			for chunk := range tuning.Chunks(batch) {
-				checksum, err := epdF.ChunkChecksum(epoch, chunk.Start, chunk.End)
+				fChunk, err := chunker.Open(epoch, chunk.Start, chunk.End)
 				if err != nil {
-					slog.Error("checksum calculation error", "error", err)
+					slog.Error("map error", "error", err)
+					os.Exit(app.ExitFailure)
 				}
-				tracker = append(tracker, serverChunk{Range: chunk, checksum: checksum})
+				cSumCol := checksum.NewCollector()
+				for {
+					line, err := fChunk.Read()
+					if err != nil {
+						fChunk.Close()
+						if err == io.EOF {
+							break
+						}
+						slog.Error("read error", "error", err)
+						os.Exit(app.ExitFailure)
+					}
+
+					cSumCol.Collect(line)
+				}
+
+				tracker = append(tracker, serverChunk{Range: chunk, checksum: cSumCol.Checksum()})
 			}
 
 			// while there is an incomplete chunk in the batch
@@ -311,7 +340,7 @@ func epdProcess(epdF *epd.File, outFn string, k float64, jobQueue chan<- shim.Jo
 		fmt.Println(epoch)
 
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
-		newMSE, err := fileMSE(epdF, k, &eCoeffs)
+		newMSE, err := fileMSE(fn, k, &eCoeffs)
 		if err != nil {
 			slog.Error("mse calculation error", "error", err)
 			os.Exit(app.ExitFailure)
@@ -334,7 +363,7 @@ func epdProcess(epdF *epd.File, outFn string, k float64, jobQueue chan<- shim.Jo
 	}
 }
 
-func minimizeK(epdF *epd.File, pprofFile string) (float64, error) {
+func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 	if pprofFile != "" {
 		f, err := os.Create(pprofFile)
 		if err != nil {
@@ -355,22 +384,51 @@ func minimizeK(epdF *epd.File, pprofFile string) (float64, error) {
 	improved := true
 	step := 1.0
 
-	mse, err := fileMSE(epdF, k, &coeffs)
-	slog.Info("minimizing mse with k", "k", k, "mse", mse)
+	mse, err := fileMSE(fn, k, &coeffs)
 	if err != nil {
 		return 0, err
 	}
+	slog.Info("minimizing mse with k", "k", k, "mse", mse)
+
+	b := board.Board{}
+	res := 0.0
+	byLines, err := epd.OpenByLines(fn)
+	if err != nil {
+		return 0, err
+	}
+	defer byLines.Close()
+
 	for step > 0.0001 {
 		slog.Info("k step", "k", k, "step", step)
 		for improved {
-			eHigh, err := fileMSE(epdF, k+step, &coeffs)
-			if err != nil {
-				return 0, err
+			eHigh := 0.0
+			eLow := 0.0
+			cnt := 0
+			for {
+				line, err := byLines.Read()
+				if err != nil {
+					if err == io.EOF {
+						byLines.Rewind()
+						break
+					}
+					return 0, err
+				}
+
+				if err := epd.Parse(line, &b, &res); err != nil {
+					return 0, err
+				}
+				score := coeffs.Eval(&b)
+				sgm := tuning.Sigmoid(score, k+step)
+				eHigh += (res - sgm) * (res - sgm)
+				sgm = tuning.Sigmoid(score, k-step)
+				eLow += (res - sgm) * (res - sgm)
+				cnt++
 			}
-			eLow, err := fileMSE(epdF, k-step, &coeffs)
-			if err != nil {
-				return 0, err
+			if cnt == 0 {
+				return 0, ErrInvalidEpd
 			}
+			eHigh /= float64(cnt)
+			eLow /= float64(cnt)
 			improved = false
 
 			nK := k - step
@@ -390,29 +448,60 @@ func minimizeK(epdF *epd.File, pprofFile string) (float64, error) {
 		step /= 10.0
 		improved = true
 	}
+	if memprofFile != "" {
+		f, err := os.Create(memprofFile)
+		if err != nil {
+			slog.Error("memory profile error", "error", err)
+			os.Exit(app.ExitFailure)
+		}
+		defer f.Close()
+		runtime.GC()    // get up-to-date statistics
+		// Lookup("allocs") creates a profile similar to go test -memprofile.
+		// Alternatively, use Lookup("heap") for a profile
+		// that has inuse_space as the default index.
+		if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
+			slog.Error("memory profile error", "error", err)
+			os.Exit(app.ExitFailure)
+		}
+	}
 	return k, nil
 }
 
-func fileMSE(epdF *epd.File, k float64, coeffs *tuning.EngineRep) (float64, error) {
-	sum := float64(0)
-	for batch := range tuning.Batches(epdF.LineCount()) {
-		for chunk := range tuning.Chunks(batch) {
-			chunkEntries, err := epdF.Chunk(1, chunk.Start, chunk.End)
-			if err != nil {
-				return 0, err
-			}
+var ErrInvalidEpd = errors.New("invalid epd file")
 
-			for _, epdE := range chunkEntries {
-				b := epdE.Board
-				r := epdE.Result
-
-				score := coeffs.Eval(b)
-
-				sgm := tuning.Sigmoid(score, k)
-
-				sum += (r - sgm) * (r - sgm)
-			}
-		}
+func fileMSE(fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
+	byLines, err := epd.OpenByLines(fn)
+	if err != nil {
+		return 0, err
 	}
-	return sum / float64(epdF.LineCount()), nil
+	defer byLines.Close()
+
+	sum := 0.0
+	cnt := 0
+	b := board.Board{}
+	res := 0.0
+
+	for {
+		line, err := byLines.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+
+		err = epd.Parse(line, &b, &res)
+		if err != nil {
+			return 0, err
+		}
+		score := coeffs.Eval(&b)
+		sgm := tuning.Sigmoid(score, k)
+		sum += (res - sgm) * (res - sgm)
+		cnt++
+	}
+	if cnt == 0 {
+		slog.Error("no lines in epd", "filename", fn)
+		return 0, ErrInvalidEpd
+	}
+	return sum / float64(cnt), nil
 }

@@ -9,7 +9,23 @@ import (
 )
 
 func FromFEN(fen string) (*Board, error) {
-	p := fenParser{fen: fen, l: len(fen)}
+	b := Board{}
+
+	if err := ParseFEN(&b, []byte(fen)); err != nil {
+		return nil, err
+	}
+
+	b.hashes = []Hash{b.CalculateHash()}
+
+	return &b, nil
+}
+
+// ParseFEN is a no allocation version of FEN parsing. It fills in the board in
+// *b and it omits allocating the board hash.
+func ParseFEN(b *Board, fen []byte) error {
+	p := fenParser{fen: fen, l: len(fen), b: b}
+
+	*b = Board{}
 
 	if err := p.seq(
 		p.position,
@@ -18,14 +34,10 @@ func FromFEN(fen string) (*Board, error) {
 		p.enPassant,
 		p.fifty,
 	); err != nil {
-		return nil, err
+		return err
 	}
 
-	b := &p.b
-
-	b.hashes = append(b.hashes, b.CalculateHash())
-
-	return b, nil
+	return nil
 }
 
 var cToP = map[byte]Piece{
@@ -34,10 +46,10 @@ var cToP = map[byte]Piece{
 }
 
 type fenParser struct {
-	fen string
+	fen []byte
 	ix  int
 	l   int
-	b   Board
+	b   *Board
 }
 
 func (fp *fenParser) seq(parsers ...func() error) error {

@@ -77,8 +77,8 @@ func (v *Vector) CombinePerturbed(other Vector, epsilon float64, comb func(float
 type EngineRep eval.CoeffSet[float64]
 
 // Eval returns the evaluation function result.
-func (e EngineRep) Eval(b *board.Board) float64 {
-	score := eval.Eval(b, (*eval.CoeffSet[float64])(&e))
+func (e *EngineRep) Eval(b *board.Board) float64 {
+	score := eval.Eval(b, (*eval.CoeffSet[float64])(e))
 
 	if b.STM == Black {
 		score = -score // convert to side relative
@@ -202,7 +202,7 @@ func setFieldFloats(dst reflect.Value, floats []float64) int {
 		if len(floats) < 1 {
 			panic("array empty")
 		}
-		dst.Set(reflect.ValueOf(floats[0]))
+		dst.SetFloat(floats[0])
 
 		return 1
 

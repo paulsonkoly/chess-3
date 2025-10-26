@@ -6,8 +6,11 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"runtime/pprof"
 
+	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
+	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
@@ -21,11 +24,15 @@ func Run(args []string) {
 	var host string
 	var port int
 	var numThreads int
+	var workerPProf string
+	var workerMProf string
 
 	sFlags := flag.NewFlagSet("client", flag.ExitOnError)
 	sFlags.StringVar(&host, "host", "localhost", "host to connect to")
 	sFlags.IntVar(&port, "port", 9001, "port to connect to")
 	sFlags.IntVar(&numThreads, "threads", runtime.NumCPU(), "number of worker threads")
+	sFlags.StringVar(&workerPProf, "wpprof", "", "filename for gathering cpu profiling data for the first job of the worker")
+	sFlags.StringVar(&workerMProf, "wmprof", "", "filename for gathering mem profiling data from the first job of the worker")
 	sFlags.Parse(args)
 
 	client, err := shim.NewClient(host, port)
@@ -38,10 +45,18 @@ func Run(args []string) {
 	slog.Info("connected to server", "host", host, "port", port)
 
 	epdInfo := obtainEPDInfo(client)
-	epdF := obtainEPD(epdInfo, client)
+	obtainEPD(epdInfo, client)
+
+	chunker, err := epd.NewChunker(epdInfo.Filename)
+	if err != nil {
+		slog.Error("chunker error", "error", err)
+		os.Exit(app.ExitFailure)
+	}
 
 	for range numThreads {
-		go clientWorker(epdF, client)
+		go clientWorker(chunker, client, workerPProf, workerMProf)
+		workerPProf = "" // only profile in the first worker
+		workerMProf = ""
 	}
 
 	select {}
@@ -57,20 +72,18 @@ func obtainEPDInfo(client shim.Client) shim.EPDInfo {
 	return epdInfo
 }
 
-func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
-	var epdF *epd.File
+func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) {
 	var retry int
 
 	for haveEPD := false; !haveEPD && retry < EPDRetryCount; {
-		var err error
-		epdF, err = epd.New(epdInfo.Filename)
 
-		if err != nil {
-			if !os.IsNotExist(err) {
-				slog.Error("unexpected error on epd load", "error", err)
-				os.Exit(app.ExitFailure)
-			}
+		exists := false
+		stat, err := os.Stat(epdInfo.Filename)
+		if err == nil && stat.Mode().IsRegular() {
+			exists = true
+		}
 
+		if !exists {
 			slog.Info("downloading epd", "filename", epdInfo.Filename, "checksum", epdInfo.Checksum)
 
 			stream, err := client.StreamEPD()
@@ -105,7 +118,7 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 				os.Exit(app.ExitFailure)
 			}
 		} else {
-			fChecksum, err := epdF.Checksum()
+			fChecksum, err := epd.Checksum(epdInfo.Filename)
 			if err != nil {
 				slog.Error("checksum calculation error", "error", err)
 				os.Exit(app.ExitFailure)
@@ -118,23 +131,24 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) *epd.File {
 					"epdF.Checksum", fChecksum,
 					"epdInfo.Checksum", epdInfo.Checksum)
 
-				slog.Debug("deleting local epd", "filename", epdF.Basename())
-				if err := os.Remove(epdF.Basename()); err != nil {
+				slog.Debug("deleting local epd", "filename", epdInfo.Filename)
+				if err := os.Remove(epdInfo.Filename); err != nil {
 					slog.Error("can't remove bad epd file", "error", err)
 					os.Exit(app.ExitFailure)
 				}
 			} else {
-				haveEPD = true
+				return
 			}
 		}
 
 		retry++
 	}
-	return epdF
+	slog.Error("can't retrieve epd", "retry", retry)
+	os.Exit(app.ExitFailure)
 }
 
-func clientWorker(epdF *epd.File, client shim.Client) {
-	for {
+func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) {
+	for cnt := 0; ; cnt++ {
 		slog.Debug("requesting job")
 		job, err := client.RequestJob()
 		if err != nil {
@@ -143,48 +157,120 @@ func clientWorker(epdF *epd.File, client shim.Client) {
 		}
 		slog.Info("received job", "job", job)
 
-		checksum, err := epdF.ChunkChecksum(job.Epoch, job.Range.Start, job.Range.End)
+		var pprofOsFile *os.File
+
+		if cnt == 0 {
+			if pprofFile != "" {
+				pprofOsFile, err = os.Create(pprofFile)
+				if err != nil {
+					slog.Error("pprof file creation error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+				if err := pprof.StartCPUProfile(pprofOsFile); err != nil {
+					slog.Error("pprof start error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+			}
+		}
+
+		fChunk, err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
-			slog.Error("checksum calculation error", "error", err)
+			slog.Error("chunk mapping error", "error", err)
 			os.Exit(app.ExitFailure)
 		}
 
-		if !job.Checksum.Matches(checksum) {
-			slog.Error("chunk checksum mismatch", "checksum", checksum, "job.checksum", job.Checksum)
-			os.Exit(app.ExitFailure)
+		cSumCol := checksum.NewCollector()
+		for {
+			line, err := fChunk.Read()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				slog.Warn("read error", "error", err)
+				continue
+			}
+
+			cSumCol.Collect(line)
 		}
 
-		chunk, err := epdF.Chunk(job.Epoch, job.Range.Start, job.Range.End)
-		if err != nil {
-			slog.Error("chunking error", "error", err)
+		if !job.Checksum.Matches(cSumCol.Checksum()) {
+			slog.Error("chunk checksum mismatch", "checksum", cSumCol.Checksum(), "job.checksum", job.Checksum)
 			os.Exit(app.ExitFailure)
 		}
 
 		coeffs := job.Coefficients
 		eCoeffs := tuning.EngineCoeffs()
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
+		eCoeffs2 := eCoeffs // pre-allocate a working copy of the coeffs
 		grads := tuning.NullVector(tuning.DefaultTargets)
 		k := job.K
 
 		slog.Info("working on job", "job", job)
 
-		for _, entry := range chunk {
-			score := eCoeffs.Eval(entry.Board)
+		fChunk.Rewind()
+		b := board.Board{}
+		res := 0.0
+
+		for {
+			line, err := fChunk.Read()
+			if err != nil {
+				if err == io.EOF {
+					fChunk.Close()
+					break
+				}
+				slog.Warn("read error", "error", err)
+				continue
+			}
+			if err := epd.Parse([]byte(line), &b, &res); err != nil {
+				slog.Warn("parse error", "error", err)
+				continue
+			}
+
+			score := eCoeffs.Eval(&b)
 			sigm := tuning.Sigmoid(score, k)
-			loss := (entry.Result - sigm) * (entry.Result - sigm)
+			loss := (res - sigm) * (res - sigm)
 
 			grads.CombinePerturbed(coeffs, tuning.Epsilon,
 				func(g float64, c tuning.Vector) float64 {
 					// we need to work on a local copy of eCoeffs.
-					eCoeffs := eCoeffs
-					eCoeffs.SetVector(c, tuning.DefaultTargets)
+					eCoeffs2 = eCoeffs
+					eCoeffs2.SetVector(c, tuning.DefaultTargets)
 
-					score2 := eCoeffs.Eval(entry.Board)
+					score2 := eCoeffs2.Eval(&b)
 					sigm2 := tuning.Sigmoid(score2, k)
-					loss2 := (entry.Result - sigm2) * (entry.Result - sigm2)
+					loss2 := (res - sigm2) * (res - sigm2)
 
 					return g + (loss2-loss)/tuning.Epsilon
 				})
+		}
+
+		if cnt == 0 {
+			if memprofFile != "" {
+				f, err := os.Create(memprofFile)
+				if err != nil {
+					slog.Error("memory profile error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+				runtime.GC() // get up-to-date statistics
+				// Lookup("allocs") creates a profile similar to go test -memprofile.
+				// Alternatively, use Lookup("heap") for a profile
+				// that has inuse_space as the default index.
+				if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
+					slog.Error("memory profile error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+				if err := f.Close(); err != nil {
+					slog.Error("memory profile close", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+			}
+			if pprofOsFile != nil {
+				pprof.StopCPUProfile()
+				if err := pprofOsFile.Close(); err != nil {
+					slog.Error("cpu profile close", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+			}
 		}
 
 		results := shim.Result{
