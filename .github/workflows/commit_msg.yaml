@@ -1,29 +1,19 @@
 name: 'Commit Message Check'
+
 on:
   pull_request:
-    types:
-      - opened
-      - edited
-      - reopened
-      - synchronize
-  pull_request_target:
-    types:
-      - opened
-      - edited
-      - reopened
-      - synchronize
-  push:
-    branches:
-      - main
+    types: [opened, edited, reopened, synchronize]
 
 jobs:
   check-commit-message:
-    name: Check Commit Message
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout PR commit safely
         uses: actions/checkout@v4
         with:
-          ref: ${{github.event.pull_request.head.sha }}
-      - name: Check Commit Type
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Run commit message check
         run: .github/scripts/checkmessage.sh
