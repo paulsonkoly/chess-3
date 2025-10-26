@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"runtime/pprof"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
@@ -23,11 +24,15 @@ func Run(args []string) {
 	var host string
 	var port int
 	var numThreads int
+	var workerPProf string
+	var workerMProf string
 
 	sFlags := flag.NewFlagSet("client", flag.ExitOnError)
 	sFlags.StringVar(&host, "host", "localhost", "host to connect to")
 	sFlags.IntVar(&port, "port", 9001, "port to connect to")
 	sFlags.IntVar(&numThreads, "threads", runtime.NumCPU(), "number of worker threads")
+	sFlags.StringVar(&workerPProf, "wpprof", "", "filename for gathering cpu profiling data for the first job of the worker")
+	sFlags.StringVar(&workerMProf, "wmprof", "", "filename for gathering mem profiling data from the first job of the worker")
 	sFlags.Parse(args)
 
 	client, err := shim.NewClient(host, port)
@@ -49,7 +54,9 @@ func Run(args []string) {
 	}
 
 	for range numThreads {
-		go clientWorker(chunker, client)
+		go clientWorker(chunker, client, workerPProf, workerMProf)
+		workerPProf = "" // only profile in the first worker
+		workerMProf = ""
 	}
 
 	select {}
@@ -140,8 +147,8 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) {
 	os.Exit(app.ExitFailure)
 }
 
-func clientWorker(chunker *epd.Chunker, client shim.Client) {
-	for {
+func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) {
+	for cnt := 0; ; cnt++ {
 		slog.Debug("requesting job")
 		job, err := client.RequestJob()
 		if err != nil {
@@ -150,7 +157,23 @@ func clientWorker(chunker *epd.Chunker, client shim.Client) {
 		}
 		slog.Info("received job", "job", job)
 
-		fChunk,err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
+		var pprofOsFile *os.File
+
+		if cnt == 0 {
+			if pprofFile != "" {
+				pprofOsFile, err = os.Create(pprofFile)
+				if err != nil {
+					slog.Error("pprof file creation error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+				if err := pprof.StartCPUProfile(pprofOsFile); err != nil {
+					slog.Error("pprof start error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+			}
+		}
+
+		fChunk, err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("chunk mapping error", "error", err)
 			os.Exit(app.ExitFailure)
@@ -178,6 +201,7 @@ func clientWorker(chunker *epd.Chunker, client shim.Client) {
 		coeffs := job.Coefficients
 		eCoeffs := tuning.EngineCoeffs()
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
+		eCoeffs2 := eCoeffs // pre-allocate a working copy of the coeffs
 		grads := tuning.NullVector(tuning.DefaultTargets)
 		k := job.K
 
@@ -209,15 +233,44 @@ func clientWorker(chunker *epd.Chunker, client shim.Client) {
 			grads.CombinePerturbed(coeffs, tuning.Epsilon,
 				func(g float64, c tuning.Vector) float64 {
 					// we need to work on a local copy of eCoeffs.
-					eCoeffs := eCoeffs
-					eCoeffs.SetVector(c, tuning.DefaultTargets)
+					eCoeffs2 = eCoeffs
+					eCoeffs2.SetVector(c, tuning.DefaultTargets)
 
-					score2 := eCoeffs.Eval(&b)
+					score2 := eCoeffs2.Eval(&b)
 					sigm2 := tuning.Sigmoid(score2, k)
 					loss2 := (res - sigm2) * (res - sigm2)
 
 					return g + (loss2-loss)/tuning.Epsilon
 				})
+		}
+
+		if cnt == 0 {
+			if memprofFile != "" {
+				f, err := os.Create(memprofFile)
+				if err != nil {
+					slog.Error("memory profile error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+				runtime.GC() // get up-to-date statistics
+				// Lookup("allocs") creates a profile similar to go test -memprofile.
+				// Alternatively, use Lookup("heap") for a profile
+				// that has inuse_space as the default index.
+				if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
+					slog.Error("memory profile error", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+				if err := f.Close(); err != nil {
+					slog.Error("memory profile close", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+			}
+			if pprofOsFile != nil {
+				pprof.StopCPUProfile()
+				if err := pprofOsFile.Close(); err != nil {
+					slog.Error("cpu profile close", "error", err)
+					os.Exit(app.ExitFailure)
+				}
+			}
 		}
 
 		results := shim.Result{
