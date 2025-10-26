@@ -4,7 +4,7 @@
 
 commit_message_check(){
       # Get the current branch and apply it to a variable
-      currentbranch=`git branch | grep \* | cut -d ' ' -f2`
+      currentbranch=$(git branch --show-current)
 
       # Gets the commits for the current branch and outputs to file
       git log $currentbranch --pretty=format:"%H" --not main > shafile.txt
