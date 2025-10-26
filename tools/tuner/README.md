@@ -22,6 +22,8 @@ rn2r2k/p1R4p/4bp2/8/1Q6/6P1/1P3P1P/6K1 w - - 0 1; 0.0
 
 WDL values are from white's perspective: 1.0 = white wins, 0.5 = draw, 0.0 = black wins.
 
+> [!NOTE] The file format is unix text, that means the lines are ending with '\n' including the last line in the file.
+
 ## Usage
 
 The same binary is used for client and server.
