@@ -6,21 +6,14 @@ on:
 
 jobs:
   check-commit-message:
-    name: Check Commit Message
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout the PR branch
+      - name: Checkout PR commit safely
         uses: actions/checkout@v4
         with:
-          # Checkout using the actual branch name instead of the SHA
-          ref: ${{ github.head_ref }}
-
-      - name: Verify branch context
-        run: |
-          echo "Currently on branch: $(git branch --show-current)"
-          git status
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
       - name: Run commit message check
         run: .github/scripts/checkmessage.sh
-
