@@ -16,7 +16,7 @@ commit_message_check() {
     while read -r sha; do
         git log --format=%B -n 1 "$sha" > msgfile.txt
 
-        if ! egrep '^bench [0-9]+$' msgfile.txt > /dev/null; then
+        if ! grep -E '^bench [0-9]+$' msgfile.txt > /dev/null; then
             echo "Your commit message must contain the bench number"
             echo "it was :"
             cat msgfile.txt
