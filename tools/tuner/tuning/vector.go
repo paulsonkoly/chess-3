@@ -3,6 +3,7 @@ package tuning
 import (
 	"fmt"
 	"io"
+	"iter"
 	"math"
 	"reflect"
 	"slices"
@@ -18,6 +19,8 @@ import (
 type Vector struct {
 	data []float64
 }
+
+func (v *Vector) ModifyElem(i int, mod func(float64) float64) { v.data[i] = mod(v.data[i]) }
 
 // VectorFromSlice constructs a new Vector from data. Array length is not checked.
 func VectorFromSlice(data []float64) Vector { return Vector{data: data} }
@@ -57,18 +60,6 @@ func (v *Vector) Modify(mod func(float64) float64) {
 func (v *Vector) Combine(other Vector, comb func(float64, float64) float64) {
 	for i, e := range v.data {
 		v.data[i] = comb(e, other.data[i])
-	}
-}
-
-// CombinePerturbed modifies v element wise with comb, where comb is given the
-// element from v and the other vector, where the corresponding element is
-// perturbed by epsilon.
-func (v *Vector) CombinePerturbed(other Vector, epsilon float64, comb func(float64, Vector) float64) {
-	for i, e := range v.data {
-		old := other.data[i]
-		other.data[i] += epsilon
-		v.data[i] = comb(e, other)
-		other.data[i] = old
 	}
 }
 
@@ -295,4 +286,44 @@ func writeField(b *strings.Builder, v reflect.Value, indent int) {
 
 func align(indent int) string {
 	return strings.Repeat("\t", indent)
+}
+
+// TunedParams yields a sequential index and a pointer to each tuned parameter
+// in e. Tuned params are selected by targets.
+func (e *EngineRep) TunedParams(targets []string) iter.Seq2[int, *float64] {
+	unWrap := (*eval.CoeffSet[float64])(e)
+	structV := reflect.ValueOf(unWrap).Elem()
+	structT := reflect.TypeOf(unWrap).Elem()
+	cnt := 0
+
+	return func(yield func(int, *float64) bool) {
+		for i := range structT.NumField() {
+			if slices.Contains(targets, structT.Field(i).Name) {
+				if !yieldFields(yield, &cnt, structV.Field(i)) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func yieldFields(yield func(int, *float64) bool, cnt *int, v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if !yieldFields(yield, cnt, v.Index(i)) {
+				return false
+			}
+		}
+
+	case reflect.Float64:
+		if !yield(*cnt, v.Addr().Interface().(*float64)) {
+			return false
+		}
+		*cnt++
+
+	default:
+		panic("unexpected kind " + v.Kind().String())
+	}
+	return true
 }
