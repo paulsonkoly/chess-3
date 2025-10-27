@@ -201,7 +201,6 @@ func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFi
 		coeffs := job.Coefficients
 		eCoeffs := tuning.EngineCoeffs()
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
-		eCoeffs2 := eCoeffs // pre-allocate a working copy of the coeffs
 		grads := tuning.NullVector(tuning.DefaultTargets)
 		k := job.K
 
@@ -230,18 +229,17 @@ func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFi
 			sigm := tuning.Sigmoid(score, k)
 			loss := (res - sigm) * (res - sigm)
 
-			grads.CombinePerturbed(coeffs, tuning.Epsilon,
-				func(g float64, c tuning.Vector) float64 {
-					// we need to work on a local copy of eCoeffs.
-					eCoeffs2 = eCoeffs
-					eCoeffs2.SetVector(c, tuning.DefaultTargets)
+			for i, ptr := range eCoeffs.TunedParams(tuning.DefaultTargets) {
+				old := *ptr
+				*ptr += tuning.Epsilon
 
-					score2 := eCoeffs2.Eval(&b)
-					sigm2 := tuning.Sigmoid(score2, k)
-					loss2 := (res - sigm2) * (res - sigm2)
+				score2 := eCoeffs.Eval(&b)
+				sigm2 := tuning.Sigmoid(score2, k)
+				loss2 := (res - sigm2) * (res - sigm2)
 
-					return g + (loss2-loss)/tuning.Epsilon
-				})
+				grads.ModifyElem(i, func(g float64) float64 { return g + (loss2-loss)/tuning.Epsilon })
+				*ptr = old
+			}
 		}
 
 		if cnt == 0 {
