@@ -249,6 +249,8 @@ func runWithTui(updates <-chan Update) {
 	drawText(s, 1, kTop, kLeft, kBot, tcell.StyleDefault, "k")
 	drawText(s, 1, hostTop, hostLeft, hostBot, tcell.StyleDefault, "host")
 
+	s.Show()
+
 	mu := sync.Mutex{}
 
 	go func() {
