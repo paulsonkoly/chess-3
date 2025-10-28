@@ -13,13 +13,13 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/essentialkaos/ek/v13/fmtutil/table"
 	"github.com/google/uuid"
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
+	"github.com/paulsonkoly/chess-3/tools/tuner/tui"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 )
 
@@ -42,6 +42,7 @@ func Run(args []string) {
 	var outFn string
 	var minKPProf string
 	var minKMProf string
+	var useTui bool
 
 	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
 	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
@@ -50,6 +51,7 @@ func Run(args []string) {
 	sFlags.StringVar(&outFn, "out", "coeffs.go", "coeff output file")
 	sFlags.StringVar(&minKPProf, "kpprof", "", "filename for gathering cpu profiling data from the mse minimization with k")
 	sFlags.StringVar(&minKMProf, "kmprof", "", "filename for gathering mem profiling data from the mse minimization with k")
+	sFlags.BoolVar(&useTui, "tui", false, "render a tui")
 	sFlags.Parse(args)
 
 	if epdFileName == "" {
@@ -57,7 +59,11 @@ func Run(args []string) {
 		os.Exit(app.ExitFailure)
 	}
 
-	k, err := minimizeK(epdFileName, minKPProf, minKMProf)
+	tuiQueue := make(chan tui.Update, tui.QueueDepth)
+
+	go tui.Run(useTui, tuiQueue)
+
+	k, err := minimizeK(epdFileName, tuiQueue, minKPProf, minKMProf)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)
 		os.Exit(app.ExitFailure)
@@ -66,7 +72,7 @@ func Run(args []string) {
 	jobQueue := make(chan shim.Job, JobQueueDepth)
 	resultQueue := make(chan shim.Result, ResultQueueDepth)
 
-	go epdProcess(epdFileName, outFn, k, jobQueue, resultQueue)
+	go epdProcess(epdFileName, outFn, k, jobQueue, resultQueue, tuiQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
@@ -74,8 +80,8 @@ func Run(args []string) {
 		os.Exit(app.ExitFailure)
 	}
 
-	slog.Info("listening for incoming connections", "host", host, "port", port)
-	shim.NewServer(epdFileName, jobQueue, resultQueue).Serve(lis)
+	tuiQueue <- tui.HostUpdate{Host: host, Port: port}
+	shim.NewServer(epdFileName, jobQueue, resultQueue, tuiQueue).Serve(lis)
 }
 
 // serverJob is what the server tracks about a job.
@@ -120,20 +126,19 @@ func (b batchTracker) completed() bool {
 }
 
 type match struct {
-	chunk *serverChunk
-	job   *serverJob
+	chunkIx, jobIx int
 }
 
-func (b batchTracker) match(r shim.Result) (matched *match, ok bool) {
+func (b batchTracker) match(r shim.Result) (matched match, ok bool) {
 	for i, chunk := range b {
 		for j, job := range chunk.jobs {
 
 			if job.UUID == r.UUID {
-				return &match{chunk: &b[i], job: &b[i].jobs[j]}, true
+				return match{chunkIx: i, jobIx: j}, true
 			}
 		}
 	}
-	return nil, false
+	return match{}, false
 }
 
 // schedule contains our job scheduling rules.
@@ -143,10 +148,10 @@ func (b batchTracker) match(r shim.Result) (matched *match, ok bool) {
 //   - if there is a non-completed chunk with jobs, we should find the chunk with earliest deadline.
 //   - if the earliest deadline chunk deadline has passed schedule that one.
 //   - otherwise no job to schedule.
-func (b batchTracker) schedule() (chunk *serverChunk, ok bool) {
+func (b batchTracker) schedule() (chunkIx int, ok bool) {
 	for i, chunk := range b {
 		if len(chunk.jobs) == 0 {
-			return &b[i], true
+			return i, true
 		}
 	}
 
@@ -161,13 +166,20 @@ func (b batchTracker) schedule() (chunk *serverChunk, ok bool) {
 	}
 
 	if ix != -1 && minTime.Before(time.Now()) {
-		return &b[ix], true
+		return ix, true
 	}
 
-	return nil, false
+	return -1, false
 }
 
-func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, resultQueue <-chan shim.Result) {
+func epdProcess(
+	fn,
+	outFn string,
+	k float64,
+	jobQueue chan<- shim.Job,
+	resultQueue <-chan shim.Result,
+	tuiQueue chan<- tui.Update,
+) {
 	eCoeffs := tuning.EngineCoeffs()
 
 	mse, err := fileMSE(fn, k, &eCoeffs)
@@ -183,6 +195,8 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 	sumJobTimes := 0 * time.Second
 	completeJobCnt := 0
 
+	tuiQueue <- tui.LRUpdate{LR: lr}
+
 	chunker, err := epd.NewChunker(fn)
 	if err != nil {
 		slog.Error("open error", "error", err)
@@ -190,9 +204,11 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 	}
 
 	for epoch := 1; true; {
-		slog.Debug("new epoch", "epoch", epoch)
+		tuiQueue <- tui.EpochUpdate{Epoch: epoch}
 
 		for batch := range tuning.Batches(chunker.LineCount()) {
+			tuiQueue <- tui.BatchUpdate{Start: batch.Start, End: batch.End}
+			batchStart := time.Now()
 
 			grads := tuning.NullVector(tuning.DefaultTargets)
 
@@ -224,47 +240,9 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 
 			// while there is an incomplete chunk in the batch
 			for !tracker.completed() {
+				if chunkIx, ok := tracker.schedule(); ok {
+					chunk := &tracker[chunkIx]
 
-				// TODO this is throw away code for now, I envisage some cool tui
-				// interface for this
-				tbl := table.NewTable()
-				headers := make([]string, 0)
-				maxJobs := 0
-				for _, chunk := range tracker {
-					if chunk.completed {
-						headers = append(headers, "D") // done
-					} else if len(chunk.jobs) == 0 {
-						headers = append(headers, "N") // new
-					} else {
-						headers = append(headers, "P") // in progress
-					}
-					if len(chunk.jobs) > maxJobs {
-						maxJobs = len(chunk.jobs)
-					}
-				}
-				tbl.SetHeaders(headers...)
-
-				lines := make([][]any, maxJobs)
-				for i := range lines {
-					lines[i] = make([]any, len(tracker))
-				}
-				now := time.Now()
-				for cIx, chunk := range tracker {
-					for jIx := range maxJobs {
-						if jIx >= len(chunk.jobs) {
-							lines[jIx][cIx] = "-"
-						} else {
-							diff := chunk.jobs[jIx].deadline().Sub(now)
-							lines[jIx][cIx] = fmt.Sprintf("%.0f", diff.Seconds())
-						}
-					}
-				}
-				for _, line := range lines {
-					tbl.Add(line...)
-				}
-				tbl.Render()
-
-				if chunk, ok := tracker.schedule(); ok {
 					//create a sJob for the batch
 					var ttl time.Duration
 					if completeJobCnt == 0 {
@@ -293,7 +271,15 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 					// put the job in the tracking structures
 					chunk.jobs = append(chunk.jobs, sJob)
 
-					slog.Debug("queueing job", "job", sJob)
+					// send the job to the tui
+					tuiQueue <- tui.JobUpdate{
+						ChunkIx:   chunkIx,
+						JobIx:     len(chunk.jobs) - 1,
+						StartTime: sJob.startTime,
+						TTL:       sJob.ttl,
+					}
+
+					tuiQueue <- tui.MsgUpdate{Msg: "queueing job", Args: []any{"uuid", sJob.UUID}}
 
 					// send the job to the client handler
 					jobQueue <- sJob.Job
@@ -303,15 +289,19 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 				select {
 				case result := <-resultQueue:
 					// validate result coming from client and search for a matching job in our structures
-					slog.Debug("received results", "result", result)
+					tuiQueue <- tui.MsgUpdate{Msg: "received results", Args: []any{"uuid", result.UUID}}
+
 					if match, ok := tracker.match(result); ok {
+						chunk := &tracker[match.chunkIx]
+						job := &chunk.jobs[match.jobIx]
 						// if already completed ignore
-						if !match.chunk.completed {
+						if !chunk.completed {
 							grads.Add(result.Gradients)
-							match.chunk.completed = true
+							chunk.completed = true
+							tuiQueue <- tui.ResultUpdate{ChunkIx: match.chunkIx, JobIx: match.jobIx}
 						}
 						// either way it's a data point for the running average of job times.
-						sumJobTimes += time.Since(match.job.startTime)
+						sumJobTimes += time.Since(job.startTime)
 						completeJobCnt++
 					}
 
@@ -333,11 +323,12 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 			step.Combine(vHat, func(mh, vh float64) float64 { return lr * mh / (1e-8 + math.Sqrt(vh)) })
 
 			coeffs.Sub(step)
+
+				tuiQueue <- tui.BatchTimeUpdate{Duration: time.Since(batchStart)}
 		}
 
 		// epoch completed, output coeffs and drop learning rate based on MSE change
 		epoch++
-		fmt.Println(epoch)
 
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
 		newMSE, err := fileMSE(fn, k, &eCoeffs)
@@ -354,16 +345,17 @@ func epdProcess(fn string, outFn string, k float64, jobQueue chan<- shim.Job, re
 		eCoeffs.Save(f, epoch, newMSE)
 		f.Close()
 
-		fmt.Printf("error drop %.10f , bestE %.10f\n", mse-newMSE, newMSE)
+		tuiQueue <- tui.MSEUpdate{MSE: newMSE}
+
 		if newMSE > mse {
-			fmt.Printf("drop negative, LR %.4f -> %.4f\n", lr, lr/2.0)
 			lr /= 2
+			tuiQueue <- tui.LRUpdate{LR: lr}
 		}
 		mse = newMSE
 	}
 }
 
-func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
+func minimizeK(fn string, tuiQueue chan<- tui.Update, pprofFile, memprofFile string) (float64, error) {
 	if pprofFile != "" {
 		f, err := os.Create(pprofFile)
 		if err != nil {
@@ -378,6 +370,8 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 		defer pprof.StopCPUProfile()
 	}
 
+	tuiQueue <- tui.MsgUpdate{Msg: "minimising mse with k"}
+
 	coeffs := tuning.EngineCoeffs()
 
 	k := 2.832 // a scaling constant
@@ -388,7 +382,7 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	slog.Info("minimizing mse with k", "k", k, "mse", mse)
+	tuiQueue <- tui.KUpdate{K: k, Step: step}
 
 	b := board.Board{}
 	res := 0.0
@@ -399,7 +393,7 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 	defer byLines.Close()
 
 	for step > 0.0001 {
-		slog.Info("k step", "k", k, "step", step)
+		tuiQueue <- tui.KUpdate{K: k, Step: step}
 		for improved {
 			eHigh := 0.0
 			eLow := 0.0
@@ -442,7 +436,8 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 				improved = true
 				mse = nE
 				k = nK
-				slog.Info("minimizing mse with k", "k", k, "mse", mse)
+				tuiQueue <- tui.MSEUpdate{MSE: mse}
+				tuiQueue <- tui.KUpdate{K: k, Step: step}
 			}
 		}
 		step /= 10.0
@@ -455,7 +450,7 @@ func minimizeK(fn string, pprofFile, memprofFile string) (float64, error) {
 			os.Exit(app.ExitFailure)
 		}
 		defer f.Close()
-		runtime.GC()    // get up-to-date statistics
+		runtime.GC() // get up-to-date statistics
 		// Lookup("allocs") creates a profile similar to go test -memprofile.
 		// Alternatively, use Lookup("heap") for a profile
 		// that has inuse_space as the default index.
