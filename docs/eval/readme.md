@@ -84,7 +84,7 @@
 ![TempoBonus](tempobonus.png)
 
 
-Middle Game: 14 | End Game: 14
+Middle Game: 11 | End Game: 13
 
 
 ## KingAttackPieces
@@ -142,7 +142,7 @@ Middle Game: 7 | End Game: -1
 ![ConnectedRooks](connectedrooks.png)
 
 
-Middle Game: 2 | End Game: 14
+Middle Game: 2 | End Game: 15
 
 
 ## BishopPair
@@ -156,7 +156,7 @@ Middle Game: 2 | End Game: 14
 ![ProtectedPasser](protectedpasser.png)
 
 
-Middle Game: 20 | End Game: 5
+Middle Game: 20 | End Game: 4
 
 
 ## PasserKingDist
@@ -164,7 +164,7 @@ Middle Game: 20 | End Game: 5
 ![PasserKingDist](passerkingdist.png)
 
 
-Middle Game: -2 | End Game: 11
+Middle Game: -5 | End Game: 11
 
 
 ## PasserRank
@@ -186,6 +186,6 @@ Middle Game: -13 | End Game: -16
 ![IsolatedPawns](isolatedpawns.png)
 
 
-Middle Game: -13 | End Game: -14
+Middle Game: -12 | End Game: -15
 
 
