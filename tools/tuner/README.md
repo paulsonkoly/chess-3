@@ -48,6 +48,10 @@ Usage of client:
     	port to connect to (default 9001)
   -threads int
     	number of worker threads (default 8)
+  -wmprof string
+    	filename for gathering mem profiling data from the first job of the worker
+  -wpprof string
+    	filename for gathering cpu profiling data for the first job of the worker
 ```
 
 ### Server
@@ -60,6 +64,14 @@ Usage of server:
     	epd file name
   -host string
     	host to listen on (default "localhost")
+  -kmprof string
+    	filename for gathering mem profiling data from the mse minimization with k
+  -kpprof string
+    	filename for gathering cpu profiling data from the mse minimization with k
+  -out string
+    	coeff output file (default "coeffs.go")
   -port int
     	port to listen on (default 9001)
+  -tui
+    	render a tui
 ```
