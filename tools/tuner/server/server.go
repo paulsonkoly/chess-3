@@ -431,7 +431,7 @@ func minimizeK(ctx context.Context, fn string, tuiQueue chan<- tui.Update, pprof
 
 				select {
 				case <-ctx.Done():
-					return 0, nil
+					return 0, ctx.Err()
 
 				default:
 				}
@@ -514,7 +514,7 @@ func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep
 
 		select {
 		case <-ctx.Done():
-			return 0, nil
+			return 0, ctx.Err()
 
 		default:
 		}
