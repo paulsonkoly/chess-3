@@ -33,6 +33,10 @@ func (s Server) Serve(lis net.Listener) {
 	s.grpc.Serve(lis)
 }
 
+func (s Server) Stop() {
+	s.grpc.GracefulStop()
+}
+
 type tunerServer struct {
 	pb.UnimplementedTunerServer
 	jobQueue    <-chan Job
