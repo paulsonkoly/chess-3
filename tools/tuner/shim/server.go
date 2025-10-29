@@ -16,7 +16,7 @@ type Server struct {
 	tuner tunerServer
 }
 
-func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result, tuiQueue chan<- tui.Update) Server {
+func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result, tuiQueue chan<- tui.Update) *Server {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	s := tunerServer{
@@ -26,14 +26,14 @@ func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result, tuiQue
 		filename:    fn,
 	}
 	pb.RegisterTunerServer(grpcServer, s)
-	return Server{tuner: s, grpc: grpcServer}
+	return &Server{tuner: s, grpc: grpcServer}
 }
 
-func (s Server) Serve(lis net.Listener) {
+func (s *Server) Serve(lis net.Listener) {
 	s.grpc.Serve(lis)
 }
 
-func (s Server) Stop() {
+func (s *Server) Stop() {
 	s.grpc.GracefulStop()
 }
 
