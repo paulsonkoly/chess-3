@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -212,9 +213,9 @@ func (u MsgUpdate) Log() {
 	slog.Info(u.Msg, u.Args...)
 }
 
-func Run(useTui bool, updates <-chan Update) {
+func Run(ctx context.Context, cancel context.CancelFunc, useTui bool, updates <-chan Update) {
 	if useTui {
-		runWithTui(updates)
+		runWithTui(ctx, cancel, updates)
 	} else {
 		runWithoutTui(updates)
 	}
@@ -227,7 +228,7 @@ func runWithoutTui(updates <-chan Update) {
 	}
 }
 
-func runWithTui(updates <-chan Update) {
+func runWithTui(ctx context.Context, cancel context.CancelFunc, updates <-chan Update) {
 	s, err := tcell.NewScreen()
 	if err != nil {
 		slog.Error("tui screen", "error", err)
@@ -254,32 +255,39 @@ func runWithTui(updates <-chan Update) {
 	mu := sync.Mutex{}
 
 	go func() {
-		for update := range updates {
-			mu.Lock()
-			update.Draw(s)
-			s.Show()
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
 		for {
-			ev := s.PollEvent()
-			switch ev := ev.(type) {
+			select {
 
-			case *tcell.EventResize:
+			case update := <-updates:
 				mu.Lock()
-				s.Sync()
+				update.Draw(s)
+				s.Show()
 				mu.Unlock()
 
-			case *tcell.EventKey:
-				if ev.Key() == tcell.KeyCtrlC {
-					s.Fini()
-					return
-				}
+			case <-ctx.Done():
+				return
+
 			}
 		}
 	}()
+
+	for {
+		ev := s.PollEvent()
+		switch ev := ev.(type) {
+
+		case *tcell.EventResize:
+			mu.Lock()
+			s.Sync()
+			mu.Unlock()
+
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyCtrlC {
+				cancel()
+				s.Fini()
+				return
+			}
+		}
+	}
 }
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {

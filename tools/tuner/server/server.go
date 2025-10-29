@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -59,11 +60,13 @@ func Run(args []string) {
 		os.Exit(app.ExitFailure)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	tuiQueue := make(chan tui.Update, tui.QueueDepth)
 
-	go tui.Run(useTui, tuiQueue)
+	go tui.Run(ctx, cancel, useTui, tuiQueue)
 
-	k, err := minimizeK(epdFileName, tuiQueue, minKPProf, minKMProf)
+	k, err := minimizeK(ctx, epdFileName, tuiQueue, minKPProf, minKMProf)
 	if err != nil {
 		slog.Error("k minimization error", "error", err)
 		os.Exit(app.ExitFailure)
@@ -72,7 +75,7 @@ func Run(args []string) {
 	jobQueue := make(chan shim.Job, JobQueueDepth)
 	resultQueue := make(chan shim.Result, ResultQueueDepth)
 
-	go epdProcess(epdFileName, outFn, k, jobQueue, resultQueue, tuiQueue)
+	go epdProcess(ctx, epdFileName, outFn, k, jobQueue, resultQueue, tuiQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
@@ -81,7 +84,11 @@ func Run(args []string) {
 	}
 
 	tuiQueue <- tui.HostUpdate{Host: host, Port: port}
-	shim.NewServer(epdFileName, jobQueue, resultQueue, tuiQueue).Serve(lis)
+	srv := shim.NewServer(epdFileName, jobQueue, resultQueue, tuiQueue)
+	go srv.Serve(lis)
+
+	<- ctx.Done()
+	srv.Stop()
 }
 
 // serverJob is what the server tracks about a job.
@@ -173,6 +180,7 @@ func (b batchTracker) schedule() (chunkIx int, ok bool) {
 }
 
 func epdProcess(
+	ctx context.Context,
 	fn,
 	outFn string,
 	k float64,
@@ -182,7 +190,7 @@ func epdProcess(
 ) {
 	eCoeffs := tuning.EngineCoeffs()
 
-	mse, err := fileMSE(fn, k, &eCoeffs)
+	mse, err := fileMSE(ctx, fn, k, &eCoeffs)
 	if err != nil {
 		slog.Error("mse calculation error", "error", err)
 		os.Exit(app.ExitFailure)
@@ -307,6 +315,9 @@ func epdProcess(
 
 				case <-time.After(ClientWaitTime * time.Millisecond):
 					// no results coming in yet
+
+				case <-ctx.Done():
+					return
 				}
 			}
 
@@ -324,14 +335,14 @@ func epdProcess(
 
 			coeffs.Sub(step)
 
-				tuiQueue <- tui.BatchTimeUpdate{Duration: time.Since(batchStart)}
+			tuiQueue <- tui.BatchTimeUpdate{Duration: time.Since(batchStart)}
 		}
 
 		// epoch completed, output coeffs and drop learning rate based on MSE change
 		epoch++
 
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
-		newMSE, err := fileMSE(fn, k, &eCoeffs)
+		newMSE, err := fileMSE(ctx, fn, k, &eCoeffs)
 		if err != nil {
 			slog.Error("mse calculation error", "error", err)
 			os.Exit(app.ExitFailure)
@@ -355,7 +366,7 @@ func epdProcess(
 	}
 }
 
-func minimizeK(fn string, tuiQueue chan<- tui.Update, pprofFile, memprofFile string) (float64, error) {
+func minimizeK(ctx context.Context, fn string, tuiQueue chan<- tui.Update, pprofFile, memprofFile string) (float64, error) {
 	if pprofFile != "" {
 		f, err := os.Create(pprofFile)
 		if err != nil {
@@ -378,7 +389,7 @@ func minimizeK(fn string, tuiQueue chan<- tui.Update, pprofFile, memprofFile str
 	improved := true
 	step := 1.0
 
-	mse, err := fileMSE(fn, k, &coeffs)
+	mse, err := fileMSE(ctx, fn, k, &coeffs)
 	if err != nil {
 		return 0, err
 	}
@@ -417,6 +428,13 @@ func minimizeK(fn string, tuiQueue chan<- tui.Update, pprofFile, memprofFile str
 				sgm = tuning.Sigmoid(score, k-step)
 				eLow += (res - sgm) * (res - sgm)
 				cnt++
+
+				select {
+				case <-ctx.Done():
+					return 0, ctx.Err()
+
+				default:
+				}
 			}
 			if cnt == 0 {
 				return 0, ErrInvalidEpd
@@ -464,7 +482,7 @@ func minimizeK(fn string, tuiQueue chan<- tui.Update, pprofFile, memprofFile str
 
 var ErrInvalidEpd = errors.New("invalid epd file")
 
-func fileMSE(fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
+func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 	byLines, err := epd.OpenByLines(fn)
 	if err != nil {
 		return 0, err
@@ -493,6 +511,13 @@ func fileMSE(fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 		sgm := tuning.Sigmoid(score, k)
 		sum += (res - sgm) * (res - sgm)
 		cnt++
+
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+
+		default:
+		}
 	}
 	if cnt == 0 {
 		slog.Error("no lines in epd", "filename", fn)
