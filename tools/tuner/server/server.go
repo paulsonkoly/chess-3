@@ -353,7 +353,7 @@ func epdProcess(
 			slog.Error("coeffs.go", "error", err)
 			os.Exit(app.ExitFailure)
 		}
-		eCoeffs.Save(f, epoch, newMSE)
+		eCoeffs.Save(f, fn, epoch, newMSE)
 		f.Close()
 
 		tuiQueue <- tui.MSEUpdate{MSE: newMSE}
