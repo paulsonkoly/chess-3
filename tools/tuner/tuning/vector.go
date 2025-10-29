@@ -214,12 +214,17 @@ func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	b.WriteString(fmt.Sprintf("// %v\n\n", time.Now()))
 	b.WriteString("var Coefficients = CoeffSet[Score]{\n")
 
+	b.WriteString("import (\n")
+	b.WriteString("	. github.com/paulsonkoly/chess-3/types")
+	b.WriteString(")\n")
+
 	unWrap := eval.CoeffSet[float64](*c)
 	structV := reflect.ValueOf(unWrap)
 	structT := reflect.TypeOf(unWrap)
 
 	for i := range structT.NumField() {
-		b.WriteString(fmt.Sprintf("%s: %s", structT.Field(i).Name, structT.Field(i).Type))
+		typ := strings.ReplaceAll(structT.Field(i).Type.String(), "float64", "Score")
+		b.WriteString(fmt.Sprintf("%s: %s", structT.Field(i).Name, typ))
 		writeField(&b, structV.Field(i), 0)
 		b.WriteString(",\n")
 	}
