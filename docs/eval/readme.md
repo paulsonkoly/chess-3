@@ -84,7 +84,7 @@
 ![TempoBonus](tempobonus.png)
 
 
-Middle Game: 8 | End Game: 12
+Middle Game: 7 | End Game: 12
 
 
 ## KingAttackPieces
@@ -164,7 +164,7 @@ Middle Game: 18 | End Game: 4
 ![PasserKingDist](passerkingdist.png)
 
 
-Middle Game: -8 | End Game: 12
+Middle Game: -8 | End Game: 11
 
 
 ## PasserRank
