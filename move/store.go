@@ -30,6 +30,9 @@ func (s *Store) Clear() {
 }
 
 // Alloc allocates a single move from the top frame. Push should be called first.
+//
+// This method panics if s has run out of space, and more than StoreSize moves
+// have been allocated.
 func (s *Store) Alloc() *Move {
 	s.allocIx++
 	ptr := &s.data[s.allocIx-1]
