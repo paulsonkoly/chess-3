@@ -8,6 +8,7 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+// FromFen creates a new board from a FEN string. It returns error in case the FEN string is invalid.
 func FromFEN(fen string) (*Board, error) {
 	b := Board{}
 
@@ -21,7 +22,8 @@ func FromFEN(fen string) (*Board, error) {
 }
 
 // ParseFEN is a no allocation version of FEN parsing. It fills in the board in
-// *b and it omits allocating the board hash.
+// *b and it omits allocating the board hash. It returns error in case the FEN
+// string is invalid.
 func ParseFEN(b *Board, fen []byte) error {
 	p := fenParser{fen: fen, l: len(fen), b: b}
 

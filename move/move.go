@@ -5,7 +5,7 @@ import . "github.com/paulsonkoly/chess-3/types"
 // Move represents a chess move.
 type Move struct {
 	SimpleMove
-	// Weight is the heiristic weight of the move.
+	// Weight is the heuristic weight of the move.
 	Weight Score
 	// Piece is the type of piece moving.
 	Piece Piece
@@ -24,9 +24,11 @@ type Move struct {
 	FiftyCnt Depth
 }
 
-// SimpleMove s good enough to identify a move, so it can be stored in heuristic stores.
+// SimpleMove s good enough to identify a move, so it can be stored in
+// heuristic stores. It encodes from and to squares and promotion piece.
 type SimpleMove uint16
 
+// FromSquares creates a SimpleMove with origin square from and destination square to.
 func FromSquares(from, to Square) SimpleMove {
 	return (SimpleMove(to) << toShift & toMsk) | (SimpleMove(from) << fromShift & fromMsk)
 }
@@ -63,6 +65,7 @@ func (s SimpleMove) Matches(m *Move) bool {
 	return s == m.SimpleMove
 }
 
+// String representation of s, following uci move notation.
 func (s SimpleMove) String() string {
 	if s == 0 {
 		return "0000"
