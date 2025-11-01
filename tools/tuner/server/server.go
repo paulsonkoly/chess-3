@@ -17,7 +17,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
-	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tui"
@@ -102,7 +101,6 @@ func (j serverJob) deadline() time.Time { return j.startTime.Add(j.ttl) }
 
 type serverChunk struct {
 	tuning.Range
-	checksum  checksum.Checksum
 	completed bool
 	jobs      []serverJob
 }
