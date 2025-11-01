@@ -10,7 +10,6 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
-	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
@@ -173,31 +172,6 @@ func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFi
 			}
 		}
 
-		fChunk, err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
-		if err != nil {
-			slog.Error("chunk mapping error", "error", err)
-			os.Exit(app.ExitFailure)
-		}
-
-		cSumCol := checksum.NewCollector()
-		for {
-			line, err := fChunk.Read()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				slog.Warn("read error", "error", err)
-				continue
-			}
-
-			cSumCol.Collect(line)
-		}
-
-		if !job.Checksum.Matches(cSumCol.Checksum()) {
-			slog.Error("chunk checksum mismatch", "checksum", cSumCol.Checksum(), "job.checksum", job.Checksum)
-			os.Exit(app.ExitFailure)
-		}
-
 		coeffs := job.Coefficients
 		eCoeffs := tuning.EngineCoeffs()
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
@@ -206,10 +180,14 @@ func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFi
 
 		slog.Info("working on job", "job", job)
 
-		fChunk.Rewind()
 		b := board.Board{}
 		res := 0.0
 
+		fChunk, err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
+		if err != nil {
+			slog.Error("chunk mapping error", "error", err)
+			os.Exit(app.ExitFailure)
+		}
 		for {
 			line, err := fChunk.Read()
 			if err != nil {

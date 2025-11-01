@@ -31,9 +31,8 @@ message JobResponse {
   int32 epoch = 2;
   int32 start = 3;
   int32 end = 4;
-  bytes checksum = 5;
-  double k = 6;
-  repeated double coefficients = 7;
+  double k = 5;
+  repeated double coefficients = 6;
 }
 
 message ResultRequest {

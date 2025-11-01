@@ -17,7 +17,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
-	"github.com/paulsonkoly/chess-3/tools/tuner/checksum"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tui"
@@ -87,7 +86,7 @@ func Run(args []string) {
 	srv := shim.NewServer(epdFileName, jobQueue, resultQueue, tuiQueue)
 	go srv.Serve(lis)
 
-	<- ctx.Done()
+	<-ctx.Done()
 	srv.Stop()
 }
 
@@ -102,7 +101,6 @@ func (j serverJob) deadline() time.Time { return j.startTime.Add(j.ttl) }
 
 type serverChunk struct {
 	tuning.Range
-	checksum  checksum.Checksum
 	completed bool
 	jobs      []serverJob
 }
@@ -223,27 +221,7 @@ func epdProcess(
 			// gather the chunks in the batch and create server tracking structures
 			tracker := make(batchTracker, 0, tuning.NumChunksInBatch)
 			for chunk := range tuning.Chunks(batch) {
-				fChunk, err := chunker.Open(epoch, chunk.Start, chunk.End)
-				if err != nil {
-					slog.Error("map error", "error", err)
-					os.Exit(app.ExitFailure)
-				}
-				cSumCol := checksum.NewCollector()
-				for {
-					line, err := fChunk.Read()
-					if err != nil {
-						fChunk.Close()
-						if err == io.EOF {
-							break
-						}
-						slog.Error("read error", "error", err)
-						os.Exit(app.ExitFailure)
-					}
-
-					cSumCol.Collect(line)
-				}
-
-				tracker = append(tracker, serverChunk{Range: chunk, checksum: cSumCol.Checksum()})
+				tracker = append(tracker, serverChunk{Range: chunk})
 			}
 
 			// while there is an incomplete chunk in the batch
@@ -270,7 +248,6 @@ func epdProcess(
 							UUID:         uuid.New(),
 							Epoch:        epoch,
 							Range:        chunk.Range,
-							Checksum:     chunk.checksum,
 							Coefficients: coeffs,
 							K:            k,
 						},
