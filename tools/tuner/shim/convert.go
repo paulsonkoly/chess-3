@@ -37,11 +37,6 @@ func jobFromGrpc(jr *pb.JobResponse) (Job, error) {
 		return result, err
 	}
 
-	result.Checksum, err = checksum.FromBytes(jr.Checksum)
-	if err != nil {
-		return result, err
-	}
-
 	result.K = jr.K
 	result.Epoch = int(jr.Epoch)
 	result.Range = tuning.Range{Start: int(jr.Start), End: int(jr.End)}
@@ -62,7 +57,6 @@ func (j Job) toGrpc() (*pb.JobResponse, error) {
 		Start:        int32(j.Range.Start),
 		End:          int32(j.Range.End),
 		Coefficients: j.Coefficients.VectorToSlice(),
-		Checksum:     j.Checksum.Bytes(),
 		K:            j.K,
 	}, nil
 }

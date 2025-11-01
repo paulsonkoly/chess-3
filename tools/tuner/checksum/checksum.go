@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
-	"hash"
 	"io"
 )
 
@@ -42,27 +41,6 @@ func ReadFrom(r io.Reader) (Checksum, error) {
 	copy(result.data[:], sha.Sum(nil))
 
 	return result, nil
-}
-
-// Collector creates checksum incrementally.
-type Collector struct {
-	sha hash.Hash
-}
-
-// NewCollector creates a new Collector.
-func NewCollector() Collector { return Collector{sha256.New()} }
-
-// Collect feeds a single line data to c.
-func (c *Collector) Collect(line []byte) error {
-	c.sha.Write(line)
-	return nil
-}
-
-// Checksum returns the accumulated Checksum in c.
-func (c Collector) Checksum() Checksum {
-	result := Checksum{}
-	copy(result.data[:], c.sha.Sum(nil))
-	return result
 }
 
 // Bytes returns a byte slice representation of c.

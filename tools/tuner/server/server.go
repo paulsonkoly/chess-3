@@ -87,7 +87,7 @@ func Run(args []string) {
 	srv := shim.NewServer(epdFileName, jobQueue, resultQueue, tuiQueue)
 	go srv.Serve(lis)
 
-	<- ctx.Done()
+	<-ctx.Done()
 	srv.Stop()
 }
 
@@ -223,27 +223,7 @@ func epdProcess(
 			// gather the chunks in the batch and create server tracking structures
 			tracker := make(batchTracker, 0, tuning.NumChunksInBatch)
 			for chunk := range tuning.Chunks(batch) {
-				fChunk, err := chunker.Open(epoch, chunk.Start, chunk.End)
-				if err != nil {
-					slog.Error("map error", "error", err)
-					os.Exit(app.ExitFailure)
-				}
-				cSumCol := checksum.NewCollector()
-				for {
-					line, err := fChunk.Read()
-					if err != nil {
-						fChunk.Close()
-						if err == io.EOF {
-							break
-						}
-						slog.Error("read error", "error", err)
-						os.Exit(app.ExitFailure)
-					}
-
-					cSumCol.Collect(line)
-				}
-
-				tracker = append(tracker, serverChunk{Range: chunk, checksum: cSumCol.Checksum()})
+				tracker = append(tracker, serverChunk{Range: chunk})
 			}
 
 			// while there is an incomplete chunk in the batch
@@ -270,7 +250,6 @@ func epdProcess(
 							UUID:         uuid.New(),
 							Epoch:        epoch,
 							Range:        chunk.Range,
-							Checksum:     chunk.checksum,
 							Coefficients: coeffs,
 							K:            k,
 						},

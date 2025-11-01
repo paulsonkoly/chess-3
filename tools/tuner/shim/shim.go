@@ -19,7 +19,6 @@ type Job struct {
 	Epoch        int               // Epoch is the tuning epoch.
 	Range        tuning.Range      // Range is the EPD range for the workload.
 	Coefficients tuning.Vector     // Coefficients are the tuned coefficients for the current batch.
-	Checksum     checksum.Checksum // Checksum is the EPD chunk checksum.
 	K            float64           // K is the sigmoid constant.
 }
 
