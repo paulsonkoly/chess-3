@@ -330,3 +330,32 @@ func (b *Board) Threefold() Depth {
 	}
 	return cnt
 }
+
+// InvalidPieceCount determines if the position is legally reachable in chess.
+// Returns true if it's not based on the piece counts.
+func (b Board) InvalidPieceCount() bool {
+	for color := White; color <= Black; color++ {
+		if !(b.Colors[color] & b.Pieces[King]).IsPow2() {
+			return true
+		}
+		knights := (b.Colors[color] & b.Pieces[Knight]).Count()
+		bishops := (b.Colors[color] & b.Pieces[Bishop]).Count()
+		rooks := (b.Colors[color] & b.Pieces[Rook]).Count()
+		queens := (b.Colors[color] & b.Pieces[Queen]).Count()
+		pawns := (b.Colors[color] & b.Pieces[Pawn]).Count()
+
+		// Compute the number of pieces that are guaranteed to be promoted Pawns.
+		pknights := max(2, knights) - 2
+		pbishops := max(2, bishops) - 2
+		prooks := max(2, rooks) - 2
+		pqueens := max(1, queens) - 1
+		promoted := pknights + pbishops + prooks + pqueens
+
+		pawns += promoted
+		if (pawns > 8) || (knights+pawns-pknights > 10) || (bishops+pawns-pbishops > 10) ||
+			(rooks+pawns-prooks > 10) || (queens+pawns-pqueens > 9) {
+			return true
+		}
+	}
+	return false
+}

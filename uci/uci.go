@@ -172,21 +172,25 @@ func (e *Engine) handlePosition(args []string) {
 		}
 
 	case "fen":
-		fen := strings.Join(args[1:], " ")
-		spaceIndex := strings.Index(fen, " moves ")
-		if spaceIndex != -1 {
-			b, err := board.FromFEN(fen[:spaceIndex])
-			if err != nil {
-				return
-			}
-			e.Board = b
-			e.applyMoves(strings.Fields(fen[spaceIndex+7:]))
-		} else {
-			b, err := board.FromFEN(fen)
-			if err != nil {
-				return
-			}
-			e.Board = b
+		if len(args) < 7 {
+			fmt.Fprintf(os.Stderr, "not enough arguments %d\n", len(args))
+			return
+		}
+
+		fen := strings.Join(args[1:7], " ")
+		b, err := board.FromFEN(fen)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "invalid fen %v\n", err)
+			return
+		}
+		if b.InvalidPieceCount() {
+			fmt.Fprintln(os.Stderr, "invalid piece counts")
+			return
+		}
+		e.Board = b
+
+		if len(args) >= 8 && args[7] == "moves" {
+			e.applyMoves(args[8:])
 		}
 	}
 }
