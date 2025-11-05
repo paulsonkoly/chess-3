@@ -331,7 +331,7 @@ func (b *Board) Threefold() Depth {
 	return cnt
 }
 
-// InvalidPieceCount determines if the positions is legally reachable in chess.
+// InvalidPieceCount determines if the position is legally reachable in chess.
 // Returns true if it's not based on the piece counts.
 func (b Board) InvalidPieceCount() bool {
 	for color := White; color <= Black; color++ {
