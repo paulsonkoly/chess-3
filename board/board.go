@@ -335,6 +335,9 @@ func (b *Board) Threefold() Depth {
 // Returns true if it's not based on the piece counts.
 func (b Board) InvalidPieceCount() bool {
 	for color := White; color <= Black; color++ {
+		if !(b.Colors[color] & b.Pieces[King]).IsPow2() {
+			return true
+		}
 		knights := (b.Colors[color] & b.Pieces[Knight]).Count()
 		bishops := (b.Colors[color] & b.Pieces[Bishop]).Count()
 		rooks := (b.Colors[color] & b.Pieces[Rook]).Count()
