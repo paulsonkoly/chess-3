@@ -353,7 +353,9 @@ func (e *Engine) handleGo(args []string) {
 		close(e.SST.Stop)
 	}
 
-	fmt.Printf("bestmove %s\n", move)
+	if move != 0 {
+		fmt.Printf("bestmove %s\n", move)
+	}
 }
 
 func parseInt(value string) int {
