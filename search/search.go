@@ -87,7 +87,8 @@ func (s *State) Clear() {
 }
 
 // Search is the main entry point to the engine. It performs and
-// iterative-deepened alpha-beta with aspiration window.
+// iterative-deepened alpha-beta with aspiration window. depth is iterated
+// between 0 and d inclusive.
 func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
@@ -97,13 +98,13 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 
 	sst.Clear()
 
-	for d := range d + 1 { // +1 for 0 depth search (quiesence eval)
+	for idD := range d + 1 {
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
 		var scoreSample Score
 
 		for !awOk {
-			scoreSample = AlphaBeta(b, alpha, beta, d, 0, PVNode, sst)
+			scoreSample = AlphaBeta(b, alpha, beta, idD, 0, PVNode, sst)
 
 			switch {
 
@@ -121,7 +122,10 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 				awOk = true
 			}
 
-			if abort(sst) {
+			// if idD == 0 then we haven't produced a move, ignore abort, this should
+			// be safe from an aspiration window pov, because the first window is
+			// [-Inf-1 .. Inf+1].
+			if abort(sst) && idD > 0 {
 				if awOk && scoreSample >= score && len(sst.pv.active()) > 0 {
 					break
 				}
@@ -137,7 +141,7 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 		miliSec := elapsed.Milliseconds()
 		sst.Time = miliSec
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			d, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
+			idD, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
 
 		if sst.Debug {
 			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
