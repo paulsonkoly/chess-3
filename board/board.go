@@ -18,7 +18,7 @@ type Board struct {
 }
 
 // Hash is the last Zobrist hash in the move history of b.
-func (b Board) Hash() Hash {
+func (b *Board) Hash() Hash {
 	return b.hashes[len(b.hashes)-1]
 }
 
@@ -200,7 +200,7 @@ func (b *Board) UndoNullMove(enP Square) {
 // }
 
 // Threefold is the repetition count of the current position in its history.
-func (b Board) Threefold() Depth {
+func (b *Board) Threefold() Depth {
 	cnt := Depth(1)
 	if len(b.hashes) > 0 {
 		hash := b.hashes[len(b.hashes)-1]
