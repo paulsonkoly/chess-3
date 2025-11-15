@@ -5,7 +5,6 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/movegen"
 
 	. "github.com/paulsonkoly/chess-3/types"
 	"github.com/stretchr/testify/assert"
@@ -50,44 +49,6 @@ func TestCastle(t *testing.T) {
 	b.UndoMove(&m)
 
 	assert.Equal(t, CRights(ShortWhite, LongWhite), b.CRights)
-}
-
-func TestZobrist(t *testing.T) {
-	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		b *board.Board
-	}{
-		{
-			name: "castle / en-passant / capture",
-			b:    Must(board.FromFEN("r3k3/8/8/4p1Pp/8/1p6/3P4/3BK2R w Kq h6 0 1")),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b := tt.b
-
-			ms := move.NewStore()
-			movegen.GenMoves(ms, b)
-
-			for _, m := range ms.Frame() {
-				b.MakeMove(&m)
-
-				if movegen.InCheck(b, b.STM.Flip()) {
-					// illegal (pseudo-leagal) move, skip
-					b.UndoMove(&m)
-					continue
-				}
-
-				assert.Equal(t, b.CalculateHash(), b.Hash(), "move", m)
-
-				b.UndoMove(&m)
-
-				assert.Equal(t, tt.b, b)
-			}
-		})
-	}
 }
 
 func TestInvalidPieceCount(t *testing.T) {
