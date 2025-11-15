@@ -10,6 +10,7 @@ import (
 type BitBoard uint64
 
 // LowestSet is the first Square where bb has a '1' bit. Square order is from A1 to H8.
+// In case there is no bits set in bb, the result is 64, outside of the chess board.
 func (bb BitBoard) LowestSet() Square {
 	return Square(bits.TrailingZeros64(uint64(bb)))
 }
