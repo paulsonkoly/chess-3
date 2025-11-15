@@ -25,7 +25,11 @@ func (b *Board) Hash() Hash {
 // ResetHash removes all previous hash history and sets it to contain the
 // current position hash.
 func (b *Board) ResetHash() {
-	b.hashes = make([]Hash, 0, 128)
+	if cap(b.hashes) == 0 {
+		b.hashes = make([]Hash, 0, 128)
+	} else {
+		b.hashes = b.hashes[:0]
+	}
 	b.hashes = append(b.hashes, b.calculateHash())
 }
 
