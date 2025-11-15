@@ -43,14 +43,14 @@ const (
 	GFile = BitBoard(0x4040404040404040) // GFile is a BitBoard with bits set for the G file.
 	HFile = BitBoard(0x8080808080808080) // HFile is a BitBoard with bits set for the H file.
 
-	FistRank    = BitBoard(0x00000000000000ff) // FistRank is a BitBoard with bits set for the fist rank.
+	FirstRank   = BitBoard(0x00000000000000ff) // FirstRank is a BitBoard with bits set for the fist rank.
 	SecondRank  = BitBoard(0x000000000000ff00) // SecondRank is a BitBoard with bits set for the second rank.
 	ThirdRank   = BitBoard(0x0000000000ff0000) // ThirdRank is a BitBoard with bits set for the third rank.
 	FourthRank  = BitBoard(0x00000000ff000000) // FourthRank is a BitBoard with bits set for the fourth rank.
 	FifthRank   = BitBoard(0x000000ff00000000) // FifthRank is a BitBoard with bits set for the fifth rank.
-	SixRank     = BitBoard(0x0000ff0000000000) // SixRank is a BitBoard with bits set for the six rank.
+	SixthRank   = BitBoard(0x0000ff0000000000) // SixthRank is a BitBoard with bits set for the six rank.
 	SeventhRank = BitBoard(0x00ff000000000000) // SeventhRank is a BitBoard with bits set for the seventh rank.
-	EightsRank  = BitBoard(0xff00000000000000) // EightsRank is a BitBoard with bits set for the eights rank.
+	EighthRank  = BitBoard(0xff00000000000000) // EighthRank is a BitBoard with bits set for the eights rank.
 )
 
 // Full is a BitBoard with all 64 bits set.
