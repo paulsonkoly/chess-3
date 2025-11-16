@@ -27,76 +27,30 @@ const (
 	WindowSize = 50 // half a pawn left and right around score
 )
 
-// State is a persistent state storage between searches.
-type State struct {
-	tt     *transp.Table
-	hist   *heur.History
-	cont   [2]*heur.Continuation
-	ms     *move.Store
-	hstack *historyStack
-	pv     *pv
+func (s *Search) WithOptions(b *board.Board, d Depth, opts ...Option) (score Score, move move.SimpleMove) {
+	s.Clear()
 
-	Debug bool // Debug determines if additional debug info output is enabled.
-
-	// Stop channel signals an immediate Stop request to the search. Current
-	// depth will be abandoned.
-	Stop chan struct{}
-
-	abort bool
-
-	AWFail int // AwFail is the count of times the score fell outside of the aspiration window.
-	ABLeaf int // ABLeaf is the count of alpha-beta leafs.
-	// ABBreadth is the total count of explored moves in alpha-beta. Thus
-	// (ABBreadth / ABCnt) is the average alpha-beta branching factor.
-	ABBreadth int
-	ABCnt     int   // ABCnt is the inner node count in alpha-beta.
-	TTHit     int   // TThit is the transposition table hit-count.
-	QCnt      int   // Quiesence node count
-	QDepth    Depth // QDepth is the maximal quiesence search depth.
-	Time      int64 // Time is the search time in milliseconds.
-	SoftTime  int64 // Soft time limit in milliseconds. <= 0 for no limit.
-}
-
-// NewState creates a new search state. It's supposed to be called once, and
-// re-used between Search() calls.
-func NewState(ttSizeInMb int) *State {
-	return &State{
-		tt:     transp.New(ttSizeInMb),
-		ms:     move.NewStore(),
-		hist:   heur.NewHistory(),
-		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
-		hstack: newHistStack(),
-		pv:     newPV(),
+	options := options{}
+	for _, opt := range opts {
+		opt(&options)
 	}
+
+	if options.counters == nil {
+		options.counters = &Counters{}
+	}
+
+	return s.iterativeDeepen(b, d, &options)
 }
 
-// Clear resets the counters, and various stores for the search, assuming a new
-// position.
-func (s *State) Clear() {
-	s.abort = false
-	s.tt.Clear()
-	s.ms.Clear()
-	s.hstack.reset()
-	s.AWFail = 0
-	s.ABLeaf = 0
-	s.ABBreadth = 0
-	s.ABCnt = 0
-	s.TTHit = 0
-	s.QCnt = 0
-	s.QDepth = 0
-}
-
-// Search is the main entry point to the engine. It performs and
+// Root is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window. depth is iterated
 // between 0 and d inclusive.
-func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleMove) {
+func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score Score, move move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
 
 	start := time.Now()
-
-	sst.Clear()
 
 	for idD := range d + 1 {
 		awOk := false // aspiration window succeeded
@@ -104,17 +58,17 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 		var scoreSample Score
 
 		for !awOk {
-			scoreSample = AlphaBeta(b, alpha, beta, idD, 0, PVNode, sst)
+			scoreSample = s.alphaBeta(b, alpha, beta, idD, 0, PVNode, opts)
 
 			switch {
 
 			case scoreSample <= alpha:
-				sst.AWFail++
+				opts.counters.AWFail++
 				alpha -= factor * WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
-				sst.AWFail++
+				opts.counters.AWFail++
 				beta += factor * WindowSize
 				factor *= 2
 
@@ -125,32 +79,33 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 			// if idD == 0 then we haven't produced a move, ignore abort, this should
 			// be safe from an aspiration window pov, because the first window is
 			// [-Inf-1 .. Inf+1].
-			if abort(sst) && idD > 0 {
-				if awOk && scoreSample >= score && len(sst.pv.active()) > 0 {
+			if abort(opts) && idD > 0 {
+				if awOk && scoreSample >= score && len(s.pv.active()) > 0 {
 					break
 				}
 				return
 			}
 		}
 		score = scoreSample
-		if len(sst.pv.active()) > 0 {
-			move = sst.pv.active()[0]
+		if len(s.pv.active()) > 0 {
+			move = s.pv.active()[0]
 		}
 
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
-		sst.Time = miliSec
+		cnts := opts.counters
+		cnts.Time = miliSec
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			idD, scInfo(score), sst.ABCnt+sst.QCnt, miliSec, sst.tt.HashFull(), pvInfo(sst.pv.active()))
+			idD, scInfo(score), cnts.ABCnt+cnts.QCnt, miliSec, s.tt.HashFull(), pvInfo(s.pv.active()))
 
-		if sst.Debug {
-			ABBF := float64(sst.ABBreadth) / float64(sst.ABCnt)
+		if opts.debug {
+			ABBF := float64(cnts.ABBreadth) / float64(cnts.ABCnt)
 
 			fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d\n",
-				sst.AWFail, sst.ABLeaf, ABBF, sst.TTHit, sst.QDepth)
+				cnts.AWFail, cnts.ABLeaf, ABBF, cnts.TTHit, cnts.QDepth)
 		}
 
-		if abort(sst) || (sst.SoftTime > 0 && miliSec > sst.SoftTime) {
+		if abort(opts) || (opts.softTime > 0 && miliSec > opts.softTime) {
 			return
 		}
 
@@ -160,16 +115,16 @@ func Search(b *board.Board, d Depth, sst *State) (score Score, move move.SimpleM
 	return
 }
 
-func abort(sst *State) bool {
-	if sst.Stop != nil {
+func abort(opts *options) bool {
+	if opts.stop != nil {
 		select {
-		case <-sst.Stop:
-			sst.abort = true
+		case <-opts.stop:
+			opts.abort = true
 			return true
 		default:
 		}
 	}
-	return sst.abort
+	return opts.abort
 }
 
 func pvInfo(moves []move.SimpleMove) string {
@@ -211,10 +166,10 @@ const (
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst *State) Score {
+func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
 
-	transpT := sst.tt
-	sst.pv.setNull(ply)
+	transpT := s.tt
+	s.pv.setNull(ply)
 
 	tfCnt := b.Threefold()
 	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetation
@@ -223,7 +178,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 	}
 
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d {
-		sst.TTHit++
+		opts.counters.TTHit++
 
 		tpVal := transpE.Value(ply)
 
@@ -231,7 +186,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 
 		case transp.Exact:
 			if transpE.SimpleMove != 0 {
-				sst.pv.setTip(ply, transpE.SimpleMove)
+				s.pv.setTip(ply, transpE.SimpleMove)
 			}
 			return tpVal
 
@@ -245,15 +200,15 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 				return tpVal
 			}
 		}
-		sst.TTHit--
+		opts.counters.TTHit--
 	}
 
 	if d == 0 {
-		sst.ABLeaf++
-		return Quiescence(b, alpha, beta, 0, ply, sst)
+		opts.counters.ABLeaf++
+		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
-	sst.ABCnt++
+	opts.counters.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
 	improving := false
@@ -262,7 +217,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 	if !inCheck {
 		staticEval = eval.Eval(b, &eval.Coefficients)
 
-		improving = sst.hstack.oldScore() < staticEval
+		improving = s.hstack.oldScore() < staticEval
 
 		// RFP
 		if d < RFPDepthLimit && staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
@@ -282,7 +237,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 
 			r += Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
 
-			value := -AlphaBeta(b, -beta, -beta+1, max(d-r, 0), ply+1, CutNode, sst)
+			value := -s.alphaBeta(b, -beta, -beta+1, max(d-r, 0), ply+1, CutNode, opts)
 
 			b.UndoNullMove(enP)
 
@@ -290,7 +245,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 			// normally, it shouldn't matter because it's expected to fail low higher
 			// up anyway. But going up the window can widen, and it would be possible
 			// that a nullmove line bubbles up.
-			sst.pv.setNull(ply)
+			s.pv.setNull(ply)
 
 			if value >= beta {
 				if value >= Inf-MaxPlies {
@@ -303,19 +258,19 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 	}
 
 	// deflate history
-	if sst.ABCnt%10_000 == 0 {
-		sst.hist.Deflate()
-		sst.cont[0].Deflate()
-		sst.cont[1].Deflate()
+	if opts.counters.ABCnt%10_000 == 0 {
+		s.hist.Deflate()
+		s.cont[0].Deflate()
+		s.cont[1].Deflate()
 	}
 
-	sst.ms.Push()
-	defer sst.ms.Pop()
+	s.ms.Push()
+	defer s.ms.Pop()
 
-	movegen.GenMoves(sst.ms, b)
-	moves := sst.ms.Frame()
+	movegen.GenMoves(s.ms, b)
+	moves := s.ms.Frame()
 
-	rankMovesAB(b, moves, sst)
+	s.rankMovesAB(b, moves)
 
 	var (
 		m        *move.Move
@@ -341,7 +296,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 		hasLegal = true
 		moveCnt++
 
-		sst.hstack.push(m.Piece, m.To(), staticEval)
+		s.hstack.push(m.Piece, m.To(), staticEval)
 
 		var value Score
 
@@ -360,14 +315,14 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 
 			// reduced depth first, then re-try with full depth and null window.
 			if rd < d-1 {
-				value = -AlphaBeta(b, -alpha-1, -alpha, rd, ply+1, next, sst)
+				value = -s.alphaBeta(b, -alpha-1, -alpha, rd, ply+1, next, opts)
 			}
 
 			if value <= alpha {
 				goto Fin
 			}
 
-			value = -AlphaBeta(b, -alpha-1, -alpha, d-1, ply+1, next, sst)
+			value = -s.alphaBeta(b, -alpha-1, -alpha, d-1, ply+1, next, opts)
 
 			if value <= alpha {
 				goto Fin
@@ -379,13 +334,13 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 
 		// null window search failed (meaning didn't fail low).
 		if !fullSearched {
-			value = -AlphaBeta(b, -beta, -alpha, d-1, ply+1, next, sst)
+			value = -s.alphaBeta(b, -beta, -alpha, d-1, ply+1, next, opts)
 		}
 
 	Fin:
 
 		b.UndoMove(m)
-		sst.hstack.pop()
+		s.hstack.pop()
 
 		if value > maxim {
 			maxim = value
@@ -396,7 +351,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), d, ply, m.SimpleMove, value, transp.LowerBound)
 
-				hSize := sst.hstack.size()
+				hSize := s.hstack.size()
 				bonus := -(Score(d)*20 - 15)
 
 				for i, m := range moves {
@@ -405,16 +360,16 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 					}
 
 					if m.Captured == NoPiece && m.Promo() == NoPiece {
-						sst.hist.Add(b.STM, m.From(), m.To(), bonus)
+						s.hist.Add(b.STM, m.From(), m.To(), bonus)
 
 						if hSize >= 1 {
-							hist := sst.hstack.top(0)
-							sst.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							hist := s.hstack.top(0)
+							s.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
 						}
 
 						if hSize >= 2 {
-							hist := sst.hstack.top(1)
-							sst.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							hist := s.hstack.top(1)
+							s.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
 						}
 					}
 
@@ -423,7 +378,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 					}
 				}
 
-				sst.ABBreadth += moveCnt
+				opts.counters.ABBreadth += moveCnt
 
 				return value
 			}
@@ -432,7 +387,7 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 			failLow = false
 			alpha = value
 			bestMove = m.SimpleMove
-			sst.pv.insert(ply, m.SimpleMove)
+			s.pv.insert(ply, m.SimpleMove)
 		}
 
 		// LMP
@@ -444,12 +399,12 @@ func AlphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, sst 
 			break
 		}
 
-		if abort(sst) {
+		if abort(opts) {
 			return maxim
 		}
 	}
 
-	sst.ABBreadth += moveCnt
+	opts.counters.ABBreadth += moveCnt
 
 	if !hasLegal {
 		maxim = Score(0)
@@ -531,12 +486,12 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
-func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Score {
-	if d > sst.QDepth {
-		sst.QDepth = d
+func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opts *options) Score {
+	if d > opts.counters.QDepth {
+		opts.counters.QDepth = d
 	}
 
-	sst.QCnt++
+	opts.counters.QCnt++
 
 	if b.FiftyCnt >= 100 || b.Threefold() >= 3 {
 		return 0
@@ -560,17 +515,17 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		return standPat
 	}
 
-	sst.ms.Push()
-	defer sst.ms.Pop()
+	s.ms.Push()
+	defer s.ms.Pop()
 
-	movegen.GenForcing(sst.ms, b)
+	movegen.GenForcing(s.ms, b)
 
 	delta := standPat + 110
 	// fail soft upper bound
 	maxim := standPat
 	alpha = max(alpha, standPat)
 
-	moves := sst.ms.Frame()
+	moves := s.ms.Frame()
 
 	rankMovesQ(b, moves)
 
@@ -598,7 +553,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 			break
 		}
 
-		curr := -Quiescence(b, -beta, -alpha, d+1, ply+1, sst)
+		curr := -s.quiescence(b, -beta, -alpha, d+1, ply+1, opts)
 		b.UndoMove(m)
 
 		if curr >= beta {
@@ -607,7 +562,7 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 		maxim = max(maxim, curr)
 		alpha = max(alpha, curr)
 
-		if abort(sst) {
+		if abort(opts) {
 			return maxim
 		}
 	}
@@ -615,10 +570,10 @@ func Quiescence(b *board.Board, alpha, beta Score, d, ply Depth, sst *State) Sco
 	return maxim
 }
 
-func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
+func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 	var transPE *transp.Entry
 
-	transPE, _ = sst.tt.LookUp(b.Hash())
+	transPE, _ = s.tt.LookUp(b.Hash())
 
 	for ix, m := range moves {
 
@@ -635,16 +590,16 @@ func rankMovesAB(b *board.Board, moves []move.Move, sst *State) {
 			}
 
 		default:
-			score := sst.hist.Probe(b.STM, m.From(), m.To())
+			score := s.hist.Probe(b.STM, m.From(), m.To())
 
-			if sst.hstack.size() >= 1 {
-				hist := sst.hstack.top(0)
-				score += 3 * sst.cont[0].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
+			if s.hstack.size() >= 1 {
+				hist := s.hstack.top(0)
+				score += 3 * s.cont[0].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
 			}
 
-			if sst.hstack.size() >= 2 {
-				hist := sst.hstack.top(1)
-				score += 2 * sst.cont[1].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
+			if s.hstack.size() >= 2 {
+				hist := s.hstack.top(1)
+				score += 2 * s.cont[1].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
 			}
 
 			moves[ix].Weight = score
