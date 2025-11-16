@@ -7,10 +7,12 @@ import (
 	"runtime"
 	"runtime/pprof"
 
+	"slices"
+
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/debug"
+	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/uci"
-	"slices"
 
 	. "github.com/paulsonkoly/chess-3/types"
 )
@@ -43,15 +45,13 @@ func main() {
 		return
 	}
 
-	e := uci.NewEngine()
-
 	// openbench compatibility bench
 	if slices.Contains(os.Args, "bench") {
-		runOBBench(e)
+		runOBBench()
 		return
 	}
 
-	e.Run()
+	uci.NewEngine().Run()
 
 	if *memProf != "" {
 		f, err := os.Create(*memProf)
@@ -119,15 +119,17 @@ var OBBenchSet = [...]string{
 	"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 }
 
-func runOBBench(e *uci.Engine) {
+func runOBBench() {
 	nCnt := 0
 	allTime := int64(0)
+	s := search.New(8)
 	for _, fen := range OBBenchSet {
-		e.Board = Must(board.FromFEN(fen))
-		e.Search(15)
+		b := Must(board.FromFEN(fen))
+		counters := search.Counters{}
+		s.WithOptions(b, 15, search.WithCounters(&counters))
 
-		nodes := e.SST.ABCnt + e.SST.QCnt
-		time := e.SST.Time
+		nodes := counters.ABCnt + counters.QCnt
+		time := counters.Time
 
 		fmt.Printf("nodes %d time %d\n", nodes, time)
 
@@ -135,5 +137,10 @@ func runOBBench(e *uci.Engine) {
 		allTime += time
 	}
 	fmt.Printf("nodes %d time %d\n", nCnt, allTime)
-	fmt.Printf("nps %d\n", 1000*nCnt/int(allTime))
+	if allTime == 0 {
+		fmt.Printf("nps Inf\n")
+	} else {
+		fmt.Printf("nps %d\n", 1000*nCnt/int(allTime))
+	}
+
 }

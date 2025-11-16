@@ -25,7 +25,8 @@ const (
 
 type Engine struct {
 	Board      *board.Board
-	SST        *search.State
+	Search     *search.Search
+	debug      bool
 	input      *bufio.Scanner
 	inputLines chan string
 	stop       chan struct{}
@@ -33,8 +34,8 @@ type Engine struct {
 
 func NewEngine() *Engine {
 	return &Engine{
-		Board: Must(board.FromFEN(startPos)),
-		SST:   search.NewState(defaultHash),
+		Board:  Must(board.FromFEN(startPos)),
+		Search: search.New(defaultHash),
 	}
 }
 
@@ -134,10 +135,10 @@ func (e *Engine) handleCommand(command string) {
 		switch parts[1] {
 
 		case "on":
-			e.SST.Debug = true
+			e.debug = true
 
 		case "off":
-			e.SST.Debug = false
+			e.debug = false
 		}
 	}
 }
@@ -154,7 +155,8 @@ func (e *Engine) handleSetOption(args []string) {
 			return
 		}
 
-		e.SST = search.NewState(val) // we need to re-allocate the hash table
+		// TODO re-allocate or better yet increase  / reduce the tt only
+		e.Search = search.New(val) // we need to re-allocate the hash table
 	}
 }
 
@@ -316,15 +318,21 @@ func (e *Engine) handleGo(args []string) {
 		depth = MaxPlies
 	}
 
-	e.SST.Stop = make(chan struct{})
-	e.SST.SoftTime = tc.softLimit(stm)
+	stop := make(chan struct{})
+	softTime := tc.softLimit(stm)
 
 	var move move.SimpleMove
 
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, move = e.Search(depth)
+		_, move = e.Search.WithOptions(
+			e.Board,
+			depth,
+			search.WithStop(stop),
+			search.WithSoftTime(softTime),
+			search.WithDebug(e.debug),
+		)
 		close(searchFin)
 	}()
 
@@ -338,19 +346,19 @@ func (e *Engine) handleGo(args []string) {
 		case <-time.After(time.Duration(tc.hardLimit(stm)) * time.Millisecond):
 			if !stopped {
 				stopped = true
-				close(e.SST.Stop)
+				close(stop)
 			}
 
 		case <-e.stop:
 			if !stopped {
 				stopped = true
-				close(e.SST.Stop)
+				close(stop)
 			}
 		}
 	}
 
 	if !stopped {
-		close(e.SST.Stop)
+		close(stop)
 	}
 
 	fmt.Printf("bestmove %s\n", move)
@@ -370,8 +378,4 @@ func parseInt64(value string) int64 {
 		return 0
 	}
 	return result
-}
-
-func (e *Engine) Search(d Depth) (Score, move.SimpleMove) {
-	return search.Search(e.Board, d, e.SST)
 }
