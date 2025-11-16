@@ -326,7 +326,13 @@ func (e *Engine) handleGo(args []string) {
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, move = e.Search.WithOptions(e.Board, depth, search.WithStop(stop), search.WithSoftTime(softTime))
+		_, move = e.Search.WithOptions(
+			e.Board,
+			depth,
+			search.WithStop(stop),
+			search.WithSoftTime(softTime),
+			search.WithDebug(e.debug),
+		)
 		close(searchFin)
 	}()
 

@@ -137,5 +137,10 @@ func runOBBench() {
 		allTime += time
 	}
 	fmt.Printf("nodes %d time %d\n", nCnt, allTime)
-	fmt.Printf("nps %d\n", 1000*nCnt/int(allTime))
+	if allTime == 0 {
+		fmt.Printf("nps Inf\n")
+	} else {
+		fmt.Printf("nps %d\n", 1000*nCnt/int(allTime))
+	}
+
 }
