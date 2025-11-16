@@ -8,6 +8,8 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+// Search contains the permanent stores such as tt that can be re-used between
+// searches.
 type Search struct {
 	tt     *transp.Table
 	hist   *heur.History
@@ -17,6 +19,7 @@ type Search struct {
 	pv     *pv
 }
 
+// New creates a new Search object.
 func New(ttSizeInMb int) *Search {
 	return &Search{
 		tt:     transp.New(ttSizeInMb),
@@ -28,6 +31,7 @@ func New(ttSizeInMb int) *Search {
 	}
 }
 
+// Clear clears the internal stores in the Search object.
 func (s *Search) Clear() {
 	s.tt.Clear()
 	s.ms.Clear()
@@ -42,20 +46,25 @@ type options struct {
 	counters *Counters
 }
 
+// Option modifies how a search runs, this should be set per search.
 type Option = func(*options)
 
+// WithStop runs the search with a stop channel. When the channel is signalled
+// the search stops.
 func WithStop(stop chan struct{}) Option {
 	return func(o *options) {
 		o.stop = stop
 	}
 }
 
+// WithDebug runs the search with debug outputs.
 func WithDebug(debug bool) Option {
 	return func(o *options) {
 		o.debug = debug
 	}
 }
 
+// WithCounters instructs the search to collect statistics in counters.
 func WithCounters(counters *Counters) Option {
 	return func(o *options) {
 		o.counters = counters
@@ -70,6 +79,7 @@ func WithSoftTime(st int64) Option {
 	}
 }
 
+// Counters are various search counters.
 type Counters struct {
 	AWFail int // AwFail is the count of times the score fell outside of the aspiration window.
 	ABLeaf int // ABLeaf is the count of alpha-beta leafs.
