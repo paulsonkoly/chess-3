@@ -42,7 +42,8 @@ type options struct {
 	stop     chan struct{}
 	abort    bool
 	debug    bool
-	softTime int64 
+	info     bool
+	softTime int64
 	counters *Counters
 }
 
@@ -61,6 +62,13 @@ func WithStop(stop chan struct{}) Option {
 func WithDebug(debug bool) Option {
 	return func(o *options) {
 		o.debug = debug
+	}
+}
+
+// WithInfo runs the search with uci info outputs.
+func WithInfo(info bool) Option {
+	return func(o *options) {
+		o.info = info
 	}
 }
 

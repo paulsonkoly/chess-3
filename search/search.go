@@ -30,7 +30,7 @@ const (
 func (s *Search) WithOptions(b *board.Board, d Depth, opts ...Option) (score Score, move move.SimpleMove) {
 	s.Clear()
 
-	options := options{}
+	options := options{info: true}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -95,8 +95,10 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 		miliSec := elapsed.Milliseconds()
 		cnts := opts.counters
 		cnts.Time = miliSec
-		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			idD, scInfo(score), cnts.ABCnt+cnts.QCnt, miliSec, s.tt.HashFull(), pvInfo(s.pv.active()))
+		if opts.info {
+			fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
+				idD, scInfo(score), cnts.ABCnt+cnts.QCnt, miliSec, s.tt.HashFull(), pvInfo(s.pv.active()))
+		}
 
 		if opts.debug {
 			ABBF := float64(cnts.ABBreadth) / float64(cnts.ABCnt)

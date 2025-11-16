@@ -51,7 +51,6 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-
 	if input == "-" {
 		inputF = os.Stdin
 	} else {
@@ -77,11 +76,7 @@ func main() {
 	}
 
 	if bestCapture {
-		// TODO make this nicer
-		// sst := search.NewState(1).WithInfo(true)
-		sst := search.NewState(1)
-		sst.Info = false
-		filters = append(filters, BestCapture{search: sst, depth: types.Depth(bestCaptureDepth)})
+		filters = append(filters, BestCapture{search: search.New(1), depth: types.Depth(bestCaptureDepth)})
 	}
 
 	run(filters)
@@ -165,12 +160,12 @@ func (i InCheck) Filter(b *board.Board, _ float64) bool {
 }
 
 type BestCapture struct {
-	search *search.State
+	search *search.Search
 	depth  types.Depth
 }
 
 func (bc BestCapture) Filter(b *board.Board, _ float64) bool {
 	b.ResetHash()
-	_, move := search.Search(b, bc.depth, bc.search)
+	_, move := bc.search.WithOptions(b, bc.depth, search.WithInfo(false))
 	return b.SquaresToPiece[move.To()] != types.NoPiece
 }
