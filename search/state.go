@@ -19,7 +19,9 @@ type Search struct {
 	pv     *pv
 }
 
-// New creates a new Search object.
+// New creates a new Search with reusable internal stores for transposition table, move cache, history heuristics, continuation state, history stack, and principal variation.
+// The ttSizeInMb parameter specifies the transposition table size in megabytes.
+// The returned *Search is initialized and ready for use.
 func New(ttSizeInMb int) *Search {
 	return &Search{
 		tt:     transp.New(ttSizeInMb),
@@ -50,14 +52,16 @@ type options struct {
 type Option = func(*options)
 
 // WithStop runs the search with a stop channel. When the channel is signalled
-// the search stops.
+// WithStop returns an Option that sets the channel used to request search cancellation.
+// The provided channel, when closed, signals the search to stop.
 func WithStop(stop chan struct{}) Option {
 	return func(o *options) {
 		o.stop = stop
 	}
 }
 
-// WithDebug runs the search with debug outputs.
+// WithDebug returns an Option that enables or disables debug output for a search.
+// When applied, the option sets the search's debug flag to the provided value.
 func WithDebug(debug bool) Option {
 	return func(o *options) {
 		o.debug = debug
@@ -72,7 +76,8 @@ func WithCounters(counters *Counters) Option {
 }
 
 // Soft time limit in milliseconds. <= 0 for no limit.
-// TODO: should this be time.Duration?
+// WithSoftTime sets the soft time limit for a search run in milliseconds.
+// The st parameter is the soft time limit expressed in milliseconds and is stored on the options used by the search.
 func WithSoftTime(st int64) Option {
 	return func(o *options) {
 		o.softTime = st

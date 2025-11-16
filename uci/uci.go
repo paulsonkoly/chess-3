@@ -32,6 +32,8 @@ type Engine struct {
 	stop       chan struct{}
 }
 
+// NewEngine creates an Engine initialized to the standard chess starting position.
+// The returned Engine has Board loaded from the package startPos FEN and a Search instance created with the default transposition table size.
 func NewEngine() *Engine {
 	return &Engine{
 		Board:  Must(board.FromFEN(startPos)),
@@ -372,6 +374,8 @@ func parseInt(value string) int {
 	return result
 }
 
+// parseInt64 parses the given string as a base-10 int64.
+// It returns 0 if the string is not a valid base-10 integer.
 func parseInt64(value string) int64 {
 	result, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {

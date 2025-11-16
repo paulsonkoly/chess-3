@@ -22,6 +22,7 @@ var debugDepth = flag.Int("debugDepth", 3, "Debug a given depth")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
 var memProf = flag.String("memProf", "", "mem profile file name")
 
+// The program may create profile files and will panic on file or profiling errors.
 func main() {
 
 	flag.Parse()
@@ -119,6 +120,10 @@ var OBBenchSet = [...]string{
 	"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 }
 
+// runOBBench evaluates each FEN in OBBenchSet at depth 15, prints per-position node and time counts, then prints totals and nodes-per-second (nps).
+//
+// For each position it prints a line "nodes <nodes> time <ms>" showing the number of nodes searched and the elapsed time for that position.
+// After processing all positions it prints a totals line "nodes <totalNodes> time <totalTime>" and then prints either "nps Inf" if the total time is zero or "nps <value>" with the computed nodes-per-second otherwise.
 func runOBBench() {
 	nCnt := 0
 	allTime := int64(0)

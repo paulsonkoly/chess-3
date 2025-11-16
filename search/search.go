@@ -115,6 +115,7 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 	return
 }
 
+// abort checks opts.stop for a stop signal, sets opts.abort to true and returns true if a signal was received; otherwise it returns the current opts.abort flag.
 func abort(opts *options) bool {
 	if opts.stop != nil {
 		select {
@@ -127,6 +128,8 @@ func abort(opts *options) bool {
 	return opts.abort
 }
 
+// pvInfo builds a space-separated string of moves representing a principal variation.
+// Each move is converted to its string form and separated by a single space.
 func pvInfo(moves []move.SimpleMove) string {
 	sb := strings.Builder{}
 	space := ""
@@ -465,7 +468,7 @@ var log = [...]int{
 }
 
 // x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
-// 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
+// [0, d-1].
 func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
