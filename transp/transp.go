@@ -20,7 +20,7 @@ const (
 	// entrySize is the transposition table entry size in bytes.
 	entrySize = 8
 	// bucketSize is the number of entries per bucket. A bucket should match a most common CPU cache line.
-	bucketSize = 4
+	bucketSize = 8
 	// alignment is the byte alignment of buckets.
 	alignment = bucketSize * entrySize
 	// partialKeyBits is the number of bits of the Zobrist-hash stored per entry.
@@ -113,14 +113,13 @@ func (t *Table) Clear() {
 func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
 	ix := (hash & t.ixMask)*bucketSize
 
-	bucket := t.data[ix : ix+bucketSize]
 
 	minD := Depth(MaxPlies + 1)
 	var entry *Entry
-	for eix := range bucket {
-		if bucket[eix].Depth < minD {
-			minD = bucket[eix].Depth
-			entry = &bucket[eix]
+	for eix := ix; eix < ix+bucketSize; eix++ {
+		if t.data[eix].Depth < minD {
+			minD = t.data[eix].Depth
+			entry = &t.data[eix]
 		}
 	}
 
@@ -145,10 +144,9 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
 	ix := (hash & t.ixMask) * bucketSize
 
-	bucket := t.data[ix : ix+bucketSize]
-	for eix := range bucket {
-		if bucket[eix].pKey == partialKey(hash>>(64-partialKeyBits)) {
-			return &bucket[eix], true
+	for eix := ix; eix < ix+bucketSize; eix++ {
+		if t.data[eix].pKey == partialKey(hash>>(64-partialKeyBits)) {
+			return &t.data[eix], true
 		}
 	}
 
