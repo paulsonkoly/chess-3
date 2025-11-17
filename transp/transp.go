@@ -22,7 +22,7 @@ const (
 
 const (
 	// cacheLine is the assumed CPU cache line size we target.
-	cacheLine = 64
+	cacheLine = 32
 	// partialKeyBits is the number of bits of the Zobrist-hash stored per entry.
 	partialKeyBits = 16
 )
@@ -138,9 +138,7 @@ func (t *Table) bucketStart(hash board.Hash) int {
 	return int((hash & t.ixMask)) * t.bucketSize
 }
 
-// LookUp looks up the entry for hash. This function is micro-optimized for the
-// hot path: local copy of slice header, no subslices, single loop with simple
-// index arithmetic and pKey first access.
+// LookUp looks up the entry for hash.
 func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
 	data := t.data
 	start := t.bucketStart(hash)
@@ -158,20 +156,21 @@ func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
 	return nil, false
 }
 
-// Insert writes an entry into the bucket, using a simple "replace lowest depth"
-// policy. It's written to avoid extra pointer arithmetic inside the loop.
+// Insert writes an entry into the transposition table.
 func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
 	data := t.data
 	start := t.bucketStart(hash)
 	end := start + t.bucketSize
 	pkey := partialKey(hash >> (64 - partialKeyBits))
 
-	minD := Depth(MaxPlies + 1)
-	minIdx := start
-	for i := start; i < end; i++ {
-		if data[i].Depth < minD {
-			minD = data[i].Depth
-			minIdx = i
+	var replace int
+  for replace = start; replace < end - 1; replace++ {
+		if data[replace].Depth < d {
+			break
+		}
+
+		if data[replace].Depth == d && (data[replace].Type == UpperBound || typ != UpperBound) {
+			break
 		}
 	}
 
@@ -182,8 +181,7 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 		value += Score(ply)
 	}
 
-	// One assignment to the slot; keeps writes compact.
-	data[minIdx] = Entry{
+	data[replace] = Entry{
 		pKey:       pkey,
 		SimpleMove: sm,
 		value:      value,
