@@ -12,6 +12,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/search"
+	"github.com/paulsonkoly/chess-3/transp"
 	"github.com/paulsonkoly/chess-3/uci"
 
 	. "github.com/paulsonkoly/chess-3/types"
@@ -122,7 +123,7 @@ var OBBenchSet = [...]string{
 func runOBBench() {
 	nCnt := 0
 	allTime := int64(0)
-	s := search.New(8)
+	s := search.New(8 * transp.MegaBytes)
 	for _, fen := range OBBenchSet {
 		b := Must(board.FromFEN(fen))
 		counters := search.Counters{}

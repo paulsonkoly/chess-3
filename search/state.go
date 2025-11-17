@@ -20,9 +20,9 @@ type Search struct {
 }
 
 // New creates a new Search object.
-func New(ttSizeInMb int) *Search {
+func New(size int) *Search {
 	return &Search{
-		tt:     transp.New(ttSizeInMb),
+		tt:     transp.New(size),
 		ms:     move.NewStore(),
 		hist:   heur.NewHistory(),
 		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},

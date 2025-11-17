@@ -3,7 +3,7 @@ package transp
 
 import (
 	"fmt"
-	"math/bits"
+	"unsafe"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
@@ -11,13 +11,26 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-const entrySize = 16 // EntrySize is the transposition table entry size in bytes.
+const (
+	// MegaBytes is the count of bytes in a MegaByte. It is useful for code like hash.New(16 * MegaBytes).
+	MegaBytes = 1024 * 1024
+)
+
+const (
+	// entrySize is the transposition table entry size in bytes.
+	entrySize = 8
+	// bucketSize is the number of entries per bucket. A bucket should match a most common CPU cache line.
+	bucketSize = 4
+	// alignment is the byte alignment of buckets.
+	alignment = bucketSize * entrySize
+	// partialKeyBits is the number of bits of the Zobrist-hash stored per entry.
+	partialKeyBits = 16
+)
 
 type Table struct {
+	raw    []byte // reference to unaligned underlying data to keep it from GC
 	data   []Entry
-	numE   int
 	ixMask board.Hash
-	cnt    int
 }
 
 type Type byte
@@ -31,15 +44,24 @@ const (
 	LowerBound
 )
 
+type partialKey = uint16
+
 // Entry is a transposition table entry.
 //
-// We use up 16 bytes
+//go:packed
 type Entry struct {
-	move.SimpleMove            // SimpleMove is the simplified move data.
-	value           Score      // value is the score for the entry where one is present.
-	Depth           Depth      // Depth of the entry.
-	Type            Type       // Type is the entry type.
-	Hash            board.Hash // Hash is the board Zobrist-hash.
+	move.SimpleMove            // SimpleMove is the simplified move data. (2 bytes)
+	value           Score      // value is the score for the entry where one is present. (2 bytes)
+	Depth           Depth      // Depth of the entry. (1 byte)
+	Type            Type       // Type is the entry type. (1 byte)
+	pKey            partialKey // pKey is the high bits of the Zobrist-hash. (2 bytes)
+}
+
+func init() {
+	packSize := unsafe.Sizeof(Entry{})
+	if packSize != entrySize {
+		panic(fmt.Sprintf("tt entry isn't packed to %d bytes it is %d bytes, check alignments", entrySize, packSize))
+	}
 }
 
 // Value is the score of the entry corrected for current ply in case of mate score.
@@ -55,51 +77,51 @@ func (e Entry) Value(ply Depth) Score {
 	return e.value
 }
 
-// New creates a new transposition table.
-func New(sizeInMb int) *Table {
-	if sizeInMb < 1 || sizeInMb&(sizeInMb-1) != 0 {
-		panic(fmt.Sprintf("invalid transposition table size %d", sizeInMb))
+// New creates a new transposition table. size is the table size in bytes, and
+// only power of 2 sizes are supported.
+func New(size int) *Table {
+	if size < 1 || size&(size-1) != 0 {
+		panic(fmt.Sprintf("invalid transposition table size %d", size))
 	}
 
-	sizeInBytes := sizeInMb * 1024 * 1024
-	numEntries := sizeInBytes / entrySize
-	numEntriesL2 := bits.TrailingZeros(uint(numEntries))
+	numBuckets := size / alignment
+	numEntries := numBuckets * bucketSize
 
-	return &Table{
-		data:   make([]Entry, numEntries),
-		numE:   numEntries,
-		ixMask: (1 << numEntriesL2) - 1,
-	}
+	raw := make([]byte, size+alignment-1)
+	base := uintptr(unsafe.Pointer(&raw[0]))
+	aligned := (base + alignment - 1) &^ (alignment - 1)
+
+	entries := (*Entry)(unsafe.Pointer(aligned))
+	data := unsafe.Slice(entries, numEntries)
+
+	return &Table{raw: raw, data: data, ixMask: board.Hash(numBuckets - 1)}
 }
 
 // HashFull is the permill count of the hash usage.
 func (t Table) HashFull() int {
-	return 1000 * t.cnt / t.numE
+	return 1000
 }
 
 // Clear clears the transposition table for the next search.Search().
 func (t *Table) Clear() {
-	t.cnt = 0
 	for ix := range t.data {
 		t.data[ix].Depth = 0
 	}
 }
 
-// Insert inserts an entry to the transposition table if the current hash in
-// the table has a lower depth than d.
+// Insert inserts an entry to the transposition table.
 func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
 	ix := hash & t.ixMask
 
-	if t.data[ix].Depth > d {
-		return
-	}
+	bucket := t.data[ix : ix+bucketSize]
 
-	if t.data[ix].Depth == d && t.data[ix].Type != UpperBound && typ == UpperBound {
-		return
-	}
-
-	if t.data[ix].Depth == 0 {
-		t.cnt++
+	minD := Depth(MaxPlies + 1)
+	var entry *Entry
+	for eix := range bucket {
+		if bucket[eix].Depth < minD {
+			minD = bucket[eix].Depth
+			entry = &bucket[eix]
+		}
 	}
 
 	if value < -Inf+MaxPlies {
@@ -110,9 +132,9 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 		value += Score(ply)
 	}
 
-	t.data[ix] = Entry{
+	*entry = Entry{
 		SimpleMove: sm,
-		Hash:       hash,
+		pKey:       partialKey(hash >> (64 - partialKeyBits)),
 		value:      value,
 		Type:       typ,
 		Depth:      d,
@@ -123,8 +145,11 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
 	ix := hash & t.ixMask
 
-	if t.data[ix].Hash == hash {
-		return &t.data[ix], true
+	bucket := t.data[ix : ix+bucketSize]
+	for eix := range bucket {
+		if bucket[eix].pKey == partialKey(hash>>(64-partialKeyBits)) {
+			return &bucket[eix], true
+		}
 	}
 
 	return nil, false
