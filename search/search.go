@@ -42,7 +42,7 @@ func (s *Search) WithOptions(b *board.Board, d Depth, opts ...Option) (score Sco
 	return s.iterativeDeepen(b, d, &options)
 }
 
-// Root is the main entry point to the engine. It performs and
+// iterativeDeepen is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window. depth is iterated
 // between 0 and d inclusive.
 func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score Score, move move.SimpleMove) {
@@ -76,12 +76,35 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 				awOk = true
 			}
 
-			// if idD == 0 then we haven't produced a move, ignore abort, this should
-			// be safe from an aspiration window pov, because the first window is
-			// [-Inf-1 .. Inf+1].
-			if abort(opts) && idD > 0 {
-				if awOk && scoreSample >= score && len(s.pv.active()) > 0 {
-					break
+			if abort(opts) {
+				// we hit hard timeout, and we don't have a move. We try to return the
+				// PV move if we have it, regardless of its quality, if there is none
+				// we return the first legal move we find. If there is none, we return
+				// null move.
+				if move == 0 {
+					// there is no previous move, so we produce something from the
+					// aborted search. The scoreSample is our best bet at this point.
+					score = scoreSample
+					if len(s.pv.active()) > 0 {
+						move = s.pv.active()[0]
+						return
+					}
+
+					s.ms.Push()
+					defer s.ms.Pop()
+
+					movegen.GenMoves(s.ms, b)
+					moves := s.ms.Frame()
+
+					for _, pseudo := range moves {
+						b.MakeMove(&pseudo)
+						if !movegen.InCheck(b, b.STM.Flip()) { // legal
+							move = pseudo.SimpleMove
+							b.UndoMove(&pseudo)
+							break
+						}
+						b.UndoMove(&pseudo)
+					}
 				}
 				return
 			}
