@@ -111,7 +111,7 @@ func (t *Table) Clear() {
 
 // Insert inserts an entry to the transposition table.
 func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
-	ix := hash & t.ixMask
+	ix := (hash & t.ixMask)*bucketSize
 
 	bucket := t.data[ix : ix+bucketSize]
 
@@ -143,7 +143,7 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 
 // Lookup looks up the transposition table entry, using hash as the key.
 func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
-	ix := hash & t.ixMask
+	ix := (hash & t.ixMask) * bucketSize
 
 	bucket := t.data[ix : ix+bucketSize]
 	for eix := range bucket {
