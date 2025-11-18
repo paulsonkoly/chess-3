@@ -1,8 +1,4 @@
-// package transp is a cache-optimized transposition table implementation for Go.
-// This version packs the partial key as the first field, aligns buckets to 64
-// byte cache-lines, avoids subslices in hot loops and minimizes bounds/index
-// arithmetic in the lookup/insert hot paths.
-
+// package transp is a transposition table.
 package transp
 
 import (
@@ -21,18 +17,34 @@ const (
 )
 
 const (
-	// cacheLine is the assumed CPU cache line size we target.
-	cacheLine = 32
+	// bucketSize is the number of entries per bucket.
+	bucketSize = 4
+	// entrySize is the number of bytes per entry.
+	entrySize = 8
 	// partialKeyBits is the number of bits of the Zobrist-hash stored per entry.
 	partialKeyBits = 16
 )
 
 // Table is the transposition table.
 type Table struct {
-	raw        []byte  // reference to unaligned underlying data to keep it from GC
-	data       []Entry // entries in flat layout: numBuckets * bucketSize
-	ixMask     board.Hash
-	bucketSize int // derived from cacheLine / entrySize
+	raw    []byte   // raw is reference to unaligned underlying data to keep it from GC
+	data   []Entry  // Cache entries minus the pKey.
+	pKeys  []uint64 // 64-bit packed pKeys.
+	ixMask board.Hash
+}
+
+func init() {
+	// entry size has to be 8 bytes.
+	packSize := unsafe.Sizeof(Entry{})
+	if packSize != entrySize {
+		panic(fmt.Sprintf("tt entry must be %d bytes but is %d bytes; adjust layout", entrySize, packSize))
+	}
+
+	// we need to be able to fit pKeys into a number of ui64s per bucket. We
+	// could support larger buckets, as long as this is multiple of 64.
+	if (bucketSize * partialKeyBits) != 64 {
+		panic("tt partial key packing error")
+	}
 }
 
 // Type represents the stored bound type.
@@ -46,21 +58,12 @@ const (
 
 type partialKey = uint16
 
-// Entry layout: put pKey first so the common miss path loads the partial key at
-// offset 0 (fast aligned 16-bit loads). Remaining fields follow. The order is
-// chosen so the natural struct size is 8 bytes on common architectures.
-//
-// Field sizes assumed by this file:
-//
-//	pKey (2) | SimpleMove (2) | value (2) | Depth (1) | Type (1)  => 8 bytes
-//
-// Keep this layout — changes will trigger the init size check.
 type Entry struct {
-	pKey partialKey
-	move.SimpleMove
-	value Score
-	Depth Depth
-	Type  Type
+	move.SimpleMove        // SimpleMove is the hash move. (2 bytes)
+	value           Score  // (2 bytes).
+	Depth           Depth  // Depth is the entry depth. (1 byte)
+	Type            Type   // Type indicates the node type / whether the score is exact or bound. (1 byte)
+	_               uint16 // pad to 8 bytes (2 bytes)
 }
 
 // Value is the score of the entry corrected for current ply in case of mate score.
@@ -76,100 +79,89 @@ func (e Entry) Value(ply Depth) Score {
 	return e.value
 }
 
-func init() {
-	// Safety check: ensure the entry is exactly 8 bytes.
-	// If this panics on your target, inspect the field types' sizes and
-	// re-order or pack manually. We prefer natural alignment (no //go:packed)
-	// because unaligned accesses can be slower on some architectures.
-	packSize := unsafe.Sizeof(Entry{})
-	if packSize != 8 {
-		panic(fmt.Sprintf("tt entry must be 8 bytes but is %d bytes; adjust layout", packSize))
-	}
-}
-
 // New creates a new transposition table. size is the table size in bytes, and
-// only power of 2 sizes are supported. The size should be a multiple of
-// cacheLine (64) for best performance.
+// only power of 2 sizes are supported.
 func New(size int) *Table {
 	if size < 1 || size&(size-1) != 0 {
 		panic(fmt.Sprintf("invalid transposition table size %d", size))
 	}
 
-	entrySize := int(unsafe.Sizeof(Entry{}))
-	if cacheLine%entrySize != 0 {
-		panic(fmt.Sprintf("cacheLine (%d) must be multiple of entry size (%d)", cacheLine, entrySize))
-	}
-
-	bucketSize := cacheLine / entrySize
-	numBuckets := size / cacheLine
-	if numBuckets == 0 {
-		panic("table size too small; must be at least one cacheLine")
-	}
+	alignment := bucketSize * entrySize
+	numBuckets := size / alignment
 	numEntries := numBuckets * bucketSize
 
 	// Overallocate by cacheLine-1 and align the returned pointer to cacheLine
-	raw := make([]byte, size+cacheLine-1)
+	raw := make([]byte, size+alignment-1)
 	base := uintptr(unsafe.Pointer(&raw[0]))
-	aligned := (base + uintptr(cacheLine-1)) &^ uintptr(cacheLine-1)
+	aligned := (base + uintptr(alignment-1)) &^ uintptr(alignment-1)
 
 	ptr := unsafe.Pointer(aligned)
 	entries := unsafe.Slice((*Entry)(ptr), numEntries)
 
+	// each entry has a 16 bit pKey, and we pack pKeys in 64 bits.
+	numPKeys := numEntries * partialKeyBits / 64
+	pKeys := make([]uint64, numPKeys)
+
 	return &Table{
-		raw:        raw,
-		data:       entries,
-		ixMask:     board.Hash(numBuckets - 1),
-		bucketSize: bucketSize,
+		raw:    raw,
+		data:   entries,
+		pKeys:  pKeys,
+		ixMask: board.Hash(numBuckets - 1),
 	}
 }
 
 // HashFull returns a dummy usage percentage (implement as you need).
 func (t Table) HashFull() int { return 1000 }
 
-// Clear zeros the depth field for all entries; cheap and avoids memzeroing entire table.
+// Clear zeros the depth field for all entries.
 func (t *Table) Clear() {
 	for i := range t.data {
 		t.data[i].Depth = 0
 	}
 }
 
-// bucketStart returns the starting entry index for the bucket of hash.
-func (t *Table) bucketStart(hash board.Hash) int {
-	return int((hash & t.ixMask)) * t.bucketSize
+// bucketIx returns the starting entry index of the bucket for hash.
+func (t *Table) bucketIx(hash board.Hash) int {
+	return int((hash & t.ixMask)) * bucketSize
+}
+
+// pkeyIx returns the index of the starting ui64 for hash .
+func (t *Table) pkeyIx(hash board.Hash) int {
+	// this logic is hard wired atm for 4 16 bit pKeys per 64 bit word.
+	return int(hash & t.ixMask)
 }
 
 // LookUp looks up the entry for hash.
 func (t *Table) LookUp(hash board.Hash) (*Entry, bool) {
-	data := t.data
-	start := t.bucketStart(hash)
-	end := start + t.bucketSize
-	key := partialKey(hash >> (64 - partialKeyBits))
+	bucketKeys := t.pKeys[t.pkeyIx(hash)]
+	hashKey := partialKey(hash >> (64 - partialKeyBits))
 
-	// Warm the cache line by doing a single read; this is a lightweight hint.
-	_ = data[start]
+	for i := range bucketSize {
+		if hashKey == partialKey(bucketKeys) {
+			bIx := t.bucketIx(hash)
+			eIx := bIx + i
 
-	for i := start; i < end; i++ {
-		if data[i].pKey == key {
-			return &data[i], true
+			return &t.data[eIx], true
 		}
+		bucketKeys >>= partialKeyBits
 	}
+
 	return nil, false
 }
 
 // Insert writes an entry into the transposition table.
 func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
-	data := t.data
-	start := t.bucketStart(hash)
-	end := start + t.bucketSize
-	pkey := partialKey(hash >> (64 - partialKeyBits))
+	bIx := t.bucketIx(hash)
 
 	var replace int
-  for replace = start; replace < end - 1; replace++ {
-		if data[replace].Depth < d {
+	// -1 to make sure we have a replacement. If no entries in the bucket are
+	// replecable, replace the last one unconditionally.
+	for replace = bIx; replace < bIx+bucketSize-1; replace++ {
+		if t.data[replace].Depth < d {
 			break
 		}
 
-		if data[replace].Depth == d && (data[replace].Type == UpperBound || typ != UpperBound) {
+		if t.data[replace].Depth == d && (t.data[replace].Type == UpperBound || typ != UpperBound) {
 			break
 		}
 	}
@@ -181,11 +173,19 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 		value += Score(ply)
 	}
 
-	data[replace] = Entry{
-		pKey:       pkey,
+	t.data[replace] = Entry{
 		SimpleMove: sm,
 		value:      value,
 		Depth:      d,
 		Type:       typ,
 	}
+
+	pkIx := t.pkeyIx(hash)
+	hashKey := partialKey(hash >> (64 - partialKeyBits))
+	bucketKeys := t.pKeys[pkIx]
+	eIx := replace - bIx
+	bucketKeys &= ^((1<<partialKeyBits - 1) << (eIx * partialKeyBits))
+	bucketKeys |= uint64(hashKey) << (eIx * partialKeyBits)
+
+	t.pKeys[pkIx] = bucketKeys
 }
