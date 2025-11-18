@@ -111,11 +111,22 @@ func New(size int) *Table {
 }
 
 // HashFull returns a dummy usage percentage (implement as you need).
-func (t Table) HashFull() int { return 1000 }
+func (t Table) HashFull() int {
+	cnt := 0
+	for i := range min(1000, len(t.data)/bucketSize) {
+		if t.data[i*bucketSize].Depth != 0 {
+			cnt++
+		}
+	}
+	return cnt
+}
 
 // Clear zeros the depth field for all entries.
 func (t *Table) Clear() {
 	for i := range t.data {
+		// this is a soft clear, a cheap implementation of aging. As the hashes are
+		// still in-tact these entries are reusable in the next search, they just
+		// always lose on replacement.
 		t.data[i].Depth = 0
 	}
 }
@@ -184,7 +195,7 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
 	bucketKeys := t.pKeys[pkIx]
 	eIx := replace - bIx
-	bucketKeys &= ^((1<<partialKeyBits - 1) << (eIx * partialKeyBits))
+	bucketKeys &= ^(((1<<partialKeyBits) - 1) << (eIx * partialKeyBits))
 	bucketKeys |= uint64(hashKey) << (eIx * partialKeyBits)
 
 	t.pKeys[pkIx] = bucketKeys
