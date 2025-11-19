@@ -287,7 +287,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 		return timeLeft
 	}
 
-	return Clamp(3*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
+	return Clamp(4*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
 }
 
 func (e *Engine) handleGo(args []string) {
