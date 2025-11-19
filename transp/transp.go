@@ -42,7 +42,7 @@ type entry struct {
 }
 
 // Value is the score of the entry corrected for current ply in case of mate score.
-func (e entry) Value(ply Depth) Score {
+func (e *entry) Value(ply Depth) Score {
 	if e.value > Inf-MaxPlies {
 		return e.value - Score(ply)
 	}
@@ -53,6 +53,8 @@ func (e entry) Value(ply Depth) Score {
 
 	return e.value
 }
+
+func (e *entry) quality() int { return quality(e.Depth, e.Type) }
 
 // partialKey is the bits of the Zobrist stored in the table.
 type partialKey uint16
@@ -152,24 +154,23 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
 	bucketKeys := bucket.pKeys
 
+	minQ := 1000
 	var replace int
-	for replace = range bucketEntryCnt {
-		entry := &bucket.entries[replace]
+	for i := range bucketEntryCnt {
+		entry := &bucket.entries[i]
+		entryQ := entry.quality()
 
 		if partialKey(bucketKeys) == hashKey {
-			// if stored entry quality is better, don't replace.
-			if entry.Depth > d {
+			if entryQ > quality(d, typ) {
 				return
 			}
+			replace = i
 			break
 		}
 
-		if entry.Depth < d {
-			break
-		}
-
-		if entry.Depth == d && (entry.Type == UpperBound || typ != UpperBound) {
-			break
+		if entryQ < minQ {
+			minQ = entryQ
+			replace = i
 		}
 
 		bucketKeys >>= partialKeyBits
@@ -191,4 +192,12 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 
 	bucket.pKeys &= ^(((1 << partialKeyBits) - 1) << (replace * partialKeyBits))
 	bucket.pKeys |= uint64(hashKey) << (replace * partialKeyBits)
+}
+
+func quality(d Depth, typ Type) int {
+	typQ := 1
+	if typ == UpperBound {
+		typQ = 0
+	}
+	return 2*int(d) + typQ
 }
