@@ -59,7 +59,7 @@ type partialKey uint16
 
 type bucket struct {
 	pKeys   uint64                // pKeys are the partial keys for entries present in this bucket.
-	entries [bucketEntryCnt]entry // entries set of entries that compete in replecament.
+	entries [bucketEntryCnt]entry // entries set of entries that compete in replacement.
 
 }
 
@@ -73,7 +73,7 @@ type Table struct {
 func init() {
 	trueSize := unsafe.Sizeof(bucket{})
 	if trueSize != bucketSize {
-		panic(fmt.Sprintf("enexpected tt bucket size %d expected %d. This is a tt bug.\n", trueSize, bucketSize))
+		panic(fmt.Sprintf("unexpected tt bucket size %d expected %d. This is a tt bug.\n", trueSize, bucketSize))
 	}
 }
 
@@ -86,7 +86,7 @@ func New(size int) *Table {
 
 	numBuckets := size / bucketSize
 
-	// overallocate raw pool, so we can start at bucket alignment. We want
+	// over allocate raw pool, so we can start at bucket alignment. We want
 	// buckets to fall on a single 64 byte CPU cache line.
 	raw := make([]byte, size+bucketSize-1)
 	base := uintptr(unsafe.Pointer(&raw[0]))
@@ -98,10 +98,13 @@ func New(size int) *Table {
 	return &Table{raw: raw, data: buckets, ixMask: board.Hash(numBuckets - 1)}
 }
 
-// HashFull returns a dummy usage percentage (implement as you need).
+// HashFull is the permill use estimate of the tt.
 func (t Table) HashFull() int {
 	cnt := 0
-	for i := range min(1000, len(t.data)) {
+	if len(t.data) < 1000 {
+		panic("tt size is too small to measure permill HashFull")
+	}
+	for i := range 1000 {
 		if t.data[i].entries[0].Depth != 0 {
 			cnt++
 		}
