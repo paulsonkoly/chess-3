@@ -594,9 +594,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opt
 }
 
 func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
-	var transPE *transp.Entry
-
-	transPE, _ = s.tt.LookUp(b.Hash())
+	transPE, _ := s.tt.LookUp(b.Hash())
 
 	for ix, m := range moves {
 
