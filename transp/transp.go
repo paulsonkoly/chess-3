@@ -146,9 +146,21 @@ func (t *Table) LookUp(hash board.Hash) (*entry, bool) {
 func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
 	bucket := &t.data[t.bucketIx(hash)]
 
+	hashKey := partialKey(hash >> (64 - partialKeyBits))
+	bucketKeys := bucket.pKeys
+
 	var replace int
 	for replace = range bucketEntryCnt {
 		entry := &bucket.entries[replace]
+
+		if partialKey(bucketKeys) == hashKey {
+			// if stored entry quality is better, don't replace.
+			if entry.Depth > d {
+				return
+			}
+			break
+		}
+
 		if entry.Depth < d {
 			break
 		}
@@ -156,6 +168,8 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 		if entry.Depth == d && (entry.Type == UpperBound || typ != UpperBound) {
 			break
 		}
+
+		bucketKeys >>= partialKeyBits
 	}
 
 	if value < -Inf+MaxPlies {
@@ -172,7 +186,6 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 		Type:       typ,
 	}
 
-	hashKey := hash >> (64 - partialKeyBits)
 	bucket.pKeys &= ^(((1 << partialKeyBits) - 1) << (replace * partialKeyBits))
 	bucket.pKeys |= uint64(hashKey) << (replace * partialKeyBits)
 }
