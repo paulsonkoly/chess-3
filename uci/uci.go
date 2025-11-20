@@ -14,6 +14,7 @@ import (
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
+	"github.com/paulsonkoly/chess-3/transp"
 
 	. "github.com/paulsonkoly/chess-3/types"
 )
@@ -35,7 +36,7 @@ type Engine struct {
 func NewEngine() *Engine {
 	return &Engine{
 		Board:  Must(board.FromFEN(startPos)),
-		Search: search.New(defaultHash),
+		Search: search.New(defaultHash * transp.MegaBytes),
 	}
 }
 
@@ -113,6 +114,9 @@ func (e *Engine) handleCommand(command string) {
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		fmt.Println("uciok")
 
+	case "ucinewgame":
+		e.Search.Clear()
+
 	case "position":
 		e.handlePosition(parts[1:])
 
@@ -156,7 +160,7 @@ func (e *Engine) handleSetOption(args []string) {
 		}
 
 		// TODO re-allocate or better yet increase  / reduce the tt only
-		e.Search = search.New(val) // we need to re-allocate the hash table
+		e.Search = search.New(val * transp.MegaBytes) // we need to re-allocate the hash table
 	}
 }
 
