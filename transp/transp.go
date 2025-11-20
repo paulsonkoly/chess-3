@@ -144,17 +144,32 @@ func (t *Table) bucketIx(hash board.Hash) int {
 	return int(hash & t.ixMask)
 }
 
+const (
+	rep16 = 0x0001_0001_0001_0001
+	hi16  = 0x8000_8000_8000_8000
+)
+
+// returns true if any of the 16-bit lanes in w equals key
+func hasMatch64(w uint64, key partialKey) bool {
+	r := uint64(key) * rep16
+	x := w ^ r
+	// the has-zero-16 trick
+	return ((x - rep16) & ^x & hi16) != 0
+}
+
 // LookUp looks up the entry for hash.
 func (t *Table) LookUp(hash board.Hash) (*entry, bool) {
 	bucket := &t.data[t.bucketIx(hash)]
 	bucketKeys := bucket.pKeys
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
 
-	for i := range bucketEntryCnt {
-		if hashKey == partialKey(bucketKeys) {
-			return &bucket.entries[i], true
+	if hasMatch64(bucketKeys, hashKey) {
+		for i := range bucketEntryCnt {
+			if hashKey == partialKey(bucketKeys) {
+				return &bucket.entries[i], true
+			}
+			bucketKeys >>= partialKeyBits
 		}
-		bucketKeys >>= partialKeyBits
 	}
 
 	return nil, false
@@ -167,30 +182,34 @@ func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.SimpleMov
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
 	bucketKeys := bucket.pKeys
 
-	minQ := 1000
+	// sufficiently large start value for minimum search
+	minQ := 1<<50
 	var replace int
 	var target *entry
-	if bucket.pKeys != 0 {
-		for i := range bucketEntryCnt {
-			target = &bucket.entries[i]
-			entryQ := target.quality(gen)
+	for i := range bucketEntryCnt {
+		target = &bucket.entries[i]
+		entryQ := target.quality(gen)
 
-			if partialKey(bucketKeys) == hashKey {
-				if typ != Exact && target.Depth() > d+2 && target.gen == gen {
-					return
-				}
-
-				replace = i
-				break
+		if partialKey(bucketKeys) == hashKey {
+			if typ != Exact && target.Depth() > d+2 && target.gen == gen {
+				return
 			}
 
-			if entryQ < minQ {
-				minQ = entryQ
-				replace = i
+			// if sm is null but we have a move in the entry keep it "stockfish" trick
+			if sm == 0 {
+				sm = target.SimpleMove
 			}
 
-			bucketKeys >>= partialKeyBits
+			replace = i
+			break
 		}
+
+		if entryQ < minQ {
+			minQ = entryQ
+			replace = i
+		}
+
+		bucketKeys >>= partialKeyBits
 	}
 
 	if value < -Inf+MaxPlies {
