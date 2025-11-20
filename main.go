@@ -136,6 +136,7 @@ func runOBBench() {
 
 		nCnt += nodes
 		allTime += time
+		s.Clear()
 	}
 	fmt.Printf("nodes %d time %d\n", nCnt, allTime)
 	if allTime == 0 {
