@@ -114,6 +114,9 @@ func (e *Engine) handleCommand(command string) {
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		fmt.Println("uciok")
 
+	case "ucinewgame":
+		e.Search.Clear()
+
 	case "position":
 		e.handlePosition(parts[1:])
 

@@ -28,7 +28,10 @@ const (
 )
 
 func (s *Search) WithOptions(b *board.Board, d Depth, opts ...Option) (score Score, move move.SimpleMove) {
-	s.Clear()
+	s.refresh()
+	defer func() {
+		s.gen++
+	}()
 
 	options := options{}
 	for _, opt := range opts {
@@ -119,7 +122,7 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 		cnts := opts.counters
 		cnts.Time = miliSec
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			idD, scInfo(score), cnts.ABCnt+cnts.QCnt, miliSec, s.tt.HashFull(), pvInfo(s.pv.active()))
+			idD, scInfo(score), cnts.ABCnt+cnts.QCnt, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 
 		if opts.debug {
 			ABBF := float64(cnts.ABBreadth) / float64(cnts.ABCnt)
@@ -200,12 +203,12 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		return 0
 	}
 
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth >= d {
+	if transpE, ok := transpT.LookUp(b.Hash()); ok && transpE.Depth() >= d {
 		opts.counters.TTHit++
 
 		tpVal := transpE.Value(ply)
 
-		switch transpE.Type {
+		switch transpE.Type() {
 
 		case transp.Exact:
 			if transpE.SimpleMove != 0 {
@@ -372,7 +375,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), d, ply, m.SimpleMove, value, transp.LowerBound)
+				transpT.Insert(b.Hash(), s.gen, d, ply, m.SimpleMove, value, transp.LowerBound)
 
 				hSize := s.hstack.size()
 				bonus := -(Score(d)*20 - 15)
@@ -441,9 +444,9 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), d, ply, 0, maxim, transp.UpperBound)
+		transpT.Insert(b.Hash(), s.gen, d, ply, 0, maxim, transp.UpperBound)
 	} else {
-		transpT.Insert(b.Hash(), d, ply, bestMove, maxim, transp.Exact)
+		transpT.Insert(b.Hash(), s.gen, d, ply, bestMove, maxim, transp.Exact)
 	}
 
 	return maxim

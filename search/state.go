@@ -17,6 +17,7 @@ type Search struct {
 	ms     *move.Store
 	hstack *historyStack
 	pv     *pv
+	gen    transp.Gen
 }
 
 // New creates a new Search object.
@@ -31,18 +32,23 @@ func New(size int) *Search {
 	}
 }
 
-// Clear clears the internal stores in the Search object.
-func (s *Search) Clear() {
-	s.tt.Clear()
+// refresh prepares the state for a new search.
+func (s *Search) refresh() {
 	s.ms.Clear()
 	s.hstack.reset()
+}
+
+// Clear clears the internal stores in the Search object. Should be called between games only.
+func (s *Search) Clear() {
+	s.gen = 0
+	s.tt.Clear()
 }
 
 type options struct {
 	stop     chan struct{}
 	abort    bool
 	debug    bool
-	softTime int64 
+	softTime int64
 	counters *Counters
 }
 

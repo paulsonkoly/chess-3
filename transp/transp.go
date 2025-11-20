@@ -28,17 +28,29 @@ const (
 // Type represents the stored bound type.
 type Type byte
 
+// Gen is the search counter for aging.
+type Gen byte
+
 const (
 	Exact Type = iota
 	UpperBound
 	LowerBound
 )
 
+// packed depth and type into a single byte
+type packed byte
+
+// Depth is the entry depth.
+func (p packed) Depth() Depth { return Depth(p >> 2) }
+
+// Type indicates the node type / whether the score is exact or bound.
+func (p packed) Type() Type { return Type(p & 3) }
+
 type entry struct {
 	move.SimpleMove       // SimpleMove is the hash move. (2 bytes)
 	value           Score // (2 bytes).
-	Depth           Depth // Depth is the entry depth. (1 byte)
-	Type            Type  // Type indicates the node type / whether the score is exact or bound. (1 byte)
+	packed                // packed depth and type (1 byte)
+	gen             Gen
 }
 
 // Value is the score of the entry corrected for current ply in case of mate score.
@@ -54,7 +66,7 @@ func (e *entry) Value(ply Depth) Score {
 	return e.value
 }
 
-func (e *entry) quality() int { return quality(e.Depth, e.Type) }
+func (e *entry) quality(curr Gen) int { return quality(curr, e.gen, e.Depth(), e.Type()) }
 
 // partialKey is the bits of the Zobrist stored in the table.
 type partialKey uint16
@@ -101,27 +113,28 @@ func New(size int) *Table {
 }
 
 // HashFull is the permill use estimate of the tt.
-func (t Table) HashFull() int {
+func (t Table) HashFull(gen Gen) int {
 	cnt := 0
 	if len(t.data) < 1000 {
 		panic("tt size is too small to measure permill HashFull")
 	}
-	for i := range 1000 {
-		if t.data[i].entries[0].Depth != 0 {
-			cnt++
+	for _, bucket := range t.data[:1000] {
+		for _, entry := range bucket.entries {
+			if entry.Depth() > 0 && entry.gen == gen {
+				cnt++
+			}
 		}
 	}
-	return cnt
+	return cnt / 4 // 4 entries per bucket
 }
 
-// Clear zeros the depth field for all entries.
+// Clear empties the tt.
 func (t *Table) Clear() {
-	for i := range t.data {
-		for j := range t.data[i].entries {
-			// this is a soft clear, a cheap implementation of aging. As the hashes are
-			// still in-tact these entries are reusable in the next search, they just
-			// always lose on replacement.
-			t.data[i].entries[j].Depth = 0
+	for i, bucket := range t.data {
+		t.data[i].pKeys = 0
+
+		for j := range bucket.entries {
+			t.data[i].entries[j] = entry{}
 		}
 	}
 }
@@ -148,20 +161,21 @@ func (t *Table) LookUp(hash board.Hash) (*entry, bool) {
 }
 
 // Insert writes an entry into the transposition table.
-func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
+func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
 	bucket := &t.data[t.bucketIx(hash)]
 
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
 	bucketKeys := bucket.pKeys
 
+	currQ := quality(gen, gen, d, typ)
 	minQ := 1000
 	var replace int
 	for i := range bucketEntryCnt {
 		entry := &bucket.entries[i]
-		entryQ := entry.quality()
+		entryQ := entry.quality(gen)
 
 		if partialKey(bucketKeys) == hashKey {
-			if entryQ > quality(d, typ) {
+			if entryQ > currQ {
 				return
 			}
 			replace = i
@@ -186,18 +200,18 @@ func (t *Table) Insert(hash board.Hash, d, ply Depth, sm move.SimpleMove, value 
 	bucket.entries[replace] = entry{
 		SimpleMove: sm,
 		value:      value,
-		Depth:      d,
-		Type:       typ,
+		packed:     packed(d)<<2 | packed(typ),
+		gen:        gen,
 	}
 
 	bucket.pKeys &= ^(((1 << partialKeyBits) - 1) << (replace * partialKeyBits))
 	bucket.pKeys |= uint64(hashKey) << (replace * partialKeyBits)
 }
 
-func quality(d Depth, typ Type) int {
+func quality(curr, g Gen, d Depth, typ Type) int {
 	typQ := 1
 	if typ == UpperBound {
 		typQ = 0
 	}
-	return 2*int(d) + typQ
+	return int(d) + typQ + int(g)-int(curr)
 }
