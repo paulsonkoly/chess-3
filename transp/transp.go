@@ -32,9 +32,9 @@ type Type byte
 type Gen byte
 
 const (
-	Exact Type = iota
-	UpperBound
-	LowerBound
+	UpperBound Type = iota // Entry score is upper bound only.
+	LowerBound             // Entry score is lower bound only.
+	Exact                  // Entry score is exact.
 )
 
 // packed depth and type into a single byte
@@ -66,7 +66,7 @@ func (e *entry) Value(ply Depth) Score {
 	return e.value
 }
 
-func (e *entry) quality(curr Gen) int { return quality(curr, e.gen, e.Depth(), e.Type()) }
+func (e *entry) quality(curr Gen) int { return quality(curr, e.gen, e.Depth()) }
 
 // partialKey is the bits of the Zobrist stored in the table.
 type partialKey uint16
@@ -167,27 +167,30 @@ func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.SimpleMov
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
 	bucketKeys := bucket.pKeys
 
-	currQ := quality(gen, gen, d, typ)
 	minQ := 1000
 	var replace int
-	for i := range bucketEntryCnt {
-		entry := &bucket.entries[i]
-		entryQ := entry.quality(gen)
+	var target *entry
+	if bucket.pKeys != 0 {
+		for i := range bucketEntryCnt {
+			target = &bucket.entries[i]
+			entryQ := target.quality(gen)
 
-		if partialKey(bucketKeys) == hashKey {
-			if entryQ > currQ {
-				return
+			if partialKey(bucketKeys) == hashKey {
+				if typ != Exact && target.Depth() > d+2 && target.gen == gen {
+					return
+				}
+
+				replace = i
+				break
 			}
-			replace = i
-			break
-		}
 
-		if entryQ < minQ {
-			minQ = entryQ
-			replace = i
-		}
+			if entryQ < minQ {
+				minQ = entryQ
+				replace = i
+			}
 
-		bucketKeys >>= partialKeyBits
+			bucketKeys >>= partialKeyBits
+		}
 	}
 
 	if value < -Inf+MaxPlies {
@@ -208,10 +211,6 @@ func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.SimpleMov
 	bucket.pKeys |= uint64(hashKey) << (replace * partialKeyBits)
 }
 
-func quality(curr, g Gen, d Depth, typ Type) int {
-	typQ := 1
-	if typ == UpperBound {
-		typQ = 0
-	}
-	return int(d) + typQ + int(g)-int(curr)
+func quality(curr, g Gen, d Depth) int {
+	return int(d) + 2*(int(g)-int(curr))
 }
