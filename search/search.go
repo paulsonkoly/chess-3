@@ -131,7 +131,7 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 				cnts.AWFail, cnts.ABLeaf, ABBF, cnts.TTHit, cnts.QDepth)
 		}
 
-		if abort(opts) || (opts.softTime > 0 && miliSec > opts.softTime) {
+		if move != 0 && (opts.softTime > 0 && miliSec > opts.softTime) {
 			return
 		}
 
