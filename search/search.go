@@ -33,7 +33,7 @@ func (s *Search) WithOptions(b *board.Board, d Depth, opts ...Option) (score Sco
 		s.gen++
 	}()
 
-	options := options{}
+	options := options{nodes: -1}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -66,12 +66,10 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 			switch {
 
 			case scoreSample <= alpha:
-				opts.counters.AWFail++
 				alpha -= factor * WindowSize
 				factor *= 2
 
 			case scoreSample >= beta:
-				opts.counters.AWFail++
 				beta += factor * WindowSize
 				factor *= 2
 
@@ -79,7 +77,7 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 				awOk = true
 			}
 
-			if abort(opts) {
+			if s.abort(opts) {
 				// we hit hard timeout, and we don't have a move. We try to return the
 				// PV move if we have it, regardless of its quality, if there is none
 				// we return the first legal move we find. If there is none, we return
@@ -122,14 +120,7 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 		cnts := opts.counters
 		cnts.Time = miliSec
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			idD, scInfo(score), cnts.ABCnt+cnts.QCnt, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
-
-		if opts.debug {
-			ABBF := float64(cnts.ABBreadth) / float64(cnts.ABCnt)
-
-			fmt.Printf("info awfail %d ableaf %d abbf %.2f tthits %d qdepth %d\n",
-				cnts.AWFail, cnts.ABLeaf, ABBF, cnts.TTHit, cnts.QDepth)
-		}
+			idD, scInfo(score), cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 
 		if move != 0 && (opts.softTime > 0 && miliSec > opts.softTime) {
 			return
@@ -141,16 +132,16 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 	return
 }
 
-func abort(opts *options) bool {
+func (s *Search) abort(opts *options) bool {
 	if opts.stop != nil {
 		select {
 		case <-opts.stop:
-			opts.abort = true
+			s.aborted = true
 			return true
 		default:
 		}
 	}
-	return opts.abort
+	return s.aborted
 }
 
 func pvInfo(moves []move.SimpleMove) string {
@@ -226,15 +217,11 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 				return tpVal
 			}
 		}
-		opts.counters.TTHit--
 	}
 
 	if d == 0 {
-		opts.counters.ABLeaf++
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
-
-	opts.counters.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
 	improving := false
@@ -397,8 +384,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 					}
 				}
 
-				opts.counters.ABBreadth += moveCnt
-
 				return value
 			}
 
@@ -418,12 +403,10 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			break
 		}
 
-		if abort(opts) {
+		if s.abort(opts) {
 			return maxim
 		}
 	}
-
-	opts.counters.ABBreadth += moveCnt
 
 	if !hasLegal {
 		maxim = Score(0)
@@ -506,11 +489,11 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
 func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opts *options) Score {
-	if d > opts.counters.QDepth {
-		opts.counters.QDepth = d
-	}
+	opts.counters.Nodes++
 
-	opts.counters.QCnt++
+	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
+		s.aborted = true
+	}
 
 	if b.FiftyCnt >= 100 || b.Threefold() >= 3 {
 		return 0
@@ -581,7 +564,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opt
 		maxim = max(maxim, curr)
 		alpha = max(alpha, curr)
 
-		if abort(opts) {
+		if s.abort(opts) {
 			return maxim
 		}
 	}

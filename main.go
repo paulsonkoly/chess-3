@@ -129,7 +129,7 @@ func runOBBench() {
 		counters := search.Counters{}
 		s.WithOptions(b, 15, search.WithCounters(&counters))
 
-		nodes := counters.ABCnt + counters.QCnt
+		nodes := counters.Nodes
 		time := counters.Time
 
 		fmt.Printf("nodes %d time %d\n", nodes, time)
