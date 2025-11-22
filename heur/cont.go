@@ -17,17 +17,7 @@ func NewContinuation() *Continuation {
 
 // Clear clears the continuation history table.
 func (c *Continuation) Clear() {
-	for color := range Colors {
-		for pt1 := range 6 {
-			for sq1 := range Squares {
-				for pt2 := range 6 {
-					for sq2 := range Squares {
-						c.data[color][pt1][sq1][pt2][sq2] = 0
-					}
-				}
-			}
-		}
-	}
+	c.data = [Colors][6][Squares][6][Squares]Score{}
 }
 
 // Add increments the continuation history heuristics for the move by bonus.
