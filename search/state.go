@@ -43,6 +43,8 @@ func (s *Search) Clear() {
 	s.gen = 0
 	s.tt.Clear()
 	s.hist.Clear()
+	s.cont[0].Clear()
+	s.cont[1].Clear()
 }
 
 type options struct {

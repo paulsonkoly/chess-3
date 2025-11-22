@@ -283,12 +283,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
-	// deflate history
-	if opts.counters.ABCnt%10_000 == 0 {
-		s.cont[0].Deflate()
-		s.cont[1].Deflate()
-	}
-
 	s.ms.Push()
 	defer s.ms.Pop()
 
@@ -617,12 +611,12 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 
 			if s.hstack.size() >= 1 {
 				hist := s.hstack.top(0)
-				score += 3 * s.cont[0].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
+				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, m.Piece, m.To())
 			}
 
 			if s.hstack.size() >= 2 {
 				hist := s.hstack.top(1)
-				score += 2 * s.cont[1].Probe(b.STM, hist.piece, hist.to, m.Piece, m.To())
+				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, m.Piece, m.To())
 			}
 
 			moves[ix].Weight = score
