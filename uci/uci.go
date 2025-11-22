@@ -252,6 +252,7 @@ func (tc timeControl) timedMode(stm Color) bool {
 
 const (
 	TimeSafetyMargin = 30
+	PredictedMoves   = 30
 	TimeInf          = int64(1 << 50)
 )
 
@@ -261,11 +262,11 @@ func (tc timeControl) softLimit(stm Color) int64 {
 	}
 
 	if stm == White && tc.wtime > 0 {
-		return tc.wtime/20 + tc.winc/2
+		return tc.wtime/PredictedMoves + tc.winc/2
 	}
 
 	if stm == Black && tc.btime > 0 {
-		return tc.btime/20 + tc.binc/2
+		return tc.btime/PredictedMoves + tc.binc/2
 	}
 
 	return TimeInf
