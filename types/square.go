@@ -69,6 +69,8 @@ const (
 	F8
 	G8
 	H8
+
+	Squares
 )
 
 func (s Square) String() string {

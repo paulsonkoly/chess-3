@@ -42,6 +42,7 @@ func (s *Search) refresh() {
 func (s *Search) Clear() {
 	s.gen = 0
 	s.tt.Clear()
+	s.hist.Clear()
 }
 
 type options struct {

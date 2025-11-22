@@ -51,6 +51,8 @@ type Color byte
 const (
 	White = Color(iota)
 	Black
+
+	Colors
 )
 
 func (c Color) Flip() Color { return c ^ 1 }
