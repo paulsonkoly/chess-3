@@ -4,35 +4,41 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+// Continuation is the heuristics table indexed with color, old move piece type
+// & to square, new move piece type and to square.
 type Continuation struct {
-	// color, pt, sq, pt2, sq2
-	data [2 * 6 * 64 * 6 * 64]Score
+	data [Colors][6][Squares][6][Squares]Score
 }
 
+// NewContinuation creates a continuation history table.
 func NewContinuation() *Continuation {
 	return &Continuation{}
 }
 
-// Deflate divides every entry in the store by 2.
-func (c *Continuation) Deflate() {
-	for i := range c.data {
-		c.data[i] /= 2
+// Clear clears the continuation history table.
+func (c *Continuation) Clear() {
+	for color := range Colors {
+		for pt1 := range 6 {
+			for sq1 := range Squares {
+				for pt2 := range 6 {
+					for sq2 := range Squares {
+						c.data[color][pt1][sq1][pt2][sq2] = 0
+					}
+				}
+			}
+		}
 	}
 }
 
-func ix(stm Color, ptHist Piece, toHist Square, pt Piece, to Square) int {
-	return int(to) + 64*int(pt-1) + 6*64*int(toHist) + 64*6*64*int(ptHist-1) + 6*64*6*64*int(stm)
-}
-
-// Add increments the continuation history heuristics for the move by d*d.
+// Add increments the continuation history heuristics for the move by bonus.
 func (c *Continuation) Add(stm Color, ptHist Piece, toHist Square, pt Piece, to Square, bonus Score) {
-	ix := ix(stm, ptHist, toHist, pt, to)
+	entry := &c.data[stm][ptHist-1][toHist][pt-1][to]
 
 	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
-	c.data[ix] += clampedBonus - Score(int(c.data[ix])*int(Abs(clampedBonus))/MaxHistory)
+	*entry += clampedBonus - Score(int(*entry)*int(Abs(clampedBonus))/MaxHistory)
 }
 
-// Probe returns the continuation history heuristics entry for the move.
-func (c *Continuation) Probe(stm Color, ptHist Piece, toHist Square, pt Piece, to Square) Score {
-	return c.data[ix(stm, ptHist, toHist, pt, to)]
+// LookUp returns the continuation history heuristics entry for the move.
+func (c *Continuation) LookUp(stm Color, ptHist Piece, toHist Square, pt Piece, to Square) Score {
+	return c.data[stm][ptHist-1][toHist][pt-1][to]
 }
