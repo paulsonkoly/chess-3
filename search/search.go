@@ -285,7 +285,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	// deflate history
 	if opts.counters.ABCnt%10_000 == 0 {
-		s.hist.Deflate()
 		s.cont[0].Deflate()
 		s.cont[1].Deflate()
 	}
@@ -614,7 +613,7 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 			}
 
 		default:
-			score := s.hist.Probe(b.STM, m.From(), m.To())
+			score := s.hist.LookUp(b.STM, m.From(), m.To())
 
 			if s.hstack.size() >= 1 {
 				hist := s.hstack.top(0)
