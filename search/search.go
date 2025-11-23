@@ -27,13 +27,15 @@ const (
 	WindowSize = 50 // half a pawn left and right around score
 )
 
-func (s *Search) WithOptions(b *board.Board, d Depth, opts ...Option) (score Score, move move.SimpleMove) {
+// Go is the main entry point into the engine. It kicks off the search on board
+// b, and returns the final score and best move.
+func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.SimpleMove) {
 	s.refresh()
 	defer func() {
 		s.gen++
 	}()
 
-	options := options{nodes: -1}
+	options := options{depth: MaxPlies, nodes: -1}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -42,20 +44,20 @@ func (s *Search) WithOptions(b *board.Board, d Depth, opts ...Option) (score Sco
 		options.counters = &Counters{}
 	}
 
-	return s.iterativeDeepen(b, d, &options)
+	return s.iterativeDeepen(b, &options)
 }
 
 // iterativeDeepen is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window. depth is iterated
 // between 0 and d inclusive.
-func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score Score, move move.SimpleMove) {
+func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, move move.SimpleMove) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
 
 	start := time.Now()
 
-	for idD := range d + 1 {
+	for idD := range opts.depth + 1 {
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
 		var scoreSample Score
@@ -106,8 +108,9 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 						}
 						b.UndoMove(&pseudo)
 					}
+
+					return
 				}
-				return
 			}
 		}
 		score = scoreSample
@@ -122,7 +125,7 @@ func (s *Search) iterativeDeepen(b *board.Board, d Depth, opts *options) (score 
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
 			idD, scInfo(score), cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 
-		if move != 0 && (opts.softTime > 0 && miliSec > opts.softTime) {
+		if s.abort(opts) || (move != 0 && (opts.softTime > 0 && miliSec > opts.softTime)) {
 			return
 		}
 

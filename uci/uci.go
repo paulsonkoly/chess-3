@@ -296,7 +296,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 }
 
 func (e *Engine) handleGo(args []string) {
-	depth := Depth(1) // Default depth if none is specified
+	opts := make([]search.Option, 0, 4)
 
 	tc := timeControl{}
 
@@ -311,33 +311,35 @@ func (e *Engine) handleGo(args []string) {
 		case "binc":
 			tc.binc = parseInt64(args[i+1])
 		case "depth":
-			depth = Depth(parseInt(args[i+1]))
+			depth := Depth(parseInt(args[i+1]))
+			opts = append(opts, search.WithDepth(depth))
+		case "nodes":
+			nodes := parseInt(args[i+1])
+			opts = append(opts, search.WithNodes(nodes))
 		case "movetime":
 			tc.mtime = parseInt64(args[i+1])
 		}
 	}
 
-	stm := e.Board.STM
+	// stop is always needed in order to support stop command, regardless of timeouts.
+	stop := make(chan struct{})
+	opts = append(opts, search.WithStop(stop))
 
+	stm := e.Board.STM
 	if tc.timedMode(stm) {
-		depth = MaxPlies
+		opts = append(opts, search.WithSoftTime(tc.softLimit(stm)))
 	}
 
-	stop := make(chan struct{})
-	softTime := tc.softLimit(stm)
+	if e.debug {
+		opts = append(opts, search.WithDebug(true))
+	}
 
 	var move move.SimpleMove
 
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, move = e.Search.WithOptions(
-			e.Board,
-			depth,
-			search.WithStop(stop),
-			search.WithSoftTime(softTime),
-			search.WithDebug(e.debug),
-		)
+		_, move = e.Search.Go(e.Board, opts...)
 		close(searchFin)
 	}()
 

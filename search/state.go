@@ -4,6 +4,8 @@ import (
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/transp"
+
+	. "github.com/paulsonkoly/chess-3/types"
 )
 
 // Search contains the permanent stores such as tt that can be re-used between
@@ -53,6 +55,7 @@ type options struct {
 	softTime int64
 	nodes    int
 	counters *Counters
+	depth    Depth
 	debug    bool
 }
 
@@ -87,6 +90,11 @@ func WithSoftTime(st int64) Option {
 	return func(o *options) {
 		o.softTime = st
 	}
+}
+
+// WithDepth runs the search with depth limit. Useful for "go depth" uci command.
+func WithDepth(d Depth) Option {
+	return func(o * options) { o.depth = d }
 }
 
 // WithNodes runs the search with hard node count limit. Useful for "go nodes"
