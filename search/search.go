@@ -194,15 +194,13 @@ const (
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
 
-	transpT := s.tt
-	s.pv.setNull(ply)
-
 	tfCnt := b.Threefold()
 	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetation
 	if b.FiftyCnt >= 100 || tfCnt >= 3-min(ply, 1) {
 		return 0
 	}
 
+	transpT := s.tt
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && nType != PVNode && transpE.Depth() >= d {
 		opts.counters.TTHit++
 
@@ -229,11 +227,12 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		opts.counters.TTHit--
 	}
 
-	if d == 0 {
+	if d == 0 || ply >= MaxPlies {
 		opts.counters.ABLeaf++
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
+	s.pv.setNull(ply)
 	opts.counters.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
