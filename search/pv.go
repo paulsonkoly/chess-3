@@ -44,7 +44,7 @@ func (pv *pv) setTip(ply Depth, m move.SimpleMove) {
 }
 
 // setNull sets the current pv length to 0 at depth ply.
-func (pv * pv)setNull(ply Depth) {
+func (pv *pv) setNull(ply Depth) {
 	pv.depth[ply] = 0
 }
 
