@@ -189,6 +189,11 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
+	opts.counters.Nodes++
+	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
+		s.aborted = true
+	}
+
 	s.pv.setNull(ply)
 
 	tfCnt := b.Threefold()
