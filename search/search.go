@@ -195,8 +195,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	}
 
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && nType != PVNode && transpE.Depth() >= d {
-		opts.counters.TTHit++
-
 		tpVal := transpE.Value(ply)
 
 		switch transpE.Type() {
