@@ -186,12 +186,10 @@ const (
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
 
 	if d == 0 || ply >= MaxPlies {
-		opts.counters.ABLeaf++
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
 	s.pv.setNull(ply)
-	opts.counters.ABCnt++
 
 	tfCnt := b.Threefold()
 	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetation
