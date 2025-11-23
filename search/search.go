@@ -195,13 +195,6 @@ const (
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
 	s.pv.setNull(ply)
 
-	if d == 0 || ply >= MaxPlies-1 {
-		opts.counters.ABLeaf++
-		return s.quiescence(b, alpha, beta, 0, ply, opts)
-	}
-
-	opts.counters.ABCnt++
-
 	tfCnt := b.Threefold()
 	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetation
 	if b.FiftyCnt >= 100 || tfCnt >= 3-min(ply, 1) {
@@ -231,6 +224,13 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 		opts.counters.TTHit--
 	}
+
+	if d == 0 || ply >= MaxPlies-1 {
+		opts.counters.ABLeaf++
+		return s.quiescence(b, alpha, beta, 0, ply, opts)
+	}
+
+	opts.counters.ABCnt++
 
 	inCheck := movegen.InCheck(b, b.STM)
 	improving := false
