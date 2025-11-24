@@ -188,10 +188,6 @@ const (
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
 
-	if d == 0 || ply >= MaxPlies {
-		return s.quiescence(b, alpha, beta, 0, ply, opts)
-	}
-
 	opts.counters.Nodes++
 	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
 		s.aborted = true
@@ -212,9 +208,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		switch transpE.Type() {
 
 		case transp.Exact:
-			if transpE.SimpleMove != 0 {
-				s.pv.setTip(ply, transpE.SimpleMove)
-			}
 			return tpVal
 
 		case transp.LowerBound:
@@ -227,6 +220,10 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 				return tpVal
 			}
 		}
+	}
+
+	if d == 0 || ply >= MaxPlies-1 {
+		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
 	inCheck := movegen.InCheck(b, b.STM)
