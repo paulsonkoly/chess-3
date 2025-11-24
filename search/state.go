@@ -38,7 +38,6 @@ func (s *Search) refresh() {
 	s.ms.Clear()
 	s.hstack.reset()
 	s.aborted = false
-	s.pv.setNull(0)
 }
 
 // Clear clears the internal stores in the Search object. Should be called between games only.

@@ -80,19 +80,16 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 			}
 
 			if s.abort(opts) {
-				// we hit hard timeout, and we don't have a move. We try to return the
-				// PV move if we have it, regardless of its quality, if there is none
-				// we return the first legal move we find. If there is none, we return
-				// null move.
-				if move == 0 {
-					// there is no previous move, so we produce something from the
-					// aborted search. The scoreSample is our best bet at this point.
-					score = scoreSample
-					if len(s.pv.active()) > 0 {
-						move = s.pv.active()[0]
-						return
-					}
+				// have a final node count for debugging purposes
+				fmt.Printf("info depth %d nodes %d\n", idD, opts.counters.Nodes)
 
+				// we hit hard timeout/abort and we don't have a move. We try to return
+				// the first leagl move, regardless of its quality, if there is none we
+				// return null move.
+				//
+				// We should be able to replay a game from an obenbench crash,
+				// following exact node counts with "go nodes" commands. 
+				if move == 0 {
 					s.ms.Push()
 					defer s.ms.Pop()
 
@@ -108,9 +105,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 						}
 						b.UndoMove(&pseudo)
 					}
-
-					return
 				}
+				return
 			}
 		}
 		score = scoreSample
@@ -123,7 +119,7 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 		cnts := opts.counters
 		cnts.Time = miliSec
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			idD, scInfo(score), cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
+			idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 
 		if s.abort(opts) || (move != 0 && (opts.softTime > 0 && miliSec > opts.softTime)) {
 			return
@@ -158,20 +154,6 @@ func pvInfo(moves []move.SimpleMove) string {
 	return sb.String()
 }
 
-func scInfo(score Score) string {
-	if Abs(score) >= Inf-MaxPlies {
-		diff := Inf - score
-
-		if score < 0 {
-			diff = -score - Inf
-		}
-
-		return fmt.Sprintf("mate %d", (diff+1)/2)
-	}
-
-	return fmt.Sprintf("cp %d", score)
-}
-
 // Node is the predicted type of the node.
 type Node = byte
 
@@ -187,6 +169,13 @@ const (
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
+	if s.abort(opts) {
+		return Inv
+	}
+
+	if d == 0 || ply >= MaxPlies-1 {
+		return s.quiescence(b, alpha, beta, 0, ply, opts)
+	}
 
 	opts.counters.Nodes++
 	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
@@ -220,10 +209,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 				return tpVal
 			}
 		}
-	}
-
-	if d == 0 || ply >= MaxPlies-1 {
-		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
 	inCheck := movegen.InCheck(b, b.STM)
@@ -407,7 +392,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 
 		if s.abort(opts) {
-			return maxim
+			return Inv
 		}
 	}
 
@@ -492,6 +477,10 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
 func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opts *options) Score {
+	if s.abort(opts) {
+		return Inv
+	}
+
 	opts.counters.Nodes++
 
 	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
@@ -568,7 +557,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opt
 		alpha = max(alpha, curr)
 
 		if s.abort(opts) {
-			return maxim
+			return Inv
 		}
 	}
 
