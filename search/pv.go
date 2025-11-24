@@ -37,12 +37,6 @@ func (pv *pv) insert(ply Depth, m move.SimpleMove) {
 	pv.depth[ply] = l + 1
 }
 
-// setTip inserts the move m at depth ply setting it to be the end of the PV.
-func (pv *pv) setTip(ply Depth, m move.SimpleMove) {
-	pv.moves[bufIx(ply)] = m
-	pv.depth[ply] = 1
-}
-
 // setNull sets the current pv length to 0 at depth ply.
 func (pv *pv) setNull(ply Depth) {
 	pv.depth[ply] = 0
