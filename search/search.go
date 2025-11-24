@@ -193,8 +193,6 @@ const (
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
-
-	transpT := s.tt
 	s.pv.setNull(ply)
 
 	tfCnt := b.Threefold()
@@ -203,6 +201,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		return 0
 	}
 
+	transpT := s.tt
 	if transpE, ok := transpT.LookUp(b.Hash()); ok && nType != PVNode && transpE.Depth() >= d {
 		opts.counters.TTHit++
 
@@ -211,9 +210,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		switch transpE.Type() {
 
 		case transp.Exact:
-			if transpE.SimpleMove != 0 {
-				s.pv.setTip(ply, transpE.SimpleMove)
-			}
 			return tpVal
 
 		case transp.LowerBound:
@@ -229,7 +225,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		opts.counters.TTHit--
 	}
 
-	if d == 0 {
+	if d == 0 || ply >= MaxPlies-1 {
 		opts.counters.ABLeaf++
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
