@@ -84,11 +84,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 				fmt.Printf("info depth %d nodes %d\n", idD, opts.counters.Nodes)
 
 				// we hit hard timeout/abort and we don't have a move. We try to return
-				// the first leagl move, regardless of its quality, if there is none we
+				// the first legal move, regardless of its quality, if there is none we
 				// return null move.
-				//
-				// We should be able to replay a game from an obenbench crash,
-				// following exact node counts with "go nodes" commands. 
 				if move == 0 {
 					s.ms.Push()
 					defer s.ms.Pop()
@@ -169,9 +166,7 @@ const (
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
-	if s.abort(opts) {
-		return Inv
-	}
+	s.pv.setNull(ply)
 
 	if d == 0 || ply >= MaxPlies-1 {
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
@@ -181,8 +176,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
 		s.aborted = true
 	}
-
-	s.pv.setNull(ply)
 
 	tfCnt := b.Threefold()
 	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetation
@@ -279,6 +272,13 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	quietCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
+
+		// it is important that we check abort *before* updating any of the
+		// persistent states, for being able to replicate revious runs with go
+		// nodes
+		if s.abort(opts) {
+			return Inv
+		}
 
 		b.MakeMove(m)
 
@@ -390,10 +390,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		if !inCheck && alpha+1 == beta && quietCnt > 1+quietLimit {
 			break
 		}
-
-		if s.abort(opts) {
-			return Inv
-		}
 	}
 
 	if !hasLegal {
@@ -477,10 +473,6 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
 func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opts *options) Score {
-	if s.abort(opts) {
-		return Inv
-	}
-
 	opts.counters.Nodes++
 
 	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
