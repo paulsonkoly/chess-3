@@ -251,13 +251,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 			enP := b.MakeNullMove()
 
-			r := Depth(NMPInit)
-
-			if improving {
-				r++
-			}
-
-			r += Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
+			r := NMPInit+Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
 
 			value := -s.alphaBeta(b, -beta, -beta+1, max(d-r, 0), ply+1, CutNode, opts)
 
