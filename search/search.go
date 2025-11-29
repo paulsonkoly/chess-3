@@ -166,6 +166,10 @@ const (
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
+	if s.abort(opts) {
+		return Inv
+	}
+
 	s.pv.setNull(ply)
 
 	if d == 0 || ply >= MaxPlies-1 {
@@ -261,12 +265,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
-		// it is important that we check abort *before* updating any of the
-		// persistent states, for being able to replicate revious runs with go
-		// nodes
-		if s.abort(opts) {
-			return Inv
-		}
 
 		b.MakeMove(m)
 
@@ -326,6 +324,13 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 		if value > maxim {
 			maxim = value
+		}
+
+		// it is important that we check abort *before* updating any of the
+		// persistent states, for being able to replicate revious runs with go
+		// nodes
+		if s.abort(opts) {
+			return Inv
 		}
 
 		if value > alpha {
