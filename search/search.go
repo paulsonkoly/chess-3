@@ -336,7 +336,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 
 		// it is important that we check abort *before* updating any of the
-		// persistent states, for being able to replicate revious runs with go
+		// persistent states, for being able to replicate previous runs with go
 		// nodes
 		if s.abort(opts) {
 			return Inv

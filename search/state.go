@@ -93,7 +93,7 @@ func WithSoftTime(st int64) Option {
 
 // WithDepth runs the search with depth limit. Useful for "go depth" uci command.
 func WithDepth(d Depth) Option {
-	return func(o * options) { o.depth = d }
+	return func(o *options) { o.depth = d }
 }
 
 // WithNodes runs the search with hard node count limit. Useful for "go nodes"
