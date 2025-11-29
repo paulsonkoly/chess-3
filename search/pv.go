@@ -18,7 +18,7 @@ type pv struct {
 	// moves is the double buffered PV
 	moves [MaxPlies * (MaxPlies + 1) / 2]move.SimpleMove
 
-	depth [MaxPlies]Depth
+	depth [MaxPlies-10]Depth
 }
 
 // newPV creates a new PV buffer.

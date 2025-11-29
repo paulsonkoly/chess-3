@@ -181,7 +181,7 @@ const (
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
 	s.pv.setNull(ply)
 
-	if d == 0 || ply >= MaxPlies-1 {
+	if d == 0 /*|| ply >= MaxPlies-1*/ {
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
