@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"iter"
 
 	"golang.org/x/exp/constraints"
@@ -16,6 +17,24 @@ const (
 	Inf = Score(10_000)  // Inf is the checkmate score.
 	Inv = Score(-11_000) // Inv is an invalid score. It is guaranteed to be less than any valid scores.
 )
+
+func (s Score) String() string {
+	if s == Inv {
+		return "Inv"
+	}
+
+	if Abs(s) >= Inf-MaxPlies {
+		diff := Inf - s
+
+		if s < 0 {
+			diff = -s - Inf
+		}
+
+		return fmt.Sprintf("mate %d", (diff+1)/2)
+	}
+
+	return fmt.Sprintf("cp %d", s)
+}
 
 const (
 	Short = 0
