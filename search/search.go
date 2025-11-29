@@ -118,7 +118,7 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
 			idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 
-		if s.abort(opts) || (move != 0 && (opts.softTime > 0 && miliSec > opts.softTime)) {
+		if move != 0 && (opts.softTime > 0 && miliSec > opts.softTime) {
 			return
 		}
 
@@ -129,6 +129,9 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 }
 
 func (s *Search) abort(opts *options) bool {
+	if s.aborted {
+		return true
+	}
 	if opts.stop != nil {
 		select {
 		case <-opts.stop:
@@ -137,7 +140,17 @@ func (s *Search) abort(opts *options) bool {
 		default:
 		}
 	}
-	return s.aborted
+	return false
+}
+
+// incrementNodes increments node count in opts.counters, except if it would
+// overrun the alloted nodes in which case it sets abort.
+func (s *Search) incrementNodes(opts *options) {
+	if opts.nodes == -1 || opts.counters.Nodes < opts.nodes {
+		opts.counters.Nodes++
+	} else {
+		s.aborted = true
+	}
 }
 
 func pvInfo(moves []move.SimpleMove) string {
@@ -166,19 +179,16 @@ const (
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
-	if s.abort(opts) {
-		return Inv
-	}
-
 	s.pv.setNull(ply)
 
 	if d == 0 || ply >= MaxPlies-1 {
 		return s.quiescence(b, alpha, beta, 0, ply, opts)
 	}
 
-	opts.counters.Nodes++
-	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
-		s.aborted = true
+	s.incrementNodes(opts)
+
+	if s.abort(opts) {
+		return Inv
 	}
 
 	tfCnt := b.Threefold()
@@ -227,7 +237,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 			enP := b.MakeNullMove()
 
-			r := NMPInit+Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
+			r := NMPInit + Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
 
 			value := -s.alphaBeta(b, -beta, -beta+1, max(d-r, 0), ply+1, CutNode, opts)
 
@@ -264,7 +274,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	quietCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
-
 
 		b.MakeMove(m)
 
@@ -466,10 +475,11 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
 func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opts *options) Score {
-	opts.counters.Nodes++
 
-	if opts.nodes != -1 && opts.counters.Nodes >= opts.nodes {
-		s.aborted = true
+	s.incrementNodes(opts)
+
+	if s.abort(opts) {
+		return Inv
 	}
 
 	if b.FiftyCnt >= 100 || b.Threefold() >= 3 {
