@@ -182,7 +182,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	s.pv.setNull(ply)
 
 	if d == 0 || ply >= MaxPlies-1 {
-		return s.quiescence(b, alpha, beta, 0, ply, opts)
+		return s.quiescence(b, alpha, beta, ply, opts)
 	}
 
 	s.incrementNodes(opts)
@@ -474,7 +474,7 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
-func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opts *options) Score {
+func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *options) Score {
 
 	s.incrementNodes(opts)
 
@@ -484,6 +484,27 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opt
 
 	if b.FiftyCnt >= 100 || b.Threefold() >= 3 {
 		return 0
+	}
+
+	transpT := s.tt
+	if transpE, ok := transpT.LookUp(b.Hash()); ok {
+		tpVal := transpE.Value(ply)
+
+		switch transpE.Type() {
+
+		case transp.Exact:
+			return tpVal
+
+		case transp.LowerBound:
+			if tpVal >= beta {
+				return tpVal
+			}
+
+		case transp.UpperBound:
+			if tpVal <= alpha {
+				return tpVal
+			}
+		}
 	}
 
 	inCheck := movegen.InCheck(b, b.STM)
@@ -542,7 +563,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, d, ply Depth, opt
 			break
 		}
 
-		curr := -s.quiescence(b, -beta, -alpha, d+1, ply+1, opts)
+		curr := -s.quiescence(b, -beta, -alpha, ply+1, opts)
 		b.UndoMove(m)
 
 		if curr >= beta {
