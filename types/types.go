@@ -7,6 +7,8 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
+const StartPosFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
 type Depth int8
 
 const MaxPlies = 64
