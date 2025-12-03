@@ -50,12 +50,19 @@ func (s *Search) Clear() {
 }
 
 type options struct {
-	stop     chan struct{}
-	softTime int64
-	nodes    int
-	counters *Counters
-	depth    Depth
-	debug    bool
+	stop      chan struct{}
+	softTime  int64
+	nodes     int
+	softNodes int
+	counters  *Counters
+	depth     Depth
+	debug     bool
+}
+
+// softAbort determines if elapsed times or nodes count justify a soft abort;
+// that is aborting after a full completion of a given depth.
+func (o *options) softAbort(elapsed int64, nodes int) bool {
+	return (o.softTime > 0 && elapsed > o.softTime) || (o.softNodes > 0 && nodes > o.softNodes)
 }
 
 // Option modifies how a search runs, this should be set per search.
@@ -100,6 +107,10 @@ func WithDepth(d Depth) Option {
 // uci command.
 func WithNodes(nodes int) Option {
 	return func(o *options) { o.nodes = nodes }
+}
+
+func WithSoftNodes(nodes int) Option {
+	return func(o *options) { o.softNodes = nodes }
 }
 
 // Counters are various search counters.

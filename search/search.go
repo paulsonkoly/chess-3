@@ -35,7 +35,7 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Simp
 		s.gen++
 	}()
 
-	options := options{depth: MaxPlies, nodes: -1}
+	options := options{depth: MaxPlies, nodes: -1, softNodes: -1}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -118,7 +118,7 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
 			idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 
-		if move != 0 && (opts.softTime > 0 && miliSec > opts.softTime) {
+		if move != 0 && opts.softAbort(miliSec, opts.counters.Nodes) {
 			return
 		}
 
