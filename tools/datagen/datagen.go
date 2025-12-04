@@ -20,7 +20,10 @@ import (
 	"github.com/paulsonkoly/chess-3/types"
 )
 
-const gamesQueueDepth = 16
+const (
+	gamesQueueDepth = 16
+	gameLength      = 128
+)
 
 type Config struct {
 	gameCount     int
@@ -37,6 +40,7 @@ var config = Config{}
 func main() {
 
 	flag.IntVar(&config.gameCount, "gameCount", 1_000_000, "number of games to generate")
+	// flag.IntVar(&config.gameCount, "gameCount", 2, "number of games to generate")
 	flag.IntVar(&config.openingDepth, "openingDepth", 8, "number of random generated opening moves")
 	flag.IntVar(&config.openingMargin, "openingMargin", 300, "margin for what's considered to be balanced opening (cp)")
 	flag.IntVar(&config.threads, "threads", runtime.NumCPU()-1, "number of threads")
@@ -51,11 +55,8 @@ func main() {
 
 	games := make(chan *Game, gamesQueueDepth)
 
-	for t := range config.threads {
-		if t == config.threads-1 { // last worker thread?
-			gamesPerThread = config.gameCount - t*gamesPerThread
-		}
-
+	for count, t := 0, 0; count < config.gameCount; count, t = count+gamesPerThread, t+1 {
+		gamesPerThread = min(gamesPerThread, config.gameCount-count)
 		workersWG.Go(func() { NewGenerator().Games(gamesPerThread, games) })
 	}
 
@@ -75,9 +76,9 @@ type Game struct {
 }
 
 type Position struct {
-	fen  string
-	bm   move.SimpleMove
-	eval types.Score
+	fen   string
+	bm    move.SimpleMove
+	score types.Score
 }
 
 type Generator struct {
@@ -93,9 +94,8 @@ func NewGenerator() Generator {
 }
 
 func (g Generator) Games(count int, out chan<- *Game) {
-	s := search.New(1 * transp.MegaBytes)
+	g.search = search.New(1 * transp.MegaBytes)
 	for range count {
-		s.Clear()
 		g.Game(out)
 	}
 }
@@ -105,12 +105,26 @@ func (g Generator) Game(out chan<- *Game) {
 
 	b := g.Opening()
 
-	finished := false
-	for !finished {
-		g.search.Go(b,
+	positions := make([]Position, gameLength)
+
+	for {
+		score, bm := g.search.Go(b,
 			search.WithSoftNodes(config.softNodes),
 			search.WithNodes(config.hardNodes))
+
+		if bm == 0 {
+			break
+		}
+
+		positions = append(positions, Position{fen: b.FEN(), bm: bm, score: score})
+
+		// convert bm back to full move
+		move := movegen.FromSimple(b, bm)
+
+		b.MakeMove(&move)
 	}
+
+	out <- &Game{positions: positions}
 }
 
 func (g *Generator) Opening() *board.Board {
