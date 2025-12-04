@@ -39,8 +39,8 @@ var config = Config{}
 
 func main() {
 
-	flag.IntVar(&config.gameCount, "gameCount", 1_000_000, "number of games to generate")
-	// flag.IntVar(&config.gameCount, "gameCount", 2, "number of games to generate")
+	// flag.IntVar(&config.gameCount, "gameCount", 1_000_000, "number of games to generate")
+	flag.IntVar(&config.gameCount, "gameCount", 4, "number of games to generate")
 	flag.IntVar(&config.openingDepth, "openingDepth", 8, "number of random generated opening moves")
 	flag.IntVar(&config.openingMargin, "openingMargin", 300, "margin for what's considered to be balanced opening (cp)")
 	flag.IntVar(&config.threads, "threads", runtime.NumCPU()-1, "number of threads")
@@ -110,7 +110,8 @@ func (g Generator) Game(out chan<- *Game) {
 	for {
 		score, bm := g.search.Go(b,
 			search.WithSoftNodes(config.softNodes),
-			search.WithNodes(config.hardNodes))
+			search.WithNodes(config.hardNodes),
+			search.WithInfo(false))
 
 		if bm == 0 {
 			break
@@ -158,7 +159,10 @@ func (g *Generator) Opening() *board.Board {
 			score := eval.Eval(b, &eval.Coefficients)
 			if score < types.Score(config.openingMargin) || score > types.Score(config.openingMargin) {
 				success = false
+				continue
 			}
+
+			fmt.Println(b.FEN(), score)
 		}
 	}
 

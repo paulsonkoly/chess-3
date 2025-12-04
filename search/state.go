@@ -57,6 +57,7 @@ type options struct {
 	counters  *Counters
 	depth     Depth
 	debug     bool
+	info      bool
 }
 
 // softAbort determines if elapsed times or nodes count justify a soft abort;
@@ -80,6 +81,13 @@ func WithStop(stop chan struct{}) Option {
 func WithDebug(debug bool) Option {
 	return func(o *options) {
 		o.debug = debug
+	}
+}
+
+// WithInfo runs the search with uci info line outputs.
+func WithInfo(info bool) Option {
+	return func(o *options) {
+		o.info = info
 	}
 }
 
