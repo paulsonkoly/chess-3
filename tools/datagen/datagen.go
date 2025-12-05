@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sync"
 
+	progress "github.com/schollz/progressbar/v3"
 	_ "modernc.org/sqlite"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -52,8 +53,7 @@ var config = Config{}
 
 func main() {
 
-	// flag.IntVar(&config.gameCount, "gameCount", 1_000_000, "number of games to generate")
-	flag.IntVar(&config.gameCount, "gameCount", 4, "number of games to generate")
+	flag.IntVar(&config.gameCount, "gameCount", 1_000_000, "number of games to generate")
 	flag.IntVar(&config.openingDepth, "openingDepth", 8, "number of random generated opening moves")
 	openingMargin := flag.Int("openingMargin", 300, "margin for what's considered to be balanced opening (cp)")
 	flag.IntVar(&config.threads, "threads", runtime.NumCPU()-1, "number of threads")
@@ -239,11 +239,19 @@ func (g *Generator) Opening() *board.Board {
 }
 
 func writer(games <-chan *Game) {
+	pb := progress.NewOptions(config.gameCount,
+		progress.OptionSetPredictTime(true),
+		progress.OptionSetItsString("games"),
+		progress.OptionShowIts(),
+	)
+
 	db, err := sql.Open("sqlite", config.dbFile)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
+
+	db.Exec("pragma foreign_keys = on")
 
 	// back to back error count
 	b2bErrorCnt := 0
@@ -257,14 +265,27 @@ func writer(games <-chan *Game) {
 			continue
 		}
 
-		if _, err := db.Exec("insert into games values ()", game.wdl); err != nil {
+		var gameId int64
+		res, err := db.Exec("insert into games (wdl) values (0)")
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "insert into games failed %v", err)
+			b2bErrorCnt++
+			goto Fin
+		}
+		gameId, err = res.LastInsertId()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "insert into games failed to return id %v", err)
 			b2bErrorCnt++
 			goto Fin
 		}
 
 		for _, pos := range game.positions {
-			if _, err := db.Exec("insert into positions values ()", pos.fen); err != nil {
+			if _, err := db.Exec("insert into positions (game_id, fen, best_move, eval) values (?, ?, ?, ?)",
+				gameId,
+				pos.fen,
+				pos.bm,
+				pos.score); err != nil {
+				fmt.Fprintf(os.Stderr, "insert into positions failed %v", err)
 				b2bErrorCnt++
 				goto Fin
 			}
@@ -291,5 +312,7 @@ func writer(games <-chan *Game) {
 				b2bErrorCnt++
 			}
 		}
+
+		pb.Add(1)
 	}
 }
