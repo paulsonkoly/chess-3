@@ -12,7 +12,6 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
@@ -136,7 +135,7 @@ func (g Generator) Game(out chan<- *Game) {
 
 	b := g.Opening()
 
-	positions := make([]Position, gameLength)
+	positions := make([]Position, 0, gameLength)
 	drawCounter := 0
 	winCounter := 0
 	winSign := types.Score(1)
@@ -225,10 +224,13 @@ func (g *Generator) Opening() *board.Board {
 		}
 
 		if success {
-			score := eval.Eval(b, &eval.Coefficients)
-			if config.openingMargin.RangeContains(score) {
+			score, _ := g.search.Go(b,
+				search.WithSoftNodes(config.softNodes),
+				search.WithNodes(config.hardNodes),
+				search.WithInfo(false))
+
+			if !config.openingMargin.RangeContains(score) {
 				success = false
-				continue
 			}
 		}
 	}
