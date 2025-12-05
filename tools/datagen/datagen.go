@@ -25,14 +25,28 @@ const (
 	gameLength      = 128
 )
 
+type Margin int
+
+func (m Margin) RangeContains(s types.Score) bool { return types.Score(-m) <= s && s <= types.Score(m) }
+func (m Margin) FallsAbove(s types.Score) bool    { return s < types.Score(-m) }
+func (m Margin) FallsUnder(s types.Score) bool    { return types.Score(m) < s }
+
 type Config struct {
-	gameCount     int
-	openingDepth  int
-	openingMargin int
-	softNodes     int
-	hardNodes     int
-	threads       int
-	dbFile        string
+	gameCount     int    // gameCount is number of games to generate.
+	openingDepth  int    // openingDepth is the number of random opening moves.
+	openingMargin Margin // openingMargin is the score margin the openings exit score has to be limited by.
+	softNodes     int    // softNodes is the search soft node count.
+	hardNodes     int    // hardNodes is the search hard node count.
+	draw          bool   // draw enables draw adjudication.
+	drawAfter     int    // draw after determines how many moves have to be played before considering draw adjudication.
+	drawMargin    Margin // drawScore determines the margin for draw adjudication.
+	drawCount     int    // drawCount is the minimum number of back to back positions for draw adjudication.
+	win           bool   // win enables win adjudication.
+	winAfter      int    // winAfter determines how many moves have to be played before considering win adjudication.
+	winMargin     Margin // winScore determines the margin for win adjudication.
+	winCount      int    // winCount is the minimum number of back to back positions for win adjudication.
+	threads       int    // threads is the number of threads running game generator.
+	dbFile        string // dbFile is the file name for the output database.
 }
 
 var config = Config{}
@@ -42,12 +56,29 @@ func main() {
 	// flag.IntVar(&config.gameCount, "gameCount", 1_000_000, "number of games to generate")
 	flag.IntVar(&config.gameCount, "gameCount", 4, "number of games to generate")
 	flag.IntVar(&config.openingDepth, "openingDepth", 8, "number of random generated opening moves")
-	flag.IntVar(&config.openingMargin, "openingMargin", 300, "margin for what's considered to be balanced opening (cp)")
+	openingMargin := flag.Int("openingMargin", 300, "margin for what's considered to be balanced opening (cp)")
 	flag.IntVar(&config.threads, "threads", runtime.NumCPU()-1, "number of threads")
 	flag.IntVar(&config.softNodes, "softNodes", 15_000, "soft node count for search")
 	flag.IntVar(&config.hardNodes, "hardNodes", 8_000_000, "hard node count for search")
+	flag.BoolVar(&config.draw, "draw", true, "enable draw adjudication")
+	flag.IntVar(&config.drawAfter, "drawAfter", 40, "enables draw adjudication after this many moves")
+	drawScore := flag.Int("drawScore", 20, "position considered draw with this margin in adjudication (cp)")
+	flag.IntVar(&config.drawCount, "drawCount", 4, "number of positions drawn back to back for adjudication")
+	flag.BoolVar(&config.win, "win", true, "enable win adjudication")
+	winScore := flag.Int("winScore", 600, "positions considered win with this margin in adjudication (cp)")
+	flag.IntVar(&config.winCount, "winCount", 4, "number of positions won back to back for adjudication")
 	flag.StringVar(&config.dbFile, "dbFile", "datagen.db", "file name for the database")
 	flag.Parse()
+
+	config.openingMargin = Margin(*openingMargin)
+	config.drawMargin = Margin(*drawScore)
+	config.winMargin = Margin(*winScore)
+
+	// convert full move counters to half move counters
+	config.drawAfter *= 2
+	config.drawCount *= 2
+	config.winAfter *= 2
+	config.winCount *= 2
 
 	gamesPerThread := (config.gameCount + config.threads - 1) / config.threads
 
@@ -106,18 +137,56 @@ func (g Generator) Game(out chan<- *Game) {
 	b := g.Opening()
 
 	positions := make([]Position, gameLength)
+	drawCounter := 0
+	winCounter := 0
+	winSign := types.Score(1)
 
-	for {
+	for moveCounter := 0; ; moveCounter++ {
 		score, bm := g.search.Go(b,
 			search.WithSoftNodes(config.softNodes),
 			search.WithNodes(config.hardNodes),
 			search.WithInfo(false))
 
+		positions = append(positions, Position{fen: b.FEN(), bm: bm, score: score})
+
 		if bm == 0 {
 			break
 		}
 
-		positions = append(positions, Position{fen: b.FEN(), bm: bm, score: score})
+		if config.draw && moveCounter >= config.drawAfter && config.drawMargin.RangeContains(score) {
+			drawCounter++
+		} else {
+			drawCounter = 0
+		}
+
+		if drawCounter >= config.drawCount {
+			break
+		}
+
+		if config.win {
+			if winCounter == 0 {
+				// determine the side winning on the first detection
+				switch {
+				case config.winMargin.FallsAbove(score):
+					winCounter++
+				case config.winMargin.FallsUnder(score):
+					winCounter++
+					winSign = -1
+				}
+			} else {
+				if config.winMargin.FallsUnder(winSign * score) {
+					winCounter++
+					winSign *= -1
+				} else {
+					winCounter = 0
+					winSign = 1
+				}
+			}
+		}
+
+		if winCounter >= config.winCount {
+			break
+		}
 
 		// convert bm back to full move
 		move := movegen.FromSimple(b, bm)
@@ -157,12 +226,10 @@ func (g *Generator) Opening() *board.Board {
 
 		if success {
 			score := eval.Eval(b, &eval.Coefficients)
-			if score < types.Score(config.openingMargin) || score > types.Score(config.openingMargin) {
+			if config.openingMargin.RangeContains(score) {
 				success = false
 				continue
 			}
-
-			fmt.Println(b.FEN(), score)
 		}
 	}
 
