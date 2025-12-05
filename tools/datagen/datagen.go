@@ -31,6 +31,14 @@ func (m Margin) RangeContains(s types.Score) bool { return types.Score(-m) <= s 
 func (m Margin) FallsAbove(s types.Score) bool    { return s < types.Score(-m) }
 func (m Margin) FallsUnder(s types.Score) bool    { return types.Score(m) < s }
 
+type WDL byte
+
+const (
+	Draw = WDL(iota)
+	WhiteWins
+	BlackWins
+)
+
 type Config struct {
 	gameCount     int    // gameCount is number of games to generate.
 	openingDepth  int    // openingDepth is the number of random opening moves.
@@ -101,7 +109,7 @@ func main() {
 }
 
 type Game struct {
-	wdl       byte
+	wdl       WDL
 	positions []Position
 }
 
@@ -139,9 +147,11 @@ func (g Generator) Game(out chan<- *Game) {
 	drawCounter := 0
 	winCounter := 0
 	winSign := types.Score(1)
+	var score types.Score
 
 	for moveCounter := 0; ; moveCounter++ {
-		score, bm := g.search.Go(b,
+		var bm move.SimpleMove
+		score, bm = g.search.Go(b,
 			search.WithSoftNodes(config.softNodes),
 			search.WithNodes(config.hardNodes),
 			search.WithInfo(false))
@@ -193,7 +203,28 @@ func (g Generator) Game(out chan<- *Game) {
 		b.MakeMove(&move)
 	}
 
-	out <- &Game{positions: positions}
+	// determine the WDL result
+	// conver score to white's perspective
+	if b.STM == types.Black {
+		score = -score
+	}
+
+	var wdl WDL
+	switch {
+	case config.drawMargin.RangeContains(score):
+		wdl = Draw
+
+	case config.winMargin.FallsUnder(score):
+		wdl = WhiteWins
+
+	case config.winMargin.FallsAbove(score):
+		wdl = BlackWins
+
+	default:
+		panic(fmt.Sprintf("cannot determine game outcome %d", score))
+	}
+
+	out <- &Game{positions: positions, wdl: wdl}
 }
 
 func (g *Generator) Opening() *board.Board {
@@ -266,7 +297,7 @@ func writer(games <-chan *Game) {
 		}
 
 		var gameId int64
-		res, err := db.Exec("insert into games (wdl) values (0)")
+		res, err := db.Exec("insert into games (wdl) values (?)", game.wdl)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "insert into games failed %v", err)
 			b2bErrorCnt++
