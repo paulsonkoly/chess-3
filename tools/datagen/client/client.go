@@ -27,6 +27,8 @@ func Run(args []string) {
 	cFlags.IntVar(&port, "port", 9001, "port to connect to")
 	cFlags.IntVar(&numThreads, "threads", runtime.NumCPU(), "number of worker threads")
 
+	cFlags.Parse(args)
+
 	client, err := shim.NewClient(host, port)
 	if err != nil {
 		panic(err)
@@ -158,7 +160,6 @@ func (g Generator) Game(config shim.Config, client shim.Client) {
 		panic(fmt.Sprintf("cannot determine game outcome %d", score))
 	}
 
-	fmt.Println("sending game")
 	if err := client.RegisterGame(&shim.Game{Positions: positions, WDL: wdl}); err != nil {
 		panic(err)
 	}
