@@ -1,5 +1,7 @@
-datagen: datagen.go
-	go build -o $@ $<
+GOSRC=$(shell find . -name '*.go')
+
+datagen: $(GOSRC)
+	go build -o $@
 
 DB ?= "datagen.db"
 
@@ -7,3 +9,8 @@ DB ?= "datagen.db"
 database:
 	rm -f $(DB)
 	sqlite3 $(DB) < sql/create_db.sql
+
+.PHONY: grpc
+grpc: protos/datagen.proto
+	protoc --go_out=. --go-grpc_out=. $<
+
