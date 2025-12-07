@@ -59,7 +59,7 @@ func Run(args []string) {
 	sFlags.IntVar(&config.DrawMargin, "drawMargin", 20, "position considered draw with this margin in adjudication (cp)")
 	sFlags.IntVar(&config.DrawCount, "drawCount", 4, "number of positions drawn back to back for adjudication")
 	sFlags.BoolVar(&config.Win, "win", true, "enable win adjudication")
-	sFlags.IntVar(&config.WinAfter, "WinAfter", 40, "enables win adjudication after this many moves")
+	sFlags.IntVar(&config.WinAfter, "winAfter", 40, "enables win adjudication after this many moves")
 	sFlags.IntVar(&config.WinMargin, "winMargin", 600, "positions considered win with this margin in adjudication (cp)")
 	sFlags.IntVar(&config.WinCount, "winCount", 4, "number of positions won back to back for adjudication")
 
