@@ -11,5 +11,7 @@ create table positions (
   fen text not null,
   best_move  integer,
   eval integer,
-  foreign key (game_id) references games(id)
+  foreign key (game_id) references games(id) on delete cascade
 );
+
+create index idx_positions_game_id on positions(game_id);

@@ -59,6 +59,7 @@ func Run(args []string) {
 	sFlags.IntVar(&config.DrawMargin, "drawMargin", 20, "position considered draw with this margin in adjudication (cp)")
 	sFlags.IntVar(&config.DrawCount, "drawCount", 4, "number of positions drawn back to back for adjudication")
 	sFlags.BoolVar(&config.Win, "win", true, "enable win adjudication")
+	sFlags.IntVar(&config.WinAfter, "WinAfter", 40, "enables win adjudication after this many moves")
 	sFlags.IntVar(&config.WinMargin, "winMargin", 600, "positions considered win with this margin in adjudication (cp)")
 	sFlags.IntVar(&config.WinCount, "winCount", 4, "number of positions won back to back for adjudication")
 
@@ -88,7 +89,11 @@ func Run(args []string) {
 	}
 
 	srv := shim.NewServer(&config, openings, games)
-	go srv.Serve(lis)
+	go func() {
+		if err := srv.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
 
 	wg.Wait()
 
@@ -165,7 +170,9 @@ func writer(games <-chan shim.Game) {
 	}
 	defer db.Close()
 
-	db.Exec("pragma foreign_keys = on")
+	if _, err := db.Exec("pragma foreign_keys = on"); err != nil {
+		panic(fmt.Sprintf("failed to enable foreign keys: %v", err))
+	}
 
 	// back to back error count
 	b2bErrorCnt := 0
@@ -181,7 +188,7 @@ func writer(games <-chan shim.Game) {
 		}
 
 		var gameId int64
-		res, err := db.Exec("insert into games (wdl) values (?)", game.WDL)
+		res, err := tx.Exec("insert into games (wdl) values (?)", game.WDL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "insert into games failed %v", err)
 			b2bErrorCnt++

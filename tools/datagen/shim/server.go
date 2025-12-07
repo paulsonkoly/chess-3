@@ -2,6 +2,7 @@ package shim
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -28,8 +29,8 @@ func NewServer(config *Config, openings <-chan *board.Board, games chan<- Game) 
 	return &Server{datagen: s, grpc: grpcServer}
 }
 
-func (s *Server) Serve(lis net.Listener) {
-	s.grpc.Serve(lis)
+func (s *Server) Serve(lis net.Listener) error {
+	return s.grpc.Serve(lis)
 }
 
 func (s *Server) Stop() {
@@ -58,15 +59,22 @@ func (d datagenServer) RequestConfig(_ context.Context, _ *pb.ConfigRequest) (*p
 	}, nil
 }
 
-func (d datagenServer) RequestOpening(_ context.Context, _ *pb.OpeningRequest) (*pb.Opening, error) {
-	b := <-d.openings
-	return &pb.Opening{Fen: b.FEN()}, nil
+func (d datagenServer) RequestOpening(ctx context.Context, _ *pb.OpeningRequest) (*pb.Opening, error) {
+	select {
+	case b, ok := <-d.openings:
+		if !ok {
+			return nil, fmt.Errorf("openings channel closed")
+		}
+		return &pb.Opening{Fen: b.FEN()}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (d datagenServer) RegisterGame(_ context.Context, gGame *pb.Game) (*pb.GameAck, error) {
-	positions := make([]Position, 0, len(gGame.Positons))
+	positions := make([]Position, 0, len(gGame.Positions))
 
-	for _, position := range gGame.Positons {
+	for _, position := range gGame.Positions {
 		positions = append(positions,
 			Position{FEN: position.Fen, BM: move.SimpleMove(position.BestMove), Score: types.Score(position.Score)})
 	}

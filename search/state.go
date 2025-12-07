@@ -117,6 +117,8 @@ func WithNodes(nodes int) Option {
 	return func(o *options) { o.nodes = nodes }
 }
 
+// WithSoftNodes sets a soft node count limit. When exceeded after completing
+// a depth, the search will stop. <= 0 for no limit.
 func WithSoftNodes(nodes int) Option {
 	return func(o *options) { o.softNodes = nodes }
 }

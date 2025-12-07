@@ -33,7 +33,11 @@ func Run(args []string) {
 	if err != nil {
 		panic(err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	config, err := client.RequestConfig()
 	if err != nil {
@@ -108,7 +112,7 @@ func (g Generator) Game(config shim.Config, client shim.Client) {
 			break
 		}
 
-		if config.Win {
+		if config.Win && moveCounter >= config.WinAfter {
 			if winCounter == 0 {
 				// determine the side winning on the first detection
 				switch {

@@ -256,7 +256,7 @@ func (x *Opening) GetFen() string {
 type Game struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Wdl           int32                  `protobuf:"varint,1,opt,name=wdl,proto3" json:"wdl,omitempty"`
-	Positons      []*Position            `protobuf:"bytes,2,rep,name=positons,proto3" json:"positons,omitempty"`
+	Positions     []*Position            `protobuf:"bytes,2,rep,name=positions,proto3" json:"positions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -298,9 +298,9 @@ func (x *Game) GetWdl() int32 {
 	return 0
 }
 
-func (x *Game) GetPositons() []*Position {
+func (x *Game) GetPositions() []*Position {
 	if x != nil {
-		return x.Positons
+		return x.Positions
 	}
 	return nil
 }
@@ -427,10 +427,10 @@ const file_protos_datagen_proto_rawDesc = "" +
 	" \x01(\x05R\bwinCount\"\x10\n" +
 	"\x0eOpeningRequest\"\x1b\n" +
 	"\aOpening\x12\x10\n" +
-	"\x03fen\x18\x01 \x01(\tR\x03fen\"G\n" +
+	"\x03fen\x18\x01 \x01(\tR\x03fen\"I\n" +
 	"\x04Game\x12\x10\n" +
-	"\x03wdl\x18\x01 \x01(\x05R\x03wdl\x12-\n" +
-	"\bpositons\x18\x02 \x03(\v2\x11.datagen.PositionR\bpositons\"O\n" +
+	"\x03wdl\x18\x01 \x01(\x05R\x03wdl\x12/\n" +
+	"\tpositions\x18\x02 \x03(\v2\x11.datagen.PositionR\tpositions\"O\n" +
 	"\bPosition\x12\x10\n" +
 	"\x03fen\x18\x01 \x01(\tR\x03fen\x12\x1b\n" +
 	"\tbest_move\x18\x02 \x01(\x05R\bbestMove\x12\x14\n" +
@@ -464,7 +464,7 @@ var file_protos_datagen_proto_goTypes = []any{
 	(*GameAck)(nil),        // 6: datagen.GameAck
 }
 var file_protos_datagen_proto_depIdxs = []int32{
-	5, // 0: datagen.Game.positons:type_name -> datagen.Position
+	5, // 0: datagen.Game.positions:type_name -> datagen.Position
 	0, // 1: datagen.Datagen.RequestConfig:input_type -> datagen.ConfigRequest
 	2, // 2: datagen.Datagen.RequestOpening:input_type -> datagen.OpeningRequest
 	4, // 3: datagen.Datagen.RegisterGame:input_type -> datagen.Game

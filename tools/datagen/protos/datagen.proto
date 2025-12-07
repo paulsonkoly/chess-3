@@ -33,7 +33,7 @@ message Opening {
 
 message Game {
   int32 wdl = 1;
-  repeated Position positons = 2;
+  repeated Position positions = 2;
 }
 
 message Position {

@@ -26,14 +26,14 @@ func NewClient(host string, port int) (Client, error) {
 	return Client{conn: conn, grpc: pb.NewDatagenClient(conn)}, nil
 }
 
-func (c *Client) Close() {
-	c.conn.Close()
+func (c *Client) Close() error {
+	return c.conn.Close()
 }
 
 func (c *Client) RequestConfig() (Config, error) {
 	gConfig, err := c.grpc.RequestConfig(context.Background(), &pb.ConfigRequest{})
 	if err != nil {
-		return Config{}, nil
+		return Config{}, err
 	}
 	return Config{
 		SoftNodes:  int(gConfig.SoftNodes),
@@ -72,8 +72,8 @@ func (c *Client) RegisterGame(g *Game) error {
 	}
 
 	gGame := pb.Game{
-		Wdl:      int32(g.WDL),
-		Positons: positions,
+		Wdl:       int32(g.WDL),
+		Positions: positions,
 	}
 	_, err := c.grpc.RegisterGame(context.Background(), &gGame)
 

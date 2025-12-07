@@ -27,9 +27,11 @@ func main() {
 
 	switch {
 	case sIx == -1 && cIx == -1:
-		panic("one of the 'server' or 'client' commands need to be specified")
+		fmt.Fprintln(os.Stderr, "one of the 'server' or 'client' commands need to be specified")
+		os.Exit(1)
 	case sIx != -1 && cIx != -1:
-		panic("'server' and 'client' commands cannot be both specified")
+		fmt.Fprintln(os.Stderr, "'server' and 'client' commands cannot be both specified")
+		os.Exit(1)
 	case sIx != -1:
 		server.Run(os.Args[sIx+1:])
 	case cIx != -1:
