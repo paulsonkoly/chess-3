@@ -17,6 +17,10 @@ type Board struct {
 	FiftyCnt       Depth
 }
 
+func StartPos() *Board {
+	return Must(FromFEN(StartPosFEN))
+}
+
 // Hash is the last Zobrist hash in the move history of b.
 func (b *Board) Hash() Hash {
 	return b.hashes[len(b.hashes)-1]

@@ -35,7 +35,7 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Simp
 		s.gen++
 	}()
 
-	options := options{depth: MaxPlies, nodes: -1}
+	options := options{depth: MaxPlies, nodes: -1, softNodes: -1, info: true}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -81,7 +81,9 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 
 			if s.abort(opts) {
 				// have a final node count for debugging purposes
-				fmt.Printf("info depth %d nodes %d\n", idD, opts.counters.Nodes)
+				if opts.info {
+					fmt.Printf("info depth %d nodes %d\n", idD, opts.counters.Nodes)
+				}
 
 				// we hit hard timeout/abort and we don't have a move. We try to return
 				// the first legal move, regardless of its quality, if there is none we
@@ -115,10 +117,12 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 		miliSec := elapsed.Milliseconds()
 		cnts := opts.counters
 		cnts.Time = miliSec
-		fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-			idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
+		if opts.info {
+			fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
+				idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
+		}
 
-		if move != 0 && (opts.softTime > 0 && miliSec > opts.softTime) {
+		if move != 0 && opts.softAbort(miliSec, opts.counters.Nodes) {
 			return
 		}
 

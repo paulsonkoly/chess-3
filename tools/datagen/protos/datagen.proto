@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package datagen;
+
+option go_package = "./grpc/datagen;datagen";
+
+service Datagen {
+  rpc RequestConfig(ConfigRequest) returns(Config);
+  rpc RequestOpening(OpeningRequest) returns(Opening);
+  rpc RegisterGame(Game) returns(GameAck);
+}
+
+message ConfigRequest {}
+
+message Config {
+  int64 soft_nodes = 1;
+  int64 hard_nodes = 2;
+  bool draw = 3;
+  int32 draw_after = 4;
+  int32 draw_margin = 5;
+  int32 draw_count = 6;
+  bool win = 7;
+  int32 win_after = 8;
+  int32 win_margin = 9;
+  int32 win_count = 10;
+}
+
+message OpeningRequest {}
+
+message Opening {
+  string fen = 1;
+}
+
+message Game {
+  int32 wdl = 1;
+  repeated Position positions = 2;
+}
+
+message Position {
+  string fen = 1;
+  int32 best_move = 2;
+  int32 score = 3;
+}
+
+message GameAck{}

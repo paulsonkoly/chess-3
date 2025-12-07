@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	startPos    = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 	defaultHash = 8
 )
 
@@ -35,7 +34,7 @@ type Engine struct {
 
 func NewEngine() *Engine {
 	return &Engine{
-		Board:  Must(board.FromFEN(startPos)),
+		Board:  board.StartPos(),
 		Search: search.New(defaultHash * transp.MegaBytes),
 	}
 }
@@ -172,7 +171,7 @@ func (e *Engine) handlePosition(args []string) {
 	switch args[0] {
 
 	case "startpos":
-		e.Board = Must(board.FromFEN(startPos))
+		e.Board = board.StartPos()
 		if len(args) > 2 && args[1] == "moves" {
 			e.applyMoves(args[2:])
 		}

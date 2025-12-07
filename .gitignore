@@ -2,3 +2,5 @@ chess3*
 tools/tuner/*.epd
 tools/tuner/tuner
 docs/eval/plots
+tools/datagen/datagen
+tools/datagen/datagen.db
