@@ -1,10 +1,10 @@
 # datagen
 
-A command line tool to generate games played by chess-3. Games are saved in an Sqlite3 database for further processing. The program is a distributed client server architecture.
+A command-line tool to generate games played by chess-3. Games are saved in an Sqlite3 database for further processing. The program is a distributed client-server architecture.
 
 ## server
 
-```
+```bash
 Usage of server:
   -WinAfter int
     	enables win adjudication after this many moves (default 40)
@@ -42,7 +42,7 @@ Usage of server:
 
 ## client
 
-```
+```bash
 Usage of client:
   -host string
     	host to connect to (default "localhost")
