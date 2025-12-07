@@ -2,7 +2,6 @@ package shim
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -59,16 +58,13 @@ func (d datagenServer) RequestConfig(_ context.Context, _ *pb.ConfigRequest) (*p
 	}, nil
 }
 
-func (d datagenServer) RequestOpening(ctx context.Context, _ *pb.OpeningRequest) (*pb.Opening, error) {
-	select {
-	case b, ok := <-d.openings:
-		if !ok {
-			return nil, fmt.Errorf("openings channel closed")
-		}
-		return &pb.Opening{Fen: b.FEN()}, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
+func (d datagenServer) RequestOpening(_ context.Context, _ *pb.OpeningRequest) (*pb.Opening, error) {
+	b, ok := <-d.openings
+	var fen string
+	if ok {
+		fen = b.FEN()
 	}
+	return &pb.Opening{Fen: fen}, nil
 }
 
 func (d datagenServer) RegisterGame(_ context.Context, gGame *pb.Game) (*pb.GameAck, error) {

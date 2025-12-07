@@ -55,6 +55,10 @@ func (c *Client) RequestOpening() (*board.Board, error) {
 		return nil, err
 	}
 
+	if gOpening.Fen == "" {
+		return nil, nil
+	}
+
 	b, err := board.FromFEN(gOpening.Fen)
 	if err != nil {
 		return nil, err

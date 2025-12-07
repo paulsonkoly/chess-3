@@ -69,18 +69,32 @@ func NewGenerator() Generator {
 }
 
 func (g Generator) Games(config shim.Config, client shim.Client) {
+	errCnt := 0
 	for {
-		g.Game(config, client)
+		ok, err := g.Game(config, client)
+		if !ok {
+			return
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			errCnt++
+			if errCnt > 3 {
+				fmt.Fprintln(os.Stderr, "max retries exceeded, giving up")
+				return
+			}
+		}
 	}
 }
 
-func (g Generator) Game(config shim.Config, client shim.Client) {
+func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err error) {
 	g.search.Clear()
 
 	b, err := client.RequestOpening()
 	if err != nil {
-		fmt.Fprint(os.Stderr, err)
-		return
+		return true, err
+	}
+	if b == nil {
+		return false, nil
 	}
 
 	positions := make([]shim.Position, 0, gameLength)
@@ -165,8 +179,9 @@ func (g Generator) Game(config shim.Config, client shim.Client) {
 	}
 
 	if err := client.RegisterGame(&shim.Game{Positions: positions, WDL: wdl}); err != nil {
-		panic(err)
+		return true, err
 	}
+	return true, nil
 }
 
 type Range int

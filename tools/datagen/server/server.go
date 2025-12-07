@@ -190,24 +190,24 @@ func writer(games <-chan shim.Game) {
 		var gameId int64
 		res, err := tx.Exec("insert into games (wdl) values (?)", game.WDL)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "insert into games failed %v", err)
+			fmt.Fprintf(os.Stderr, "insert into games failed %v\n", err)
 			b2bErrorCnt++
 			goto Fin
 		}
 		gameId, err = res.LastInsertId()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "insert into games failed to return id %v", err)
+			fmt.Fprintf(os.Stderr, "insert into games failed to return id %v\n", err)
 			b2bErrorCnt++
 			goto Fin
 		}
 
 		for _, pos := range game.Positions {
-			if _, err := db.Exec("insert into positions (game_id, fen, best_move, eval) values (?, ?, ?, ?)",
+			if _, err := tx.Exec("insert into positions (game_id, fen, best_move, eval) values (?, ?, ?, ?)",
 				gameId,
 				pos.FEN,
 				pos.BM,
 				pos.Score); err != nil {
-				fmt.Fprintf(os.Stderr, "insert into positions failed %v", err)
+				fmt.Fprintf(os.Stderr, "insert into positions failed %v\n", err)
 				b2bErrorCnt++
 				goto Fin
 			}
