@@ -4,3 +4,4 @@ tools/tuner/tuner
 docs/eval/plots
 tools/datagen/datagen
 tools/datagen/datagen.db
+tools/extract/extract
