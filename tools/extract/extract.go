@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"os"
 
+	progress "github.com/schollz/progressbar/v3"
 	_ "modernc.org/sqlite"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -18,11 +19,14 @@ import (
 
 const PhaseBucketCount = 24
 
+var (
+	dbFn          string
+	outFn         string
+	filterNoisy   bool
+	samplePerGame int
+)
+
 func main() {
-	var dbFn string
-	var outFn string
-	var filterNoisy bool
-	var samplePerGame int
 
 	flag.StringVar(&dbFn, "database", "database.db", "input database file name")
 	flag.StringVar(&outFn, "output file", "extract.epd", "output epd file")
@@ -37,106 +41,12 @@ func main() {
 	}
 	defer db.Close()
 
-	games, err := db.Query("select id, wdl from games")
+	entries, err := loadPositions(db)
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		if err := games.Close(); err != nil {
-			panic(err)
-		}
-	}()
 
-	entries := make([]EPDEntry, 0)
-
-	fmt.Println("loading...")
-
-	cnt := 0
-	for games.Next() {
-		var (
-			game_id int
-			wdl     int
-		)
-		if err := games.Scan(&game_id, &wdl); err != nil {
-			panic(err)
-		}
-
-		positions, err := db.Query("select fen, best_move from positions where game_id=?", game_id)
-		if err != nil {
-			panic(err)
-		}
-		defer func() {
-			if err := positions.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
-		gameEntries := make([]EPDEntry, 0)
-
-		for positions.Next() {
-			var (
-				fen string
-				bm  move.SimpleMove
-			)
-
-			if err := positions.Scan(&fen, &bm); err != nil {
-				panic(err)
-			}
-
-			if filterNoisy {
-				// filter noisy best moves
-				if bm.Promo() != types.NoPiece {
-					continue
-				}
-
-				b, err := board.FromFEN(fen)
-				if err != nil {
-					panic(err)
-				}
-
-				if b.SquaresToPiece[bm.To()] != types.NoPiece {
-					continue
-				}
-			}
-
-			gameEntries = append(gameEntries, EPDEntry{fen: fen, wdl: wdl})
-
-			if cnt % 10_000 == 0 {
-				fmt.Println(cnt)
-			}
-			cnt++
-		}
-
-		if samplePerGame != -1 && samplePerGame < len(gameEntries) {
-			rand.Shuffle(len(gameEntries), func(i, j int) {
-				gameEntries[i], gameEntries[j] = gameEntries[j], gameEntries[i]
-			})
-
-			gameEntries = gameEntries[:samplePerGame]
-		}
-
-		entries = append(entries, gameEntries...)
-	}
-
-	fmt.Println("loaded")
-
-	buckets := [PhaseBucketCount]int{}
-
-	for _, entry := range entries {
-		b, err := board.FromFEN(entry.fen)
-		if err != nil {
-			panic(err)
-		}
-
-		bucketIx := 0
-		for pt := types.Pawn; pt < types.King; pt++ {
-			bucketIx += b.Pieces[pt].Count() * eval.Phase[pt]
-		}
-
-		bucketIx = min(bucketIx , PhaseBucketCount-1)
-
-		buckets[bucketIx]++
-	}
+	buckets := countPhases(entries)
 
 	fmt.Println(buckets)
 
@@ -179,7 +89,7 @@ func main() {
 		for pt := types.Pawn; pt < types.King; pt++ {
 			bucketIx += b.Pieces[pt].Count() * eval.Phase[pt]
 		}
-		bucketIx = min(bucketIx , PhaseBucketCount-1)
+		bucketIx = min(bucketIx, PhaseBucketCount-1)
 
 		if r < keepProb[bucketIx] {
 			fmt.Fprintf(outF, "%s; %.1f\n", entry.fen, wdlToEPD(entry.wdl))
@@ -187,6 +97,124 @@ func main() {
 		}
 	}
 	fmt.Println(outBuckets)
+}
+
+func loadPositions(db *sql.DB) ([]EPDEntry, error) {
+	games, err := db.Query("select id, wdl from games")
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := games.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	var entryCnt int
+	if err := db.QueryRow("select count(*) from positions").Scan(&entryCnt); err != nil {
+		return nil, err
+	}
+
+	bar := progress.NewOptions(entryCnt, progress.OptionSetDescription("loading"))
+	defer bar.Close()
+
+	// cut the ebtry count in half, speculating that that's how many positions we
+	// are going to filter.
+	entries := make([]EPDEntry, 0, entryCnt/2)
+
+	for games.Next() {
+		var (
+			gameId int
+			wdl    int
+		)
+		if err := games.Scan(&gameId, &wdl); err != nil {
+			panic(err)
+		}
+
+		gameEntries, err := loadGamePositions(db, gameId, wdl, bar)
+		if err != nil {
+			return nil, err
+		}
+
+		if samplePerGame != -1 && samplePerGame < len(gameEntries) {
+			rand.Shuffle(len(gameEntries), func(i, j int) {
+				gameEntries[i], gameEntries[j] = gameEntries[j], gameEntries[i]
+			})
+
+			gameEntries = gameEntries[:samplePerGame]
+		}
+
+		entries = append(entries, gameEntries...)
+	}
+
+	return entries, nil
+}
+
+func loadGamePositions(db *sql.DB, gameId, wdl int, bar *progress.ProgressBar) ([]EPDEntry, error) {
+	positions, err := db.Query("select fen, best_move from positions where game_id=?", gameId)
+	if err != nil {
+		return nil, err
+	}
+	defer positions.Close()
+
+	gameEntries := make([]EPDEntry, 0)
+
+	for positions.Next() {
+		var (
+			fen string
+			bm  move.SimpleMove
+		)
+
+		if err := positions.Scan(&fen, &bm); err != nil {
+			panic(err)
+		}
+
+		bar.Add(1)
+
+		if filterNoisy {
+			// filter noisy best moves
+			if bm.Promo() != types.NoPiece {
+				continue
+			}
+
+			b, err := board.FromFEN(fen)
+			if err != nil {
+				panic(err)
+			}
+
+			if b.SquaresToPiece[bm.To()] != types.NoPiece {
+				continue
+			}
+		}
+
+		gameEntries = append(gameEntries, EPDEntry{fen: fen, wdl: wdl})
+	}
+	return gameEntries, nil
+}
+
+func countPhases(entries []EPDEntry) []int {
+	buckets := [PhaseBucketCount]int{}
+	bar := progress.NewOptions(len(entries), progress.OptionSetDescription("sorting phases"))
+	defer bar.Close()
+
+	for _, entry := range entries {
+		b, err := board.FromFEN(entry.fen)
+		if err != nil {
+			panic(err)
+		}
+
+		bucketIx := 0
+		for pt := types.Pawn; pt < types.King; pt++ {
+			bucketIx += b.Pieces[pt].Count() * eval.Phase[pt]
+		}
+
+		bucketIx = min(bucketIx, PhaseBucketCount-1)
+
+		buckets[bucketIx]++
+		bar.Add(1)
+	}
+
+	return buckets[:]
 }
 
 type EPDEntry struct {
