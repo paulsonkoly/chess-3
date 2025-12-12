@@ -571,6 +571,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		b.UndoMove(m)
 
 		if curr >= beta {
+			transpT.Insert(b.Hash(), s.gen, 0, ply, m.SimpleMove, curr, transp.LowerBound)
 			return curr
 		}
 		maxim = max(maxim, curr)
@@ -580,6 +581,8 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 			return Inv
 		}
 	}
+
+	transpT.Insert(b.Hash(), s.gen, 0, ply, 0, maxim, transp.UpperBound)
 
 	return maxim
 }
