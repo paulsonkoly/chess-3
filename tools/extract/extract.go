@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"flag"
 	"fmt"
 	"math"
 	"math/rand/v2"
 	"os"
+	"runtime/pprof"
 
 	progress "github.com/schollz/progressbar/v3"
 	_ "modernc.org/sqlite"
@@ -27,13 +29,27 @@ var (
 )
 
 func main() {
+	var cpuProf string
 
 	flag.StringVar(&dbFn, "database", "database.db", "input database file name")
 	flag.StringVar(&outFn, "output file", "extract.epd", "output epd file")
 	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.IntVar(&samplePerGame, "samplePerGame", 40, "number of maximum positions from a game; (-1) to disable")
+	flag.StringVar(&cpuProf, "cpuProf", "", "cpu profile (empty to disable)")
 
 	flag.Parse()
+
+	if cpuProf != "" {
+		cpu, err := os.Create(cpuProf)
+		if err != nil {
+			panic(err)
+		}
+		err = pprof.StartCPUProfile(cpu)
+		if err != nil {
+			panic(err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 
 	db, err := sql.Open("sqlite", dbFn)
 	if err != nil {
@@ -46,7 +62,10 @@ func main() {
 		panic(err)
 	}
 
-	buckets := countPhases(entries)
+	buckets, err := countPhases(entries)
+	if err!= nil {
+		panic(err)
+	}
 
 	fmt.Println(buckets)
 
@@ -66,49 +85,10 @@ func main() {
 
 	fmt.Println(keepProb)
 
-	outF, err := os.Create(outFn)
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		if err := outF.Close(); err != nil {
-			panic(err)
-		}
-	}()
-
-	outBuckets := [PhaseBucketCount]int{}
-
-	for _, entry := range entries {
-		r := rand.Float64()
-		b, err := board.FromFEN(entry.fen)
-		if err != nil {
-			panic(err)
-		}
-
-		bucketIx := 0
-		for pt := types.Pawn; pt < types.King; pt++ {
-			bucketIx += b.Pieces[pt].Count() * eval.Phase[pt]
-		}
-		bucketIx = min(bucketIx, PhaseBucketCount-1)
-
-		if r < keepProb[bucketIx] {
-			fmt.Fprintf(outF, "%s; %.1f\n", entry.fen, wdlToEPD(entry.wdl))
-			outBuckets[bucketIx]++
-		}
-	}
-	fmt.Println(outBuckets)
+	output(entries, keepProb[:])
 }
 
 func loadPositions(db *sql.DB) ([]EPDEntry, error) {
-	games, err := db.Query("select id, wdl from games")
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		if err := games.Close(); err != nil {
-			panic(err)
-		}
-	}()
 
 	var entryCnt int
 	if err := db.QueryRow("select count(*) from positions").Scan(&entryCnt); err != nil {
@@ -118,9 +98,21 @@ func loadPositions(db *sql.DB) ([]EPDEntry, error) {
 	bar := progress.NewOptions(entryCnt, progress.OptionSetDescription("loading"))
 	defer bar.Close()
 
-	// cut the ebtry count in half, speculating that that's how many positions we
+	// cut the entry count in half, speculating that that's how many positions we
 	// are going to filter.
 	entries := make([]EPDEntry, 0, entryCnt/2)
+
+	games, err := db.Query("select id, wdl from games")
+	if err != nil {
+		return nil, err
+	}
+	defer games.Close()
+
+	posStm, err := db.Prepare("select fen, best_move from positions where game_id=?")
+	if err != nil {
+		return nil, err
+	}
+	defer posStm.Close()
 
 	for games.Next() {
 		var (
@@ -128,10 +120,10 @@ func loadPositions(db *sql.DB) ([]EPDEntry, error) {
 			wdl    int
 		)
 		if err := games.Scan(&gameId, &wdl); err != nil {
-			panic(err)
+			return nil, err
 		}
 
-		gameEntries, err := loadGamePositions(db, gameId, wdl, bar)
+		gameEntries, err := loadGamePositions(posStm, gameId, wdl, bar)
 		if err != nil {
 			return nil, err
 		}
@@ -150,23 +142,25 @@ func loadPositions(db *sql.DB) ([]EPDEntry, error) {
 	return entries, nil
 }
 
-func loadGamePositions(db *sql.DB, gameId, wdl int, bar *progress.ProgressBar) ([]EPDEntry, error) {
-	positions, err := db.Query("select fen, best_move from positions where game_id=?", gameId)
+func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.ProgressBar) ([]EPDEntry, error) {
+	positions, err := posStm.Query(gameId)
 	if err != nil {
 		return nil, err
 	}
 	defer positions.Close()
 
-	gameEntries := make([]EPDEntry, 0)
+	gameEntries := make([]EPDEntry, 0, samplePerGame)
+
+	var b board.Board
 
 	for positions.Next() {
 		var (
-			fen string
+			fen []byte
 			bm  move.SimpleMove
 		)
 
 		if err := positions.Scan(&fen, &bm); err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		bar.Add(1)
@@ -177,9 +171,8 @@ func loadGamePositions(db *sql.DB, gameId, wdl int, bar *progress.ProgressBar) (
 				continue
 			}
 
-			b, err := board.FromFEN(fen)
-			if err != nil {
-				panic(err)
+			if err := board.ParseFEN(&b, fen); err != nil {
+				return nil, err
 			}
 
 			if b.SquaresToPiece[bm.To()] != types.NoPiece {
@@ -192,15 +185,16 @@ func loadGamePositions(db *sql.DB, gameId, wdl int, bar *progress.ProgressBar) (
 	return gameEntries, nil
 }
 
-func countPhases(entries []EPDEntry) []int {
+func countPhases(entries []EPDEntry) ([]int, error) {
 	buckets := [PhaseBucketCount]int{}
 	bar := progress.NewOptions(len(entries), progress.OptionSetDescription("sorting phases"))
 	defer bar.Close()
 
-	for _, entry := range entries {
-		b, err := board.FromFEN(entry.fen)
-		if err != nil {
-			panic(err)
+	var b board.Board
+
+	for ix, entry := range entries {
+		if err := board.ParseFEN(&b, entry.fen); err != nil {
+			return nil, err
 		}
 
 		bucketIx := 0
@@ -210,16 +204,45 @@ func countPhases(entries []EPDEntry) []int {
 
 		bucketIx = min(bucketIx, PhaseBucketCount-1)
 
+		entries[ix].bucketIx = bucketIx
+
 		buckets[bucketIx]++
 		bar.Add(1)
 	}
 
-	return buckets[:]
+	return buckets[:], nil
+}
+
+func output(entries []EPDEntry, keepProb []float64) error {
+	outF, err := os.Create(outFn)
+	if err != nil {
+		return err
+	}
+	defer outF.Close()
+	outB := bufio.NewWriter(outF)
+
+	outBuckets := [PhaseBucketCount]int{}
+
+	bar := progress.NewOptions(len(entries), progress.OptionSetDescription("output"))
+	defer bar.Close()
+
+	for _, entry := range entries {
+		r := rand.Float64()
+
+		if r < keepProb[entry.bucketIx] {
+			fmt.Fprintf(outB, "%s; %.1f\n", entry.fen, wdlToEPD(entry.wdl))
+			outBuckets[entry.bucketIx]++
+		}
+		bar.Add(1)
+	}
+	fmt.Println(outBuckets)
+	return nil
 }
 
 type EPDEntry struct {
-	fen string
-	wdl int
+	fen      []byte
+	wdl      int
+	bucketIx int
 }
 
 func wdlToEPD(n int) float64 {
