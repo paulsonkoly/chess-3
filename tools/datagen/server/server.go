@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	progress "github.com/schollz/progressbar/v3"
 	_ "modernc.org/sqlite"
@@ -101,7 +102,12 @@ func Run(args []string) {
 }
 
 func generateOpenings(openings chan<- *board.Board) {
-	generate := OpeningGenerator{ms: move.NewStore(), search: search.New(1 * transp.MegaBytes)}
+
+	generate := OpeningGenerator{
+		ms:     move.NewStore(),
+		search: search.New(1 * transp.MegaBytes),
+		rnd:    rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0x82a1_73b1_69cc_df15)),
+	}
 
 	for range serverConfig.gameCount {
 		openings <- generate.Opening()
@@ -111,6 +117,7 @@ func generateOpenings(openings chan<- *board.Board) {
 type OpeningGenerator struct {
 	ms     *move.Store
 	search *search.Search
+	rnd    *rand.Rand
 }
 
 // TODO make sure the opening is unique
@@ -133,7 +140,7 @@ Retry:
 				goto Retry
 			}
 
-			move := &moves[rand.IntN(len(moves))]
+			move := &moves[og.rnd.IntN(len(moves))]
 			b.MakeMove(move)
 			if movegen.InCheck(b, b.STM.Flip()) { // pseudo legality check
 				goto Retry
