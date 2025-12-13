@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	progress "github.com/schollz/progressbar/v3"
 	_ "modernc.org/sqlite"
@@ -119,6 +120,8 @@ func (og *OpeningGenerator) Opening() *board.Board {
 
 	ms := og.ms
 
+	r := rand.New(rand.NewPCG(uint64(time.Now().Nanosecond()), 0x82a1_73b1_69cc_df15))
+
 Retry:
 	for {
 		ms.Clear()
@@ -133,7 +136,7 @@ Retry:
 				goto Retry
 			}
 
-			move := &moves[rand.IntN(len(moves))]
+			move := &moves[r.IntN(len(moves))]
 			b.MakeMove(move)
 			if movegen.InCheck(b, b.STM.Flip()) { // pseudo legality check
 				goto Retry
