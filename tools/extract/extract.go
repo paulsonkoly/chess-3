@@ -76,6 +76,9 @@ func main() {
 
 	k := math.MaxFloat64
 	for _, bucket := range buckets {
+		if bucket == 0 {
+			continue
+		}
 		rat := (float64(bucket) / float64(len(entries))) / (1.0 / float64(PhaseBucketCount))
 		if rat < k {
 			k = rat
@@ -84,6 +87,9 @@ func main() {
 
 	keepProb := [PhaseBucketCount]float64{}
 	for ix, bucket := range buckets {
+		if bucket == 0 {
+			continue
+		}
 		dist := float64(bucket) / float64(len(entries))
 		keepProb[ix] = k * (1.0 / float64(PhaseBucketCount)) / dist
 	}
