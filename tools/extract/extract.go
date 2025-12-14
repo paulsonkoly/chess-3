@@ -195,7 +195,10 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 			}
 		}
 
-		gameEntries = append(gameEntries, EPDEntry{fen: fen, wdl: wdl})
+		fenCopy := make([]byte, len(fen))
+		copy(fenCopy, fen)
+
+		gameEntries = append(gameEntries, EPDEntry{fen: fenCopy, wdl: wdl})
 	}
 	if err := positions.Err(); err != nil {
 		return nil, err
