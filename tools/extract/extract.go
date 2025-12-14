@@ -32,7 +32,7 @@ func main() {
 	var cpuProf string
 
 	flag.StringVar(&dbFn, "database", "database.db", "input database file name")
-	flag.StringVar(&outFn, "output file", "extract.epd", "output epd file")
+	flag.StringVar(&outFn, "output", "extract.epd", "output epd file")
 	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.IntVar(&samplePerGame, "samplePerGame", 40, "number of maximum positions from a game; (-1) to disable")
 	flag.StringVar(&cpuProf, "cpuProf", "", "cpu profile (empty to disable)")
@@ -63,7 +63,7 @@ func main() {
 	}
 
 	buckets, err := countPhases(entries)
-	if err!= nil {
+	if err != nil {
 		panic(err)
 	}
 
@@ -85,7 +85,9 @@ func main() {
 
 	fmt.Println(keepProb)
 
-	output(entries, keepProb[:])
+	if err := output(entries, keepProb[:]); err != nil {
+		panic(err)
+	}
 }
 
 func loadPositions(db *sql.DB) ([]EPDEntry, error) {
@@ -139,6 +141,10 @@ func loadPositions(db *sql.DB) ([]EPDEntry, error) {
 		entries = append(entries, gameEntries...)
 	}
 
+	if err := games.Err(); err != nil {
+		return nil, err
+	}
+
 	return entries, nil
 }
 
@@ -149,7 +155,11 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 	}
 	defer positions.Close()
 
-	gameEntries := make([]EPDEntry, 0, samplePerGame)
+	cap := samplePerGame
+	if cap < 0 {
+		cap = 64
+	}
+	gameEntries := make([]EPDEntry, 0, cap)
 
 	var b board.Board
 
@@ -182,6 +192,10 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 
 		gameEntries = append(gameEntries, EPDEntry{fen: fen, wdl: wdl})
 	}
+	if err := positions.Err(); err != nil {
+		return nil, err
+	}
+
 	return gameEntries, nil
 }
 
@@ -236,6 +250,11 @@ func output(entries []EPDEntry, keepProb []float64) error {
 		bar.Add(1)
 	}
 	fmt.Println(outBuckets)
+
+	if err := outB.Flush(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -254,5 +273,5 @@ func wdlToEPD(n int) float64 {
 	case 2:
 		return 0.0
 	}
-	panic(fmt.Sprintf("unexpect wdl %d", n))
+	panic(fmt.Sprintf("unexpected wdl %d", n))
 }
