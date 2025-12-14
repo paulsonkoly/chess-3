@@ -196,7 +196,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	}
 
 	tfCnt := b.Threefold()
-	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetation
+	// this condition is trying to avoid returning 0 move on ply 0 if it's the second repetition
 	if b.FiftyCnt >= 100 || tfCnt >= 3-min(ply, 1) {
 		return 0
 	}
@@ -441,7 +441,11 @@ func nextNodeType(nType Node, cnt int) Node {
 	return CutNode
 }
 
-// (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
+// log is precomputed logarithmic scale.
+//
+// can be reproduced with:
+//
+//    (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
 var log = [...]int{
 	0,
 	0, 69, 109, 138, 160, 179, 194, 207, 219, 230,
@@ -456,8 +460,13 @@ var log = [...]int{
 	451, 452, 453, 454, 455, 456, 457, 458, 459, 460,
 }
 
-// x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
-// 10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
+// lmr is late move depth reduction.
+//
+// check values with:
+//
+//   x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
+//   10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
+//
 func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 

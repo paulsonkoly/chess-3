@@ -60,7 +60,7 @@ func (s SimpleMove) Promo() Piece { return Piece((s & promoMsk) >> promoShift) }
 // SetPromo sets the promotion piece ofof  the move.
 func (s *SimpleMove) SetPromo(p Piece) { *s = (*s & ^promoMsk) | SimpleMove(p)<<promoShift&promoMsk }
 
-// SimpleMove determines if a Move m matches a SimpleMove s.
+// Matches determines if a Move m matches a SimpleMove s.
 func (s SimpleMove) Matches(m *Move) bool {
 	return s == m.SimpleMove
 }

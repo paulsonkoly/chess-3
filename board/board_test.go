@@ -12,23 +12,28 @@ import (
 
 func TestCastle(t *testing.T) {
 	b := Must(board.FromFEN("k7/p7/8/8/8/8/8/R3K2R w KQ - 0 1"))
-	m := move.Move{SimpleMove: move.FromSquares(E1, G1), Piece: King, Castle: ShortWhite, CRights: CRights(LongWhite, ShortWhite)}
+	m := move.Move{
+		SimpleMove: move.FromSquares(E1, G1),
+		Piece:      King,
+		Castle:     ShortWhite,
+		CRights:    CRights(LongWhite, ShortWhite),
+	}
 
 	b.MakeMove(&m)
 
 	assert.Equal(t, CRights(), b.CRights)
-	assert.Equal(t, b.SquaresToPiece[E1], NoPiece)
-	assert.Equal(t, b.SquaresToPiece[F1], Rook)
-	assert.Equal(t, b.SquaresToPiece[G1], King)
-	assert.Equal(t, b.SquaresToPiece[H1], NoPiece)
+	assert.Equal(t, NoPiece, b.SquaresToPiece[E1])
+	assert.Equal(t, Rook, b.SquaresToPiece[F1])
+	assert.Equal(t, King, b.SquaresToPiece[G1])
+	assert.Equal(t, NoPiece, b.SquaresToPiece[H1])
 
 	b.UndoMove(&m)
 
 	assert.Equal(t, CRights(ShortWhite, LongWhite), b.CRights)
-	assert.Equal(t, b.SquaresToPiece[E1], King)
-	assert.Equal(t, b.SquaresToPiece[F1], NoPiece)
-	assert.Equal(t, b.SquaresToPiece[G1], NoPiece)
-	assert.Equal(t, b.SquaresToPiece[H1], Rook)
+	assert.Equal(t, King, b.SquaresToPiece[E1])
+	assert.Equal(t, NoPiece, b.SquaresToPiece[F1])
+	assert.Equal(t, NoPiece, b.SquaresToPiece[G1])
+	assert.Equal(t, Rook, b.SquaresToPiece[H1])
 
 	m = move.Move{SimpleMove: move.FromSquares(E1, F1), Piece: King, CRights: CRights(LongWhite, ShortWhite)}
 

@@ -14,7 +14,8 @@ const epd = "standard.epd"
 
 func TestPerftSuite(t *testing.T) {
 	inp := Must(debug.NewEPDReader(epd))
-	defer inp.Close()
+	t.Cleanup(inp.Close)
+	t.Parallel()
 
 	for inp.Scan() {
 		entry := inp.Entry()

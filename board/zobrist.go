@@ -9,7 +9,7 @@ import (
 // Hash is a chess position Zobrist hash.
 type Hash uint64
 
-// zobrist hashes
+// Zobrist hashes.
 var (
 	piecesRand   [2][7][64]Hash
 	stmRand      Hash

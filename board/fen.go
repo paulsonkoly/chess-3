@@ -3,12 +3,13 @@ package board
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-// FromFen creates a new board from a FEN string. It returns error in case the FEN string is invalid.
+// FromFEN creates a new board from a FEN string. It returns error in case the FEN string is invalid.
 func FromFEN(fen string) (*Board, error) {
 	b := Board{}
 
@@ -221,7 +222,7 @@ func (b Board) FEN() string {
 				}
 
 				if count > 0 {
-					sb.WriteString(fmt.Sprint(count))
+					sb.WriteString(strconv.Itoa(count))
 					count = 0
 				}
 
@@ -231,7 +232,7 @@ func (b Board) FEN() string {
 			}
 		}
 		if count > 0 {
-			sb.WriteString(fmt.Sprint(count))
+			sb.WriteString(strconv.Itoa(count))
 			count = 0
 		}
 		if rank != 0 {

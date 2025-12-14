@@ -139,12 +139,12 @@ type SingleLinePlot struct {
 }
 
 type BarChart struct {
-    Title      string
-    OutputFile string
-    MGValue    int
-    EGValue    int
-    YMin       float64
-    YMax       float64
+	Title      string
+	OutputFile string
+	MGValue    int
+	EGValue    int
+	YMin       float64
+	YMax       float64
 }
 
 type MarkdownSection struct {
@@ -213,13 +213,13 @@ func processChessboard(field reflect.Value, name string, sections *[]MarkdownSec
 			"Pawn", "Knight", "Bishop", "Rook", "Queen", "King",
 		}
 		phaseNames := [...]string{
-			"MiddleGame", "EndGame", 
+			"MiddleGame", "EndGame",
 		}
 
 		for i := range field.Type().Len() {
 			chessboard := field.Index(i)
-			pieceName := pieceNames[i / 2]
-			phaseName := phaseNames[i % 2]
+			pieceName := pieceNames[i/2]
+			phaseName := phaseNames[i%2]
 			outputFile := fmt.Sprintf("psqt_%s_%s.png", strings.ToLower(pieceName), strings.ToLower(phaseName))
 			title := fmt.Sprintf("PSqT %s %s", pieceName, phaseName)
 			generateChessboardPlot(chessboard, title, outputFile)
@@ -230,7 +230,7 @@ func processChessboard(field reflect.Value, name string, sections *[]MarkdownSec
 		}
 	} else {
 		// Handle single chessboard case (though we don't have any in our struct)
-		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
+		outputFile := strings.ToLower(name) + ".png"
 		generateChessboardPlot(field, name, outputFile)
 		*sections = append(*sections, MarkdownSection{
 			Title:     name,
@@ -322,18 +322,18 @@ func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSe
 		return
 	}
 
+	outputFile := strings.ToLower(name) + ".png"
+
 	// Check if this is a paired array (middle game/end game)
 	if field.Type().Len() == 2 && field.Type().Elem().Kind() != reflect.Array {
 		mg := field.Index(0)
 		eg := field.Index(1)
-		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
 		processSingleValuePair(mg, eg, name, outputFile, sections)
 		return
 	}
 
 	// Handle single sequence arrays (like BishopPair)
 	if field.Type().Len() != 2 {
-		outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
 		processSingleSequence(field, name, outputFile, sections)
 		return
 	}
@@ -341,7 +341,6 @@ func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSe
 	// Handle regular paired arrays
 	mg := field.Index(0)
 	eg := field.Index(1)
-	outputFile := fmt.Sprintf("%s.png", strings.ToLower(name))
 
 	switch {
 	case mg.Kind() == reflect.Array && mg.Len() > 0 && mg.Index(0).Kind() == reflect.Array:
@@ -471,47 +470,47 @@ func processSimplePairedArray(mg, eg reflect.Value, name, outputFile string, sec
 }
 
 func processSingleValuePair(mg, eg reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
-    mgVal := int(mg.Interface().(Score))
-    egVal := int(eg.Interface().(Score))
+	mgVal := int(mg.Interface().(Score))
+	egVal := int(eg.Interface().(Score))
 
-    // Calculate y-range in Go
-    minVal := min(float64(mgVal), float64(egVal))
-    maxVal := max(float64(mgVal), float64(egVal))
-    rangeVal := maxVal - minVal
-    buffer := 1.0
-    if rangeVal > 0 {
-        buffer = rangeVal * 0.2 // 20% buffer
-    }
-    
-    // Handle zero values
-    if minVal == 0 && maxVal == 0 {
-        buffer = 1.0
-    }
+	// Calculate y-range in Go
+	minVal := min(float64(mgVal), float64(egVal))
+	maxVal := max(float64(mgVal), float64(egVal))
+	rangeVal := maxVal - minVal
+	buffer := 1.0
+	if rangeVal > 0 {
+		buffer = rangeVal * 0.2 // 20% buffer
+	}
 
-    data := BarChart{
-        Title:      name,
-        OutputFile: outputFile,
-        MGValue:    mgVal,
-        EGValue:    egVal,
-        YMin:       minVal - buffer,
-        YMax:       maxVal + buffer,
-    }
+	// Handle zero values
+	if minVal == 0 && maxVal == 0 {
+		buffer = 1.0
+	}
 
-    tmpl := template.Must(template.New("barchart").Parse(barChartTemplate))
-    
-    var script bytes.Buffer
-    if err := tmpl.Execute(&script, data); err != nil {
-        fmt.Printf("Template error for %s: %v\n", name, err)
-        return
-    }
+	data := BarChart{
+		Title:      name,
+		OutputFile: outputFile,
+		MGValue:    mgVal,
+		EGValue:    egVal,
+		YMin:       minVal - buffer,
+		YMax:       maxVal + buffer,
+	}
 
-    runGnuplot(script.String(), outputFile)
+	tmpl := template.Must(template.New("barchart").Parse(barChartTemplate))
 
-    *sections = append(*sections, MarkdownSection{
-        Title:       name,
-        ImagePath:   outputFile,
-        Description: fmt.Sprintf("Middle Game: %d | End Game: %d", mgVal, egVal),
-    })
+	var script bytes.Buffer
+	if err := tmpl.Execute(&script, data); err != nil {
+		fmt.Printf("Template error for %s: %v\n", name, err)
+		return
+	}
+
+	runGnuplot(script.String(), outputFile)
+
+	*sections = append(*sections, MarkdownSection{
+		Title:       name,
+		ImagePath:   outputFile,
+		Description: fmt.Sprintf("Middle Game: %d | End Game: %d", mgVal, egVal),
+	})
 }
 
 func processKnightOutpost(field reflect.Value, name string, sections *[]MarkdownSection) {
@@ -519,11 +518,11 @@ func processKnightOutpost(field reflect.Value, name string, sections *[]Markdown
 	eg := field.Index(1)
 
 	// Process middle game
-	mgOutput := fmt.Sprintf("%s_mg.png", strings.ToLower(name))
+	mgOutput := strings.ToLower(name) + "_mg.png"
 	generateTruncatedChessboardPlot(mg, name+" (Middle Game)", mgOutput, 3, 7)
 
 	// Process end game
-	egOutput := fmt.Sprintf("%s_eg.png", strings.ToLower(name))
+	egOutput := strings.ToLower(name) + "_eg.png"
 	generateTruncatedChessboardPlot(eg, name+" (End Game)", egOutput, 3, 7)
 
 	*sections = append(*sections, MarkdownSection{
@@ -538,18 +537,18 @@ func processKnightOutpost(field reflect.Value, name string, sections *[]Markdown
 }
 
 func runGnuplot(script, outputFile string) {
-    cmd := exec.Command("gnuplot")
-    cmd.Stdin = strings.NewReader(script)
-    
-    // Capture stderr for error reporting
-    var stderr bytes.Buffer
-    cmd.Stderr = &stderr
-    
-    if err := cmd.Run(); err != nil {
-        fmt.Printf("Error running gnuplot for %s: %v\n", outputFile, err)
-        fmt.Printf("Gnuplot stderr:\n%s\n", stderr.String())
-        fmt.Printf("Script content:\n%s\n", script)
-    }
+	cmd := exec.Command("gnuplot")
+	cmd.Stdin = strings.NewReader(script)
+
+	// Capture stderr for error reporting
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error running gnuplot for %s: %v\n", outputFile, err)
+		fmt.Printf("Gnuplot stderr:\n%s\n", stderr.String())
+		fmt.Printf("Script content:\n%s\n", script)
+	}
 }
 
 func generateMarkdown(sections []MarkdownSection) {
