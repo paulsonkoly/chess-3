@@ -62,6 +62,11 @@ func main() {
 		panic(err)
 	}
 
+	if len(entries) == 0 {
+		fmt.Fprintln(os.Stderr, "No positions loaded (database empty or all filtered)")
+		os.Exit(1)
+	}
+
 	buckets, err := countPhases(entries)
 	if err != nil {
 		panic(err)
@@ -71,7 +76,7 @@ func main() {
 
 	k := math.MaxFloat64
 	for _, bucket := range buckets {
-		rat := (float64(bucket) / float64(len(entries))) / (1.0 / 24.0)
+		rat := (float64(bucket) / float64(len(entries))) / (1.0 / float64(PhaseBucketCount))
 		if rat < k {
 			k = rat
 		}
@@ -80,7 +85,7 @@ func main() {
 	keepProb := [PhaseBucketCount]float64{}
 	for ix, bucket := range buckets {
 		dist := float64(bucket) / float64(len(entries))
-		keepProb[ix] = k * (1.0 / 24.0) / dist
+		keepProb[ix] = k * (1.0 / float64(PhaseBucketCount)) / dist
 	}
 
 	fmt.Println(keepProb)
