@@ -274,7 +274,7 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 // canEnPassant determines if we need to change the en passant state of the
 // board after a double pawn push.
 //
-// This is important in order to have the right hashes for 3-fold repetation.
+// This is important in order to have the right hashes for 3-fold repetition.
 // If we didn't do this the next turn move generator would take care of things
 // and everything would work, apart from we would have the incorrect board en
 // passant state.
@@ -313,7 +313,8 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 		occ1r = (g.them &^ board.HFile) << 9
 	}
 
-	for pawns, pawn := g.self&b.Pieces[Pawn] & ^theirSndRank & (occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	pawns := g.self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r)
+	for pawn := board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 

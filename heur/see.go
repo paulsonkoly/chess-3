@@ -41,7 +41,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 
 	captures := capturesStore[:0]
 
-	// piece type of least valueable attacker per side
+	// piece type of least valuable attacker per side
 	start := [2]Piece{Pawn, Pawn}
 	piece := m.Piece
 	occ := b.Colors[White] | b.Colors[Black]
@@ -55,7 +55,7 @@ func SEE(b *board.Board, m *move.Move) Score {
 	stm = stm.Flip()
 
 	for {
-		// least valueable attacker
+		// least valuable attacker
 		switch start[stm] {
 
 		case Pawn:
@@ -108,7 +108,8 @@ func SEE(b *board.Board, m *move.Move) Score {
 
 		case Queen:
 			if attackers[stm][Queen] == 0 {
-				attackers[stm][Queen] = (movegen.BishopMoves(to, occ) | movegen.RookMoves(to, occ)) & occ & b.Pieces[Queen] & b.Colors[stm]
+				attackers[stm][Queen] = (movegen.BishopMoves(to, occ) | movegen.RookMoves(to, occ)) & occ &
+					b.Pieces[Queen] & b.Colors[stm]
 			}
 
 			fromBB = attackers[stm][Queen]

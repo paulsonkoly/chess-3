@@ -39,7 +39,7 @@ func NewEngine() *Engine {
 	}
 }
 
-// Run executes an input loop reading from stdin and in paralell running and
+// Run executes an input loop reading from stdin and in parallel running and
 // controlling the search. It supports search interrupts with time control or
 // stop command.
 func (e *Engine) Run() {
@@ -299,7 +299,7 @@ func (e *Engine) handleGo(args []string) {
 
 	tc := timeControl{}
 
-	for i := range len(args) {
+	for i := range args {
 		switch args[i] {
 		case "wtime":
 			tc.wtime = parseInt64(args[i+1])

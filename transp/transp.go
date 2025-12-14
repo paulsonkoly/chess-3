@@ -1,4 +1,4 @@
-// package transp is a transposition table.
+// Package transp is a transposition table.
 package transp
 
 import (
@@ -37,7 +37,7 @@ const (
 	Exact                  // Entry score is exact.
 )
 
-// packed depth and type into a single byte
+// packed depth and type into a single byte.
 type packed byte
 
 // Depth is the entry depth.
@@ -149,7 +149,7 @@ const (
 	hi16  = 0x8000_8000_8000_8000
 )
 
-// returns true if any of the 16-bit lanes in w equals key
+// hasMatch64 determines if any of the 16-bit lanes in w equals key.
 func hasMatch64(w uint64, key partialKey) bool {
 	r := uint64(key) * rep16
 	x := w ^ r

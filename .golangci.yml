@@ -4,6 +4,15 @@ run:
 linters:
   enable:
     - revive
+    - staticcheck
+    - godoclint
+    - godot
+    - intrange
+    - lll
+    - misspell
+    - perfsprint
+    - testifylint
+    - tparallel
   settings:
     staticcheck:
       checks:

@@ -98,7 +98,7 @@ func WithCounters(counters *Counters) Option {
 	}
 }
 
-// Soft time limit in milliseconds. <= 0 for no limit.
+// WithSoftTime controls time limit in milliseconds. <= 0 for no limit.
 // TODO: should this be time.Duration?
 func WithSoftTime(st int64) Option {
 	return func(o *options) {

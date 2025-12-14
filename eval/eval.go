@@ -1,4 +1,4 @@
-// package eval gives position evaluation measuerd in centipawns.
+// Package eval gives position evaluation measuerd in centipawns.
 package eval
 
 import (
@@ -468,7 +468,13 @@ type kingAttacks[T ScoreType] struct {
 	score [2][2]T
 }
 
-func (ka *kingAttacks[T]) addAttackPieces(color Color, pType Piece, attacks board.BitBoard, kingNB board.BitBoard, c *CoeffSet[T]) {
+func (ka *kingAttacks[T]) addAttackPieces(
+	color Color,
+	pType Piece,
+	attacks board.BitBoard,
+	kingNB board.BitBoard,
+	c *CoeffSet[T],
+) {
 
 	if kingNB&attacks != 0 {
 		ka.score[0][color] += c.KingAttackPieces[0][pType-Knight]
@@ -496,7 +502,7 @@ func (ka kingAttacks[T]) sigmoidal(phase int, color Color) T {
 //
 // where 600 is the maximal bonus for attack, 0.2 is the steepness of the
 // sigmoid, and 50 is the inflection point, implying a 0-100 range for king
-// attack score
+// attack score.
 var sigm = [...]Score{
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
@@ -531,7 +537,13 @@ func (pw *pieceWise) calcRookAttacks(color Color, sq Square) board.BitBoard {
 	return attacks
 }
 
-func (sp *scorePair[T]) addRookMobility(b *board.Board, color Color, sq Square, attacks board.BitBoard, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addRookMobility(
+	b *board.Board,
+	color Color,
+	sq Square,
+	attacks board.BitBoard,
+	c *CoeffSet[T],
+) {
 
 	rank := board.BitBoard(0xff) << (sq & 56)
 	hmob := (attacks & rank & ^b.Colors[color]).Count()
@@ -571,7 +583,13 @@ func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) board.BitBoard {
 	return attacks
 }
 
-func (sp *scorePair[T]) addKnightMobility(b *board.Board, color Color, attacks board.BitBoard, pawnCover board.BitBoard, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addKnightMobility(
+	b *board.Board,
+	color Color,
+	attacks board.BitBoard,
+	pawnCover board.BitBoard,
+	c *CoeffSet[T],
+) {
 
 	mobCnt := (attacks & ^b.Colors[color] & ^pawnCover).Count()
 	sp.mg[color] += c.MobilityKnight[0][mobCnt]
@@ -579,7 +597,13 @@ func (sp *scorePair[T]) addKnightMobility(b *board.Board, color Color, attacks b
 
 }
 
-func (sp *scorePair[T]) addKnightOutposts(color Color, knightBB board.BitBoard, sq Square, holes board.BitBoard, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addKnightOutposts(
+	color Color,
+	knightBB board.BitBoard,
+	sq Square,
+	holes board.BitBoard,
+	c *CoeffSet[T],
+) {
 
 	// calculate knight outputs
 	if (knightBB)&holes != 0 {

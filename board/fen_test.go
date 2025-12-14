@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFENConversion(t *testing.T) {
@@ -172,7 +173,7 @@ func TestFENConversion(t *testing.T) {
 				assert.EqualError(t, err, tt.err.Error())
 			} else {
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, board)
 
 				if board != nil {
