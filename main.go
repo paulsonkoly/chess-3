@@ -10,7 +10,6 @@ import (
 	"slices"
 
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/transp"
 	"github.com/paulsonkoly/chess-3/uci"
@@ -18,8 +17,6 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-var debugFEN = flag.String("debugFEN", "", "Debug a given fen to a given depth using stockfish perft")
-var debugDepth = flag.Int("debugDepth", 3, "Debug a given depth")
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")
 var memProf = flag.String("memProf", "", "mem profile file name")
 
@@ -37,13 +34,6 @@ func main() {
 			panic(err)
 		}
 		defer pprof.StopCPUProfile()
-	}
-
-	if *debugFEN != "" {
-		b := Must(board.FromFEN(*debugFEN))
-
-		debug.MatchPerft(b, *debugDepth)
-		return
 	}
 
 	// openbench compatibility bench
