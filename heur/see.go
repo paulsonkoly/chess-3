@@ -8,143 +8,130 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-var capturesStore = [64]Piece{}
+// SEE determines if the static exchange evaluation is at least the threshold of some move m.
+//
+// Some of this code is derived from the algorithm found in stockfish.
+func SEE(b *board.Board, m *move.Move, threshold Score) bool {
+	from := m.From()
+	to := m.To()
+	fromBB := board.BitBoard(1) << from
+	toBB := board.BitBoard(1) << to
 
-// SEE is static exchange evaluation of m.
-func SEE(b *board.Board, m *move.Move) Score {
-	fromBB, to := board.BitBoard(1)<<m.From(), m.To()
-	toBB := board.BitBoard(1) << m.To()
-
-	// attackers of square "to"
-	attackers := [2][7]board.BitBoard{
-		// White
-		{
-			0, // NoPiece
-			movegen.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White],
-			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[White],
-			0, // bishops
-			0, // rooks
-			0, // queens
-			movegen.KingMoves(to) & b.Pieces[King] & b.Colors[White],
-		},
-		// Black
-		{
-			0, // NoPiece
-			movegen.PawnCaptureMoves(toBB, White) & b.Pieces[Pawn] & b.Colors[Black],
-			movegen.KnightMoves(to) & b.Pieces[Knight] & b.Colors[Black],
-			0, // bishops
-			0, // rooks
-			0, // queens
-			movegen.KingMoves(to) & b.Pieces[King] & b.Colors[Black],
-		},
+	swap := PieceValues[b.SquaresToPiece[to]] - threshold
+	if swap < 0 {
+		return false
 	}
 
-	captures := capturesStore[:0]
+	swap = PieceValues[m.Piece] - swap
+	if swap <= 0 {
+		return true
+	}
 
-	// piece type of least valuable attacker per side
-	start := [2]Piece{Pawn, Pawn}
-	piece := m.Piece
-	occ := b.Colors[White] | b.Colors[Black]
+	occ := (b.Colors[White] | b.Colors[Black]) ^ (fromBB /*| toBB*/) // why?
 	stm := b.STM
+	// Pawn capture depends on color, do pawn captures backwards, ignore sliding
+	// pieces, we will add sliding pieces in the main loop with changing
+	// occupancy.
+	attackers :=
+		(movegen.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White]) |
+			(movegen.PawnCaptureMoves(toBB, White) & b.Pieces[Pawn] & b.Colors[Black]) |
+			(movegen.KnightMoves(to) & b.Pieces[Knight]) |
+			(movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])) |
+			(movegen.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen])) |
+			(movegen.KingMoves(to) & b.Pieces[King])
 
-	captures = append(captures, b.SquaresToPiece[m.To()], piece)
+	res := Score(1)
 
-	// dummy mkMove
-	attackers[stm][piece] &= ^fromBB
-	occ &= ^fromBB
-	stm = stm.Flip()
+	start := [2]Piece{Pawn, Pawn}
 
 	for {
+		// dummy mkMove
+		stm = stm.Flip()
+
+		attackers &= occ
+		stmAttackers := attackers & b.Colors[stm]
+
+		if stmAttackers == 0 {
+			break
+		}
+
+		res ^= 1
+
 		// least valuable attacker
 		switch start[stm] {
 
 		case Pawn:
-			fromBB = attackers[stm][start[stm]]
+			fromBB = stmAttackers & b.Pieces[Pawn]
 			if fromBB != 0 {
-				piece = Pawn
-				fromBB &= -fromBB
+				swap = PieceValues[Pawn] - swap
+				if swap < res {
+					return res == 1
+				}
+				occ &= ^(fromBB & -fromBB)
+				attackers |= (movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen]))
 				break
 			}
 			fallthrough
 
 		case Knight:
-			start[stm] = Knight
+			start[stm] = Knight // no more pawns for stm
 
-			fromBB = attackers[stm][start[stm]]
+			fromBB = stmAttackers & b.Pieces[Knight]
 			if fromBB != 0 {
-				piece = Knight
-				fromBB &= -fromBB
+				swap = PieceValues[Knight] - swap
+				if swap < res {
+					return res == 1
+				}
+				occ &= ^(fromBB & -fromBB)
 				break
 			}
 			fallthrough
 
 		case Bishop:
-			start[stm] = Bishop // these attackers can change if occ changes, always restart from Bishops
+			// no more pawns and knights for stm
+			// attackers from bishop onwards can change if occ changes, always
+			// restart from Bishops
+			start[stm] = Bishop
 
-			if attackers[stm][Bishop] == 0 {
-				attackers[stm][Bishop] = movegen.BishopMoves(to, occ) & occ & b.Pieces[Bishop] & b.Colors[stm]
-			}
-
-			fromBB = attackers[stm][Bishop]
+			fromBB = stmAttackers & b.Pieces[Bishop]
 			if fromBB != 0 {
-				piece = Bishop
-				fromBB &= -fromBB
+				swap = PieceValues[Bishop] - swap
+				if swap < res {
+					return res == 1
+				}
+				occ &= ^(fromBB & -fromBB)
+				attackers |= (movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen]))
 				break
 			}
-			fallthrough
 
-		case Rook:
-			if attackers[stm][Rook] == 0 {
-				attackers[stm][Rook] = movegen.RookMoves(to, occ) & occ & b.Pieces[Rook] & b.Colors[stm]
-			}
-
-			fromBB = attackers[stm][Rook]
+			fromBB = stmAttackers & b.Pieces[Rook]
 			if fromBB != 0 {
-				piece = Rook
-				fromBB &= -fromBB
+				swap = PieceValues[Rook] - swap
+				if swap < res {
+					return res == 1
+				}
+				occ &= ^(fromBB & -fromBB)
+				attackers |= (movegen.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen]))
 				break
 			}
-			fallthrough
 
-		case Queen:
-			if attackers[stm][Queen] == 0 {
-				attackers[stm][Queen] = (movegen.BishopMoves(to, occ) | movegen.RookMoves(to, occ)) & occ &
-					b.Pieces[Queen] & b.Colors[stm]
-			}
-
-			fromBB = attackers[stm][Queen]
+			fromBB = stmAttackers & b.Pieces[Queen]
 			if fromBB != 0 {
-				piece = Queen
-				fromBB &= -fromBB
+				swap = PieceValues[Queen] - swap
+				if swap < res {
+					return res == 1
+				}
+				occ &= ^(fromBB & -fromBB)
+				attackers |= (movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])) |
+					(movegen.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen]))
 				break
 			}
-			fallthrough
 
-		case King:
-			fromBB = attackers[stm][King]
-			if fromBB != 0 {
-				piece = King
-				fromBB &= -fromBB
-				break
+			if attackers & ^b.Colors[stm] != 0 {
+				return res == 0
 			}
-			fallthrough
-
-		default:
-			value := Score(0)
-
-			// ignore the last piece that's not captured
-			for ply := len(captures) - 2; ply >= 0; ply-- {
-				value = max(value, 0)
-				value = PieceValues[captures[ply]] - value
-			}
-
-			return value
+			return res == 1
 		}
-
-		// dummy mkmove
-		captures = append(captures, piece)
-		attackers[stm][piece] &= ^fromBB
-		occ &= ^fromBB
-		stm = stm.Flip()
 	}
+	return res == 1
 }
