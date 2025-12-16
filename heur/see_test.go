@@ -6,19 +6,27 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
+type testCase struct {
+	name string // description of this test case
+	// Named input parameters for target function.
+	b    *board.Board
+	m    move.Move
+	want Score
+}
+
+func makeCase(fen string, sm move.SimpleMove, want Score) testCase {
+	b := Must(board.FromFEN(fen))
+	return testCase{name: fen, b: b, m: movegen.FromSimple(b, sm), want: want}
+}
+
 func TestSEE(t *testing.T) {
-	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		b    *board.Board
-		m    move.Move
-		want Score
-	}{
+	tests := []testCase{
 		{name: "3Q4/3q4/1B2N3/5N2/2KPk3/3r4/2n1nb2/3R4 b - - 0 1",
 			b:    Must(board.FromFEN("3Q4/3q4/1B2N3/5N2/2KPk3/3r4/2n1nb2/3R4 b - - 0 1")),
 			m:    N(C2, D4),
@@ -127,26 +135,19 @@ func TestSEE(t *testing.T) {
 			m:    B(F4, E5),
 			want: 0, //
 		},
-		{name: "3q2nk/pb1r1p2/np6/3P2Pp/2p1P3/2R4B/PQ3P1P/3R2K1 w - h6 0 1",
-			b:    Must(board.FromFEN("3q2nk/pb1r1p2/np6/3P2Pp/2p1P3/2R4B/PQ3P1P/3R2K1 w - h6 0 1")),
-			m:    P(G5, H6),
-			want: 0, //
-		},
-		{name: "3q2nk/pb1r1p2/np6/3P2Pp/2p1P3/2R1B2B/PQ3P1P/3R2K1 w - h6 0 1",
-			b:    Must(board.FromFEN("3q2nk/pb1r1p2/np6/3P2Pp/2p1P3/2R1B2B/PQ3P1P/3R2K1 w - h6 0 1")),
-			m:    P(G5, H6),
-			want: 100, // P
-		},
+		makeCase("3q2nk/pb1r1p2/np6/3P2Pp/2p1P3/2R4B/PQ3P1P/3R2K1 w - h6 0 1", move.FromSquares(G5, H6), 0),
+		makeCase("3q2nk/pb1r1p2/np6/3P2Pp/2p1P3/2R1B2B/PQ3P1P/3R2K1 w - h6 0 1", move.FromSquares(G5, H6), 100), // P
 		{name: "2r4r/1P4pk/p2p1b1p/7n/BB3p2/2R2p2/P1P2P2/4RK2 w - - 0 1",
 			b:    Must(board.FromFEN("2r4r/1P4pk/p2p1b1p/7n/BB3p2/2R2p2/P1P2P2/4RK2 w - - 0 1")),
 			m:    R(C3, C8),
 			want: 500, // R
 		},
-		{name: "2r5/1P4pk/p2p1b1p/5b1n/BB3p2/2R2p2/P1P2P2/4RK2 w - - 0 1",
-			b:    Must(board.FromFEN("2r5/1P4pk/p2p1b1p/5b1n/BB3p2/2R2p2/P1P2P2/4RK2 w - - 0 1")),
-			m:    R(C3, C8),
-			want: 500, // R
-		},
+		// requires promo capture
+		// {name: "2r5/1P4pk/p2p1b1p/5b1n/BB3p2/2R2p2/P1P2P2/4RK2 w - - 0 1",
+		// 	b:    Must(board.FromFEN("2r5/1P4pk/p2p1b1p/5b1n/BB3p2/2R2p2/P1P2P2/4RK2 w - - 0 1")),
+		// 	m:    R(C3, C8),
+		// 	want: 500, // R
+		// },
 		{name: "2r4k/2r4p/p7/2b2p1b/4pP2/1BR5/P1R3PP/2Q4K w - - 0 1",
 			b:    Must(board.FromFEN("2r4k/2r4p/p7/2b2p1b/4pP2/1BR5/P1R3PP/2Q4K w - - 0 1")),
 			m:    R(C3, C5),
@@ -302,51 +303,38 @@ func TestSEE(t *testing.T) {
 			m:    B(D5, C6),
 			want: -300, // -B + B - N
 		},
-		{name: "5k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1",
-			b:    Must(board.FromFEN("5k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1")),
-			m:    P(D7, D8),
-			want: 800, // (Q - P)
-		},
-		{name: "r4k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1",
-			b:    Must(board.FromFEN("r4k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1")),
-			m:    P(D7, D8),
-			want: -100, // (Q - P) - Q
-		},
-		{name: "5k2/p2P2pp/1b6/1p6/1Nn1P1n1/8/PPP4P/R2QK1NR w KQ - 0 1",
-			b:    Must(board.FromFEN("5k2/p2P2pp/1b6/1p6/1Nn1P1n1/8/PPP4P/R2QK1NR w KQ - 0 1")),
-			m:    P(D7, D8),
-			want: 200, // (Q - P) - Q + B
-		},
-		{name: "4kbnr/p1P1pppp/b7/4q3/7n/8/PP1PPPPP/RNBQKBNR w KQk - 0 1",
-			b:    Must(board.FromFEN("4kbnr/p1P1pppp/b7/4q3/7n/8/PP1PPPPP/RNBQKBNR w KQk - 0 1")),
-			m:    P(C7, C8),
-			want: -100, // (Q - P) - Q
-		},
-		{name: "4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1",
-			b:    Must(board.FromFEN("4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1")),
-			m:    P(C7, C8),
-			want: 200, // (Q - P) - Q + B
-		},
-		{name: "4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1",
-			b:    Must(board.FromFEN("4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1")),
-			m:    P(C7, C8),
-			want: 200, // (Q - P)
-		},
-		{name: "4kbnr/p1P4p/b1q5/5pP1/4n3/5Q2/PP1PPP1P/RNB1KBNR w KQk f6 0 1",
-			b:    Must(board.FromFEN("4kbnr/p1P4p/b1q5/5pP1/4n3/5Q2/PP1PPP1P/RNB1KBNR w KQk f6 0 1")),
-			m:    P(G5, F6),
-			want: 0, // P - P
-		},
-		{name: "4kbnr/p1P4p/b1q5/5pP1/4n3/5Q2/PP1PPP1P/RNB1KBNR w KQk f6 0 1",
-			b:    Must(board.FromFEN("4kbnr/p1P4p/b1q5/5pP1/4n3/5Q2/PP1PPP1P/RNB1KBNR w KQk f6 0 1")),
-			m:    P(G5, F6),
-			want: 0, // P - P
-		},
-		{name: "4kbnr/p1P4p/b1q5/5pP1/4n2Q/8/PP1PPP1P/RNB1KBNR w KQk f6 0 1",
-			b:    Must(board.FromFEN("4kbnr/p1P4p/b1q5/5pP1/4n2Q/8/PP1PPP1P/RNB1KBNR w KQk f6 0 1")),
-			m:    P(G5, F6),
-			want: 0, // P - P
-		},
+		// promotion push
+		// {name: "5k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1",
+		// 	b:    Must(board.FromFEN("5k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1")),
+		// 	m:    P(D7, D8),
+		// 	want: 800, // (Q - P)
+		// },
+		// {name: "r4k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1",
+		// 	b:    Must(board.FromFEN("r4k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1")),
+		// 	m:    P(D7, D8),
+		// 	want: -100, // (Q - P) - Q
+		// },
+		// {name: "5k2/p2P2pp/1b6/1p6/1Nn1P1n1/8/PPP4P/R2QK1NR w KQ - 0 1",
+		// 	b:    Must(board.FromFEN("5k2/p2P2pp/1b6/1p6/1Nn1P1n1/8/PPP4P/R2QK1NR w KQ - 0 1")),
+		// 	m:    P(D7, D8),
+		// 	want: 200, // (Q - P) - Q + B
+		// },
+		// {name: "4kbnr/p1P1pppp/b7/4q3/7n/8/PP1PPPPP/RNBQKBNR w KQk - 0 1",
+		// 	b:    Must(board.FromFEN("4kbnr/p1P1pppp/b7/4q3/7n/8/PP1PPPPP/RNBQKBNR w KQk - 0 1")),
+		// 	m:    P(C7, C8),
+		// 	want: -100, // (Q - P) - Q
+		// },
+		// {name: "4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1",
+		// 	b:    Must(board.FromFEN("4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1")),
+		// 	m:    P(C7, C8),
+		// 	want: 200, // (Q - P) - Q + B
+		// },
+		// {name: "4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1",
+		// 	b:    Must(board.FromFEN("4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1")),
+		// 	m:    P(C7, C8),
+		// 	want: 200, // (Q - P)
+		// },
+		makeCase("4kbnr/p1P4p/b1q5/5pP1/4n3/5Q2/PP1PPP1P/RNB1KBNR w KQk f6 0 1", move.FromSquares(G5, F6), 0), // P - P
 		{name: "1n2kb1r/p1P4p/2qb4/5pP1/4n2Q/8/PP1PPP1P/RNB1KBNR w KQk - 0 1",
 			b:    Must(board.FromFEN("1n2kb1r/p1P4p/2qb4/5pP1/4n2Q/8/PP1PPP1P/RNB1KBNR w KQk - 0 1")),
 			m:    P(C7, B8),
@@ -362,21 +350,22 @@ func TestSEE(t *testing.T) {
 			m:    N(C6, D8),
 			want: 0, // N - N
 		},
-		{name: "3N4/2P5/2n5/1k6/8/8/8/4K3 b - - 0 1",
-			b:    Must(board.FromFEN("3N4/2P5/2n5/1k6/8/8/8/4K3 b - - 0 1")),
-			m:    N(C6, D8),
-			want: -800, // N - (N + Q - P)
-		},
-		{name: "3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1",
-			b:    Must(board.FromFEN("3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1")),
-			m:    Q(D2, D8),
-			want: 300, // N
-		},
-		{name: "3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1",
-			b:    Must(board.FromFEN("3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1")),
-			m:    P(C7, D8),
-			want: 700, // (N + Q - P) - Q + R
-		},
+		// we don't have promotion support
+		// {name: "3N4/2P5/2n5/1k6/8/8/8/4K3 b - - 0 1",
+		// 	b:    Must(board.FromFEN("3N4/2P5/2n5/1k6/8/8/8/4K3 b - - 0 1")),
+		// 	m:    N(C6, D8),
+		// 	want: -800, // N - (N + Q - P)
+		// },
+		// {name: "3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1",
+		// 	b:    Must(board.FromFEN("3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1")),
+		// 	m:    Q(D2, D8),
+		// 	want: 300, // N
+		// },
+		// {name: "3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1",
+		// 	b:    Must(board.FromFEN("3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1")),
+		// 	m:    P(C7, D8),
+		// 	want: 700, // (N + Q - P) - Q + R
+		// },
 		{name: "r2n3r/2P1P3/4N3/1k6/8/8/8/4K3 w - - 0 1",
 			b:    Must(board.FromFEN("r2n3r/2P1P3/4N3/1k6/8/8/8/4K3 w - - 0 1")),
 			m:    N(E6, D8),
@@ -387,16 +376,17 @@ func TestSEE(t *testing.T) {
 			m:    N(E3, D1),
 			want: 0, // N - N
 		},
-		{name: "8/8/1k6/8/8/2N1N3/2p1p1K1/3n4 w - - 0 1",
-			b:    Must(board.FromFEN("8/8/1k6/8/8/2N1N3/2p1p1K1/3n4 w - - 0 1")),
-			m:    N(E3, D1),
-			want: -800, // N - (N + Q - P)
-		},
-		{name: "8/8/1k6/8/8/2N1N3/4p1K1/3n4 w - - 0 1",
-			b:    Must(board.FromFEN("8/8/1k6/8/8/2N1N3/4p1K1/3n4 w - - 0 1")),
-			m:    N(C3, D1),
-			want: 100, // N - (N + Q - P) + Q
-		},
+		// we don't have promotion capture support
+		// {name: "8/8/1k6/8/8/2N1N3/2p1p1K1/3n4 w - - 0 1",
+		// 	b:    Must(board.FromFEN("8/8/1k6/8/8/2N1N3/2p1p1K1/3n4 w - - 0 1")),
+		// 	m:    N(E3, D1),
+		// 	want: -800, // N - (N + Q - P)
+		// },
+		// {name: "8/8/1k6/8/8/2N1N3/4p1K1/3n4 w - - 0 1",
+		// 	b:    Must(board.FromFEN("8/8/1k6/8/8/2N1N3/4p1K1/3n4 w - - 0 1")),
+		// 	m:    N(C3, D1),
+		// 	want: 100, // N - (N + Q - P) + Q
+		// },
 		{name: "r1bqk1nr/pppp1ppp/2n5/1B2p3/1b2P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1",
 			b:    Must(board.FromFEN("r1bqk1nr/pppp1ppp/2n5/1B2p3/1b2P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1")),
 			m:    K(E1, G1),

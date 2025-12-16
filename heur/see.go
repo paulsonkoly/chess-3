@@ -17,7 +17,15 @@ func SEE(b *board.Board, m *move.Move, threshold Score) bool {
 	fromBB := board.BitBoard(1) << from
 	toBB := board.BitBoard(1) << to
 
-	swap := PieceValues[b.SquaresToPiece[to]] - threshold
+	occ := (b.Colors[White] | b.Colors[Black]) ^ fromBB
+
+	captured := b.SquaresToPiece[to]
+	if m.EPP != NoPiece {
+		captured = Pawn
+		occ &= ^(board.BitBoard(1) << (m.EPSq))
+	}
+
+	swap := PieceValues[captured] - threshold
 	if swap < 0 {
 		return false
 	}
@@ -27,7 +35,6 @@ func SEE(b *board.Board, m *move.Move, threshold Score) bool {
 		return true
 	}
 
-	occ := (b.Colors[White] | b.Colors[Black]) ^ (fromBB /*| toBB*/) // why?
 	stm := b.STM
 	// Pawn capture depends on color, do pawn captures backwards, ignore sliding
 	// pieces, we will add sliding pieces in the main loop with changing
