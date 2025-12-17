@@ -28,9 +28,26 @@ type Move struct {
 // heuristic stores. It encodes from and to squares and promotion piece.
 type SimpleMove uint16
 
-// FromSquares creates a SimpleMove with origin square from and destination square to.
-func FromSquares(from, to Square) SimpleMove {
-	return (SimpleMove(to) << toShift & toMsk) | (SimpleMove(from) << fromShift & fromMsk)
+// SimpleMoveOption is an optional argument to NewSimple.
+type SimpleMoveOption interface {
+	Apply(sm SimpleMove) SimpleMove
+}
+
+// Promo is a SimpleMoveOption setting the promotion piece type.
+type Promo Piece
+
+func (p Promo) Apply(sm SimpleMove) SimpleMove {
+	sm.SetPromo(Piece(p))
+	return sm
+}
+
+// NewSimple creates a new simple move with to and from squares and additional options.
+func NewSimple(from, to Square, opts ...SimpleMoveOption) SimpleMove {
+	sm := (SimpleMove(to) << toShift & toMsk) | (SimpleMove(from) << fromShift & fromMsk)
+	for _, opt := range opts {
+		sm = opt.Apply(sm)
+	}
+	return sm
 }
 
 const (

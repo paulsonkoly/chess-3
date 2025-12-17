@@ -1,7 +1,6 @@
 package movegen_test
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -12,7 +11,7 @@ import (
 	. "github.com/paulsonkoly/chess-3/types"
 )
 
-func TestPawnSinglePushMoves(t * testing.T) {
+func TestPawnSinglePushMoves(t *testing.T) {
 	tests := []struct {
 		name  string
 		from  board.BitBoard
@@ -74,351 +73,257 @@ func TestMoves(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		b    *board.Board
-		want []move.Move
+		want []string
 	}{
 		{
 			name: "simple king move",
 			b:    Must(board.FromFEN("8/8/8/8/8/4K3/8/k7 w - - 0 1")),
-			want: []move.Move{
-				K(E3, D2), K(E3, E2), K(E3, F2),
-				K(E3, D3), K(E3, F3),
-				K(E3, D4), K(E3, E4), K(E3, F4),
-			},
+			want: []string{"e3d2", "e3e2", "e3f2", "e3d3", "e3f3", "e3d4", "e3e4", "e3f4"},
 		},
 		{
 			name: "king in the corner",
 			b:    Must(board.FromFEN("8/8/8/8/8/8/K7/7k b - - 0 1")),
-			want: []move.Move{
-				K(H1, H2), K(H1, G2), K(H1, G1),
-			},
+			want: []string{"h1h2", "h1g2", "h1g1"},
 		},
 		{
 			name: "simple knight move",
 			b:    Must(board.FromFEN("8/8/8/8/8/4N3/8/k6K w - - 0 1")),
-			want: []move.Move{
-				N(E3, C4), N(E3, D5), N(E3, F5), N(E3, G4),
-				N(E3, C2), N(E3, D1), N(E3, F1), N(E3, G2),
-				K(H1, G1), K(H1, G2), K(H1, H2),
-			},
+			want: []string{"e3c4", "e3d5", "e3f5", "e3g4", "e3c2", "e3d1", "e3f1", "e3g2", "h1g1", "h1g2", "h1h2"},
 		},
 		{
 			name: "knight in the corner",
 			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/K6N w - - 0 1")),
-			want: []move.Move{
-				N(H1, F2), N(H1, G3),
-				K(A1, A2), K(A1, B2), K(A1, B1),
-			},
+			want: []string{"h1f2", "h1g3", "a1a2", "a1b2", "a1b1"},
 		},
 		{
 			name: "simple bishop move",
 			b:    Must(board.FromFEN("k7/8/8/8/8/3B4/8/7K w - - 0 1")),
-			want: []move.Move{
-				B(D3, C2), B(D3, B1), B(D3, E2), B(D3, F1), B(D3, C4), B(D3, B5),
-				B(D3, A6), B(D3, E4), B(D3, F5), B(D3, G6), B(D3, H7),
-				K(H1, G1), K(H1, G2), K(H1, H2),
+			want: []string{
+				"d3c2", "d3b1", "d3e2", "d3f1", "d3c4", "d3b5", "d3a6", "d3e4", "d3f5", "d3g6", "d3h7", "h1g1", "h1g2", "h1h2",
 			},
 		},
 		{
 			name: "bishop in the corner",
 			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/B6K w - - 0 1")),
-			want: []move.Move{
-				B(A1, B2), B(A1, C3), B(A1, D4), B(A1, E5), B(A1, F6), B(A1, G7), B(A1, H8),
-				K(H1, G1), K(H1, G2), K(H1, H2),
-			},
+			want: []string{"a1b2", "a1c3", "a1d4", "a1e5", "a1f6", "a1g7", "a1h8", "h1g1", "h1g2", "h1h2"},
 		},
 		{
 			name: "bishop blocked by friendly",
 			b:    Must(board.FromFEN("k7/8/8/8/8/2K5/1B6/8 w - - 0 1")),
-			want: []move.Move{
-				B(B2, A3), B(B2, A1), B(B2, C1),
-				K(C3, B3), K(C3, B4), K(C3, C2), K(C3, C4), K(C3, D2), K(C3, D3), K(C3, D4),
-			},
+			want: []string{"b2a3", "b2a1", "b2c1", "c3b3", "c3b4", "c3c2", "c3c4", "c3d2", "c3d3", "c3d4"},
 		},
 		{
 			name: "simple rook move",
 			b:    Must(board.FromFEN("k7/8/8/8/4R3/8/8/7K w - - 0 1")),
-			want: []move.Move{
-				R(E4, D4), R(E4, C4), R(E4, B4), R(E4, A4), R(E4, H4), R(E4, G4), R(E4, F4),
-				R(E4, E5), R(E4, E6), R(E4, E7), R(E4, E8), R(E4, E3), R(E4, E2), R(E4, E1),
-				K(H1, G1), K(H1, G2), K(H1, H2),
+			want: []string{
+				"e4d4", "e4c4", "e4b4", "e4a4", "e4h4", "e4g4", "e4f4", "e4e5", "e4e6", "e4e7", "e4e8", "e4e3", "e4e2", "e4e1",
+				"h1g1", "h1g2", "h1h2",
 			},
 		},
 		{
 			name: "rook in the corner",
 			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/R6K w - - 0 1")),
-			want: []move.Move{
-				R(A1, A2), R(A1, A3), R(A1, A4), R(A1, A5), R(A1, A6), R(A1, A7), R(A1, A8),
-				R(A1, B1), R(A1, C1), R(A1, D1), R(A1, E1), R(A1, F1), R(A1, G1),
-				K(H1, G1), K(H1, G2), K(H1, H2),
+			want: []string{
+				"a1a2", "a1a3", "a1a4", "a1a5", "a1a6", "a1a7", "a1a8", "a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "h1g1",
+				"h1g2", "h1h2",
 			},
 		},
 		{
 			name: "rook blocked by friendly",
 			b:    Must(board.FromFEN("k7/8/8/8/8/2K5/2R5/8 w - - 0 1")),
-			want: []move.Move{
-				R(C2, B2), R(C2, A2), R(C2, D2), R(C2, E2), R(C2, F2), R(C2, G2), R(C2, H2),
-				R(C2, C1),
-				K(C3, B3), K(C3, B4), K(C3, B2), K(C3, C4), K(C3, D2), K(C3, D3), K(C3, D4),
+			want: []string{
+				"c2b2", "c2a2", "c2d2", "c2e2", "c2f2", "c2g2", "c2h2", "c2c1", "c3b3", "c3b4", "c3b2", "c3c4", "c3d2", "c3d3",
+				"c3d4",
 			},
 		},
 		{
 			name: "simple queen move",
 			b:    Must(board.FromFEN("k7/8/8/8/4Q3/8/8/7K w - - 0 1")),
-			want: []move.Move{
-				Q(E4, D4), Q(E4, C4), Q(E4, B4), Q(E4, A4), Q(E4, H4), Q(E4, G4), Q(E4, F4),
-				Q(E4, E5), Q(E4, E6), Q(E4, E7), Q(E4, E8), Q(E4, E3), Q(E4, E2), Q(E4, E1),
-				Q(E4, F5), Q(E4, G6), Q(E4, H7), Q(E4, F3), Q(E4, G2),
-				Q(E4, D5), Q(E4, C6), Q(E4, B7), Q(E4, A8), Q(E4, D3), Q(E4, C2), Q(E4, B1),
-				K(H1, G1), K(H1, G2), K(H1, H2),
+			want: []string{
+				"e4d4", "e4c4", "e4b4", "e4a4", "e4h4", "e4g4", "e4f4", "e4e5", "e4e6", "e4e7", "e4e8", "e4e3", "e4e2", "e4e1",
+				"e4f5", "e4g6", "e4h7", "e4f3", "e4g2", "e4d5", "e4c6", "e4b7", "e4a8", "e4d3", "e4c2", "e4b1", "h1g1", "h1g2",
+				"h1h2",
 			},
 		},
 		{
 			name: "queen in the corner",
 			b:    Must(board.FromFEN("k7/8/8/8/8/8/8/Q6K w - - 0 1")),
-			want: []move.Move{
-				Q(A1, A2), Q(A1, A3), Q(A1, A4), Q(A1, A5), Q(A1, A6), Q(A1, A7), Q(A1, A8),
-				Q(A1, B1), Q(A1, C1), Q(A1, D1), Q(A1, E1), Q(A1, F1), Q(A1, G1),
-				Q(A1, B2), Q(A1, C3), Q(A1, D4), Q(A1, E5), Q(A1, F6), Q(A1, G7), Q(A1, H8),
-				K(H1, G1), K(H1, G2), K(H1, H2),
+			want: []string{
+				"a1a2", "a1a3", "a1a4", "a1a5",
+				"a1a6", "a1a7", "a1a8",
+				"a1b1", "a1c1", "a1d1", "a1e1",
+				"a1f1", "a1g1",
+				"a1b2", "a1c3", "a1d4", "a1e5",
+				"a1f6", "a1g7", "a1h8",
+				"h1g1", "h1g2", "h1h2",
 			},
 		},
 		{
 			name: "queen blocked by friendly",
 			b:    Must(board.FromFEN("8/8/8/2k5/8/2K5/2Q5/8 w - - 0 1")),
-			want: []move.Move{
-				Q(C2, B1), Q(C2, C1), Q(C2, D1), Q(C2, A2), Q(C2, B2), Q(C2, D2), Q(C2, E2),
-				Q(C2, F2), Q(C2, G2), Q(C2, H2), Q(C2, B3), Q(C2, D3), Q(C2, A4), Q(C2, E4),
-				Q(C2, F5), Q(C2, G6), Q(C2, H7),
-				K(C3, B2), K(C3, D2), K(C3, B3), K(C3, D3),
+			want: []string{
+				"c2b1", "c2c1", "c2d1", "c2a2", "c2b2", "c2d2", "c2e2", "c2f2", "c2g2", "c2h2", "c2b3", "c2d3", "c2a4", "c2e4",
+				"c2f5", "c2g6", "c2h7", "c3b2", "c3d2", "c3b3", "c3d3",
 			},
 		},
 		{
 			name: "single pawn push forward as white",
 			b:    Must(board.FromFEN("4k3/8/8/8/4P3/8/8/K7 w - - 0 1")),
-			want: []move.Move{
-				P(E4, E5),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e4e5", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "single pawn push forward as black",
 			b:    Must(board.FromFEN("7K/8/8/8/4p3/8/8/k7 b - - 0 1")),
-			want: []move.Move{
-				P(E4, E3),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e4e3", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "blocked pawn push forward as white",
 			b:    Must(board.FromFEN("8/8/8/4k3/4P3/8/8/K7 w - - 0 1")),
-			want: []move.Move{
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "blocked pawn push forward as black",
 			b:    Must(board.FromFEN("8/8/8/8/4p3/4K3/8/k7 b - - 0 1")),
-			want: []move.Move{
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "double pawn push forward as white",
 			b:    Must(board.FromFEN("7k/8/8/8/8/8/4P3/K7 w - - 0 1")),
-			want: []move.Move{
-				P(E2, E3), P(E2, E4),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e2e3", "e2e4", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "double pawn push forward as black",
 			b:    Must(board.FromFEN("7K/4p3/8/8/8/8/8/k7 b - - 0 1")),
-			want: []move.Move{
-				P(E7, E6), P(E7, E5),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e7e6", "e7e5", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "double pawn push blocked by a piece directly in front",
 			b:    Must(board.FromFEN("8/8/8/8/8/4k3/4P3/K7 w - - 0 1")),
-			want: []move.Move{
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "double pawn push blocked by a piece 2 squares in front",
 			b:    Must(board.FromFEN("8/8/8/8/4k3/8/4P3/K7 w - - 0 1")),
-			want: []move.Move{
-				P(E2, E3),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e2e3", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "pawn capture",
 			b:    Must(board.FromFEN("7k/8/8/8/3n4/4P3/8/K7 w - - 0 1")),
-			want: []move.Move{
-				P(E3, E4), P(E3, D4),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e3e4", "e3d4", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "pawn capture on AFile testing for wrap to HFile",
 			b:    Must(board.FromFEN("7k/8/8/8/1n5n/P7/8/K7 w - - 0 1")),
-			want: []move.Move{
-				P(A3, A4), P(A3, B4),
-				K(A1, B1), K(A1, B2),
-			},
+			want: []string{"a3a4", "a3b4", "a1b1", "a1b2"},
 		},
 		{
 			name: "pawn promotion (push)",
 			b:    Must(board.FromFEN("7k/4P3/8/8/8/8/8/K7 w - - 0 1")),
-			want: []move.Move{
-				PP(E7, E8, Queen), PP(E7, E8, Rook), PP(E7, E8, Bishop), PP(E7, E8, Knight),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e7e8q", "e7e8r", "e7e8b", "e7e8n", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "pawn promotion blocked (push)",
 			b:    Must(board.FromFEN("8/8/8/8/8/8/6p1/k5K1 b - - 0 1")),
-			want: []move.Move{
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "pawn promotion (capture)",
 			b:    Must(board.FromFEN("3nn2k/4P3/8/8/8/8/8/K7 w - - 0 1")),
-			want: []move.Move{
-				PP(E7, D8, Queen), PP(E7, D8, Rook), PP(E7, D8, Bishop), PP(E7, D8, Knight),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e7d8q", "e7d8r", "e7d8b", "e7d8n", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "pawn promotion (capture or push)",
 			b:    Must(board.FromFEN("3n3k/4P3/8/8/8/8/8/K7 w - - 0 1")),
-			want: []move.Move{
-				PP(E7, D8, Queen), PP(E7, D8, Rook), PP(E7, D8, Bishop), PP(E7, D8, Knight),
-				PP(E7, E8, Queen), PP(E7, E8, Rook), PP(E7, E8, Bishop), PP(E7, E8, Knight),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"e7d8q", "e7d8r", "e7d8b", "e7d8n", "e7e8q", "e7e8r", "e7e8b", "e7e8n", "a1b1", "a1b2", "a1a2"},
 		},
 		{
 			name: "en passant",
 			b:    Must(board.FromFEN("7k/8/8/2Pp4/8/8/8/K7 w - d6 0 1")),
-			want: []move.Move{
-				P(C5, C6), P(C5, D6),
-				K(A1, B1), K(A1, B2), K(A1, A2),
-			},
+			want: []string{"c5c6", "c5d6", "a1b1", "a1b2", "a1a2"},
 		},
-
 		{
 			name: "regression #1",
 			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/8/p7/8/7P/PPPPPPP1/RNBQKBNR w - - 0 1")),
-			want: []move.Move{
-				P(A2, A3), P(B2, B3), P(C2, C3), P(D2, D3), P(E2, E3), P(F2, F3), P(G2, G3), P(H3, H4),
-				P(A2, A4), P(B2, B4), P(C2, C4), P(D2, D4), P(E2, E4), P(F2, F4), P(G2, G4),
-				N(B1, A3), N(B1, C3), N(G1, F3),
-				R(H1, H2),
+			want: []string{
+				"a2a3", "b2b3", "c2c3", "d2d3", "e2e3", "f2f3", "g2g3", "h3h4", "a2a4", "b2b4", "c2c4", "d2d4", "e2e4", "f2f4",
+				"g2g4", "b1a3", "b1c3", "g1f3", "h1h2",
 			},
 		},
 		{
 			name: "regression #2",
 			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/8/p7/1P6/8/P1PPPPPP/RNBQKBNR w - - 0 1")),
-			want: []move.Move{
-				P(A2, A3), P(C2, C3), P(D2, D3), P(E2, E3), P(F2, F3), P(G2, G3), P(H2, H3), P(B4, B5), P(A2, A4),
-				P(C2, C4), P(D2, D4), P(E2, E4), P(F2, F4), P(G2, G4), P(H2, H4), P(B4, A5),
-				N(B1, A3), N(B1, C3), N(G1, F3), N(G1, H3),
-				B(C1, B2), B(C1, A3),
+			want: []string{
+				"a2a3", "c2c3", "d2d3", "e2e3", "f2f3", "g2g3", "h2h3", "b4b5", "a2a4", "c2c4", "d2d4", "e2e4", "f2f4", "g2g4",
+				"h2h4", "b4a5", "b1a3", "b1c3", "g1f3", "g1h3", "c1b2", "c1a3",
 			},
 		},
 		{
 			name: "regression #3",
 			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/8/p7/8/N6N/PPPPPPPP/R1BQKB1R b - - 0 1")),
-			want: []move.Move{
-				P(A5, A4), P(B7, B6), P(C7, C6), P(D7, D6), P(E7, E6), P(F7, F6), P(G7, G6), P(H7, H6), P(B7, B5),
-				P(C7, C5), P(D7, D5), P(E7, E5), P(F7, F5), P(G7, G5), P(H7, H5),
-				N(B8, A6), N(B8, C6), N(G8, F6), N(G8, H6),
-				R(A8, A6), R(A8, A7),
+			want: []string{
+				"a5a4", "b7b6", "c7c6", "d7d6", "e7e6", "f7f6", "g7g6", "h7h6", "b7b5", "c7c5", "d7d5", "e7e5", "f7f5", "g7g5",
+				"h7h5", "b8a6", "b8c6", "g8f6", "g8h6", "a8a6", "a8a7",
 			},
 		},
 		{
 			name: "regression #4",
 			b:    Must(board.FromFEN("rnbqkbnr/1ppppppp/p7/1N6/8/8/PPPPPPPP/R1BQKBNR b - - 0 1")),
-			want: []move.Move{
-				P(A6, A5), P(B7, B6), P(C7, C6), P(D7, D6), P(E7, E6), P(F7, F6), P(G7, G6), P(H7, H6),
-				P(C7, C5), P(D7, D5), P(E7, E5), P(F7, F5), P(G7, G5), P(H7, H5), P(A6, B5),
-				N(B8, C6), N(G8, F6), N(G8, H6), R(A8, A7),
+			want: []string{
+				"a6a5", "b7b6", "c7c6", "d7d6", "e7e6", "f7f6", "g7g6", "h7h6", "c7c5", "d7d5", "e7e5", "f7f5", "g7g5", "h7h5",
+				"a6b5", "b8c6", "g8f6", "g8h6", "a8a7",
 			},
 		},
 		{
 			name: "regression #5",
 			b:    Must(board.FromFEN("rnbq3r/pp1Pbpkp/2p3p1/6P1/2B5/8/PPP1Nn1P/RNBQ1K1R b - - 0 1")),
-			want: []move.Move{
-				P(C6, C5), P(A7, A6), P(B7, B6), P(F7, F6), P(H7, H6), P(A7, A5), P(B7, B5), P(F7, F5), P(H7, H5),
-				N(F2, D1), N(F2, H1), N(F2, D3), N(F2, H3), N(F2, E4), N(F2, G4), N(B8, A6), N(B8, D7),
-				B(E7, A3), B(E7, B4), B(E7, C5), B(E7, G5), B(E7, D6), B(E7, F6), B(E7, F8), B(C8, D7),
-				R(H8, E8), R(H8, F8), R(H8, G8),
-				Q(D8, A5), Q(D8, B6), Q(D8, C7), Q(D8, D7), Q(D8, E8), Q(D8, F8), Q(D8, G8),
-				K(G7, G8), K(G7, F8),
+			want: []string{
+				"c6c5", "a7a6", "b7b6", "f7f6", "h7h6", "a7a5", "b7b5", "f7f5", "h7h5", "f2d1", "f2h1", "f2d3", "f2h3", "f2e4",
+				"f2g4", "b8a6", "b8d7", "e7a3", "e7b4", "e7c5", "e7g5", "e7d6", "e7f6", "e7f8", "c8d7", "h8e8", "h8f8", "h8g8",
+				"d8a5", "d8b6", "d8c7", "d8d7", "d8e8", "d8f8", "d8g8", "g7g8", "g7f8",
 			},
 		},
 		{
 			name: "regression #6",
 			b:    Must(board.FromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPPBN1PP/R3KN1n w Q - 0 1")),
-			want: []move.Move{
-				P(A2, A3), P(B2, B3), P(C2, C3), P(G2, G3), P(H2, H3), P(A2, A4), P(B2, B4), P(G2, G4), P(H2, H4),
-				PP(D7, C8, Queen), PP(D7, C8, Rook), PP(D7, C8, Bishop), PP(D7, C8, Knight),
-				N(F1, E3), N(F1, G3), N(E2, C1), N(E2, G1), N(E2, C3), N(E2, G3), N(E2, D4), N(E2, F4),
-				B(D2, C1), B(D2, C3), B(D2, E3), B(D2, B4), B(D2, F4), B(D2, A5), B(D2, G5), B(D2, H6),
-				B(C4, B3), B(C4, D3), B(C4, B5), B(C4, D5), B(C4, A6), B(C4, E6), B(C4, F7),
-				R(A1, B1), R(A1, C1), R(A1, D1),
-				K(E1, D1), K(E1, C1),
+			want: []string{
+				"a2a3", "b2b3", "c2c3", "g2g3", "h2h3", "a2a4", "b2b4", "g2g4", "h2h4", "d7c8q", "d7c8r", "d7c8b", "d7c8n",
+				"f1e3", "f1g3", "e2c1", "e2g1", "e2c3", "e2g3", "e2d4", "e2f4", "d2c1", "d2c3", "d2e3", "d2b4", "d2f4", "d2a5",
+				"d2g5", "d2h6", "c4b3", "c4d3", "c4b5", "c4d5", "c4a6", "c4e6", "c4f7", "a1b1", "a1c1", "a1d1", "e1d1", "e1c1",
 			},
 		},
 	}
 
+	ms := move.NewStore()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			want := tt.want
-			ok := make([]bool, len(want))
 			b := tt.b
 
-			ms := move.NewStore()
+			ms.Push()
+			defer ms.Pop()
 
 			movegen.GenMoves(ms, b)
 
+			filter := ms.Frame()[:0]
 			for _, m := range ms.Frame() {
 				b.MakeMove(&m)
 
-				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
-				occ := b.Colors[White] | b.Colors[Black]
-
-				if movegen.IsAttacked(b, b.STM, occ, king) {
-					// illegal (pseudo-leagal) move, skip
+				if movegen.InCheck(b, b.STM.Flip()) {
 					b.UndoMove(&m)
 					continue
 				}
-
 				b.UndoMove(&m)
 
-				m.Captured = 0
-				m.EPP = 0
-				m.EPSq = 0
-				m.Castle = 0
-				m.CRights = 0
-				m.FiftyCnt = 0
-				ix := slices.Index(want, m)
-				if ix == -1 {
-					t.Errorf("unexpected move %s%s generated", m.Piece, m)
-				} else {
-					ok[ix] = true
-				}
+				filter = append(filter, m)
 			}
 
-			for ix, v := range ok {
-				if !v {
-					t.Errorf("move %s not generated", want[ix])
-				}
+			uciStrs := make([]string, 0, len(filter))
+
+			for _, m := range filter {
+				uciStrs = append(uciStrs, m.String())
 			}
+
+			assert.ElementsMatch(t, uciStrs, tt.want)
 		})
 	}
 }
@@ -428,81 +333,61 @@ func TestGenForcing(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		b    *board.Board
-		want []move.Move
+		want []string
 	}{
 		{
 			name: "king captures",
 			b:    Must(board.FromFEN("8/8/7k/8/8/8/pK6/B7 w - - 0 1")),
-			want: []move.Move{
-				K(B2, A2),
-			},
+			want: []string{"b2a2"},
 		},
 		{
 			name: "knight captures",
 			b:    Must(board.FromFEN("8/6k1/8/8/8/p7/8/1N1K4 w - - 0 1")),
-			want: []move.Move{
-				N(B1, A3),
-			},
+			want: []string{"b1a3"},
 		},
 		{
 			name: "bishop captures",
 			b:    Must(board.FromFEN("K7/1B6/p6k/8/8/8/8/8 w - - 0 1")),
-			want: []move.Move{
-				B(B7, A6),
-			},
+			want: []string{"b7a6"},
 		},
 		{
 			name: "pawn captures",
 			b:    Must(board.FromFEN("6k1/8/8/8/8/p2PP2P/PP3P2/KB6 w - - 0 1")),
-			want: []move.Move{
-				P(B2, A3),
-			},
+			want: []string{"b2a3"},
 		},
 	}
 
+	ms := move.NewStore()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			want := tt.want
-			ok := make([]bool, len(want))
 			b := tt.b
 
-			ms := move.NewStore()
+			ms.Push()
+			defer ms.Pop()
 
 			movegen.GenForcing(ms, b)
 
+			filter := ms.Frame()[:0]
 			for _, m := range ms.Frame() {
 				b.MakeMove(&m)
 
-				king := b.Colors[b.STM.Flip()] & b.Pieces[King]
-				occ := b.Colors[White] | b.Colors[Black]
-
-				if movegen.IsAttacked(b, b.STM, occ, king) {
-					// illegal (pseudo-leagal) move, skip
+				if movegen.InCheck(b, b.STM.Flip()) {
 					b.UndoMove(&m)
 					continue
 				}
-
 				b.UndoMove(&m)
 
-				m.Captured = 0
-				m.EPP = 0
-				m.EPSq = 0
-				m.Castle = 0
-				m.CRights = 0
-				m.FiftyCnt = 0
-				ix := slices.Index(want, m)
-				if ix == -1 {
-					t.Errorf("unexpected move %s%s generated", m.Piece, m)
-				} else {
-					ok[ix] = true
-				}
+				filter = append(filter, m)
 			}
 
-			for ix, v := range ok {
-				if !v {
-					t.Errorf("move %s not generated", want[ix])
-				}
+			uciStrs := make([]string, 0, len(filter))
+
+			for _, m := range filter {
+				uciStrs = append(uciStrs, m.String())
 			}
+
+			assert.ElementsMatch(t, uciStrs, tt.want)
 		})
 	}
 }
@@ -720,31 +605,31 @@ func TestEnPassantStates(t *testing.T) {
 		{
 			name:   "En passant possible after pawn move",
 			b:      Must(board.FromFEN("4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1")),
-			move:   move.FromSquares(C2, C4),
+			move:   move.NewSimple(C2, C4),
 			bAfter: Must(board.FromFEN("4k3/8/8/8/2Pp4/8/8/4K3 b - c3 0 1")),
 		},
 		{
 			name:   "En passant not possible due to no pawn",
 			b:      Must(board.FromFEN("4k3/8/8/8/8/8/2P5/4K3 w - - 0 1")),
-			move:   move.FromSquares(C2, C4),
+			move:   move.NewSimple(C2, C4),
 			bAfter: Must(board.FromFEN("4k3/8/8/8/2P5/8/8/4K3 b - - 0 1")),
 		},
 		{
 			name:   "En passant not possible due to simple pin",
 			b:      Must(board.FromFEN("8/8/1k6/8/3p4/8/2P5/3K2B1 w - - 0 1")),
-			move:   move.FromSquares(C2, C4),
+			move:   move.NewSimple(C2, C4),
 			bAfter: Must(board.FromFEN("8/8/1k6/8/2Pp4/8/8/3K2B1 b - - 0 1")),
 		},
 		{
 			name:   "En passant not possible due to tricky pin",
 			b:      Must(board.FromFEN("8/8/8/8/k2p3R/8/2P5/3K4 w - - 0 1")),
-			move:   move.FromSquares(C2, C4),
+			move:   move.NewSimple(C2, C4),
 			bAfter: Must(board.FromFEN("8/8/8/8/k1Pp3R/8/8/3K4 b - - 0 1")),
 		},
 		{
 			name:   "En passant possible in pin that's not affected",
 			b:      Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22")),
-			move:   move.FromSquares(F2, F4),
+			move:   move.NewSimple(F2, F4),
 			bAfter: Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rpP2/6PN/1P2P1BP/1RR3K1 b - f3 0 23")),
 		},
 	}
@@ -768,35 +653,35 @@ func TestEnPassantStates(t *testing.T) {
 	}
 }
 
-func K(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: King}
-}
-
-func N(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Knight}
-}
-
-func B(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Bishop}
-}
-
-func R(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Rook}
-}
-
-func Q(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Queen}
-}
-
-func P(f, t Square) move.Move {
-	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Pawn}
-}
-
-func PP(f, t Square, p Piece) move.Move {
-	sm := move.FromSquares(f, t)
-	sm.SetPromo(p)
-	return move.Move{SimpleMove: sm, Piece: Pawn}
-}
+// func K(f, t Square) move.Move {
+// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: King}
+// }
+//
+// func N(f, t Square) move.Move {
+// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Knight}
+// }
+//
+// func B(f, t Square) move.Move {
+// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Bishop}
+// }
+//
+// func R(f, t Square) move.Move {
+// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Rook}
+// }
+//
+// func Q(f, t Square) move.Move {
+// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Queen}
+// }
+//
+// func P(f, t Square) move.Move {
+// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Pawn}
+// }
+//
+// func PP(f, t Square, p Piece) move.Move {
+// 	sm := move.FromSquares(f, t)
+// 	sm.SetPromo(p)
+// 	return move.Move{SimpleMove: sm, Piece: Pawn}
+// }
 
 func TestIsAttacked(t *testing.T) {
 	tests := []struct {

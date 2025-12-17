@@ -25,19 +25,24 @@ func SEE(b *board.Board, m *move.Move, threshold Score) bool {
 		occ &= ^(board.BitBoard(1) << (m.EPSq))
 	}
 
-	swap := PieceValues[captured] - threshold
+	var promoVal Score
+	if m.Promo() != NoPiece {
+		promoVal = PieceValues[m.Promo()] - PieceValues[Pawn]
+	}
+
+	swap := PieceValues[captured] + promoVal - threshold
 	if swap < 0 {
 		return false
 	}
 
-	swap = PieceValues[m.Piece] - swap
+	swap = PieceValues[m.Piece] + promoVal - swap
 	if swap <= 0 {
 		return true
 	}
 
 	stm := b.STM
-	// Pawn capture depends on color, do pawn captures backwards, ignore sliding
-	// pieces, we will add sliding pieces in the main loop with changing
+	// Pawn capture depends on color, do pawn captures backwards. More attacks
+	// will be added for sliding pieces as they are discovered with changing
 	// occupancy.
 	attackers :=
 		(movegen.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White]) |
