@@ -604,12 +604,8 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece:
-			weight := heur.MVVLVA(b, &m)
-			if !heur.SEE(b, &m, 0) {
-				weight = -weight
-			}
-			moves[ix].Weight = weight
+		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece || m.EPP != NoPiece:
+			moves[ix].Weight = heur.MVVLVA(b, &m, heur.SEE(b, &m, 0))
 
 		default:
 			score := s.hist.LookUp(b.STM, m.From(), m.To())
@@ -633,18 +629,11 @@ func rankMovesQ(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
 		switch {
 
-		case b.SquaresToPiece[m.To()] != NoPiece:
-			weight := heur.MVVLVA(b, &m)
-			if !heur.SEE(b, &m, 0) {
-				weight = -weight
-			}
-			moves[ix].Weight = weight
-
-		case m.Promo() != NoPiece:
-			moves[ix].Weight = 0
+		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece || m.EPP != NoPiece:
+			moves[ix].Weight = heur.MVVLVA(b, &m, heur.SEE(b, &m, 0))
 
 		default:
-			moves[ix].Weight = -1
+			moves[ix].Weight = -Inf
 		}
 	}
 }
