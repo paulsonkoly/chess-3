@@ -16,7 +16,7 @@ func MVVLVA(b *board.Board, m *move.Move, good bool) Score {
 
 	// reverse ranking for bad captures, so that values are less than or equal to
 	// -Captures, but still in increasing in terms of how good they are.
-	return -Captures - Score(King*King) - r
+	return -Captures - (Score(King*King) - r)
 }
 
 func rank(b *board.Board, m *move.Move) Score {
