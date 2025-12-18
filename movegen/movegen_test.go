@@ -653,36 +653,6 @@ func TestEnPassantStates(t *testing.T) {
 	}
 }
 
-// func K(f, t Square) move.Move {
-// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: King}
-// }
-//
-// func N(f, t Square) move.Move {
-// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Knight}
-// }
-//
-// func B(f, t Square) move.Move {
-// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Bishop}
-// }
-//
-// func R(f, t Square) move.Move {
-// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Rook}
-// }
-//
-// func Q(f, t Square) move.Move {
-// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Queen}
-// }
-//
-// func P(f, t Square) move.Move {
-// 	return move.Move{SimpleMove: move.FromSquares(f, t), Piece: Pawn}
-// }
-//
-// func PP(f, t Square, p Piece) move.Move {
-// 	sm := move.FromSquares(f, t)
-// 	sm.SetPromo(p)
-// 	return move.Move{SimpleMove: sm, Piece: Pawn}
-// }
-
 func TestIsAttacked(t *testing.T) {
 	tests := []struct {
 		name   string

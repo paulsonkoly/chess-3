@@ -627,13 +627,10 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 
 func rankMovesQ(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
-		switch {
+		moves[ix].Weight = -Inf
 
-		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece || m.EPP != NoPiece:
-			moves[ix].Weight = heur.MVVLVA(b, &m, heur.SEE(b, &m, 0))
-
-		default:
-			moves[ix].Weight = -Inf
+		if heur.SEE(b, &m, 0) {
+			moves[ix].Weight = heur.MVVLVA(b, &m, true)
 		}
 	}
 }
