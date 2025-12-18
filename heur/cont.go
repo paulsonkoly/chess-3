@@ -25,7 +25,7 @@ func (c *Continuation) Add(stm Color, ptHist Piece, toHist Square, pt Piece, to 
 	entry := &c.data[stm][ptHist-1][toHist][pt-1][to]
 
 	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
-	*entry += clampedBonus - Score(int(*entry)*int(Abs(clampedBonus))/MaxHistory)
+	*entry += clampedBonus - Score(int(*entry)*int(Abs(clampedBonus))/int(MaxHistory))
 }
 
 // LookUp returns the continuation history heuristics entry for the move.

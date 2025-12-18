@@ -17,7 +17,7 @@ func NewHistory() *History {
 }
 
 // Clear resets all entries to 0.
-func ( h *History) Clear() {
+func (h *History) Clear() {
 	for color := range Colors {
 		for from := range Squares {
 			for to := range Squares {
@@ -30,7 +30,7 @@ func ( h *History) Clear() {
 // Add increments the history heuristics for the move by bonus.
 func (h *History) Add(stm Color, from, to Square, bonus Score) {
 	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
-	h.data[stm][from][to] += clampedBonus - Score(int(h.data[stm][from][to])*int(Abs(clampedBonus))/MaxHistory)
+	h.data[stm][from][to] += clampedBonus - Score(int(h.data[stm][from][to])*int(Abs(clampedBonus))/int(MaxHistory))
 }
 
 // LookUp returns the history heuristics entry for the move.
