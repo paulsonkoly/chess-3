@@ -70,27 +70,27 @@ func TestSEE(t *testing.T) {
 		},
 		{name: "queen promo",
 			fen:  "6RR/4bP2/8/8/5r2/3K4/5p2/4k3 w - - 0 1",
-			m:    move.NewSimple(F7, F8, move.Promo(Queen)),
+			m:    move.NewSimple(F7, F8, move.WithPromo(Queen)),
 			want: 200, // B - P
 		},
 		{name: "knight promo",
 			fen:  "6RR/4bP2/8/8/5r2/3K4/5p2/4k3 w - - 0 1",
-			m:    move.NewSimple(F7, F8, move.Promo(Knight)),
+			m:    move.NewSimple(F7, F8, move.WithPromo(Knight)),
 			want: 200, // N - P
 		},
 		{name: "queen promo (2)",
 			fen:  "7R/5P2/8/8/6r1/3K4/5p2/4k3 w - - 0 1",
-			m:    move.NewSimple(F7, F8, move.Promo(Queen)),
+			m:    move.NewSimple(F7, F8, move.WithPromo(Queen)),
 			want: 800, // Q - P
 		},
 		{name: "bishop promo",
 			fen:  "7R/5P2/8/8/6r1/3K4/5p2/4k3 w - - 0 1",
-			m:    move.NewSimple(F7, F8, move.Promo(Bishop)),
+			m:    move.NewSimple(F7, F8, move.WithPromo(Bishop)),
 			want: 200, // B - P
 		},
 		{name: "rook promo",
 			fen:  "7R/4bP2/8/8/1q6/3K4/5p2/4k3 w - - 0 1",
-			m:    move.NewSimple(F7, F8, move.Promo(Rook)),
+			m:    move.NewSimple(F7, F8, move.WithPromo(Rook)),
 			want: -100, // -P
 		},
 		{fen: "8/4kp2/2npp3/1Nn5/1p2PQP1/7q/1PP1B3/4KR1r b - - 0 1",
@@ -257,27 +257,27 @@ func TestSEE(t *testing.T) {
 			want: -300, // -B + B - N
 		},
 		{fen: "5k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1",
-			m:    move.NewSimple(D7, D8, move.Promo(Queen)),
+			m:    move.NewSimple(D7, D8, move.WithPromo(Queen)),
 			want: 800, // (Q - P)
 		},
 		{fen: "r4k2/p2P2pp/8/1pb5/1Nn1P1n1/6Q1/PPP4P/R3K1NR w KQ - 0 1",
-			m:    move.NewSimple(D7, D8, move.Promo(Queen)),
+			m:    move.NewSimple(D7, D8, move.WithPromo(Queen)),
 			want: -100, // (Q - P) - Q
 		},
 		{fen: "5k2/p2P2pp/1b6/1p6/1Nn1P1n1/8/PPP4P/R2QK1NR w KQ - 0 1",
-			m:    move.NewSimple(D7, D8, move.Promo(Queen)),
+			m:    move.NewSimple(D7, D8, move.WithPromo(Queen)),
 			want: 200, // (Q - P) - Q + B
 		},
 		{fen: "4kbnr/p1P1pppp/b7/4q3/7n/8/PP1PPPPP/RNBQKBNR w KQk - 0 1",
-			m:    move.NewSimple(C7, C8, move.Promo(Queen)),
+			m:    move.NewSimple(C7, C8, move.WithPromo(Queen)),
 			want: -100, // (Q - P) - Q
 		},
 		{fen: "4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1",
-			m:    move.NewSimple(C7, C8, move.Promo(Queen)),
+			m:    move.NewSimple(C7, C8, move.WithPromo(Queen)),
 			want: 200, // (Q - P) - Q + B
 		},
 		{fen: "4kbnr/p1P1pppp/b7/4q3/7n/8/PPQPPPPP/RNB1KBNR w KQk - 0 1",
-			m:    move.NewSimple(C7, C8, move.Promo(Queen)),
+			m:    move.NewSimple(C7, C8, move.WithPromo(Queen)),
 			want: 200, // (Q - P)
 		},
 		{fen: "4kbnr/p1P4p/b1q5/5pP1/4n3/5Q2/PP1PPP1P/RNB1KBNR w KQk f6 0 1",
@@ -311,7 +311,7 @@ func TestSEE(t *testing.T) {
 		// 	want: 300, // N
 		// },
 		{fen: "3n3r/2P5/8/1k6/8/8/3Q4/4K3 w - - 0 1",
-			m:    move.NewSimple(C7, D8, move.Promo(Queen)),
+			m:    move.NewSimple(C7, D8, move.WithPromo(Queen)),
 			want: 700, // (N + Q - P) - Q + R
 		},
 		{fen: "r2n3r/2P1P3/4N3/1k6/8/8/8/4K3 w - - 0 1",

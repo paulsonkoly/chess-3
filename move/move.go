@@ -33,10 +33,10 @@ type SimpleMoveOption interface {
 	Apply(sm SimpleMove) SimpleMove
 }
 
-// Promo is a SimpleMoveOption setting the promotion piece type.
-type Promo Piece
+// WithPromo is a SimpleMoveOption setting the promotion piece type.
+type WithPromo Piece
 
-func (p Promo) Apply(sm SimpleMove) SimpleMove {
+func (p WithPromo) Apply(sm SimpleMove) SimpleMove {
 	sm.SetPromo(Piece(p))
 	return sm
 }
