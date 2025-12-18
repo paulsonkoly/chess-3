@@ -1,13 +1,12 @@
 // Package heur provides move ordering heuristics.
 //
-// Move ordering stages
+// # Move ordering stages
 //
-// - hash: [HashMove]
-// - good captures: [Captures] ... [HashMove]
-// - quiets: -6*[MaxHistory]..6*[MaxHistory]
-//   (3 * cont[0] + 2 * cont[1] + hist) each <= [MaxHistory]
-// - bad captures: -Inf..-[Captures]
-//
+//   - hash: [HashMove]
+//   - good captures: [Captures] ... [HashMove]
+//   - quiets: -6*[MaxHistory]..6*[MaxHistory]
+//     (3 * cont[0] + 2 * cont[1] + hist) each <= [MaxHistory]
+//   - bad captures: -Inf..-[Captures]
 package heur
 
 import (
@@ -23,7 +22,7 @@ const (
 	HashMove = Score(15000)
 	// Captures is the minimal score for captures, actual score is this plus SEE.
 	Captures = Score(8192)
-	// MaxHistory is the maximal absolute value in either the history or the continuation stores. 
+	// MaxHistory is the maximal absolute value in either the history or the continuation stores.
 	MaxHistory = Score(1024)
 )
 
