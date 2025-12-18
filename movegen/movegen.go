@@ -51,7 +51,8 @@ func PawnSinglePushMoves(b board.BitBoard, color Color) board.BitBoard {
 }
 
 var (
-	sndRank    = [...]board.BitBoard{board.SecondRank, board.SeventhRank}
+	// SecondRank[stm] is the second rank from stm's perspective.
+	SecondRank = [...]board.BitBoard{board.SecondRank, board.SeventhRank}
 	fourthRank = [...]board.BitBoard{board.FourthRank, board.FifthRank}
 	castleMask = [2][2]board.BitBoard{
 		{(1 << E1) | (1 << F1) | (1 << G1), (1 << E1) | (1 << D1) | (1 << C1)},
@@ -211,7 +212,7 @@ var shifts = [2]Square{8, -8}
 func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	theirSndRank := sndRank[b.STM.Flip()]
+	theirSndRank := SecondRank[b.STM.Flip()]
 	shift := shifts[b.STM]
 
 	// single pawn pushes (no promotions)
@@ -230,7 +231,7 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board
 func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
 	occ1 := ((g.occ >> 8) << (b.STM << 4)) | ((g.occ << 8) >> (b.STM.Flip() << 4))
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	theirSndRank := sndRank[b.STM.Flip()]
+	theirSndRank := SecondRank[b.STM.Flip()]
 	shift := shifts[b.STM]
 
 	// promotions pushes
@@ -252,7 +253,7 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	occ2 := (g.occ >> 16) << (b.STM << 5)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	mySndRank := sndRank[b.STM]
+	mySndRank := SecondRank[b.STM]
 	shift := shifts[b.STM]
 
 	// double pawn pushes
@@ -303,7 +304,7 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r board.BitBoard
 	)
-	theirSndRank := sndRank[b.STM.Flip()]
+	theirSndRank := SecondRank[b.STM.Flip()]
 
 	if b.STM == White {
 		occ1l = (g.them &^ board.HFile) >> 7
@@ -337,7 +338,7 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r board.BitBoard
 	)
-	theirSndRank := sndRank[b.STM.Flip()]
+	theirSndRank := SecondRank[b.STM.Flip()]
 
 	if b.STM == White {
 		occ1l = (g.them &^ board.HFile) >> 7

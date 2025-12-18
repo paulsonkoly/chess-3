@@ -445,7 +445,7 @@ func nextNodeType(nType Node, cnt int) Node {
 //
 // can be reproduced with:
 //
-//    (1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
+//	(1..300).map {|i| (Math.log2(i) * 69).round }.each_slice(10) {|a| puts a.join(", ") }
 var log = [...]int{
 	0,
 	0, 69, 109, 138, 160, 179, 194, 207, 219, 230,
@@ -464,9 +464,8 @@ var log = [...]int{
 //
 // check values with:
 //
-//   x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
-//   10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
-//
+//	x = (1..200).map {|i| (Math.log2(i) * 69).round }.unshift(0)
+//	10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
 
@@ -605,13 +604,8 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece:
-			see := heur.SEE(b, &m)
-			if see < 0 {
-				moves[ix].Weight = see - heur.Captures
-			} else {
-				moves[ix].Weight = see + heur.Captures
-			}
+		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece || m.EPP != NoPiece:
+			moves[ix].Weight = heur.MVVLVA(b, &m, heur.SEE(b, &m, 0))
 
 		default:
 			score := s.hist.LookUp(b.STM, m.From(), m.To())
@@ -633,17 +627,10 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 
 func rankMovesQ(b *board.Board, moves []move.Move) {
 	for ix, m := range moves {
-		switch {
+		moves[ix].Weight = -Inf
 
-		case b.SquaresToPiece[m.To()] != NoPiece:
-			see := heur.SEE(b, &m)
-			moves[ix].Weight = see
-
-		case m.Promo() != NoPiece:
-			moves[ix].Weight = 0
-
-		default:
-			moves[ix].Weight = -1
+		if heur.SEE(b, &m, 0) {
+			moves[ix].Weight = heur.MVVLVA(b, &m, true)
 		}
 	}
 }

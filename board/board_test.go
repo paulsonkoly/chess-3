@@ -5,6 +5,7 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/movegen"
 
 	. "github.com/paulsonkoly/chess-3/types"
 	"github.com/stretchr/testify/assert"
@@ -12,12 +13,7 @@ import (
 
 func TestCastle(t *testing.T) {
 	b := Must(board.FromFEN("k7/p7/8/8/8/8/8/R3K2R w KQ - 0 1"))
-	m := move.Move{
-		SimpleMove: move.FromSquares(E1, G1),
-		Piece:      King,
-		Castle:     ShortWhite,
-		CRights:    CRights(LongWhite, ShortWhite),
-	}
+	m := movegen.FromSimple(b, move.NewSimple(E1, G1))
 
 	b.MakeMove(&m)
 
@@ -35,7 +31,7 @@ func TestCastle(t *testing.T) {
 	assert.Equal(t, NoPiece, b.SquaresToPiece[G1])
 	assert.Equal(t, Rook, b.SquaresToPiece[H1])
 
-	m = move.Move{SimpleMove: move.FromSquares(E1, F1), Piece: King, CRights: CRights(LongWhite, ShortWhite)}
+	m = movegen.FromSimple(b, move.NewSimple(E1, F1))
 
 	b.MakeMove(&m)
 
@@ -45,7 +41,7 @@ func TestCastle(t *testing.T) {
 
 	assert.Equal(t, CRights(ShortWhite, LongWhite), b.CRights)
 
-	m = move.Move{SimpleMove: move.FromSquares(A1, B1), Piece: Rook, CRights: CRights(LongWhite)}
+	m = movegen.FromSimple(b, move.NewSimple(A1, B1))
 
 	b.MakeMove(&m)
 
