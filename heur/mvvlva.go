@@ -7,7 +7,7 @@ import (
 )
 
 // MVVLVA is the most valuable victim / least valuable aggressor heuristic. good should be set for good captures.
-func MVVLVA(b *board.Board, m *move.Move, good bool) Score {
+func MVVLVA(b *board.Board, m move.SimpleMove, good bool) Score {
 	base := Captures
 	if !good {
 		base = -Captures - Score(King*King*King)
@@ -16,7 +16,7 @@ func MVVLVA(b *board.Board, m *move.Move, good bool) Score {
 	return base + rank(b, m)
 }
 
-func rank(b *board.Board, m *move.Move) Score {
-	victim := b.SquaresToPiece[m.To()] + m.EPP
-	return Score(m.Promo()*King*King + victim*King - m.Piece)
+func rank(b *board.Board, m move.SimpleMove) Score {
+	victim := b.Captured(m)
+	return Score(m.Promo()*King*King + victim*King - b.Moved(m))
 }

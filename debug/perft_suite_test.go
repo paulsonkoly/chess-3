@@ -23,7 +23,7 @@ func TestPerftSuite(t *testing.T) {
 		t.Run(fmt.Sprintf("%s at depth %d", entry.Fen, entry.D),
 			func(t *testing.T) {
 				t.Parallel()
-				assert.Equal(t, entry.Cnt, debug.Perft(entry.Board, int(entry.D)))
+				assert.Equal(t, entry.Cnt, debug.Perft(entry.Board, entry.D, false))
 			})
 	}
 }

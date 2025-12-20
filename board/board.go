@@ -12,7 +12,7 @@ type Board struct {
 	Colors         [2]BitBoard
 	STM            Color
 	EnPassant      Square
-	CRights        CastlingRights
+	CRights        Castles
 	hashes         []Hash
 	FiftyCnt       Depth
 }
@@ -37,174 +37,288 @@ func (b *Board) ResetHash() {
 	b.hashes = append(b.hashes, b.calculateHash())
 }
 
-type castle struct {
-	piece Piece
-	swap  BitBoard
-	up    Square
-	down  Square
+func (b *Board) Moved(sm move.SimpleMove) Piece {
+	return b.SquaresToPiece[sm.From()]
 }
 
-var (
-	pieceMask = [...]BitBoard{0, Full, Full, Full, Full, Full, Full}
-	castles   = [5]castle{
-		{piece: 0, swap: 0, up: 0, down: 0},
-		{piece: Rook, swap: (1 << F1) | (1 << H1), up: F1, down: H1},
-		{piece: Rook, swap: (1 << A1) | (1 << D1), up: D1, down: A1},
-		{piece: Rook, swap: (1 << F8) | (1 << H8), up: F8, down: H8},
-		{piece: Rook, swap: (1 << A8) | (1 << D8), up: D8, down: A8},
+func (b *Board) Captured(sm move.SimpleMove) Piece {
+	if b.IsEnPassant(sm) {
+		return Pawn
 	}
-)
+	return b.SquaresToPiece[sm.To()]
+}
+
+func (b *Board) IsEnPassant(sm move.SimpleMove) bool {
+	return b.EnPassant != 0 && b.EnPassant == sm.To() && b.SquaresToPiece[sm.From()] == Pawn
+}
 
 var hashEnable = [2]Hash{0, 0xffffffffffffffff}
 
-// MakeMove executes the move m on b. It updates where pieces are, en-passant
-// state, move counters, Zobrist hash history etc.
-func (b *Board) MakeMove(m *move.Move) {
-	m.FiftyCnt = b.FiftyCnt
-	if m.Piece == Pawn || m.CRights != 0 || b.SquaresToPiece[m.To()] != NoPiece {
+// Reverse is move reversing token. After making a move on the board this can
+// be used to reverse the move.
+type Reverse uint64
+
+const (
+	fiftyCntMask        = Reverse(0x00000000000000ff)
+	fiftyCntShift       = 0
+	castlingChangeMask  = Reverse(0x0000000000000f00)
+	castlingChangeShift = 8
+	epChangeMask        = Reverse(0x000000000003f000)
+	epChangeShift       = 12
+	captureMask         = Reverse(0x00000000001c0000)
+	captureShift        = 18
+)
+
+func (r Reverse) fiftyCnt() Depth       { return Depth((r & fiftyCntMask) >> fiftyCntShift) }
+func (r *Reverse) setFiftyCnt(fc Depth) { *r = (*r & ^fiftyCntMask) | Reverse(fc)<<fiftyCntShift }
+func (r Reverse) castlingChange() Castles {
+	return Castles((r & castlingChangeMask) >> castlingChangeShift)
+}
+func (r *Reverse) setCastlingChange(c Castles) {
+	*r = (*r & ^castlingChangeMask) | Reverse(c)<<castlingChangeShift
+}
+func (r Reverse) enPassantChange() Square { return Square((r & epChangeMask) >> epChangeShift) }
+func (r *Reverse) setEnPassantChange(epc Square) {
+	*r = (*r & ^epChangeMask) | Reverse(epc)<<epChangeShift
+}
+func (r Reverse) capture() Piece { return Piece((r & captureMask) >> captureShift) }
+func (r *Reverse) setCapture(p Piece) {
+	*r = (*r & ^captureMask) | Reverse(p)<<captureShift
+}
+
+func (b *Board) MakeSimpleMove(m move.SimpleMove) Reverse {
+	var r Reverse
+
+	hash := b.Hash()
+
+	piece := b.SquaresToPiece[m.From()]
+	captureSq := m.To()
+
+	if b.IsEnPassant(m) {
+		captureSq = (m.To() & FileMask) | (m.From() & RankMask)
+	}
+	capture := b.SquaresToPiece[captureSq]
+
+	castlingChange := b.CRights ^ b.NewCastles(m)
+
+	r.setFiftyCnt(b.FiftyCnt)
+	if piece == Pawn || castlingChange != 0 || capture != NoPiece {
 		b.FiftyCnt = 0
 	} else {
 		b.FiftyCnt++
 	}
 
-	hash := b.hashes[len(b.hashes)-1]
+	hash ^= castlingRand[0] & hashEnable[(castlingChange>>0)&1]
+	hash ^= castlingRand[1] & hashEnable[(castlingChange>>1)&1]
+	hash ^= castlingRand[2] & hashEnable[(castlingChange>>2)&1]
+	hash ^= castlingRand[3] & hashEnable[(castlingChange>>3)&1]
 
-	epMask := pieceMask[m.EPP]
-	ep := Piece(epMask & 1)
+	b.CRights ^= castlingChange
+	r.setCastlingChange(castlingChange)
+	r.setCapture(capture)
 
-	b.SquaresToPiece[b.EnPassant] -= Pawn * ep
-	b.Pieces[m.EPP] &= ^((1 << b.EnPassant) & epMask)
-	b.Colors[b.STM.Flip()] &= ^((1 << b.EnPassant) & epMask)
-	hash ^= (piecesRand[b.STM.Flip()][Pawn][b.EnPassant] & Hash(epMask))
+	putPiece := piece
+	if m.Promo() != NoPiece {
+		putPiece = m.Promo()
+	}
 
-	hash ^= castlingRand[0] & hashEnable[(m.CRights>>0)&1]
-	hash ^= castlingRand[1] & hashEnable[(m.CRights>>1)&1]
-	hash ^= castlingRand[2] & hashEnable[(m.CRights>>2)&1]
-	hash ^= castlingRand[3] & hashEnable[(m.CRights>>3)&1]
+	hash ^= b.removePiece(b.STM.Flip(), capture, captureSq)
+	hash ^= b.removePiece(b.STM, piece, m.From())
+	hash ^= b.addPiece(b.STM, putPiece, m.To())
 
-	b.CRights = m.CRights ^ b.CRights
-	m.Captured = b.SquaresToPiece[m.To()]
-	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
-	b.EnPassant ^= m.EPSq
-	hash ^= epFileRand[b.EnPassant%8] & hashEnable[1&(b.EnPassant>>3|b.EnPassant>>5)]
+	if b.EnPassant != 0 {
+		hash ^= epFileRand[b.EnPassant.File()] // remove old enPassant
+	}
 
-	pm := pieceMask[m.Promo()]
+	newEnPassant := Square(0)
+	if m.EnPassant() {
+		newEnPassant = (m.From() + m.To()) / 2
+		hash ^= epFileRand[newEnPassant.File()]
+	}
 
-	b.Pieces[m.Captured] &= ^(1 << m.To())
-	hash ^= piecesRand[b.STM.Flip()][m.Captured][m.To()]
-	b.Pieces[m.Piece] ^= (1 << m.From()) | ((1 << m.To()) & ^pm)
-	hash ^= piecesRand[b.STM][m.Piece][m.From()] ^ (piecesRand[b.STM][m.Piece][m.To()] & ^Hash(pm))
-	b.Pieces[m.Promo()] ^= (1 << m.To()) & pm
-	hash ^= (piecesRand[b.STM][m.Promo()][m.To()] & Hash(pm))
+	r.setEnPassantChange(b.EnPassant ^ newEnPassant)
+	b.EnPassant = newEnPassant
 
-	b.Colors[b.STM.Flip()] &= ^(1 << m.To())
-	b.Colors[b.STM] ^= (1 << m.From()) | (1 << m.To())
+	if piece == King {
+		switch {
 
-	b.SquaresToPiece[m.From()] = NoPiece
-	promo := Piece(pm & 1)
-	b.SquaresToPiece[m.To()] = (1-promo)*m.Piece + promo*m.Promo()
+		case m.From() == E1 && m.To() == G1:
+			hash ^= b.removePiece(b.STM, Rook, H1)
+			hash ^= b.addPiece(b.STM, Rook, F1)
 
-	castle := castles[m.Castle]
-	hash ^= piecesRand[b.STM][Rook][castle.down] & hashEnable[castle.piece>>2]
-	hash ^= piecesRand[b.STM][Rook][castle.up] & hashEnable[castle.piece>>2]
-	b.SquaresToPiece[castle.down] -= castle.piece
-	b.SquaresToPiece[castle.up] += castle.piece
-	b.Pieces[Rook] ^= castle.swap
-	b.Colors[b.STM] ^= castle.swap
+		case m.From() == E1 && m.To() == C1:
+			hash ^= b.removePiece(b.STM, Rook, A1)
+			hash ^= b.addPiece(b.STM, Rook, D1)
+
+		case m.From() == E8 && m.To() == G8:
+			hash ^= b.removePiece(b.STM, Rook, H8)
+			hash ^= b.addPiece(b.STM, Rook, F8)
+
+		case m.From() == E8 && m.To() == C8:
+			hash ^= b.removePiece(b.STM, Rook, A8)
+			hash ^= b.addPiece(b.STM, Rook, D8)
+		}
+	}
 
 	b.STM = b.STM.Flip()
-
 	hash ^= stmRand
 
 	b.hashes = append(b.hashes, hash)
 
 	// b.consistencyCheck()
+
+	return r
 }
 
-// UndoMove undoes the effect of MakeMove(m). The board will be in the original
-// state after MakeMove and UndoMove.
-func (b *Board) UndoMove(m *move.Move) {
-	b.FiftyCnt = m.FiftyCnt
-	b.STM = b.STM.Flip()
-
-	castle := castles[m.Castle]
-	b.Pieces[Rook] ^= castle.swap
-	b.Colors[b.STM] ^= castle.swap
-	b.SquaresToPiece[castle.down] += castle.piece
-	b.SquaresToPiece[castle.up] -= castle.piece
-
-	pm := pieceMask[m.Promo()]
-
-	b.Pieces[m.Piece] ^= (1 << m.From()) | ((1 << m.To()) & ^pm)
-	b.Pieces[m.Promo()] ^= (1 << m.To()) & pm
-	b.Colors[b.STM] ^= (1 << m.From()) | (1 << m.To())
-
-	b.SquaresToPiece[m.From()] = m.Piece
-	b.SquaresToPiece[m.To()] = m.Captured
-
-	cm := (1 << m.To()) & pieceMask[m.Captured]
-	b.Pieces[m.Captured] ^= cm
-	b.Colors[b.STM.Flip()] ^= cm
-
-	b.CRights ^= m.CRights
-	b.EnPassant ^= m.EPSq
-
-	epMask := pieceMask[m.EPP]
-	ep := Piece(epMask & 1)
-
-	b.SquaresToPiece[b.EnPassant] += Pawn * ep
-	b.Pieces[Pawn] |= (1 << b.EnPassant) & epMask
-	b.Colors[b.STM.Flip()] |= (1 << b.EnPassant) & epMask
-
+func (b *Board) UndoSimpleMove(m move.SimpleMove, r Reverse) {
 	b.hashes = b.hashes[:len(b.hashes)-1]
 
+	b.STM = b.STM.Flip()
+
+	rmPiece := b.SquaresToPiece[m.To()]
+	piece := rmPiece
+	if m.Promo() != NoPiece {
+		piece = Pawn
+	}
+
+	if piece == King {
+		switch {
+
+		case m.From() == E1 && m.To() == G1:
+			b.removePiece(b.STM, Rook, F1)
+			b.addPiece(b.STM, Rook, H1)
+
+		case m.From() == E1 && m.To() == C1:
+			b.removePiece(b.STM, Rook, D1)
+			b.addPiece(b.STM, Rook, A1)
+
+		case m.From() == E8 && m.To() == G8:
+			b.removePiece(b.STM, Rook, F8)
+			b.addPiece(b.STM, Rook, H8)
+
+		case m.From() == E8 && m.To() == C8:
+			b.removePiece(b.STM, Rook, D8)
+			b.addPiece(b.STM, Rook, A8)
+		}
+	}
+
+	b.EnPassant ^= r.enPassantChange()
+
+	b.removePiece(b.STM, rmPiece, m.To())
+	b.addPiece(b.STM, piece, m.From())
+	captureSq := m.To()
+	if b.IsEnPassant(m) {
+		captureSq = (m.To() & FileMask) | (m.From() & RankMask)
+	}
+	b.addPiece(b.STM.Flip(), r.capture(), captureSq)
+
+	b.CRights ^= r.castlingChange()
+	b.FiftyCnt = r.fiftyCnt()
+
 	// b.consistencyCheck()
+}
+
+func (b *Board) NewCastles(m move.SimpleMove) Castles {
+	var affected Castles
+	piece := b.SquaresToPiece[m.From()]
+
+	if piece == King {
+		affected |= Castle(b.STM, Short) | Castle(b.STM, Long)
+	}
+
+	if m.From() == A1 || m.To() == A1 {
+		affected |= LongWhite
+	}
+
+	if m.From() == H1 || m.To() == H1 {
+		affected |= ShortWhite
+	}
+
+	if m.From() == A8 || m.To() == A8 {
+		affected |= LongBlack
+	}
+
+	if m.From() == H8 || m.To() == H8 {
+		affected |= ShortBlack
+	}
+
+	return b.CRights & ^affected
+}
+
+// addPiece adds a piece to the board fields returning the change in hash.
+func (b *Board) addPiece(c Color, p Piece, sq Square) Hash {
+	if p == NoPiece {
+		return 0
+	}
+	b.Colors[c] |= BitBoard(1) << sq
+	b.Pieces[p] |= BitBoard(1) << sq
+	b.SquaresToPiece[sq] = p
+
+	return piecesRand[c][p][sq]
+}
+
+func (b *Board) removePiece(c Color, p Piece, sq Square) Hash {
+	if p == NoPiece {
+		return 0
+	}
+	b.Colors[c] &= ^(BitBoard(1) << sq)
+	b.Pieces[p] &= ^(BitBoard(1) << sq)
+	b.SquaresToPiece[sq] = NoPiece
+
+	return piecesRand[c][p][sq]
 }
 
 // MakeNullMove makes a null move on b. Passes to the opponent. It returns enP
 // which needs to be passed to UndoNullMove unchanged.
-func (b *Board) MakeNullMove() (enP Square) {
-	enP, b.EnPassant = b.EnPassant, 0
+func (b *Board) MakeNullMove() Reverse {
+	var r Reverse
 	hash := b.hashes[len(b.hashes)-1]
+
+	if b.EnPassant != 0 {
+		r.setEnPassantChange(b.EnPassant)
+		hash ^= epFileRand[b.EnPassant.File()]
+		b.EnPassant = 0
+	}
+
 	b.STM = b.STM.Flip()
-	hash ^= epFileRand[enP%8] & hashEnable[1&(enP>>3|enP>>5)]
 	hash ^= stmRand
+
 	b.hashes = append(b.hashes, hash)
 	// b.consistencyCheck()
-	return
+	return r
 }
 
 // UndoNullMove undoes the effect of MakeNullMove. The board will be in the
 // original state after executing MakeNullMove and UndoNullMove.
-func (b *Board) UndoNullMove(enP Square) {
+func (b *Board) UndoNullMove(r Reverse) {
 	b.STM = b.STM.Flip()
-	b.EnPassant = enP
+	b.EnPassant = r.enPassantChange()
 	b.hashes = b.hashes[:len(b.hashes)-1]
 	// b.consistencyCheck()
 }
 
 // func (b *Board) consistencyCheck() {
-//   if b.hashes[len(b.hashes)-1]!= b.Hash() {
-//     panic("inconsistent hash")
-//   }
+// 	if b.Hash() != b.calculateHash() {
+// 		panic("inconsistent hash")
+// 	}
 //
-//   if b.Pieces[Pawn] | b.Pieces[Rook] | b.Pieces[Knight] | b.Pieces[Bishop] | b.Pieces[Queen] | b.Pieces[King] !=
-//      b.Colors[White] | b.Colors[Black] {
-//     panic("inconsistent pieces")
-//   }
+// 	if b.Pieces[Pawn]|b.Pieces[Rook]|b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Queen]|b.Pieces[King] !=
+// 		b.Colors[White]|b.Colors[Black] {
+// 		panic("inconsistent pieces")
+// 	}
 //
-//   for piece := Pawn; piece <= King; piece++ {
-//     bb := BitBoard(0)
-//     for sq := A1; sq <= H8 ; sq ++ {
-//       if b.SquaresToPiece[sq] == piece {
-//         bb |= 1 << sq
-//       }
-//     }
+// 	for piece := Pawn; piece <= King; piece++ {
+// 		bb := BitBoard(0)
+// 		for sq := A1; sq <= H8; sq++ {
+// 			if b.SquaresToPiece[sq] == piece {
+// 				bb |= 1 << sq
+// 			}
+// 		}
 //
-//     if bb != b.Pieces[piece] {
-//       panic("inconsistent bitboard")
-//     }
-//   }
+// 		if bb != b.Pieces[piece] {
+// 			panic("inconsistent bitboard")
+// 		}
+// 	}
 // }
 
 // Threefold is the repetition count of the current position in its history.

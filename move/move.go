@@ -7,21 +7,6 @@ type Move struct {
 	SimpleMove
 	// Weight is the heuristic weight of the move.
 	Weight Score
-	// Piece is the type of piece moving.
-	Piece Piece
-	// Captured is the captured piece type. Filled in by making a move, value is
-	// not set by the move generator.
-	Captured Piece
-	// EPP is NoPiece for non en-passant moves, Pawn otherwise.
-	EPP Piece
-	// EPSq is the bit-change in the boards en-passant state.
-	EPSq Square
-	// Castle is the castling type in case of a castling move.
-	Castle Castle
-	// CRights is the bit-change in the boards castling state.
-	CRights CastlingRights
-	// FiftyCnt is the board's 50 move counter. Filled in by making the move on the board.
-	FiftyCnt Depth
 }
 
 // SimpleMove s good enough to identify a move, so it can be stored in
@@ -51,12 +36,13 @@ func NewSimple(from, to Square, opts ...SimpleMoveOption) SimpleMove {
 }
 
 const (
-	toMsk      = SimpleMove(1<<6 - 1)
-	toShift    = 0
-	fromMsk    = SimpleMove((1<<6 - 1) << 6)
-	fromShift  = 6
-	promoMsk   = SimpleMove((1<<3 - 1) << 12)
-	promoShift = 12
+	toMsk        = SimpleMove(1<<6 - 1)
+	toShift      = 0
+	fromMsk      = SimpleMove((1<<6 - 1) << 6)
+	fromShift    = 6
+	promoMsk     = SimpleMove((1<<3 - 1) << 12)
+	promoShift   = 12
+	enPassantMsk = SimpleMove((1<<1 - 1) << 15)
 )
 
 // To is the target square of the move.
@@ -76,6 +62,18 @@ func (s SimpleMove) Promo() Piece { return Piece((s & promoMsk) >> promoShift) }
 
 // SetPromo sets the promotion piece of the move.
 func (s *SimpleMove) SetPromo(p Piece) { *s = (*s & ^promoMsk) | SimpleMove(p)<<promoShift&promoMsk }
+
+// EnPassant indicates that this is a double pawn push changing the en passant state.
+func (s SimpleMove) EnPassant() bool { return (s & enPassantMsk) != 0 }
+
+// SetEnPassant sets the en passant flag.
+func (s *SimpleMove) SetEnPassant(ep bool) {
+	flag := SimpleMove(0)
+	if ep {
+		flag = enPassantMsk
+	}
+	*s = (*s & ^enPassantMsk) | flag
+}
 
 // Matches determines if a Move m matches a SimpleMove s.
 func (s SimpleMove) Matches(m *Move) bool {

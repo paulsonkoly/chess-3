@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
@@ -134,6 +135,15 @@ func (e *Engine) handleCommand(command string) {
 	case "quit":
 		os.Exit(0)
 
+	case "perft":
+		d, err := strconv.Atoi(parts[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			break
+		}
+
+		fmt.Println(debug.Perft(e.Board, Depth(d), true))
+
 	case "debug":
 		switch parts[1] {
 
@@ -207,7 +217,7 @@ func (e *Engine) applyMoves(moves []string) {
 
 		m := movegen.FromSimple(b, sm)
 
-		b.MakeMove(&m)
+		b.MakeSimpleMove(m.SimpleMove)
 	}
 }
 

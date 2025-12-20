@@ -11,7 +11,7 @@ import (
 // SEE determines if the static exchange evaluation is at least the threshold of some move m.
 //
 // Some of this code is derived from the algorithm found in stockfish.
-func SEE(b *board.Board, m *move.Move, threshold Score) bool {
+func SEE(b *board.Board, m move.SimpleMove, threshold Score) bool {
 	from := m.From()
 	to := m.To()
 	fromBB := board.BitBoard(1) << from
@@ -19,10 +19,9 @@ func SEE(b *board.Board, m *move.Move, threshold Score) bool {
 
 	occ := (b.Colors[White] | b.Colors[Black]) ^ fromBB
 
-	captured := b.SquaresToPiece[to]
-	if m.EPP != NoPiece {
-		captured = Pawn
-		occ &= ^(board.BitBoard(1) << (m.EPSq))
+	captured := b.Captured(m)
+	if b.IsEnPassant(m) {
+		occ &= ^(board.BitBoard(1) << b.EnPassant)
 	}
 
 	var promoVal Score
@@ -35,7 +34,9 @@ func SEE(b *board.Board, m *move.Move, threshold Score) bool {
 		return false
 	}
 
-	swap = PieceValues[m.Piece] + promoVal - swap
+	moved := b.Moved(m)
+
+	swap = PieceValues[moved] + promoVal - swap
 	if swap <= 0 {
 		return true
 	}
