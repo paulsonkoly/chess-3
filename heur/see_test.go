@@ -346,9 +346,9 @@ func TestSEE(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			move := movegen.FromSimple(b, tt.m)
 
-			assert.True(t, heur.SEE(b, &move, tt.want-1))
-			assert.True(t, heur.SEE(b, &move, tt.want))
-			assert.False(t, heur.SEE(b, &move, tt.want+1))
+			assert.True(t, heur.SEE(b, move.SimpleMove, tt.want-1))
+			assert.True(t, heur.SEE(b, move.SimpleMove, tt.want))
+			assert.False(t, heur.SEE(b, move.SimpleMove, tt.want+1))
 		})
 	}
 }
