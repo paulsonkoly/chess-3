@@ -213,11 +213,13 @@ func (e *Engine) handlePosition(args []string) {
 func (e *Engine) applyMoves(moves []string) {
 	b := e.Board
 	for _, ms := range moves {
-		sm := parseUCIMove(ms)
+		m := parseUCIMove(ms)
 
-		m := movegen.FromSimple(b, sm)
+		if b.SquaresToPiece[m.From()] == Pawn && Abs(m.To() - m.From()) == 16 {
+			m.SetEnPassant(movegen.CanEnPassant(b, m.To()))
+		}
 
-		b.MakeMove(m.Move)
+		b.MakeMove(m)
 	}
 }
 

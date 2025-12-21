@@ -20,12 +20,20 @@ type MoveOption interface {
 	Apply(sm Move) Move
 }
 
-// WithPromo is a SimpleMoveOption setting the promotion piece type.
+// WithPromo is a MoveOption setting the promotion piece type.
 type WithPromo Piece
 
 func (p WithPromo) Apply(sm Move) Move {
 	sm.SetPromo(Piece(p))
 	return sm
+}
+
+// WithEnPassant is a MoveOption that sets the en-passant flag.
+type WithEnPassant struct {}
+
+func (ep WithEnPassant) Apply(m Move) Move {
+	m.SetEnPassant(true)
+	return m
 }
 
 // New creates a new simple move with to and from squares and additional options.

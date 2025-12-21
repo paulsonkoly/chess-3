@@ -226,11 +226,11 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 		m := ms.Alloc()
 		m.SetFrom(from)
 		m.SetTo(from + 2*shift)
-		m.SetEnPassant(canEnPassant(b, m.To()))
+		m.SetEnPassant(CanEnPassant(b, m.To()))
 	}
 }
 
-// canEnPassant determines if we need to change the en passant state of the
+// CanEnPassant determines if we need to change the en passant state of the
 // board after a double pawn push.
 //
 // This is important in order to have the right hashes for 3-fold repetition.
@@ -238,7 +238,7 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 // and everything would work, apart from we would have the incorrect board en
 // passant state.
 // https://chess.stackexchange.com/questions/777/rules-en-passant-and-draw-by-triple-repetition
-func canEnPassant(b *board.Board, to Square) bool {
+func CanEnPassant(b *board.Board, to Square) bool {
 	target := board.BitBoard(1) << to
 	them := b.Colors[b.STM.Flip()]
 	shift := shifts[b.STM]
@@ -780,37 +780,4 @@ func IsAttacked(b *board.Board, by Color, occ, target board.BitBoard) bool {
 
 func InCheck(b *board.Board, who Color) bool {
 	return IsAttacked(b, who.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[who]&b.Pieces[King])
-}
-
-func FromSimple(b *board.Board, sm move.Move) move.Weighted {
-	pType := b.SquaresToPiece[sm.From()]
-	result := move.Weighted{Move: sm}
-
-	switch pType {
-
-	case King:
-		// if sm.From()-sm.To() == 2 || sm.To()-sm.From() == 2 {
-		// newC := b.CRights & ^kingCRightsUpd[b.STM]
-		// result.CRights = newC ^ b.CRights
-		// result.Castle = C(b.STM, int(((sm.From()-sm.To())+2)/4))
-		// } else {
-		// newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[sm.To()])
-		// result.CRights = newC ^ b.CRights
-		// }
-
-	// case Knight, Bishop, Queen:
-	// newC := b.CRights & ^(rookCRightsUpd[sm.To()])
-	// result.CRights = newC ^ b.CRights
-
-	// case Rook:
-	// newC := b.CRights & ^(rookCRightsUpd[sm.From()] | rookCRightsUpd[sm.To()])
-	// result.CRights = newC ^ b.CRights
-
-	case Pawn:
-		if sm.From()-sm.To() == 16 || sm.To()-sm.From() == 16 {
-			result.SetEnPassant(canEnPassant(b, sm.To()))
-		}
-	}
-
-	return result
 }

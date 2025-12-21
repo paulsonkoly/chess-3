@@ -6,7 +6,6 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/paulsonkoly/chess-3/types"
@@ -344,11 +343,10 @@ func TestSEE(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			move := movegen.FromSimple(b, tt.m)
 
-			assert.True(t, heur.SEE(b, move.Move, tt.want-1))
-			assert.True(t, heur.SEE(b, move.Move, tt.want))
-			assert.False(t, heur.SEE(b, move.Move, tt.want+1))
+			assert.True(t, heur.SEE(b, tt.m, tt.want-1))
+			assert.True(t, heur.SEE(b, tt.m, tt.want))
+			assert.False(t, heur.SEE(b, tt.m, tt.want+1))
 		})
 	}
 }
