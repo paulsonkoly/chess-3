@@ -29,7 +29,7 @@ const (
 
 // Go is the main entry point into the engine. It kicks off the search on board
 // b, and returns the final score and best move.
-func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.SimpleMove) {
+func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move) {
 	s.refresh()
 	defer func() {
 		s.gen++
@@ -50,7 +50,7 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Simp
 // iterativeDeepen is the main entry point to the engine. It performs and
 // iterative-deepened alpha-beta with aspiration window. depth is iterated
 // between 0 and d inclusive.
-func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, move move.SimpleMove) {
+func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, move move.Move) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
@@ -96,13 +96,13 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 					moves := s.ms.Frame()
 
 					for _, pseudo := range moves {
-						b.MakeMove(&pseudo)
+						r := b.MakeMove(pseudo.Move)
 						if !movegen.InCheck(b, b.STM.Flip()) { // legal
-							move = pseudo.SimpleMove
-							b.UndoMove(&pseudo)
+							move = pseudo.Move
+							b.UndoMove(pseudo.Move, r)
 							break
 						}
-						b.UndoMove(&pseudo)
+						b.UndoMove(pseudo.Move, r)
 					}
 				}
 				return
@@ -157,7 +157,7 @@ func (s *Search) incrementNodes(opts *options) {
 	}
 }
 
-func pvInfo(moves []move.SimpleMove) string {
+func pvInfo(moves []move.Move) string {
 	sb := strings.Builder{}
 	space := ""
 	for _, m := range moves {
@@ -239,13 +239,13 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		// null move pruning
 		if d > NMPDepthLimit && staticEval >= beta && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
-			enP := b.MakeNullMove()
+			rev := b.MakeNullMove()
 
-			r := NMPInit + Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
+			red := NMPInit + Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
 
-			value := -s.alphaBeta(b, -beta, -beta+1, max(d-r, 0), ply+1, CutNode, opts)
+			value := -s.alphaBeta(b, -beta, -beta+1, max(d-red, 0), ply+1, CutNode, opts)
 
-			b.UndoNullMove(enP)
+			b.UndoNullMove(rev)
 
 			if value >= beta {
 				if value >= Inf-MaxPlies {
@@ -266,9 +266,9 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	s.rankMovesAB(b, moves)
 
 	var (
-		m        *move.Move
+		m        *move.Weighted
 		ix       int
-		bestMove move.SimpleMove
+		bestMove move.Move
 	)
 
 	hasLegal := false
@@ -278,22 +278,24 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	quietCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
+		moved := b.SquaresToPiece[m.From()]
+		captured := b.SquaresToPiece[m.To()] // todo en-passant
 
-		b.MakeMove(m)
+		r := b.MakeMove(m.Move)
 
 		if movegen.InCheck(b, b.STM.Flip()) {
-			b.UndoMove(m)
+			b.UndoMove(m.Move, r)
 			continue
 		}
 
 		hasLegal = true
 		moveCnt++
 
-		s.hstack.push(m.Piece, m.To(), staticEval)
+		s.hstack.push(moved, m.To(), staticEval)
 
 		var value Score
 
-		quiet := m.Captured == NoPiece && m.Promo() == NoPiece
+		quiet := captured == NoPiece && m.Promo() == NoPiece
 		if quiet {
 			quietCnt++
 		}
@@ -332,7 +334,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	Fin:
 
-		b.UndoMove(m)
+		b.UndoMove(m.Move, r)
 		s.hstack.pop()
 
 		if value > maxim {
@@ -349,7 +351,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), s.gen, d, ply, m.SimpleMove, value, transp.LowerBound)
+				transpT.Insert(b.Hash(), s.gen, d, ply, m.Move, value, transp.LowerBound)
 
 				hSize := s.hstack.size()
 				bonus := -(Score(d)*20 - 15)
@@ -359,17 +361,21 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 						bonus = -bonus
 					}
 
-					if m.Captured == NoPiece && m.Promo() == NoPiece {
+					moved := b.SquaresToPiece[m.From()]
+					// TODO en-passant
+					captured := b.SquaresToPiece[m.To()]
+
+					if captured == NoPiece && m.Promo() == NoPiece {
 						s.hist.Add(b.STM, m.From(), m.To(), bonus)
 
 						if hSize >= 1 {
 							hist := s.hstack.top(0)
-							s.cont[0].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							s.cont[0].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
 						}
 
 						if hSize >= 2 {
 							hist := s.hstack.top(1)
-							s.cont[1].Add(b.STM, hist.piece, hist.to, m.Piece, m.To(), bonus)
+							s.cont[1].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
 						}
 					}
 
@@ -384,8 +390,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			// value > alpha
 			failLow = false
 			alpha = value
-			bestMove = m.SimpleMove
-			s.pv.insert(ply, m.SimpleMove)
+			bestMove = m.Move
+			s.pv.insert(ply, m.Move)
 		}
 
 		// LMP
@@ -557,29 +563,31 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 			break
 		}
 
-		b.MakeMove(m)
+		captured := b.SquaresToPiece[m.To()] // todo en-passant
+
+		r := b.MakeMove(m.Move)
 
 		if movegen.InCheck(b, b.STM.Flip()) {
-			b.UndoMove(m)
+			b.UndoMove(m.Move, r)
 			continue
 		}
 
-		gain := heur.PieceValues[m.Captured]
+		gain := heur.PieceValues[captured]
 
 		if m.Promo() != NoPiece {
 			gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
 		}
 
 		if gain+delta < alpha {
-			b.UndoMove(m)
+			b.UndoMove(m.Move, r)
 			break
 		}
 
 		curr := -s.quiescence(b, -beta, -alpha, ply+1, opts)
-		b.UndoMove(m)
+		b.UndoMove(m.Move, r)
 
 		if curr >= beta {
-			transpT.Insert(b.Hash(), s.gen, 0, ply, m.SimpleMove, curr, transp.LowerBound)
+			transpT.Insert(b.Hash(), s.gen, 0, ply, m.Move, curr, transp.LowerBound)
 			return curr
 		}
 		maxim = max(maxim, curr)
@@ -595,29 +603,31 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	return maxim
 }
 
-func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
+func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
 	transPE, _ := s.tt.LookUp(b.Hash())
 
 	for ix, m := range moves {
+		moved := b.SquaresToPiece[m.From()]
+		captured := b.SquaresToPiece[m.To()] // TODO : en-passant
 
 		switch {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case b.SquaresToPiece[m.To()] != NoPiece || m.Promo() != NoPiece || m.EPP != NoPiece:
-			moves[ix].Weight = heur.MVVLVA(b, &m, heur.SEE(b, &m, 0))
+		case captured != NoPiece || m.Promo() != NoPiece || b.IsEnPassant(m.Move):
+			moves[ix].Weight = heur.MVVLVA(b, m.Move, heur.SEE(b, m.Move, 0))
 
 		default:
 			score := s.hist.LookUp(b.STM, m.From(), m.To())
 
 			if s.hstack.size() >= 1 {
 				hist := s.hstack.top(0)
-				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, m.Piece, m.To())
+				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
 			}
 
 			if s.hstack.size() >= 2 {
 				hist := s.hstack.top(1)
-				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, m.Piece, m.To())
+				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
 			}
 
 			moves[ix].Weight = score
@@ -625,17 +635,17 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 	}
 }
 
-func rankMovesQ(b *board.Board, moves []move.Move) {
+func rankMovesQ(b *board.Board, moves []move.Weighted) {
 	for ix, m := range moves {
 		moves[ix].Weight = -Inf
 
-		if heur.SEE(b, &m, 0) {
-			moves[ix].Weight = heur.MVVLVA(b, &m, true)
+		if heur.SEE(b, m.Move, 0) {
+			moves[ix].Weight = heur.MVVLVA(b, m.Move, true)
 		}
 	}
 }
 
-func getNextMove(moves []move.Move, ix int) (*move.Move, int) {
+func getNextMove(moves []move.Weighted, ix int) (*move.Weighted, int) {
 	maxim := -Inf - 1
 	best := -1
 	for jx := ix + 1; jx < len(moves); jx++ {

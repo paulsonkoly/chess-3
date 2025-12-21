@@ -141,7 +141,7 @@ Retry:
 			}
 
 			move := &moves[og.rnd.IntN(len(moves))]
-			b.MakeMove(move)
+			b.MakeMove(move.Move)
 			if movegen.InCheck(b, b.STM.Flip()) { // pseudo legality check
 				goto Retry
 			}

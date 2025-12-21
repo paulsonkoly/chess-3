@@ -8,7 +8,7 @@ const StoreSize = 2048
 // frames, and popping from the top. Once a frame is pushed Alloc allows for
 // allocating individual moves within the store.
 type Store struct {
-	data    []Move
+	data    []Weighted
 	allocIx int
 	frames  []frame
 }
@@ -19,7 +19,7 @@ type frame struct {
 
 // NewStore allocates a new move store.
 func NewStore() *Store {
-	data := make([]Move, StoreSize)
+	data := make([]Weighted, StoreSize)
 	return &Store{data: data}
 }
 
@@ -33,10 +33,10 @@ func (s *Store) Clear() {
 //
 // This method panics if s has run out of space, and more than StoreSize moves
 // have been allocated.
-func (s *Store) Alloc() *Move {
+func (s *Store) Alloc() *Weighted {
 	s.allocIx++
 	ptr := &s.data[s.allocIx-1]
-	*ptr = Move{} // reset to zero value
+	*ptr = Weighted{} // reset to zero value
 	return ptr
 }
 
@@ -57,7 +57,7 @@ func (s *Store) Pop() {
 }
 
 // Frame returns the top frame of the store.
-func (s *Store) Frame() []Move {
+func (s *Store) Frame() []Weighted {
 	start := 0
 	if len(s.frames) != 0 {
 		frame := s.frames[len(s.frames)-1]

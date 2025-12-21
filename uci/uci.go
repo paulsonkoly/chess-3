@@ -2,6 +2,7 @@ package uci
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
@@ -134,6 +136,24 @@ func (e *Engine) handleCommand(command string) {
 	case "quit":
 		os.Exit(0)
 
+	case "perft":
+		if len(parts) < 2 {
+			fmt.Fprintln(os.Stderr, "depth missing")
+			break
+		}
+
+		d, err := strconv.Atoi(parts[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			break
+		}
+		if d < 0 || d > 30 {
+			fmt.Fprintln(os.Stderr, "unsupported depth")
+			break
+		}
+
+		fmt.Println(debug.Perft(e.Board, Depth(d), true))
+
 	case "debug":
 		switch parts[1] {
 
@@ -203,19 +223,26 @@ func (e *Engine) handlePosition(args []string) {
 func (e *Engine) applyMoves(moves []string) {
 	b := e.Board
 	for _, ms := range moves {
-		sm := parseUCIMove(ms)
+		m, err := parseUCIMove(b, ms)
 
-		m := movegen.FromSimple(b, sm)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 
-		b.MakeMove(&m)
+		b.MakeMove(m)
 	}
 }
 
-func parseUCIMove(uciM string) move.SimpleMove {
-	var m move.SimpleMove
-
-	m.SetFrom(Square((uciM[0] - 'a') + (uciM[1]-'1')*8))
-	m.SetTo(Square((uciM[2] - 'a') + (uciM[3]-'1')*8))
+func parseUCIMove(b *board.Board, uciM string) (move.Move, error) {
+	if len(uciM) != 4 && len(uciM) != 5 {
+		return 0, errors.New("invalid uci move")
+	}
+	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
+	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
+	if from < A1 || from > H8 || to < A1 || to > H8 {
+		return 0, errors.New("invalid uci move")
+	}
 	var promo Piece
 	if len(uciM) == 5 {
 		switch uciM[4] {
@@ -227,10 +254,13 @@ func parseUCIMove(uciM string) move.SimpleMove {
 			promo = Bishop
 		case 'n':
 			promo = Knight
+		default:
+			return 0, errors.New("invalid uci move")
 		}
 	}
-	m.SetPromo(promo)
-	return m
+	changesEnPassant := b.SquaresToPiece[from] == Pawn && Abs(to-from) == 16 && movegen.CanEnPassant(b, to)
+
+	return move.New(from, to, move.WithPromo(promo), move.WithEnPassant(changesEnPassant)), nil
 }
 
 func (e *Engine) handleEval() {
@@ -333,12 +363,12 @@ func (e *Engine) handleGo(args []string) {
 		opts = append(opts, search.WithDebug(true))
 	}
 
-	var move move.SimpleMove
+	var bm move.Move
 
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, move = e.Search.Go(e.Board, opts...)
+		_, bm = e.Search.Go(e.Board, opts...)
 		close(searchFin)
 	}()
 
@@ -367,7 +397,7 @@ func (e *Engine) handleGo(args []string) {
 		close(stop)
 	}
 
-	fmt.Printf("bestmove %s\n", move)
+	fmt.Printf("bestmove %s\n", bm)
 }
 
 func parseInt(value string) int {

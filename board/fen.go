@@ -150,13 +150,13 @@ func (fp *fenParser) cRights() error {
 	for fp.ix < fp.l && fp.fen[fp.ix] != ' ' {
 		switch fp.fen[fp.ix] {
 		case 'K':
-			fp.b.CRights |= CRights(ShortWhite)
+			fp.b.Castles |= ShortWhite
 		case 'Q':
-			fp.b.CRights |= CRights(LongWhite)
+			fp.b.Castles |= LongWhite
 		case 'k':
-			fp.b.CRights |= CRights(ShortBlack)
+			fp.b.Castles |= ShortBlack
 		case 'q':
-			fp.b.CRights |= CRights(LongBlack)
+			fp.b.Castles |= LongBlack
 		case '-':
 
 		default:
@@ -175,12 +175,6 @@ func (fp *fenParser) enPassant() error {
 		}
 		file := fp.fen[fp.ix] - 'a'
 		rank := fp.fen[fp.ix+1] - '1'
-		switch rank {
-		case 2:
-			rank = 3
-		case 5:
-			rank = 4
-		}
 		fp.b.EnPassant = Square(rank*8 + file)
 		fp.ix++
 	}
@@ -242,22 +236,22 @@ func (b Board) FEN() string {
 
 	sb.WriteString(fmt.Sprintf(" %c ", "wb"[b.STM]))
 
-	if b.CRights&CRights(ShortWhite) != 0 {
+	if b.Castles&ShortWhite != 0 {
 		sb.WriteString("K")
 	}
 
-	if b.CRights&CRights(LongWhite) != 0 {
+	if b.Castles&LongWhite != 0 {
 		sb.WriteString("Q")
 	}
 
-	if b.CRights&CRights(ShortBlack) != 0 {
+	if b.Castles&ShortBlack != 0 {
 		sb.WriteString("k")
 	}
 
-	if b.CRights&CRights(LongBlack) != 0 {
+	if b.Castles&LongBlack != 0 {
 		sb.WriteString("q")
 	}
-	if b.CRights == 0 {
+	if b.Castles == 0 {
 		sb.WriteString("-")
 	}
 	sb.WriteString(" ")
@@ -265,13 +259,7 @@ func (b Board) FEN() string {
 	if b.EnPassant == 0 {
 		sb.WriteString("-")
 	} else {
-		var ep Square
-		if b.EnPassant <= 31 {
-			ep = b.EnPassant - 8
-		} else {
-			ep = b.EnPassant + 8
-		}
-		sb.WriteString(ep.String())
+		sb.WriteString(b.EnPassant.String())
 	}
 	sb.WriteString(" ")
 	sb.WriteString(fmt.Sprintf("%d 1", b.FiftyCnt))

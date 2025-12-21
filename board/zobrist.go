@@ -63,7 +63,7 @@ func (b Board) calculateHash() Hash {
 	}
 
 	for i, r := range castlingRand {
-		if b.CRights&(1<<i) != 0 {
+		if b.Castles&(1<<i) != 0 {
 			hash ^= r
 		}
 	}

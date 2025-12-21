@@ -58,17 +58,6 @@ var (
 		{(1 << E1) | (1 << F1) | (1 << G1), (1 << E1) | (1 << D1) | (1 << C1)},
 		{(1 << E8) | (1 << F8) | (1 << G8), (1 << E8) | (1 << D8) | (1 << C8)},
 	}
-	kingCRightsUpd = [2]CastlingRights{CRights(ShortWhite, LongWhite), CRights(ShortBlack, LongBlack)}
-	rookCRightsUpd = [64]CastlingRights{
-		CRights(LongWhite), 0, 0, 0, 0, 0, 0, CRights(ShortWhite),
-		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
-		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
-		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
-		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
-		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
-		0 /**************/, 0, 0, 0, 0, 0, 0, 0,
-		CRights(LongBlack), 0, 0, 0, 0, 0, 0, CRights(ShortBlack),
-	}
 )
 
 type generator struct {
@@ -85,13 +74,9 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[to])
 			m := ms.Alloc()
-			m.Piece = King
 			m.SetFrom(from)
 			m.SetTo(to)
-			m.CRights = newC ^ b.CRights
-			m.EPSq = b.EnPassant
 		}
 	}
 }
@@ -109,13 +94,9 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			newC := b.CRights & ^(rookCRightsUpd[to])
 			m := ms.Alloc()
-			m.Piece = Knight
 			m.SetFrom(from)
 			m.SetTo(to)
-			m.CRights = newC ^ b.CRights
-			m.EPSq = b.EnPassant
 		}
 	}
 }
@@ -135,13 +116,9 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			newC := b.CRights & ^(rookCRightsUpd[to])
 			m := ms.Alloc()
-			m.Piece = Bishop
 			m.SetFrom(from)
 			m.SetTo(to)
-			m.CRights = newC ^ b.CRights
-			m.EPSq = b.EnPassant
 		}
 	}
 }
@@ -161,16 +138,9 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			// this accounts for flipping the castling rights for the moving side
-			// if the rook moves away from castling position and also for the
-			// opponent when a rook is capturing a rook in castling position
-			newC := b.CRights & ^(rookCRightsUpd[from] | rookCRightsUpd[to])
 			m := ms.Alloc()
-			m.Piece = Rook
 			m.SetFrom(from)
 			m.SetTo(to)
-			m.CRights = newC ^ b.CRights
-			m.EPSq = b.EnPassant
 		}
 	}
 }
@@ -196,13 +166,9 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boa
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			cNew := b.CRights &^ rookCRightsUpd[to]
 			m := ms.Alloc()
-			m.Piece = Queen
 			m.SetFrom(from)
 			m.SetTo(to)
-			m.CRights = cNew ^ b.CRights
-			m.EPSq = b.EnPassant
 		}
 	}
 }
@@ -221,10 +187,8 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board
 		from := pawn.LowestSet()
 
 		m := ms.Alloc()
-		m.Piece = Pawn
 		m.SetFrom(from)
 		m.SetTo(from + shift)
-		m.EPSq = b.EnPassant
 	}
 }
 
@@ -240,11 +204,9 @@ func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk board.
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
 			m := ms.Alloc()
-			m.Piece = Pawn
 			m.SetFrom(from)
 			m.SetTo(from + shift)
 			m.SetPromo(promo)
-			m.EPSq = b.EnPassant
 		}
 	}
 }
@@ -262,17 +224,13 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 		from := pawn.LowestSet()
 
 		m := ms.Alloc()
-		m.Piece = Pawn
 		m.SetFrom(from)
 		m.SetTo(from + 2*shift)
-		m.EPSq = b.EnPassant
-		if canEnPassant(b, m.To()) {
-			m.EPSq ^= m.To()
-		}
+		m.SetEnPassant(CanEnPassant(b, m.To()))
 	}
 }
 
-// canEnPassant determines if we need to change the en passant state of the
+// CanEnPassant determines if we need to change the en passant state of the
 // board after a double pawn push.
 //
 // This is important in order to have the right hashes for 3-fold repetition.
@@ -280,7 +238,7 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 // and everything would work, apart from we would have the incorrect board en
 // passant state.
 // https://chess.stackexchange.com/questions/777/rules-en-passant-and-draw-by-triple-repetition
-func canEnPassant(b *board.Board, to Square) bool {
+func CanEnPassant(b *board.Board, to Square) bool {
 	target := board.BitBoard(1) << to
 	them := b.Colors[b.STM.Flip()]
 	shift := shifts[b.STM]
@@ -326,10 +284,8 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 			to := tSqr.LowestSet()
 
 			m := ms.Alloc()
-			m.Piece = Pawn
 			m.SetFrom(from)
 			m.SetTo(to)
-			m.EPSq = b.EnPassant
 		}
 	}
 }
@@ -356,56 +312,46 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			cNew := b.CRights &^ rookCRightsUpd[to]
 
 			for promo := Queen; promo > Pawn; promo-- {
 				m := ms.Alloc()
-				m.Piece = Pawn
 				m.SetFrom(from)
 				m.SetTo(to)
 				m.SetPromo(promo)
-				m.CRights = cNew ^ b.CRights
-				m.EPSq = b.EnPassant
 			}
 		}
 	}
 }
 
 func (g generator) enPassant(ms *move.Store, b *board.Board) {
-	shift := shifts[b.STM]
+	if b.EnPassant == 0 {
+		return
+	}
 
 	// en-passant
-	ep := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & fourthRank[b.STM.Flip()]
+	ep := PawnCaptureMoves(1<<b.EnPassant, b.STM.Flip())
 	for pawns, pawn := ep&g.self&b.Pieces[Pawn], board.BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
 		m := ms.Alloc()
-		m.Piece = Pawn
 		m.SetFrom(from)
-		m.SetTo(b.EnPassant + shift)
-		m.EPP = Pawn
-		m.EPSq = b.EnPassant
+		m.SetTo(b.EnPassant)
 	}
 }
 
 func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
 	// castling short
-	if b.CRights&CRights(C(b.STM, Short)) != 0 && g.occ&castleMask[b.STM][Short] == g.self&b.Pieces[King] {
+	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&castleMask[b.STM][Short] == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
 		// calculate if the rook gives check this condition is simple, and would
 		// suffice most of the time
 		if castleMask[b.STM][Short]&rChkMsk != 0 {
 			if !IsAttacked(b, b.STM.Flip(), g.occ, castleMask[b.STM][Short]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
-				newC := b.CRights & ^kingCRightsUpd[b.STM]
 				m := ms.Alloc()
-				m.Piece = King
 				m.SetFrom(from)
 				m.SetTo(from + 2)
-				m.Castle = C(b.STM, Short)
-				m.CRights = b.CRights ^ newC
-				m.EPSq = b.EnPassant
 			}
 		}
 	}
@@ -413,18 +359,13 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.Bit
 
 func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
 	// castle long
-	if b.CRights&CRights(C(b.STM, Long)) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
+	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
 		if castleMask[b.STM][Long]&rChkMsk != 0 {
 			if !IsAttacked(b, b.STM.Flip(), g.occ, castleMask[b.STM][Long]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
-				newC := b.CRights & ^kingCRightsUpd[b.STM]
 				m := ms.Alloc()
-				m.Piece = King
 				m.SetFrom(from)
 				m.SetTo(from - 2)
-				m.Castle = C(b.STM, Long)
-				m.CRights = b.CRights ^ newC
-				m.EPSq = b.EnPassant
 			}
 		}
 	}
@@ -596,7 +537,7 @@ func IsCheckmate(b *board.Board) bool {
 
 	// en passant capture
 	if b.EnPassant != 0 {
-		epPawn := (board.BitBoard(1) << b.EnPassant)
+		epPawn := PawnSinglePushMoves(board.BitBoard(1)<<b.EnPassant, b.STM.Flip())
 
 		if epPawn == attacker {
 			return false
@@ -778,12 +719,13 @@ func IsStalemate(b *board.Board) bool {
 
 	//  finally deal with en passant
 	if b.EnPassant != 0 {
-		pieces := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & b.Pieces[Pawn] & me
-		remove := board.BitBoard(1) << b.EnPassant
+		enPassantBB := board.BitBoard(1) << b.EnPassant
+		pieces := PawnCaptureMoves(enPassantBB, b.STM.Flip()) & b.Pieces[Pawn] & me
+		remove := PawnSinglePushMoves(enPassantBB, b.STM.Flip())
 
 		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
-			nocc := (occ & ^piece & ^remove) | PawnSinglePushMoves(remove, b.STM)
+			nocc := (occ & ^piece & ^remove) | enPassantBB
 			pinned := false
 
 			if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) != 0 {
@@ -837,44 +779,4 @@ func IsAttacked(b *board.Board, by Color, occ, target board.BitBoard) bool {
 
 func InCheck(b *board.Board, who Color) bool {
 	return IsAttacked(b, who.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[who]&b.Pieces[King])
-}
-
-func FromSimple(b *board.Board, sm move.SimpleMove) move.Move {
-	pType := b.SquaresToPiece[sm.From()]
-	result := move.Move{SimpleMove: sm, Piece: pType, EPSq: b.EnPassant}
-
-	switch pType {
-
-	case King:
-		if sm.From()-sm.To() == 2 || sm.To()-sm.From() == 2 {
-			newC := b.CRights & ^kingCRightsUpd[b.STM]
-			result.CRights = newC ^ b.CRights
-			result.Castle = C(b.STM, int(((sm.From()-sm.To())+2)/4))
-		} else {
-			newC := b.CRights & ^(kingCRightsUpd[b.STM] | rookCRightsUpd[sm.To()])
-			result.CRights = newC ^ b.CRights
-		}
-
-	case Knight, Bishop, Queen:
-		newC := b.CRights & ^(rookCRightsUpd[sm.To()])
-		result.CRights = newC ^ b.CRights
-
-	case Rook:
-		newC := b.CRights & ^(rookCRightsUpd[sm.From()] | rookCRightsUpd[sm.To()])
-		result.CRights = newC ^ b.CRights
-
-	case Pawn:
-		if sm.From()-sm.To() == 16 || sm.To()-sm.From() == 16 {
-			if canEnPassant(b, sm.To()) {
-				result.EPSq ^= sm.To()
-			}
-		}
-		if (sm.From()-sm.To())&1 != 0 && b.SquaresToPiece[sm.To()] == NoPiece { // en-passant capture
-			result.EPP = Pawn
-		}
-		newC := b.CRights &^ rookCRightsUpd[sm.To()]
-		result.CRights = newC ^ b.CRights
-	}
-
-	return result
 }

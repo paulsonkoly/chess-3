@@ -38,34 +38,24 @@ func (s Score) String() string {
 	return fmt.Sprintf("cp %d", s)
 }
 
-const (
-	Short = 0
-	Long  = 1
-)
-
-type Castle byte
+type Side byte
 
 const (
-	NoCastle   = 0
-	ShortWhite = 1
-	LongWhite  = 2
-	ShortBlack = 3
-	LongBlack  = 4
+	Short = Side(iota)
+	Long
 )
 
-func C(c Color, typ int) Castle {
-	return Castle(int(c)*2 + typ + 1)
-}
+// Castles is bitmap encoding of possible castlings.
+type Castles byte
 
-type CastlingRights byte
+const (
+	ShortWhite = Castles(1 << (2*int(White) + int(Short)))
+	LongWhite  = Castles(1 << (2*int(White) + int(Long)))
+	ShortBlack = Castles(1 << (2*int(Black) + int(Short)))
+	LongBlack  = Castles(1 << (2*int(Black) + int(Long)))
+)
 
-func CRights(castles ...Castle) CastlingRights {
-	result := CastlingRights(0)
-	for _, c := range castles {
-		result |= 1 << int(c-1)
-	}
-	return result
-}
+func Castle(c Color, s Side) Castles { return 1 << (2*int(c) + int(s)) }
 
 type Color byte
 

@@ -73,6 +73,11 @@ const (
 	Squares
 )
 
+const (
+	FileMask = Square(7)
+	RankMask = Square(7 << 3)
+)
+
 func (s Square) String() string {
 	return fmt.Sprintf("%c%c", s%8+'a', s/8+'1')
 }

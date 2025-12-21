@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/tools/datagen/shim"
 	"github.com/paulsonkoly/chess-3/transp"
@@ -104,7 +103,7 @@ func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err er
 	var score types.Score
 
 	for moveCounter := 0; ; moveCounter++ {
-		var bm move.SimpleMove
+		var bm move.Move
 		score, bm = g.search.Go(b,
 			search.WithSoftNodes(config.SoftNodes),
 			search.WithNodes(config.HardNodes),
@@ -151,10 +150,7 @@ func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err er
 			break
 		}
 
-		// convert bm back to full move
-		move := movegen.FromSimple(b, bm)
-
-		b.MakeMove(&move)
+		b.MakeMove(bm)
 	}
 
 	// determine the WDL result

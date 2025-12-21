@@ -306,13 +306,13 @@ func TestMoves(t *testing.T) {
 
 			filter := ms.Frame()[:0]
 			for _, m := range ms.Frame() {
-				b.MakeMove(&m)
+				r := b.MakeMove(m.Move)
 
 				if movegen.InCheck(b, b.STM.Flip()) {
-					b.UndoMove(&m)
+					b.UndoMove(m.Move, r)
 					continue
 				}
-				b.UndoMove(&m)
+				b.UndoMove(m.Move, r)
 
 				filter = append(filter, m)
 			}
@@ -370,13 +370,13 @@ func TestGenForcing(t *testing.T) {
 
 			filter := ms.Frame()[:0]
 			for _, m := range ms.Frame() {
-				b.MakeMove(&m)
+				r := b.MakeMove(m.Move)
 
 				if movegen.InCheck(b, b.STM.Flip()) {
-					b.UndoMove(&m)
+					b.UndoMove(m.Move, r)
 					continue
 				}
-				b.UndoMove(&m)
+				b.UndoMove(m.Move, r)
 
 				filter = append(filter, m)
 			}
@@ -599,37 +599,37 @@ func TestEnPassantStates(t *testing.T) {
 	tests := []struct {
 		name   string
 		b      *board.Board
-		move   move.SimpleMove
+		move   move.Move
 		bAfter *board.Board
 	}{
 		{
 			name:   "En passant possible after pawn move",
 			b:      Must(board.FromFEN("4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1")),
-			move:   move.NewSimple(C2, C4),
+			move:   move.New(C2, C4, move.WithEnPassant(true)),
 			bAfter: Must(board.FromFEN("4k3/8/8/8/2Pp4/8/8/4K3 b - c3 0 1")),
 		},
 		{
 			name:   "En passant not possible due to no pawn",
 			b:      Must(board.FromFEN("4k3/8/8/8/8/8/2P5/4K3 w - - 0 1")),
-			move:   move.NewSimple(C2, C4),
+			move:   move.New(C2, C4),
 			bAfter: Must(board.FromFEN("4k3/8/8/8/2P5/8/8/4K3 b - - 0 1")),
 		},
 		{
 			name:   "En passant not possible due to simple pin",
 			b:      Must(board.FromFEN("8/8/1k6/8/3p4/8/2P5/3K2B1 w - - 0 1")),
-			move:   move.NewSimple(C2, C4),
+			move:   move.New(C2, C4),
 			bAfter: Must(board.FromFEN("8/8/1k6/8/2Pp4/8/8/3K2B1 b - - 0 1")),
 		},
 		{
 			name:   "En passant not possible due to tricky pin",
 			b:      Must(board.FromFEN("8/8/8/8/k2p3R/8/2P5/3K4 w - - 0 1")),
-			move:   move.NewSimple(C2, C4),
+			move:   move.New(C2, C4),
 			bAfter: Must(board.FromFEN("8/8/8/8/k1Pp3R/8/8/3K4 b - - 0 1")),
 		},
 		{
 			name:   "En passant possible in pin that's not affected",
 			b:      Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22")),
-			move:   move.NewSimple(F2, F4),
+			move:   move.New(F2, F4, move.WithEnPassant(true)),
 			bAfter: Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rpP2/6PN/1P2P1BP/1RR3K1 b - f3 0 23")),
 		},
 	}
@@ -639,14 +639,15 @@ func TestEnPassantStates(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			b := tt.b
-			m := movegen.FromSimple(b, tt.move)
+			// m := movegen.FromSimple(b, tt.move)
+			weighted := move.Weighted { Move: tt.move }
 
 			ms.Push()
 			movegen.GenMoves(ms, b)
-			assert.Contains(t, ms.Frame(), m)
+			assert.Contains(t, ms.Frame(), weighted)
 			ms.Pop()
 
-			b.MakeMove(&m)
+			b.MakeMove(tt.move)
 			assert.Equal(t, tt.bAfter.EnPassant, b.EnPassant)
 			assert.Equal(t, tt.bAfter.Hash(), b.Hash())
 		})
