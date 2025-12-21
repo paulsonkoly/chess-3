@@ -342,7 +342,7 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 
 func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
 	// castling short
-	if b.CRights&Castle(b.STM, Short) != 0 && g.occ&castleMask[b.STM][Short] == g.self&b.Pieces[King] {
+	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&castleMask[b.STM][Short] == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
 		// calculate if the rook gives check this condition is simple, and would
 		// suffice most of the time
@@ -359,7 +359,7 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.Bit
 
 func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
 	// castle long
-	if b.CRights&Castle(b.STM, Long) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
+	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
 		if castleMask[b.STM][Long]&rChkMsk != 0 {
 			if !IsAttacked(b, b.STM.Flip(), g.occ, castleMask[b.STM][Long]) {
 				from := (g.self & b.Pieces[King]).LowestSet()

@@ -12,7 +12,7 @@ type Board struct {
 	Colors         [2]BitBoard
 	STM            Color
 	EnPassant      Square
-	CRights        Castles
+	Castles        Castles
 	hashes         []Hash
 	FiftyCnt       Depth
 }
@@ -99,7 +99,7 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 	}
 	capture := b.SquaresToPiece[captureSq]
 
-	castlingChange := b.CRights ^ b.NewCastles(m)
+	castlingChange := b.Castles ^ b.NewCastles(m)
 
 	r.setFiftyCnt(b.FiftyCnt)
 	if piece == Pawn || castlingChange != 0 || capture != NoPiece {
@@ -113,7 +113,7 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 	hash ^= castlingRand[2] & hashEnable[(castlingChange>>2)&1]
 	hash ^= castlingRand[3] & hashEnable[(castlingChange>>3)&1]
 
-	b.CRights ^= castlingChange
+	b.Castles ^= castlingChange
 	r.setCastlingChange(castlingChange)
 	r.setCapture(capture)
 
@@ -210,7 +210,7 @@ func (b *Board) UndoMove(m move.Move, r Reverse) {
 	b.addPiece(b.STM, piece, m.From())
 	b.addPiece(b.STM.Flip(), r.capture(), b.CaptureSq(m))
 
-	b.CRights ^= r.castlingChange()
+	b.Castles ^= r.castlingChange()
 	b.FiftyCnt = r.fiftyCnt()
 
 	// b.consistencyCheck()
@@ -240,7 +240,7 @@ func (b *Board) NewCastles(m move.Move) Castles {
 		affected |= ShortBlack
 	}
 
-	return b.CRights & ^affected
+	return b.Castles & ^affected
 }
 
 // addPiece adds a piece to the board fields returning the change in hash.

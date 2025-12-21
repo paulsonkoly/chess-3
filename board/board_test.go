@@ -17,7 +17,7 @@ func TestCastle(t *testing.T) {
 
 	r := b.MakeMove(m.Move)
 
-	assert.Equal(t, Castles(0), b.CRights)
+	assert.Equal(t, Castles(0), b.Castles)
 	assert.Equal(t, NoPiece, b.SquaresToPiece[E1])
 	assert.Equal(t, Rook, b.SquaresToPiece[F1])
 	assert.Equal(t, King, b.SquaresToPiece[G1])
@@ -25,7 +25,7 @@ func TestCastle(t *testing.T) {
 
 	b.UndoMove(m.Move, r)
 
-	assert.Equal(t, ShortWhite | LongWhite, b.CRights)
+	assert.Equal(t, ShortWhite | LongWhite, b.Castles)
 	assert.Equal(t, King, b.SquaresToPiece[E1])
 	assert.Equal(t, NoPiece, b.SquaresToPiece[F1])
 	assert.Equal(t, NoPiece, b.SquaresToPiece[G1])
@@ -35,21 +35,21 @@ func TestCastle(t *testing.T) {
 
 	r = b.MakeMove(m.Move)
 
-	assert.Equal(t, Castles(0), b.CRights)
+	assert.Equal(t, Castles(0), b.Castles)
 
 	b.UndoMove(m.Move, r)
 
-	assert.Equal(t, ShortWhite| LongWhite, b.CRights)
+	assert.Equal(t, ShortWhite| LongWhite, b.Castles)
 
 	m = movegen.FromSimple(b, move.New(A1, B1))
 
 	r = b.MakeMove(m.Move)
 
-	assert.Equal(t, ShortWhite, b.CRights)
+	assert.Equal(t, ShortWhite, b.Castles)
 
 	b.UndoMove(m.Move, r)
 
-	assert.Equal(t, ShortWhite| LongWhite, b.CRights)
+	assert.Equal(t, ShortWhite| LongWhite, b.Castles)
 }
 
 func TestInvalidPieceCount(t *testing.T) {
