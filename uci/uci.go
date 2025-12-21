@@ -235,8 +235,9 @@ func parseUCIMove(b *board.Board, uciM string) move.Move {
 			promo = Knight
 		}
 	}
+	changesEnPassant := b.SquaresToPiece[from] == Pawn && Abs(to-from) == 16 && movegen.CanEnPassant(b, to)
 
-	return move.New(from, to, move.WithPromo(promo), move.WithEnPassant(movegen.CanEnPassant(b, to)))
+	return move.New(from, to, move.WithPromo(promo), move.WithEnPassant(changesEnPassant))
 }
 
 func (e *Engine) handleEval() {
