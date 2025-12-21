@@ -17,7 +17,7 @@ func SEE(b *board.Board, m move.Move, threshold Score) bool {
 	captureSq := b.CaptureSq(m)
 	fromBB := board.BitBoard(1) << from
 	toBB := board.BitBoard(1) << to
-	captureBB :=board.BitBoard(1) << captureSq
+	captureBB := board.BitBoard(1) << captureSq
 
 	occ := (b.Colors[White] | b.Colors[Black]) ^ fromBB
 

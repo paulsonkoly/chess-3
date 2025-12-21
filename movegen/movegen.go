@@ -363,7 +363,6 @@ func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitB
 		if castleMask[b.STM][Long]&rChkMsk != 0 {
 			if !IsAttacked(b, b.STM.Flip(), g.occ, castleMask[b.STM][Long]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
-				// newC := b.CRights & ^kingCRightsUpd[b.STM]
 				m := ms.Alloc()
 				m.SetFrom(from)
 				m.SetTo(from - 2)
@@ -538,7 +537,7 @@ func IsCheckmate(b *board.Board) bool {
 
 	// en passant capture
 	if b.EnPassant != 0 {
-		epPawn := PawnSinglePushMoves(board.BitBoard(1) << b.EnPassant, b.STM.Flip())
+		epPawn := PawnSinglePushMoves(board.BitBoard(1)<<b.EnPassant, b.STM.Flip())
 
 		if epPawn == attacker {
 			return false

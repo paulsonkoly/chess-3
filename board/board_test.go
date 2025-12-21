@@ -24,7 +24,7 @@ func TestCastle(t *testing.T) {
 
 	b.UndoMove(m, r)
 
-	assert.Equal(t, ShortWhite | LongWhite, b.Castles)
+	assert.Equal(t, ShortWhite|LongWhite, b.Castles)
 	assert.Equal(t, King, b.SquaresToPiece[E1])
 	assert.Equal(t, NoPiece, b.SquaresToPiece[F1])
 	assert.Equal(t, NoPiece, b.SquaresToPiece[G1])
@@ -38,7 +38,7 @@ func TestCastle(t *testing.T) {
 
 	b.UndoMove(m, r)
 
-	assert.Equal(t, ShortWhite| LongWhite, b.Castles)
+	assert.Equal(t, ShortWhite|LongWhite, b.Castles)
 
 	m = move.New(A1, B1)
 
@@ -48,7 +48,7 @@ func TestCastle(t *testing.T) {
 
 	b.UndoMove(m, r)
 
-	assert.Equal(t, ShortWhite| LongWhite, b.Castles)
+	assert.Equal(t, ShortWhite|LongWhite, b.Castles)
 }
 
 func TestInvalidPieceCount(t *testing.T) {

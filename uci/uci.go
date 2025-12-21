@@ -136,6 +136,11 @@ func (e *Engine) handleCommand(command string) {
 		os.Exit(0)
 
 	case "perft":
+		if len(parts) < 2 {
+			fmt.Fprint(os.Stderr, "depth missing")
+			break
+		}
+
 		d, err := strconv.Atoi(parts[1])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

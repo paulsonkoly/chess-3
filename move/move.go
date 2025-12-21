@@ -15,7 +15,7 @@ type Weighted struct {
 // to the board.
 type Move uint16
 
-// MoveOption is an optional argument to NewSimple.
+// MoveOption is an optional argument to New.
 type MoveOption interface {
 	Apply(sm Move) Move
 }
@@ -36,7 +36,7 @@ func (ep WithEnPassant) Apply(m Move) Move {
 	return m
 }
 
-// New creates a new simple move with to and from squares and additional options.
+// New creates a new move with to and from squares and additional options.
 func New(from, to Square, opts ...MoveOption) Move {
 	sm := (Move(to) << toShift & toMsk) | (Move(from) << fromShift & fromMsk)
 	for _, opt := range opts {
