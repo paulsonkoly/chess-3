@@ -177,7 +177,7 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 	for positions.Next() {
 		var (
 			fen []byte
-			bm  move.SimpleMove
+			bm  move.Move
 		)
 
 		if err := positions.Scan(&fen, &bm); err != nil {

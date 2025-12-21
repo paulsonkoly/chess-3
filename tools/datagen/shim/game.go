@@ -20,6 +20,6 @@ const (
 
 type Position struct {
 	FEN   string
-	BM    move.SimpleMove
+	BM    move.Move
 	Score types.Score
 }

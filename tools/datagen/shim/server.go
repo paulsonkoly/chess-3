@@ -72,7 +72,7 @@ func (d datagenServer) RegisterGame(_ context.Context, gGame *pb.Game) (*pb.Game
 
 	for _, position := range gGame.Positions {
 		positions = append(positions,
-			Position{FEN: position.Fen, BM: move.SimpleMove(position.BestMove), Score: types.Score(position.Score)})
+			Position{FEN: position.Fen, BM: move.Move(position.BestMove), Score: types.Score(position.Score)})
 	}
 
 	game := Game{
