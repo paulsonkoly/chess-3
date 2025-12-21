@@ -37,19 +37,17 @@ func (b *Board) ResetHash() {
 	b.hashes = append(b.hashes, b.calculateHash())
 }
 
-func (b *Board) Moved(sm move.SimpleMove) Piece {
-	return b.SquaresToPiece[sm.From()]
-}
-
-func (b *Board) Captured(sm move.SimpleMove) Piece {
-	if b.IsEnPassant(sm) {
-		return Pawn
-	}
-	return b.SquaresToPiece[sm.To()]
-}
-
+// IsEnPassant determines if a move is an en-passant pawn capture according to the current board en-passant state.
 func (b *Board) IsEnPassant(sm move.SimpleMove) bool {
 	return b.EnPassant != 0 && b.EnPassant == sm.To() && b.SquaresToPiece[sm.From()] == Pawn
+}
+
+// CaptureSq is mostly just the To() square of m except for an en-passanty capture it's the square of the captured pawn.
+func (b *Board) CaptureSq(m move.SimpleMove) Square {
+	if b.IsEnPassant(m) {
+		return (m.To() & FileMask) | (m.From() & RankMask)
+	}
+	return m.To()
 }
 
 var hashEnable = [2]Hash{0, 0xffffffffffffffff}
@@ -206,11 +204,7 @@ func (b *Board) UndoSimpleMove(m move.SimpleMove, r Reverse) {
 
 	b.removePiece(b.STM, rmPiece, m.To())
 	b.addPiece(b.STM, piece, m.From())
-	captureSq := m.To()
-	if b.IsEnPassant(m) {
-		captureSq = (m.To() & FileMask) | (m.From() & RankMask)
-	}
-	b.addPiece(b.STM.Flip(), r.capture(), captureSq)
+	b.addPiece(b.STM.Flip(), r.capture(), b.CaptureSq(m))
 
 	b.CRights ^= r.castlingChange()
 	b.FiftyCnt = r.fiftyCnt()

@@ -14,14 +14,16 @@ import (
 func SEE(b *board.Board, m move.SimpleMove, threshold Score) bool {
 	from := m.From()
 	to := m.To()
+	captureSq := b.CaptureSq(m)
 	fromBB := board.BitBoard(1) << from
 	toBB := board.BitBoard(1) << to
+	captureBB :=board.BitBoard(1) << captureSq
 
 	occ := (b.Colors[White] | b.Colors[Black]) ^ fromBB
 
-	captured := b.Captured(m)
+	captured := b.SquaresToPiece[captureSq]
 	if b.IsEnPassant(m) {
-		occ &= ^(board.BitBoard(1) << b.EnPassant)
+		occ &= ^(captureBB)
 	}
 
 	var promoVal Score
@@ -34,9 +36,7 @@ func SEE(b *board.Board, m move.SimpleMove, threshold Score) bool {
 		return false
 	}
 
-	moved := b.Moved(m)
-
-	swap = PieceValues[moved] + promoVal - swap
+	swap = PieceValues[b.SquaresToPiece[m.From()]] + promoVal - swap
 	if swap <= 0 {
 		return true
 	}

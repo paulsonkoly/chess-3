@@ -24,9 +24,6 @@ func (h *historyStack) reset() {
 }
 
 func (h *historyStack) push(piece Piece, to Square, score Score) {
-	if piece == NoPiece {
-		panic("NoPiece inserted")
-	}
 	h.data[h.sp] = historyMove{piece: piece, to: to, score: score}
 	h.sp++
 }

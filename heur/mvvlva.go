@@ -17,6 +17,7 @@ func MVVLVA(b *board.Board, m move.SimpleMove, good bool) Score {
 }
 
 func rank(b *board.Board, m move.SimpleMove) Score {
-	victim := b.Captured(m)
-	return Score(m.Promo()*King*King + victim*King - b.Moved(m))
+	victim := b.SquaresToPiece[b.CaptureSq(m)]
+	aggressor := b.SquaresToPiece[m.From()]
+	return Score(m.Promo()*King*King + victim*King - aggressor)
 }

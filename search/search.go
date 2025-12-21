@@ -260,10 +260,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	s.ms.Push()
 	defer s.ms.Pop()
 
-	if b.Hash() == 16188122037382435891 {
-		fmt.Println("catchme")
-	}
-
 	movegen.GenMoves(s.ms, b)
 	moves := s.ms.Frame()
 
@@ -282,18 +278,10 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	quietCnt := 0
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
-		moving := b.Moved(m.SimpleMove)
-		capturing := b.Captured(m.SimpleMove)
-
-		if moving == NoPiece {
-			panic("moving no piece")
-		}
+		moved := b.SquaresToPiece[m.From()]
+		captured := b.SquaresToPiece[m.To()] // todo en-passant
 
 		r := b.MakeSimpleMove(m.SimpleMove)
-
-		if b.SquaresToPiece[m.To()] == NoPiece {
-			panic("dissappeared piece")
-		}
 
 		if movegen.InCheck(b, b.STM.Flip()) {
 			b.UndoSimpleMove(m.SimpleMove, r)
@@ -303,11 +291,11 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		hasLegal = true
 		moveCnt++
 
-		s.hstack.push(moving, m.To(), staticEval)
+		s.hstack.push(moved, m.To(), staticEval)
 
 		var value Score
 
-		quiet := capturing == NoPiece && m.Promo() == NoPiece
+		quiet := captured == NoPiece && m.Promo() == NoPiece
 		if quiet {
 			quietCnt++
 		}
@@ -373,17 +361,21 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 						bonus = -bonus
 					}
 
-					if b.Captured(m.SimpleMove) == NoPiece && m.Promo() == NoPiece {
+					moved := b.SquaresToPiece[m.From()]
+					// TODO en-passant
+					captured := b.SquaresToPiece[m.To()]
+
+					if captured == NoPiece && m.Promo() == NoPiece {
 						s.hist.Add(b.STM, m.From(), m.To(), bonus)
 
 						if hSize >= 1 {
 							hist := s.hstack.top(0)
-							s.cont[0].Add(b.STM, hist.piece, hist.to, b.Moved(m.SimpleMove), m.To(), bonus)
+							s.cont[0].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
 						}
 
 						if hSize >= 2 {
 							hist := s.hstack.top(1)
-							s.cont[1].Add(b.STM, hist.piece, hist.to, b.Moved(m.SimpleMove), m.To(), bonus)
+							s.cont[1].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
 						}
 					}
 
@@ -571,7 +563,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 			break
 		}
 
-		captured := b.Captured(m.SimpleMove)
+		captured := b.SquaresToPiece[m.To()] // todo en-passant
 
 		r := b.MakeSimpleMove(m.SimpleMove)
 
@@ -615,12 +607,14 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 	transPE, _ := s.tt.LookUp(b.Hash())
 
 	for ix, m := range moves {
+		moved := b.SquaresToPiece[m.From()]
+		captured := b.SquaresToPiece[m.To()] // TODO : en-passant
 
 		switch {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case b.Captured(m.SimpleMove) != NoPiece || m.Promo() != NoPiece || b.IsEnPassant(m.SimpleMove):
+		case captured != NoPiece || m.Promo() != NoPiece || b.IsEnPassant(m.SimpleMove):
 			moves[ix].Weight = heur.MVVLVA(b, m.SimpleMove, heur.SEE(b, m.SimpleMove, 0))
 
 		default:
@@ -628,12 +622,12 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move) {
 
 			if s.hstack.size() >= 1 {
 				hist := s.hstack.top(0)
-				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, b.Moved(m.SimpleMove), m.To())
+				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
 			}
 
 			if s.hstack.size() >= 2 {
 				hist := s.hstack.top(1)
-				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, b.Moved(m.SimpleMove), m.To())
+				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
 			}
 
 			moves[ix].Weight = score
