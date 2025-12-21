@@ -29,10 +29,10 @@ func (p WithPromo) Apply(sm Move) Move {
 }
 
 // WithEnPassant is a MoveOption that sets the en-passant flag.
-type WithEnPassant struct {}
+type WithEnPassant bool
 
 func (ep WithEnPassant) Apply(m Move) Move {
-	m.SetEnPassant(true)
+	m.SetEnPassant(bool(ep))
 	return m
 }
 

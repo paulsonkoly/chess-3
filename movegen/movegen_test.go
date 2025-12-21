@@ -605,7 +605,7 @@ func TestEnPassantStates(t *testing.T) {
 		{
 			name:   "En passant possible after pawn move",
 			b:      Must(board.FromFEN("4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1")),
-			move:   move.New(C2, C4, move.WithEnPassant{}),
+			move:   move.New(C2, C4, move.WithEnPassant(true)),
 			bAfter: Must(board.FromFEN("4k3/8/8/8/2Pp4/8/8/4K3 b - c3 0 1")),
 		},
 		{
@@ -629,7 +629,7 @@ func TestEnPassantStates(t *testing.T) {
 		{
 			name:   "En passant possible in pin that's not affected",
 			b:      Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22")),
-			move:   move.New(F2, F4, move.WithEnPassant{}),
+			move:   move.New(F2, F4, move.WithEnPassant(true)),
 			bAfter: Must(board.FromFEN("4r3/pkp3b1/1p5p/2P1npp1/P2rpP2/6PN/1P2P1BP/1RR3K1 b - f3 0 23")),
 		},
 	}

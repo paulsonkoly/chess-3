@@ -213,21 +213,15 @@ func (e *Engine) handlePosition(args []string) {
 func (e *Engine) applyMoves(moves []string) {
 	b := e.Board
 	for _, ms := range moves {
-		m := parseUCIMove(ms)
-
-		if b.SquaresToPiece[m.From()] == Pawn && Abs(m.To() - m.From()) == 16 {
-			m.SetEnPassant(movegen.CanEnPassant(b, m.To()))
-		}
+		m := parseUCIMove(b, ms)
 
 		b.MakeMove(m)
 	}
 }
 
-func parseUCIMove(uciM string) move.Move {
-	var m move.Move
-
-	m.SetFrom(Square((uciM[0] - 'a') + (uciM[1]-'1')*8))
-	m.SetTo(Square((uciM[2] - 'a') + (uciM[3]-'1')*8))
+func parseUCIMove(b *board.Board, uciM string) move.Move {
+	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
+	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
 	var promo Piece
 	if len(uciM) == 5 {
 		switch uciM[4] {
@@ -241,8 +235,8 @@ func parseUCIMove(uciM string) move.Move {
 			promo = Knight
 		}
 	}
-	m.SetPromo(promo)
-	return m
+
+	return move.New(from, to, move.WithPromo(promo), move.WithEnPassant(movegen.CanEnPassant(b, to)))
 }
 
 func (e *Engine) handleEval() {
