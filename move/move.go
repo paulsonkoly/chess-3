@@ -85,7 +85,7 @@ func (s *Move) SetEnPassant(ep bool) {
 	*s = (*s & ^enPassantMsk) | flag
 }
 
-// Matches determines if a Move m matches a SimpleMove s.
+// Matches determines if a Move m matches s.
 func (s Move) Matches(m *Weighted) bool {
 	return s == m.Move
 }

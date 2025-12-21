@@ -345,12 +345,12 @@ func (e *Engine) handleGo(args []string) {
 		opts = append(opts, search.WithDebug(true))
 	}
 
-	var move move.Move
+	var bm move.Move
 
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, move = e.Search.Go(e.Board, opts...)
+		_, bm = e.Search.Go(e.Board, opts...)
 		close(searchFin)
 	}()
 
@@ -379,7 +379,7 @@ func (e *Engine) handleGo(args []string) {
 		close(stop)
 	}
 
-	fmt.Printf("bestmove %s\n", move)
+	fmt.Printf("bestmove %s\n", bm)
 }
 
 func parseInt(value string) int {
