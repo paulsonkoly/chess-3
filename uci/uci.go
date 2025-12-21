@@ -2,6 +2,7 @@ package uci
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -137,7 +138,7 @@ func (e *Engine) handleCommand(command string) {
 
 	case "perft":
 		if len(parts) < 2 {
-			fmt.Fprint(os.Stderr, "depth missing")
+			fmt.Fprintln(os.Stderr, "depth missing")
 			break
 		}
 
@@ -218,15 +219,26 @@ func (e *Engine) handlePosition(args []string) {
 func (e *Engine) applyMoves(moves []string) {
 	b := e.Board
 	for _, ms := range moves {
-		m := parseUCIMove(b, ms)
+		m, err := parseUCIMove(b, ms)
+
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 
 		b.MakeMove(m)
 	}
 }
 
-func parseUCIMove(b *board.Board, uciM string) move.Move {
+func parseUCIMove(b *board.Board, uciM string) (move.Move, error) {
+	if len(uciM) != 4 && len(uciM) != 5 {
+		return 0, errors.New("invalid uci move")
+	}
 	from := Square((uciM[0] - 'a') + (uciM[1]-'1')*8)
 	to := Square((uciM[2] - 'a') + (uciM[3]-'1')*8)
+	if from < A1 || from > H8 || to < A1 || to > H8 {
+		return 0, errors.New("invalid uci move")
+	}
 	var promo Piece
 	if len(uciM) == 5 {
 		switch uciM[4] {
@@ -238,11 +250,13 @@ func parseUCIMove(b *board.Board, uciM string) move.Move {
 			promo = Bishop
 		case 'n':
 			promo = Knight
+		default:
+			return 0, errors.New("invalid uci move")
 		}
 	}
 	changesEnPassant := b.SquaresToPiece[from] == Pawn && Abs(to-from) == 16 && movegen.CanEnPassant(b, to)
 
-	return move.New(from, to, move.WithPromo(promo), move.WithEnPassant(changesEnPassant))
+	return move.New(from, to, move.WithPromo(promo), move.WithEnPassant(changesEnPassant)), nil
 }
 
 func (e *Engine) handleEval() {
