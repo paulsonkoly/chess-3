@@ -217,12 +217,12 @@ func (e *Engine) applyMoves(moves []string) {
 
 		m := movegen.FromSimple(b, sm)
 
-		b.MakeSimpleMove(m.SimpleMove)
+		b.MakeMove(m.Move)
 	}
 }
 
-func parseUCIMove(uciM string) move.SimpleMove {
-	var m move.SimpleMove
+func parseUCIMove(uciM string) move.Move {
+	var m move.Move
 
 	m.SetFrom(Square((uciM[0] - 'a') + (uciM[1]-'1')*8))
 	m.SetTo(Square((uciM[2] - 'a') + (uciM[3]-'1')*8))
@@ -343,7 +343,7 @@ func (e *Engine) handleGo(args []string) {
 		opts = append(opts, search.WithDebug(true))
 	}
 
-	var move move.SimpleMove
+	var move move.Move
 
 	searchFin := make(chan struct{})
 

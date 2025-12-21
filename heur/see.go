@@ -11,7 +11,7 @@ import (
 // SEE determines if the static exchange evaluation is at least the threshold of some move m.
 //
 // Some of this code is derived from the algorithm found in stockfish.
-func SEE(b *board.Board, m move.SimpleMove, threshold Score) bool {
+func SEE(b *board.Board, m move.Move, threshold Score) bool {
 	from := m.From()
 	to := m.To()
 	captureSq := b.CaptureSq(m)

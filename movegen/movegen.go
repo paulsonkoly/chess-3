@@ -538,7 +538,7 @@ func IsCheckmate(b *board.Board) bool {
 
 	// en passant capture
 	if b.EnPassant != 0 {
-		epPawn := (board.BitBoard(1) << b.EnPassant)
+		epPawn := PawnSinglePushMoves(board.BitBoard(1) << b.EnPassant, b.STM.Flip())
 
 		if epPawn == attacker {
 			return false
@@ -720,12 +720,13 @@ func IsStalemate(b *board.Board) bool {
 
 	//  finally deal with en passant
 	if b.EnPassant != 0 {
-		pieces := (((1 << b.EnPassant) << 1) | ((1 << b.EnPassant) >> 1)) & b.Pieces[Pawn] & me
-		remove := board.BitBoard(1) << b.EnPassant
+		enPassantBB := board.BitBoard(1) << b.EnPassant
+		pieces := PawnCaptureMoves(enPassantBB, b.STM.Flip()) & b.Pieces[Pawn] & me
+		remove := PawnSinglePushMoves(enPassantBB, b.STM.Flip())
 
 		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
-			nocc := (occ & ^piece & ^remove) | PawnSinglePushMoves(remove, b.STM)
+			nocc := (occ & ^piece & ^remove) | enPassantBB
 			pinned := false
 
 			if (RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) != 0 {
@@ -781,9 +782,9 @@ func InCheck(b *board.Board, who Color) bool {
 	return IsAttacked(b, who.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[who]&b.Pieces[King])
 }
 
-func FromSimple(b *board.Board, sm move.SimpleMove) move.Move {
+func FromSimple(b *board.Board, sm move.Move) move.Weighted {
 	pType := b.SquaresToPiece[sm.From()]
-	result := move.Move{SimpleMove: sm}
+	result := move.Weighted{Move: sm}
 
 	switch pType {
 

@@ -28,7 +28,7 @@ func perft(ms *move.Store, b *board.Board, depth Depth, split bool) int {
 	movegen.GenMoves(ms, b)
 
 	for _, m := range ms.Frame() {
-		r := b.MakeSimpleMove(m.SimpleMove)
+		r := b.MakeMove(m.Move)
 
 		if !movegen.InCheck(b, me) {
 			v := perft(ms, b, depth-1, false)
@@ -38,7 +38,7 @@ func perft(ms *move.Store, b *board.Board, depth Depth, split bool) int {
 			cnt += v
 		}
 
-		b.UndoSimpleMove(m.SimpleMove, r)
+		b.UndoMove(m.Move, r)
 	}
 
 	return cnt

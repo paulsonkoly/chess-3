@@ -47,7 +47,7 @@ func (p packed) Depth() Depth { return Depth(p >> 2) }
 func (p packed) Type() Type { return Type(p & 3) }
 
 type entry struct {
-	move.SimpleMove       // SimpleMove is the hash move. (2 bytes)
+	move.Move       // SimpleMove is the hash move. (2 bytes)
 	value           Score // (2 bytes).
 	packed                // packed depth and type (1 byte)
 	gen             Gen
@@ -176,7 +176,7 @@ func (t *Table) LookUp(hash board.Hash) (*entry, bool) {
 }
 
 // Insert writes an entry into the transposition table.
-func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.SimpleMove, value Score, typ Type) {
+func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.Move, value Score, typ Type) {
 	bucket := &t.data[t.bucketIx(hash)]
 
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
@@ -197,7 +197,7 @@ func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.SimpleMov
 
 			// if sm is null but we have a move in the entry keep it "stockfish" trick
 			if sm == 0 {
-				sm = target.SimpleMove
+				sm = target.Move
 			}
 
 			replace = i
@@ -220,7 +220,7 @@ func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.SimpleMov
 	}
 
 	bucket.entries[replace] = entry{
-		SimpleMove: sm,
+		Move: sm,
 		value:      value,
 		packed:     packed(d)<<2 | packed(typ),
 		gen:        gen,

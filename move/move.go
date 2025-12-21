@@ -2,33 +2,35 @@ package move
 
 import . "github.com/paulsonkoly/chess-3/types"
 
-// Move represents a chess move.
-type Move struct {
-	SimpleMove
+// Weighted represents a weighted chess move.
+type Weighted struct {
+	Move
 	// Weight is the heuristic weight of the move.
 	Weight Score
 }
 
-// SimpleMove s good enough to identify a move, so it can be stored in
-// heuristic stores. It encodes from and to squares and promotion piece.
-type SimpleMove uint16
+// Move represents a chess move, it contains the to and from squares and the
+// promotion piece type. Additionally it contains an en-passant flag indicating
+// that the move is a double pawn-push, that should assign new en-passant state
+// to the board.
+type Move uint16
 
-// SimpleMoveOption is an optional argument to NewSimple.
-type SimpleMoveOption interface {
-	Apply(sm SimpleMove) SimpleMove
+// MoveOption is an optional argument to NewSimple.
+type MoveOption interface {
+	Apply(sm Move) Move
 }
 
 // WithPromo is a SimpleMoveOption setting the promotion piece type.
 type WithPromo Piece
 
-func (p WithPromo) Apply(sm SimpleMove) SimpleMove {
+func (p WithPromo) Apply(sm Move) Move {
 	sm.SetPromo(Piece(p))
 	return sm
 }
 
-// NewSimple creates a new simple move with to and from squares and additional options.
-func NewSimple(from, to Square, opts ...SimpleMoveOption) SimpleMove {
-	sm := (SimpleMove(to) << toShift & toMsk) | (SimpleMove(from) << fromShift & fromMsk)
+// New creates a new simple move with to and from squares and additional options.
+func New(from, to Square, opts ...MoveOption) Move {
+	sm := (Move(to) << toShift & toMsk) | (Move(from) << fromShift & fromMsk)
 	for _, opt := range opts {
 		sm = opt.Apply(sm)
 	}
@@ -36,39 +38,39 @@ func NewSimple(from, to Square, opts ...SimpleMoveOption) SimpleMove {
 }
 
 const (
-	toMsk        = SimpleMove(1<<6 - 1)
+	toMsk        = Move(1<<6 - 1)
 	toShift      = 0
-	fromMsk      = SimpleMove((1<<6 - 1) << 6)
+	fromMsk      = Move((1<<6 - 1) << 6)
 	fromShift    = 6
-	promoMsk     = SimpleMove((1<<3 - 1) << 12)
+	promoMsk     = Move((1<<3 - 1) << 12)
 	promoShift   = 12
-	enPassantMsk = SimpleMove((1<<1 - 1) << 15)
+	enPassantMsk = Move((1<<1 - 1) << 15)
 )
 
 // To is the target square of the move.
-func (s SimpleMove) To() Square { return Square((s & toMsk) >> toShift) }
+func (s Move) To() Square { return Square((s & toMsk) >> toShift) }
 
 // SetTo sets the target square of the move.
-func (s *SimpleMove) SetTo(sq Square) { *s = (*s & ^toMsk) | (SimpleMove(sq) << toShift & toMsk) }
+func (s *Move) SetTo(sq Square) { *s = (*s & ^toMsk) | (Move(sq) << toShift & toMsk) }
 
 // From is the source square of the move.
-func (s SimpleMove) From() Square { return Square((s & fromMsk) >> fromShift) }
+func (s Move) From() Square { return Square((s & fromMsk) >> fromShift) }
 
 // SetFrom sets the source square of the move.
-func (s *SimpleMove) SetFrom(sq Square) { *s = (*s & ^fromMsk) | SimpleMove(sq)<<fromShift&fromMsk }
+func (s *Move) SetFrom(sq Square) { *s = (*s & ^fromMsk) | Move(sq)<<fromShift&fromMsk }
 
 // Promo is the promotion piece of the move.
-func (s SimpleMove) Promo() Piece { return Piece((s & promoMsk) >> promoShift) }
+func (s Move) Promo() Piece { return Piece((s & promoMsk) >> promoShift) }
 
 // SetPromo sets the promotion piece of the move.
-func (s *SimpleMove) SetPromo(p Piece) { *s = (*s & ^promoMsk) | SimpleMove(p)<<promoShift&promoMsk }
+func (s *Move) SetPromo(p Piece) { *s = (*s & ^promoMsk) | Move(p)<<promoShift&promoMsk }
 
 // EnPassant indicates that this is a double pawn push changing the en passant state.
-func (s SimpleMove) EnPassant() bool { return (s & enPassantMsk) != 0 }
+func (s Move) EnPassant() bool { return (s & enPassantMsk) != 0 }
 
 // SetEnPassant sets the en passant flag.
-func (s *SimpleMove) SetEnPassant(ep bool) {
-	flag := SimpleMove(0)
+func (s *Move) SetEnPassant(ep bool) {
+	flag := Move(0)
 	if ep {
 		flag = enPassantMsk
 	}
@@ -76,12 +78,12 @@ func (s *SimpleMove) SetEnPassant(ep bool) {
 }
 
 // Matches determines if a Move m matches a SimpleMove s.
-func (s SimpleMove) Matches(m *Move) bool {
-	return s == m.SimpleMove
+func (s Move) Matches(m *Weighted) bool {
+	return s == m.Move
 }
 
 // String representation of s, following uci move notation.
-func (s SimpleMove) String() string {
+func (s Move) String() string {
 	if s == 0 {
 		return "0000"
 	}

@@ -38,12 +38,12 @@ func (b *Board) ResetHash() {
 }
 
 // IsEnPassant determines if a move is an en-passant pawn capture according to the current board en-passant state.
-func (b *Board) IsEnPassant(sm move.SimpleMove) bool {
+func (b *Board) IsEnPassant(sm move.Move) bool {
 	return b.EnPassant != 0 && b.EnPassant == sm.To() && b.SquaresToPiece[sm.From()] == Pawn
 }
 
 // CaptureSq is mostly just the To() square of m except for an en-passanty capture it's the square of the captured pawn.
-func (b *Board) CaptureSq(m move.SimpleMove) Square {
+func (b *Board) CaptureSq(m move.Move) Square {
 	if b.IsEnPassant(m) {
 		return (m.To() & FileMask) | (m.From() & RankMask)
 	}
@@ -84,7 +84,9 @@ func (r *Reverse) setCapture(p Piece) {
 	*r = (*r & ^captureMask) | Reverse(p)<<captureShift
 }
 
-func (b *Board) MakeSimpleMove(m move.SimpleMove) Reverse {
+// MakeMove plays out a move m on the board b. It returns a Reverse token that
+// can be used in UndoMove().
+func (b *Board) MakeMove(m move.Move) Reverse {
 	var r Reverse
 
 	hash := b.Hash()
@@ -168,7 +170,9 @@ func (b *Board) MakeSimpleMove(m move.SimpleMove) Reverse {
 	return r
 }
 
-func (b *Board) UndoSimpleMove(m move.SimpleMove, r Reverse) {
+// UndoMove reverses a move m that's already played on the board b, using the
+// reversing token r.
+func (b *Board) UndoMove(m move.Move, r Reverse) {
 	b.hashes = b.hashes[:len(b.hashes)-1]
 
 	b.STM = b.STM.Flip()
@@ -212,7 +216,7 @@ func (b *Board) UndoSimpleMove(m move.SimpleMove, r Reverse) {
 	// b.consistencyCheck()
 }
 
-func (b *Board) NewCastles(m move.SimpleMove) Castles {
+func (b *Board) NewCastles(m move.Move) Castles {
 	var affected Castles
 	piece := b.SquaresToPiece[m.From()]
 
