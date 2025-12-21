@@ -147,6 +147,10 @@ func (e *Engine) handleCommand(command string) {
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
+		if d < 0 || d > 30 {
+			fmt.Fprintln(os.Stderr, "unsupported depth")
+			break
+		}
 
 		fmt.Println(debug.Perft(e.Board, Depth(d), true))
 
