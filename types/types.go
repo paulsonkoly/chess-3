@@ -13,6 +13,9 @@ type Depth int8
 
 const MaxPlies = 64
 
+// MaxMoves is a slight over-estimate of the maximal number of pseudo-legal moves in any position.
+const MaxMoves = 256
+
 type Score int16
 
 const (
