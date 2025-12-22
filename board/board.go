@@ -102,7 +102,7 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 	castlingChange := b.Castles ^ b.NewCastles(m)
 
 	r.setFiftyCnt(b.FiftyCnt)
-	if piece == Pawn || castlingChange != 0 || capture != NoPiece {
+	if piece == Pawn || capture != NoPiece {
 		b.FiftyCnt = 0
 	} else {
 		b.FiftyCnt++
