@@ -2,13 +2,6 @@ package move
 
 import . "github.com/paulsonkoly/chess-3/types"
 
-// Weighted represents a weighted chess move.
-type Weighted struct {
-	Move
-	// Weight is the heuristic weight of the move.
-	Weight Score
-}
-
 // Move represents a chess move, it contains the to and from squares and the
 // promotion piece type. Additionally it contains an en-passant flag indicating
 // that the move is a double pawn-push, that should assign new en-passant state
@@ -83,11 +76,6 @@ func (s *Move) SetEnPassant(ep bool) {
 		flag = enPassantMsk
 	}
 	*s = (*s & ^enPassantMsk) | flag
-}
-
-// Matches determines if a Move m matches s.
-func (s Move) Matches(m *Weighted) bool {
-	return s == m.Move
 }
 
 // String representation of s, following uci move notation.
