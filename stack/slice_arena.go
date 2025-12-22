@@ -13,19 +13,19 @@ import . "github.com/paulsonkoly/chess-3/types"
 // we would either have to accept escaping to the heap or accept waste with
 // overallocation per recursive call.
 //
-// This package addresses this issue by providing a storage type, that has a
-// single (heap allocated) backing array that holds all allocations from all
-// recursive calls, packed without gaps.
+// The SliceArena type addresses this issue by providing a storage type, that
+// has a single (heap allocated) backing array that holds all allocations from
+// all recursive calls, packed without gaps.
 //
 // # Example
 //
 //  // a recursive function
-//  func f(s *Store[int], d Depth) {
+//  func f(s *SliceArena[int], d Depth) {
 //  	if d == 0 {
 //  		return // exit from recursion
 //  	}
 //
-//    // frame points to an empty slice dedicated for this stack frame backed by store
+//    // frame points to an empty slice dedicated for this stack frame backed by s
 //  	frame := s.Push() 
 //  	defer s.Pop()
 //  	*frame = append(*frame, int(d+1)) // adds numbers to the current frame
@@ -36,7 +36,7 @@ import . "github.com/paulsonkoly/chess-3/types"
 //  }
 //  
 //  // allocate store
-//  s = New[int](100, 10)
+//  s = NewSliceArena[int]()
 //  f(5)
 //
 // This is the storage layout after 2 recursive calls of f()
@@ -54,6 +54,7 @@ import . "github.com/paulsonkoly/chess-3/types"
 // The following rules should be respected:
 //
 //  - The number of consecutive Push calls (recursion level) should not exceed MaxPlies.
+//  - SliceArena relies on strictly nested Push/Pop usage. Frames must be popped in reverse order of Push.
 //  - The number of appends to a single frame shouldn't exceed MaxMoves.
 //
 // These restrictions don't impose any practical limitation for a chess engine
@@ -62,13 +63,13 @@ import . "github.com/paulsonkoly/chess-3/types"
 // Following these rules 
 //   - avoids allocations altogether in Push / Pop
 //   - avoids corruption on frame overrun
-//   - avoids a panic when the returned from would have less capacity than MaxMoves.
+//   - avoids a panic when the returned frame would have less capacity than MaxMoves.
 type SliceArena[T any] struct {
 	data   []T
 	frames [][]T
 }
 
-// SliceArenaSize is the store backing array size for slice arenas.
+// SliceArenaSize is the backing array size for slice arenas.
 const SliceArenaSize = 2048
 
 // NewSliceArena creates a new SliceArena.
@@ -79,7 +80,7 @@ func NewSliceArena[T any]() *SliceArena[T] {
 // Push allocates a new frame from s and returns an empty slice with at least
 // MaxMoves capacity. The returned slice can accept appends up to MaxMoves
 // items, however it should not be re-sliced. It should not be re-assigned
-// apart from appends.
+// apart from appends. It should not be used after a corresponding Pop call.
 func (s *SliceArena[T]) Push() *[]T {
 	newFrame := s.data
 	if len(s.frames) > 0 {
@@ -93,7 +94,7 @@ func (s *SliceArena[T]) Push() *[]T {
 	return &s.frames[len(s.frames)-1]
 }
 
-// Pop pops the last frame from the store.
+// Pop pops the last frame from s.
 func (s *SliceArena[T]) Pop() {
 	if len(s.frames) <= 0 {
 		panic("underpop")
