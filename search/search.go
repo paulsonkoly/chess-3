@@ -279,7 +279,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[m.To()] // todo en-passant
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 		r := b.MakeMove(m.Move)
 
@@ -362,8 +362,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 					}
 
 					moved := b.SquaresToPiece[m.From()]
-					// TODO en-passant
-					captured := b.SquaresToPiece[m.To()]
+					captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 					if captured == NoPiece && m.Promo() == NoPiece {
 						s.hist.Add(b.STM, m.From(), m.To(), bonus)
@@ -563,7 +562,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 			break
 		}
 
-		captured := b.SquaresToPiece[m.To()] // todo en-passant
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 		r := b.MakeMove(m.Move)
 
@@ -608,7 +607,7 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
 
 	for ix, m := range moves {
 		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[m.To()] // TODO : en-passant
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 		switch {
 		case transPE != nil && transPE.Matches(&m):
