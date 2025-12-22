@@ -78,3 +78,14 @@ func TestNoUnexpectedReallocation(t *testing.T) {
 
 	assert.Equal(t, base, &(*f1)[0])
 }
+
+func TestClear(t * testing.T) {
+	s := NewSliceArena[int]()
+
+	f1 := s.Push()
+	*f1 = append(*f1, 1, 2, 3, 4, 5)
+
+	s.Clear()
+
+	assert.Empty(t, s.frames)
+}

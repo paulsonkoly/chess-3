@@ -7,14 +7,15 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/stack"
 )
 
 func Perft(b *board.Board, depth Depth, split bool) int {
-	ms := move.NewStore()
+	ms := stack.NewSliceArena[move.Move]()
 	return perft(ms, b, depth, split)
 }
 
-func perft(ms *move.Store, b *board.Board, depth Depth, split bool) int {
+func perft(ms *stack.SliceArena[move.Move], b *board.Board, depth Depth, split bool) int {
 	if depth == 0 {
 		return 1
 	}
@@ -22,13 +23,13 @@ func perft(ms *move.Store, b *board.Board, depth Depth, split bool) int {
 	cnt := 0
 	me := b.STM
 
-	ms.Push()
+	moves := ms.Push()
 	defer ms.Pop()
 
-	movegen.GenMoves(ms, b)
+	movegen.GenMoves(moves, b)
 
-	for _, m := range ms.Frame() {
-		r := b.MakeMove(m.Move)
+	for _, m := range *moves {
+		r := b.MakeMove(m)
 
 		if !b.InCheck(me) {
 			v := perft(ms, b, depth-1, false)
@@ -38,7 +39,7 @@ func perft(ms *move.Store, b *board.Board, depth Depth, split bool) int {
 			cnt += v
 		}
 
-		b.UndoMove(m.Move, r)
+		b.UndoMove(m, r)
 	}
 
 	return cnt

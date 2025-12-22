@@ -101,3 +101,8 @@ func (s *SliceArena[T]) Pop() {
 	}
 	s.frames = s.frames[:len(s.frames)-1]
 }
+
+// Clear removes any dangling allocations from s.
+func (s * SliceArena[T]) Clear() {
+	s.frames = s.frames[:0]
+}

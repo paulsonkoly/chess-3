@@ -12,7 +12,7 @@ type generator struct {
 	self, them, occ BitBoard
 }
 
-func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) kingMoves(ms *[]move.Move, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	// king moves
 	if piece := g.self & b.Pieces[King] & fromMsk; piece != 0 {
 		from := piece.LowestSet()
@@ -22,14 +22,15 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
+			var m move.Move
 			m.SetFrom(from)
 			m.SetTo(to)
+			*ms = append(*ms, m)
 		}
 	}
 }
 
-func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) knightMoves(ms *[]move.Move, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	// knight moves
 	knights := g.self & b.Pieces[Knight] & fromMsk
 
@@ -42,14 +43,15 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
+			var m move.Move
 			m.SetFrom(from)
 			m.SetTo(to)
+			*ms = append(*ms, m)
 		}
 	}
 }
 
-func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) bishopMoves(ms *[]move.Move, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	// bishop moves
 	bishops := g.self & b.Pieces[Bishop] & fromMsk
 	for bishop := BitBoard(0); bishops != 0; bishops ^= bishop {
@@ -61,14 +63,15 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
+			var m move.Move
 			m.SetFrom(from)
 			m.SetTo(to)
+			*ms = append(*ms, m)
 		}
 	}
 }
 
-func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) rookMoves(ms *[]move.Move, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	rooks := g.self & b.Pieces[Rook] & fromMsk
 
 	for rook := BitBoard(0); rooks != 0; rooks ^= rook {
@@ -80,14 +83,15 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
+			var m move.Move
 			m.SetFrom(from)
 			m.SetTo(to)
+			*ms = append(*ms, m)
 		}
 	}
 }
 
-func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) queenMoves(ms *[]move.Move, b *board.Board, fromMsk, toMsk board.BitBoard) {
 	queens := g.self & b.Pieces[Queen] & fromMsk
 	for queen := BitBoard(0); queens != 0; queens ^= queen {
 		queen = queens & -queens
@@ -98,16 +102,17 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bit
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
+			var m move.Move
 			m.SetFrom(from)
 			m.SetTo(to)
+			*ms = append(*ms, m)
 		}
 	}
 }
 
 var shifts = [2]Square{8, -8}
 
-func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g generator) singlePushMoves(ms *[]move.Move, b *board.Board, fromMsk board.BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	shift := shifts[b.STM]
@@ -118,13 +123,14 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
-		m := ms.Alloc()
+		var m move.Move
 		m.SetFrom(from)
 		m.SetTo(from + shift)
+		*ms = append(*ms, m)
 	}
 }
 
-func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g generator) promoPushMoves(ms *[]move.Move, b *board.Board, fromMsk board.BitBoard) {
 	occ1 := ((g.occ >> 8) << (b.STM << 4)) | ((g.occ << 8) >> (b.STM.Flip() << 4))
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	shift := shifts[b.STM]
@@ -135,15 +141,16 @@ func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoa
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
-			m := ms.Alloc()
+			var m move.Move
 			m.SetFrom(from)
 			m.SetTo(from + shift)
 			m.SetPromo(promo)
+			*ms = append(*ms, m)
 		}
 	}
 }
 
-func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g generator) doublePushMoves(ms *[]move.Move, b *board.Board, fromMsk board.BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	occ2 := (g.occ >> 16) << (b.STM << 5)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
@@ -155,13 +162,14 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
-		m := ms.Alloc()
+		var m move.Move
 		m.SetFrom(from)
 		m.SetTo(from + 2*shift)
+		*ms = append(*ms, m)
 	}
 }
 
-func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
+func (g generator) pawnCaptureMoves(ms *[]move.Move, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
@@ -187,14 +195,15 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 
-			m := ms.Alloc()
+			var m move.Move
 			m.SetFrom(from)
 			m.SetTo(to)
+			*ms = append(*ms, m)
 		}
 	}
 }
 
-func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
+func (g generator) pawnCapturePromoMoves(ms *[]move.Move, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
@@ -218,16 +227,17 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 			to := tSqr.LowestSet()
 
 			for promo := Queen; promo > Pawn; promo-- {
-				m := ms.Alloc()
+				var m move.Move
 				m.SetFrom(from)
 				m.SetTo(to)
 				m.SetPromo(promo)
+				*ms = append(*ms, m)
 			}
 		}
 	}
 }
 
-func (g generator) enPassant(ms *move.Store, b *board.Board) {
+func (g generator) enPassant(ms *[]move.Move, b *board.Board) {
 	if b.EnPassant == 0 {
 		return
 	}
@@ -238,13 +248,14 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
-		m := ms.Alloc()
+		var m move.Move
 		m.SetFrom(from)
 		m.SetTo(b.EnPassant)
+		*ms = append(*ms, m)
 	}
 }
 
-func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
+func (g generator) shortCastle(ms *[]move.Move, b *board.Board, rChkMsk board.BitBoard) {
 	// castling short
 	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&attacks.CastleMask[b.STM][Short] == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
@@ -253,30 +264,32 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard)
 		if attacks.CastleMask[b.STM][Short]&rChkMsk != 0 {
 			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Short]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
-				m := ms.Alloc()
+				var m move.Move
 				m.SetFrom(from)
 				m.SetTo(from + 2)
+				*ms = append(*ms, m)
 			}
 		}
 	}
 }
 
-func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
+func (g generator) longCastle(ms *[]move.Move, b *board.Board, rChkMsk board.BitBoard) {
 	// castle long
 	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(attacks.CastleMask[b.STM][Long]>>1) == 0 {
 		if attacks.CastleMask[b.STM][Long]&rChkMsk != 0 {
 			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Long]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
-				m := ms.Alloc()
+				var m move.Move
 				m.SetFrom(from)
 				m.SetTo(from - 2)
+				*ms = append(*ms, m)
 			}
 		}
 	}
 }
 
 // GenMoves generates all pseudo-legal moves in the position.
-func GenMoves(ms *move.Store, b *board.Board) {
+func GenMoves(ms *[]move.Move, b *board.Board) {
 
 	gen := generator{
 		self: b.Colors[b.STM],
@@ -304,7 +317,7 @@ func GenMoves(ms *move.Store, b *board.Board) {
 // GenForcing generates all forcing pseudo-legal moves in the position. We do
 // not guarantee that a generated move is forcing, just that all forcing moves
 // are generated. But we make our best efforts to avoid quiet moves.
-func GenForcing(ms *move.Store, b *board.Board) {
+func GenForcing(ms *[]move.Move, b *board.Board) {
 
 	self := b.Colors[b.STM]
 	them := b.Colors[b.STM.Flip()]
@@ -326,5 +339,4 @@ func GenForcing(ms *move.Store, b *board.Board) {
 	gen.pawnCaptureMoves(ms, b)
 	gen.pawnCapturePromoMoves(ms, b)
 	gen.enPassant(ms, b)
-
 }
