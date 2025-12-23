@@ -42,7 +42,7 @@ func (b *Board) IsEnPassant(sm move.Move) bool {
 	return b.EnPassant != 0 && b.EnPassant == sm.To() && b.SquaresToPiece[sm.From()] == Pawn
 }
 
-// CaptureSq is mostly just the To() square of m except for an en-passanty capture it's the square of the captured pawn.
+// CaptureSq is mostly just the To() square of m except for an en-passant capture it's the square of the captured pawn.
 func (b *Board) CaptureSq(m move.Move) Square {
 	if b.IsEnPassant(m) {
 		return (m.To() & FileMask) | (m.From() & RankMask)
@@ -92,11 +92,7 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 	hash := b.Hash()
 
 	piece := b.SquaresToPiece[m.From()]
-	captureSq := m.To()
-
-	if b.IsEnPassant(m) {
-		captureSq = (m.To() & FileMask) | (m.From() & RankMask)
-	}
+	captureSq := b.CaptureSq(m)
 	capture := b.SquaresToPiece[captureSq]
 
 	castlingChange := b.Castles ^ b.NewCastles(m)
