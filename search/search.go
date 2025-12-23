@@ -608,13 +608,13 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
 
 	for ix, m := range moves {
 		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[m.To()] // TODO : en-passant
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 		switch {
 		case transPE != nil && transPE.Matches(&m):
 			moves[ix].Weight = heur.HashMove
 
-		case captured != NoPiece || m.Promo() != NoPiece || b.IsEnPassant(m.Move):
+		case captured != NoPiece || m.Promo() != NoPiece:
 			moves[ix].Weight = heur.MVVLVA(b, m.Move, heur.SEE(b, m.Move, 0))
 
 		default:
