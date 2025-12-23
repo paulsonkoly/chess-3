@@ -21,7 +21,8 @@ func TestPushPopBasic(t *testing.T) {
 
 	s.Pop()
 
-	assert.Len(t, s.frames, 1)
+	// Only the first frame is active
+	assert.Equal(t, 1, s.frameIndex)
 	assert.Equal(t, []int{1, 2, 3}, s.frames[0])
 }
 
@@ -61,7 +62,8 @@ func TestRecursiveUsage(t *testing.T) {
 
 	rec(10)
 
-	assert.Empty(t, s.frames)
+	// After recursion, frameIndex should be 0
+	assert.Equal(t, 0, s.frameIndex)
 }
 
 func TestNoUnexpectedReallocation(t *testing.T) {
@@ -79,7 +81,7 @@ func TestNoUnexpectedReallocation(t *testing.T) {
 	assert.Equal(t, base, &(*f1)[0])
 }
 
-func TestClear(t * testing.T) {
+func TestClear(t *testing.T) {
 	s := NewSliceArena[int]()
 
 	f1 := s.Push()
@@ -87,5 +89,5 @@ func TestClear(t * testing.T) {
 
 	s.Clear()
 
-	assert.Empty(t, s.frames)
+	assert.Equal(t, 0, s.frameIndex)
 }
