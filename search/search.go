@@ -565,7 +565,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 			break
 		}
 
-		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
+		captured := b.SquaresToPiece[b.CaptureSq(m)]
 
 		r := b.MakeMove(m)
 
