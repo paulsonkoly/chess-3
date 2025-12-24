@@ -362,8 +362,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 					}
 
 					moved := b.SquaresToPiece[m.From()]
-					// TODO en-passant
-					captured := b.SquaresToPiece[m.To()]
+					captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 					if captured == NoPiece && m.Promo() == NoPiece {
 						s.hist.Add(b.STM, m.From(), m.To(), bonus)
