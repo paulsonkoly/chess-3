@@ -279,7 +279,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[m.To()] // todo en-passant
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 		r := b.MakeMove(m.Move)
 
