@@ -39,10 +39,9 @@ func main() {
 	// openbench compatibility bench
 	if slices.Contains(os.Args, "bench") {
 		runOBBench()
-		return
+	} else {
+		uci.NewEngine().Run()
 	}
-
-	uci.NewEngine().Run()
 
 	if *memProf != "" {
 		f, err := os.Create(*memProf)
