@@ -292,7 +292,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		hasLegal = true
 		moveCnt++
 
-		s.hstack.push(moved, m.To(), staticEval)
+		s.hstack.Push(heur.StackMove{Piece: moved, To: m.To(), Score: staticEval})
 
 		var value Score
 
@@ -336,7 +336,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	Fin:
 
 		b.UndoMove(m, r)
-		s.hstack.pop()
+		s.hstack.Pop()
 
 		if value > maxim {
 			maxim = value
@@ -354,37 +354,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
 
-				hSize := s.hstack.size()
-				bonus := -(Score(d)*20 - 15)
-
-				for i, m := range *moves {
-					if i == ix {
-						bonus = -bonus
-					}
-
-					moved := b.SquaresToPiece[m.From()]
-					// TODO en-passant
-					captured := b.SquaresToPiece[m.To()]
-
-					if captured == NoPiece && m.Promo() == NoPiece {
-						s.hist.Add(b.STM, m.From(), m.To(), bonus)
-
-						if hSize >= 1 {
-							hist := s.hstack.top(0)
-							s.cont[0].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
-						}
-
-						if hSize >= 2 {
-							hist := s.hstack.top(1)
-							s.cont[1].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
-						}
-					}
-
-					if i == ix {
-						break
-					}
-				}
-
+				s.ranker.FailHigh(d, b, (*moves)[:ix+1], s.hstack.Top(2))
 				return value
 			}
 
@@ -557,7 +527,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	weights := s.weights.Push()
 	defer s.weights.Pop()
 
-	rankMovesQ(b, *moves, weights)
+	s.rankMovesQ(b, *moves, weights)
 
 	for m, ix := getNextMove(*moves, *weights, -1); m != 0; m, ix = getNextMove(*moves, *weights, ix) {
 
@@ -614,35 +584,15 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Move, weights *[]Score
 		case transPE != nil && transPE.Move == m:
 			*weights = append(*weights, heur.HashMove)
 
-		case m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m)] != NoPiece:
-			*weights = append(*weights, heur.MVVLVA(b, m, heur.SEE(b, m, 0)))
-
 		default:
-			score := s.hist.LookUp(b.STM, m.From(), m.To())
-			moved := b.SquaresToPiece[m.From()]
-
-			if s.hstack.size() >= 1 {
-				hist := s.hstack.top(0)
-				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
-			}
-
-			if s.hstack.size() >= 2 {
-				hist := s.hstack.top(1)
-				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
-			}
-
-			*weights = append(*weights, score)
+			*weights = append(*weights, s.ranker.Rank(m, b, s.hstack.Top(2), heur.All))
 		}
 	}
 }
 
-func rankMovesQ(b *board.Board, moves []move.Move, weights *[]Score) {
+func (s *Search) rankMovesQ(b *board.Board, moves []move.Move, weights *[]Score) {
 	for _, m := range moves {
-		val := -Inf
-		if heur.SEE(b, m, 0) {
-			val = heur.MVVLVA(b, m, true)
-		}
-		*weights = append(*weights, val)
+		*weights = append(*weights, s.ranker.Rank(m, b, nil, heur.Noisy))
 	}
 }
 

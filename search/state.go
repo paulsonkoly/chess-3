@@ -13,8 +13,7 @@ import (
 // searches.
 type Search struct {
 	tt      *transp.Table
-	hist    *heur.History
-	cont    [2]*heur.Continuation
+	ranker  heur.MoveRanker
 	moves   *stack.SliceArena[move.Move]
 	weights *stack.SliceArena[Score]
 	hstack  *historyStack
@@ -29,9 +28,8 @@ func New(size int) *Search {
 		tt:      transp.New(size),
 		moves:   stack.NewSliceArena[move.Move](),
 		weights: stack.NewSliceArena[Score](),
-		hist:    heur.NewHistory(),
-		cont:    [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
-		hstack:  newHistStack(),
+		ranker:  heur.NewMoveRanker(),
+		hstack:  newHistoryStack(),
 		pv:      newPV(),
 	}
 }
@@ -40,7 +38,7 @@ func New(size int) *Search {
 func (s *Search) refresh() {
 	s.moves.Clear()
 	s.weights.Clear()
-	s.hstack.reset()
+	s.hstack.Reset()
 	s.aborted = false
 }
 
@@ -48,9 +46,7 @@ func (s *Search) refresh() {
 func (s *Search) Clear() {
 	s.gen = 0
 	s.tt.Clear()
-	s.hist.Clear()
-	s.cont[0].Clear()
-	s.cont[1].Clear()
+	s.ranker.Clear()
 }
 
 type options struct {
