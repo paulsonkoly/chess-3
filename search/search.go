@@ -280,7 +280,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	for m, ix = getNextMove(*moves, *weights, -1); m != 0; m, ix = getNextMove(*moves, *weights, ix) {
 		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
+		captured := b.SquaresToPiece[b.CaptureSq(m)]
 
 		r := b.MakeMove(m)
 
