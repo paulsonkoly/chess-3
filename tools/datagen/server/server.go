@@ -16,11 +16,11 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/datagen/shim"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/transp"
-	chess "github.com/paulsonkoly/chess-3/types"
 )
 
 const (

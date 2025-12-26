@@ -7,7 +7,7 @@ import (
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 const epd = "standard.epd"

@@ -1,6 +1,6 @@
 package move
 
-import . "github.com/paulsonkoly/chess-3/types"
+import . "github.com/paulsonkoly/chess-3/chess"
 
 // Weighted represents a weighted chess move.
 type Weighted struct {

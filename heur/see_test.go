@@ -8,7 +8,7 @@ import (
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 func TestSEE(t *testing.T) {

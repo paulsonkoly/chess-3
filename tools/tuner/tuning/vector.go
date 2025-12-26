@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
+	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval"
-	. "github.com/paulsonkoly/chess-3/types"
 )
 
 // Vector represents the set of float64 values in a multi dimensional vector.
@@ -214,7 +214,7 @@ func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	b.WriteString(fmt.Sprintf("// %v\n\n", time.Now()))
 
 	b.WriteString("import (\n")
-	b.WriteString("	. \"github.com/paulsonkoly/chess-3/types\"\n")
+	b.WriteString("	. \"github.com/paulsonkoly/chess-3/chess\"\n")
 	b.WriteString(")\n\n")
 
 	b.WriteString("var Coefficients = CoeffSet[Score]{\n")

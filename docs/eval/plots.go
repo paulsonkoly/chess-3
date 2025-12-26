@@ -10,7 +10,7 @@ import (
 	"text/template"
 
 	"github.com/paulsonkoly/chess-3/eval"
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 const chessboardTemplate = `# Set up the heatmap

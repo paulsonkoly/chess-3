@@ -5,9 +5,9 @@ import (
 	"net"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
 	pb "github.com/paulsonkoly/chess-3/tools/datagen/grpc/datagen"
-	"github.com/paulsonkoly/chess-3/types"
 	"google.golang.org/grpc"
 )
 
@@ -72,7 +72,7 @@ func (d datagenServer) RegisterGame(_ context.Context, gGame *pb.Game) (*pb.Game
 
 	for _, position := range gGame.Positions {
 		positions = append(positions,
-			Position{FEN: position.Fen, BM: move.Move(position.BestMove), Score: types.Score(position.Score)})
+			Position{FEN: position.Fen, BM: move.Move(position.BestMove), Score: chess.Score(position.Score)})
 	}
 
 	game := Game{

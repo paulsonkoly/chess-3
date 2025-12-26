@@ -5,7 +5,7 @@ import (
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // SEE determines if the static exchange evaluation is at least the threshold of some move m.
@@ -15,9 +15,9 @@ func SEE(b *board.Board, m move.Move, threshold Score) bool {
 	from := m.From()
 	to := m.To()
 	captureSq := b.CaptureSq(m)
-	fromBB := board.BitBoard(1) << from
-	toBB := board.BitBoard(1) << to
-	captureBB := board.BitBoard(1) << captureSq
+	fromBB := BitBoard(1) << from
+	toBB := BitBoard(1) << to
+	captureBB := BitBoard(1) << captureSq
 
 	occ := (b.Colors[White] | b.Colors[Black]) ^ fromBB
 

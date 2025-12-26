@@ -8,27 +8,27 @@ import (
 	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 func TestPawnSinglePushMoves(t *testing.T) {
 	tests := []struct {
 		name  string
-		from  board.BitBoard
+		from  BitBoard
 		color Color
-		to    board.BitBoard
+		to    BitBoard
 	}{
 		{
 			name:  "pawn push white",
-			from:  board.BitBoardFromSquares(B1, E5, D7, C8, G8),
+			from:  BitBoardFromSquares(B1, E5, D7, C8, G8),
 			color: White,
-			to:    board.BitBoardFromSquares(B2, E6, D8),
+			to:    BitBoardFromSquares(B2, E6, D8),
 		},
 		{
 			name:  "pawn push black",
-			from:  board.BitBoardFromSquares(B1, E5, D7, C8, G8),
+			from:  BitBoardFromSquares(B1, E5, D7, C8, G8),
 			color: Black,
-			to:    board.BitBoardFromSquares(E4, D6, C7, G7),
+			to:    BitBoardFromSquares(E4, D6, C7, G7),
 		},
 	}
 
@@ -43,21 +43,21 @@ func TestPawnSinglePushMoves(t *testing.T) {
 func TestPawnCaptureMoves(t *testing.T) {
 	tests := []struct {
 		name  string
-		from  board.BitBoard
+		from  BitBoard
 		color Color
-		to    board.BitBoard
+		to    BitBoard
 	}{
 		{
 			name:  "pawn capture white",
-			from:  board.BitBoardFromSquares(B1, E5, D7, G8),
+			from:  BitBoardFromSquares(B1, E5, D7, G8),
 			color: White,
-			to:    board.BitBoardFromSquares(A2, C2, D6, F6, C8, E8),
+			to:    BitBoardFromSquares(A2, C2, D6, F6, C8, E8),
 		},
 		{
 			name:  "pawn capture black",
-			from:  board.BitBoardFromSquares(B1, E5, D7, G8),
+			from:  BitBoardFromSquares(B1, E5, D7, G8),
 			color: Black,
-			to:    board.BitBoardFromSquares(D4, F4, C6, E6, F7, H7),
+			to:    BitBoardFromSquares(D4, F4, C6, E6, F7, H7),
 		},
 	}
 
@@ -659,77 +659,77 @@ func TestIsAttacked(t *testing.T) {
 		name   string
 		b      *board.Board
 		by     Color
-		target board.BitBoard
+		target BitBoard
 		want   bool
 	}{
 		{
 			name:   "king not in check",
 			b:      Must(board.FromFEN("8/1k6/8/8/8/8/8/RNBQKBNR w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(B7),
+			target: BitBoardFromSquares(B7),
 			want:   false,
 		},
 		{
 			name:   "king in check by knight",
 			b:      Must(board.FromFEN("8/8/8/8/8/2k5/8/RNBQKBNR w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(C3),
+			target: BitBoardFromSquares(C3),
 			want:   true,
 		},
 		{
 			name:   "king in check by bishop",
 			b:      Must(board.FromFEN("8/8/8/8/8/4k3/8/RNBQKBNR w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(E3),
+			target: BitBoardFromSquares(E3),
 			want:   true,
 		},
 		{
 			name:   "bishop does not attack through a blocking piece",
 			b:      Must(board.FromFEN("8/8/8/8/8/4k3/3N4/R1BQKBNR w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(E3),
+			target: BitBoardFromSquares(E3),
 			want:   false,
 		},
 		{
 			name:   "king in check by rook",
 			b:      Must(board.FromFEN("k7/8/8/8/8/8/8/RNBQKBNR w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(A8),
+			target: BitBoardFromSquares(A8),
 			want:   true,
 		},
 		{
 			name:   "rook does not attack through a blocking piece",
 			b:      Must(board.FromFEN("k7/8/8/8/8/N7/8/R1BQKBNR w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(A8),
+			target: BitBoardFromSquares(A8),
 			want:   false,
 		},
 		{
 			name:   "king in check by queen",
 			b:      Must(board.FromFEN("8/8/8/8/3k4/8/8/RNBQKBNR w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(D4),
+			target: BitBoardFromSquares(D4),
 			want:   true,
 		},
 		{
 			name:   "queen does not attack through a blocking piece",
 			b:      Must(board.FromFEN("8/8/8/8/6k1/8/4N3/RNBQKB1R w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(G4),
+			target: BitBoardFromSquares(G4),
 			want:   false,
 		},
 		{
 			name:   "king in check by pawn",
 			b:      Must(board.FromFEN("8/8/8/8/5k2/4P3/8/K7 w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(F4),
+			target: BitBoardFromSquares(F4),
 			want:   true,
 		},
 		{
 			name:   "king not in check by pawn wrap",
 			b:      Must(board.FromFEN("8/8/8/8/7k/P7/8/K7 w - - 0 1")),
 			by:     White,
-			target: board.BitBoardFromSquares(H4),
+			target: BitBoardFromSquares(H4),
 			want:   false,
 		},
 	}

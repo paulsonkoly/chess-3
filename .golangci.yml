@@ -18,7 +18,7 @@ linters:
       checks:
         - all
       dot-import-whitelist:
-        - "github.com/paulsonkoly/chess-3/types"
+        - "github.com/paulsonkoly/chess-3/chess"
     revive:
       rules:
         - name: dot-imports
@@ -26,7 +26,7 @@ linters:
           disabled: false
           exclude: [""]
           arguments:
-            - allowed-packages: ["github.com/paulsonkoly/chess-3/types"]
+            - allowed-packages: ["github.com/paulsonkoly/chess-3/chess"]
   exclusions:
     generated: lax
     presets:

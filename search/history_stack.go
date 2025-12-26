@@ -1,7 +1,7 @@
 package search
 
 import (
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 type historyMove struct {

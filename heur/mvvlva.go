@@ -3,7 +3,7 @@ package heur
 import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // MVVLVA is the most valuable victim / least valuable aggressor heuristic. good should be set for good captures.

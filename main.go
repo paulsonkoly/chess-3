@@ -14,7 +14,7 @@ import (
 	"github.com/paulsonkoly/chess-3/transp"
 	"github.com/paulsonkoly/chess-3/uci"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 var cpuProf = flag.String("cpuProf", "", "cpu profile file name")

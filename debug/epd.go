@@ -8,7 +8,7 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 type EPDReader struct {
