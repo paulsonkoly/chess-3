@@ -2,7 +2,7 @@ package board
 
 import (
 	"github.com/paulsonkoly/chess-3/move"
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // Board is a chess position.

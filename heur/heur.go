@@ -10,7 +10,7 @@
 package heur
 
 import (
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // PieceValues approximates the value of each piece type for SEE and heuristic

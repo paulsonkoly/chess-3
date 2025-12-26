@@ -4,21 +4,21 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // KingMoves is the bitboard set where the king can move to from from. It does
 // not take into accound occupancies or legality.
-func KingMoves(from Square) board.BitBoard { return kingMoves[from] }
+func KingMoves(from Square) BitBoard { return kingMoves[from] }
 
 // KnightMoves is the bitboard set where a knight can move to from from. It does
 // not take into accound occupancies or legality.
-func KnightMoves(from Square) board.BitBoard { return knightMoves[from] }
+func KnightMoves(from Square) BitBoard { return knightMoves[from] }
 
 // BishopMoves is the bitboard set where a bishop can move to from from. It
 // does not take into account occupancy for the side to move, (can have bits
 // set on STM's pieces), or legality.
-func BishopMoves(from Square, occ board.BitBoard) board.BitBoard {
+func BishopMoves(from Square, occ BitBoard) BitBoard {
 	mask := bishopMasks[from]
 	magic := bishopMagics[from]
 	shift := bishopShifts[from]
@@ -29,7 +29,7 @@ func BishopMoves(from Square, occ board.BitBoard) board.BitBoard {
 // RookMoves is the bitbord set where a rook can move to from from. It does not
 // take into account occupancy for the side to move, (can have bits set on
 // STM's pieces), or legality.
-func RookMoves(from Square, occ board.BitBoard) board.BitBoard {
+func RookMoves(from Square, occ BitBoard) BitBoard {
 	mask := rookMasks[from]
 	magic := rookMagics[from]
 	shift := rookShifts[from]
@@ -39,39 +39,39 @@ func RookMoves(from Square, occ board.BitBoard) board.BitBoard {
 
 // PawnCaptureMoves is the bitboard set where the pawns of color color can
 // capture, from any of the squares set in b.
-func PawnCaptureMoves(b board.BitBoard, color Color) board.BitBoard {
-	return ((((b & ^board.AFile) << 7) | ((b & ^board.HFile) << 9)) >> (color << 4)) |
-		((((b & ^board.HFile) >> 7) | ((b & ^board.AFile) >> 9)) << (color.Flip() << 4))
+func PawnCaptureMoves(b BitBoard, color Color) BitBoard {
+	return ((((b & ^AFile) << 7) | ((b & ^HFile) << 9)) >> (color << 4)) |
+		((((b & ^HFile) >> 7) | ((b & ^AFile) >> 9)) << (color.Flip() << 4))
 }
 
 // PawnSinglePushMoves is the bitboard set where the pawns of color color can
 // push a single square forward from any of the squares set in b.
-func PawnSinglePushMoves(b board.BitBoard, color Color) board.BitBoard {
+func PawnSinglePushMoves(b BitBoard, color Color) BitBoard {
 	return ((b)<<8)>>((color)<<4) | ((b)>>8)<<((color^1)<<4)
 }
 
 var (
 	// SecondRank[stm] is the second rank from stm's perspective.
-	SecondRank = [...]board.BitBoard{board.SecondRank, board.SeventhRank}
-	fourthRank = [...]board.BitBoard{board.FourthRank, board.FifthRank}
-	castleMask = [2][2]board.BitBoard{
+	mySecondRank = [...]BitBoard{SecondRank, SeventhRank}
+	myFourthRank = [...]BitBoard{FourthRank, FifthRank}
+	castleMask   = [2][2]BitBoard{
 		{(1 << E1) | (1 << F1) | (1 << G1), (1 << E1) | (1 << D1) | (1 << C1)},
 		{(1 << E8) | (1 << F8) | (1 << G8), (1 << E8) | (1 << D8) | (1 << C8)},
 	}
 )
 
 type generator struct {
-	self, them, occ board.BitBoard
+	self, them, occ BitBoard
 }
 
-func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
+func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// king moves
 	if piece := g.self & b.Pieces[King] & fromMsk; piece != 0 {
 		from := piece.LowestSet()
 
 		tSqrs := kingMoves[from] & ^g.self & toMsk
 
-		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -81,17 +81,17 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 	}
 }
 
-func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
+func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// knight moves
 	knights := g.self & b.Pieces[Knight] & fromMsk
 
-	for knight := board.BitBoard(0); knights != 0; knights ^= knight {
+	for knight := BitBoard(0); knights != 0; knights ^= knight {
 		knight = knights & -knights
 		from := knight.LowestSet()
 
 		tSqrs := knightMoves[from] & ^g.self & toMsk
 
-		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -101,10 +101,10 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 	}
 }
 
-func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
+func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// bishop moves
 	bishops := g.self & b.Pieces[Bishop] & fromMsk
-	for bishop := board.BitBoard(0); bishops != 0; bishops ^= bishop {
+	for bishop := BitBoard(0); bishops != 0; bishops ^= bishop {
 		bishop = bishops & -bishops
 		from := bishop.LowestSet()
 		mask := bishopMasks[from]
@@ -113,7 +113,7 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 
 		tSqrs := bishopAttacks[from][((g.occ&mask)*magic)>>(64-shift)] & ^g.self & toMsk
 
-		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -123,10 +123,10 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk bo
 	}
 }
 
-func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
+func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	rooks := g.self & b.Pieces[Rook] & fromMsk
 
-	for rook := board.BitBoard(0); rooks != 0; rooks ^= rook {
+	for rook := BitBoard(0); rooks != 0; rooks ^= rook {
 		rook = rooks & -rooks
 		from := rook.LowestSet()
 		mask := rookMasks[from]
@@ -135,7 +135,7 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 
 		tSqrs := rookAttacks[from][((g.occ&mask)*magic)>>(64-shift)] & ^g.self & toMsk
 
-		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -145,9 +145,9 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boar
 	}
 }
 
-func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk board.BitBoard) {
+func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	queens := g.self & b.Pieces[Queen] & fromMsk
-	for queen := board.BitBoard(0); queens != 0; queens ^= queen {
+	for queen := BitBoard(0); queens != 0; queens ^= queen {
 		queen = queens & -queens
 		from := queen.LowestSet()
 		mask := rookMasks[from]
@@ -163,7 +163,7 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boa
 		tSqrs |= bishopAttacks[from][((g.occ&mask)*magic)>>(64-shift)]
 		tSqrs &= ^g.self & toMsk
 
-		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -175,14 +175,14 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk boa
 
 var shifts = [2]Square{8, -8}
 
-func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
+func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	theirSndRank := SecondRank[b.STM.Flip()]
+	theirSndRank := mySecondRank[b.STM.Flip()]
 	shift := shifts[b.STM]
 
 	// single pawn pushes (no promotions)
-	for pawns, pawn := pushable&fromMsk & ^theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk & ^theirSndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -192,14 +192,14 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk board
 	}
 }
 
-func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
+func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := ((g.occ >> 8) << (b.STM << 4)) | ((g.occ << 8) >> (b.STM.Flip() << 4))
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	theirSndRank := SecondRank[b.STM.Flip()]
+	theirSndRank := mySecondRank[b.STM.Flip()]
 	shift := shifts[b.STM]
 
 	// promotions pushes
-	for pawns, pawn := pushable&fromMsk&theirSndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk&theirSndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
@@ -211,15 +211,15 @@ func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk board.
 	}
 }
 
-func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board.BitBoard) {
+func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	occ2 := (g.occ >> 16) << (b.STM << 5)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	mySndRank := SecondRank[b.STM]
+	mySndRank := mySecondRank[b.STM]
 	shift := shifts[b.STM]
 
 	// double pawn pushes
-	for pawns, pawn := pushable & ^occ2 & fromMsk & mySndRank, board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable & ^occ2 & fromMsk & mySndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -239,15 +239,15 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk board
 // passant state.
 // https://chess.stackexchange.com/questions/777/rules-en-passant-and-draw-by-triple-repetition
 func CanEnPassant(b *board.Board, to Square) bool {
-	target := board.BitBoard(1) << to
+	target := BitBoard(1) << to
 	them := b.Colors[b.STM.Flip()]
 	shift := shifts[b.STM]
 	king := b.Pieces[King] & them
-	dest := board.BitBoard(1) << (to - shift)
+	dest := BitBoard(1) << (to - shift)
 
 	// pawns that are able to en-passant
-	ables := ((target & ^board.AFile >> 1) | (target & ^board.HFile << 1)) & b.Pieces[Pawn] & them
-	for able := board.BitBoard(0); ables != 0; ables ^= able {
+	ables := ((target & ^AFile >> 1) | (target & ^HFile << 1)) & b.Pieces[Pawn] & them
+	for able := BitBoard(0); ables != 0; ables ^= able {
 		able = ables & -ables
 		// remove the pawns from the occupancy
 		occ := (b.Colors[White] | b.Colors[Black] | dest) &^ (target | able)
@@ -260,26 +260,26 @@ func CanEnPassant(b *board.Board, to Square) bool {
 
 func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 	var (
-		occ1l, occ1r board.BitBoard
+		occ1l, occ1r BitBoard
 	)
-	theirSndRank := SecondRank[b.STM.Flip()]
+	theirSndRank := mySecondRank[b.STM.Flip()]
 
 	if b.STM == White {
-		occ1l = (g.them &^ board.HFile) >> 7
-		occ1r = (g.them &^ board.AFile) >> 9
+		occ1l = (g.them &^ HFile) >> 7
+		occ1r = (g.them &^ AFile) >> 9
 	} else {
-		occ1l = (g.them &^ board.AFile) << 7
-		occ1r = (g.them &^ board.HFile) << 9
+		occ1l = (g.them &^ AFile) << 7
+		occ1r = (g.them &^ HFile) << 9
 	}
 
 	pawns := g.self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r)
-	for pawn := board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawn := BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
 		tSqrs := PawnCaptureMoves(pawn, b.STM) & g.them
 
-		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 
@@ -292,24 +292,24 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 
 func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 	var (
-		occ1l, occ1r board.BitBoard
+		occ1l, occ1r BitBoard
 	)
-	theirSndRank := SecondRank[b.STM.Flip()]
+	theirSndRank := mySecondRank[b.STM.Flip()]
 
 	if b.STM == White {
-		occ1l = (g.them &^ board.HFile) >> 7
-		occ1r = (g.them &^ board.AFile) >> 9
+		occ1l = (g.them &^ HFile) >> 7
+		occ1r = (g.them &^ AFile) >> 9
 	} else {
-		occ1l = (g.them &^ board.AFile) << 7
-		occ1r = (g.them &^ board.HFile) << 9
+		occ1l = (g.them &^ AFile) << 7
+		occ1r = (g.them &^ HFile) << 9
 	}
 	// pawn captures with promotions
-	for pawns, pawn := g.self&b.Pieces[Pawn]&theirSndRank&(occ1l|occ1r), board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := g.self&b.Pieces[Pawn]&theirSndRank&(occ1l|occ1r), BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
 		tSqrs := PawnCaptureMoves(pawn, b.STM) & g.them
-		for tSqr := board.BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 
@@ -330,7 +330,7 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 
 	// en-passant
 	ep := PawnCaptureMoves(1<<b.EnPassant, b.STM.Flip())
-	for pawns, pawn := ep&g.self&b.Pieces[Pawn], board.BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := ep&g.self&b.Pieces[Pawn], BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -340,7 +340,7 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 	}
 }
 
-func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
+func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castling short
 	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&castleMask[b.STM][Short] == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
@@ -357,7 +357,7 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk board.Bit
 	}
 }
 
-func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk board.BitBoard) {
+func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castle long
 	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
 		if castleMask[b.STM][Long]&rChkMsk != 0 {
@@ -380,21 +380,21 @@ func GenMoves(ms *move.Store, b *board.Board) {
 		occ:  b.Colors[White] | b.Colors[Black],
 	}
 
-	gen.kingMoves(ms, b, board.Full, board.Full)
-	gen.knightMoves(ms, b, board.Full, board.Full)
-	gen.bishopMoves(ms, b, board.Full, board.Full)
-	gen.rookMoves(ms, b, board.Full, board.Full)
-	gen.queenMoves(ms, b, board.Full, board.Full)
+	gen.kingMoves(ms, b, Full, Full)
+	gen.knightMoves(ms, b, Full, Full)
+	gen.bishopMoves(ms, b, Full, Full)
+	gen.rookMoves(ms, b, Full, Full)
+	gen.queenMoves(ms, b, Full, Full)
 
-	gen.singlePushMoves(ms, b, board.Full)
-	gen.promoPushMoves(ms, b, board.Full)
-	gen.doublePushMoves(ms, b, board.Full)
+	gen.singlePushMoves(ms, b, Full)
+	gen.promoPushMoves(ms, b, Full)
+	gen.doublePushMoves(ms, b, Full)
 	gen.pawnCaptureMoves(ms, b)
 	gen.pawnCapturePromoMoves(ms, b)
 	gen.enPassant(ms, b)
 
-	gen.shortCastle(ms, b, board.Full)
-	gen.longCastle(ms, b, board.Full)
+	gen.shortCastle(ms, b, Full)
+	gen.longCastle(ms, b, Full)
 }
 
 // GenForcing generates all forcing pseudo-legal moves in the position. We do
@@ -412,24 +412,24 @@ func GenForcing(ms *move.Store, b *board.Board) {
 		occ:  occ,
 	}
 
-	gen.kingMoves(ms, b, board.Full, them)
-	gen.knightMoves(ms, b, board.Full, them)
-	gen.bishopMoves(ms, b, board.Full, them)
-	gen.rookMoves(ms, b, board.Full, them)
-	gen.queenMoves(ms, b, board.Full, them)
+	gen.kingMoves(ms, b, Full, them)
+	gen.knightMoves(ms, b, Full, them)
+	gen.bishopMoves(ms, b, Full, them)
+	gen.rookMoves(ms, b, Full, them)
+	gen.queenMoves(ms, b, Full, them)
 
-	gen.promoPushMoves(ms, b, board.Full)
+	gen.promoPushMoves(ms, b, Full)
 	gen.pawnCaptureMoves(ms, b)
 	gen.pawnCapturePromoMoves(ms, b)
 	gen.enPassant(ms, b)
 
 }
 
-func Attackers(b *board.Board, squares board.BitBoard, occ board.BitBoard, color Color) board.BitBoard {
+func Attackers(b *board.Board, squares BitBoard, occ BitBoard, color Color) BitBoard {
 	opp := b.Colors[color]
-	var res board.BitBoard
+	var res BitBoard
 
-	for sqrs, sqBB := squares, board.BitBoard(0); sqrs != 0; sqrs ^= sqBB {
+	for sqrs, sqBB := squares, BitBoard(0); sqrs != 0; sqrs ^= sqBB {
 		sqBB = sqrs & -sqrs
 		sq := sqBB.LowestSet()
 
@@ -446,16 +446,16 @@ func Attackers(b *board.Board, squares board.BitBoard, occ board.BitBoard, color
 	return res
 }
 
-func Block(b *board.Board, squares board.BitBoard, color Color) board.BitBoard {
+func Block(b *board.Board, squares BitBoard, color Color) BitBoard {
 	blockers := b.Colors[color]
-	res := board.BitBoard(0)
+	res := BitBoard(0)
 	occ := b.Colors[White] | b.Colors[Black]
 
-	for square, eachSquare := board.BitBoard(0), squares; eachSquare != 0; eachSquare ^= square {
+	for square, eachSquare := BitBoard(0), squares; eachSquare != 0; eachSquare ^= square {
 		square = eachSquare & -eachSquare
 		sq := square.LowestSet()
 
-		sub := board.BitBoard(0)
+		sub := BitBoard(0)
 
 		/* king can't block */
 		sub |= KnightMoves(sq) & b.Pieces[Knight]
@@ -472,7 +472,7 @@ func Block(b *board.Board, squares board.BitBoard, color Color) board.BitBoard {
 	occNoPawn := occ & ^(b.Pieces[Pawn] & blockers)
 
 	/* double pawn push blocking */
-	dpawn := fourthRank[color] & squares
+	dpawn := myFourthRank[color] & squares
 	dpawn = PawnSinglePushMoves(dpawn, color.Flip()) &^ occ
 	dpawn = PawnSinglePushMoves(dpawn, color.Flip()) &^ occNoPawn
 
@@ -494,7 +494,7 @@ func IsCheckmate(b *board.Board) bool {
 	kingSq := king.LowestSet()
 	kMvs := KingMoves(kingSq) & ^b.Colors[b.STM]
 
-	for to := board.BitBoard(0); kMvs != 0; kMvs ^= to {
+	for to := BitBoard(0); kMvs != 0; kMvs ^= to {
 		to = kMvs & -kMvs
 
 		if !IsAttacked(b, b.STM.Flip(), occ&^king, to) {
@@ -515,7 +515,7 @@ func IsCheckmate(b *board.Board) bool {
 	defenders &= ^king
 
 	// are all my defenders pinned in a way that they can't capture the attacker
-	for defender := board.BitBoard(0); defenders != 0; defenders ^= defender {
+	for defender := BitBoard(0); defenders != 0; defenders ^= defender {
 		defender = defenders & -defenders
 		nocc := occ
 		pinned := false
@@ -537,7 +537,7 @@ func IsCheckmate(b *board.Board) bool {
 
 	// en passant capture
 	if b.EnPassant != 0 {
-		epPawn := PawnSinglePushMoves(board.BitBoard(1)<<b.EnPassant, b.STM.Flip())
+		epPawn := PawnSinglePushMoves(BitBoard(1)<<b.EnPassant, b.STM.Flip())
 
 		if epPawn == attacker {
 			return false
@@ -550,7 +550,7 @@ func IsCheckmate(b *board.Board) bool {
 
 	defenders = Block(b, blocked, b.STM)
 
-	for defender := board.BitBoard(0); defenders != 0; defenders ^= defender {
+	for defender := BitBoard(0); defenders != 0; defenders ^= defender {
 		defender = defenders & -defenders
 		nocc := occ
 		opp := b.Colors[b.STM.Flip()]
@@ -597,7 +597,7 @@ func IsStalemate(b *board.Board) bool {
 			return false
 		}
 
-		if (((pieces & ^board.AFile)<<7)|((pieces & ^board.HFile)<<9))&opp != 0 {
+		if (((pieces & ^AFile)<<7)|((pieces & ^HFile)<<9))&opp != 0 {
 			return false
 		}
 
@@ -606,7 +606,7 @@ func IsStalemate(b *board.Board) bool {
 			return false
 		}
 
-		if (((pieces & ^board.HFile)>>7)|((pieces & ^board.AFile)>>9))&opp != 0 {
+		if (((pieces & ^HFile)>>7)|((pieces & ^AFile)>>9))&opp != 0 {
 			return false
 		}
 	}
@@ -614,7 +614,7 @@ func IsStalemate(b *board.Board) bool {
 	// queens can't be pinned to the extent that they can't move, for instance
 	// they can always capture the pinner.
 	pieces = b.Pieces[Queen] & me
-	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 
@@ -626,7 +626,7 @@ func IsStalemate(b *board.Board) bool {
 	// bishop can only be paralyzed by rook or queen but in case of queen not the
 	// one it can capture
 	pieces = b.Pieces[Bishop] & me
-	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 		nocc := occ & ^piece
@@ -641,7 +641,7 @@ func IsStalemate(b *board.Board) bool {
 	//  rooks can only be paralyzed by bishop or queen but in case of queen not the
 	//   one it can capture
 	pieces = b.Pieces[Rook] & me
-	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 		nocc := occ & ^piece
@@ -655,7 +655,7 @@ func IsStalemate(b *board.Board) bool {
 
 	//  knight move in pins cannot be legal
 	pieces = b.Pieces[Knight] & me
-	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 		nocc := occ & ^piece
@@ -675,7 +675,7 @@ func IsStalemate(b *board.Board) bool {
 	}
 
 	kMoves := KingMoves(kingSq) & ^me
-	for kMove := board.BitBoard(0); kMoves != 0; kMoves ^= kMove {
+	for kMove := BitBoard(0); kMoves != 0; kMoves ^= kMove {
 		kMove = kMoves & -kMoves
 
 		if !IsAttacked(b, b.STM.Flip(), occ&^king, kMove) {
@@ -685,7 +685,7 @@ func IsStalemate(b *board.Board) bool {
 
 	//  maybe pinned pawns
 	pieces = b.Pieces[Pawn] & me & maybePinned
-	for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 
 		targets := PawnSinglePushMoves(piece, b.STM) & ^occ
@@ -719,11 +719,11 @@ func IsStalemate(b *board.Board) bool {
 
 	//  finally deal with en passant
 	if b.EnPassant != 0 {
-		enPassantBB := board.BitBoard(1) << b.EnPassant
+		enPassantBB := BitBoard(1) << b.EnPassant
 		pieces := PawnCaptureMoves(enPassantBB, b.STM.Flip()) & b.Pieces[Pawn] & me
 		remove := PawnSinglePushMoves(enPassantBB, b.STM.Flip())
 
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			nocc := (occ & ^piece & ^remove) | enPassantBB
 			pinned := false
@@ -743,7 +743,7 @@ func IsStalemate(b *board.Board) bool {
 	return true
 }
 
-func IsAttacked(b *board.Board, by Color, occ, target board.BitBoard) bool {
+func IsAttacked(b *board.Board, by Color, occ, target BitBoard) bool {
 	other := b.Colors[by]
 
 	// pawn capture
@@ -751,7 +751,7 @@ func IsAttacked(b *board.Board, by Color, occ, target board.BitBoard) bool {
 		return true
 	}
 
-	for tSqr := board.BitBoard(0); target != 0; target ^= tSqr {
+	for tSqr := BitBoard(0); target != 0; target ^= tSqr {
 		tSqr = target & -target
 		sq := tSqr.LowestSet()
 

@@ -7,11 +7,11 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/tools/datagen/shim"
 	"github.com/paulsonkoly/chess-3/transp"
-	"github.com/paulsonkoly/chess-3/types"
 )
 
 const gameLength = 128
@@ -99,8 +99,8 @@ func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err er
 	positions := make([]shim.Position, 0, gameLength)
 	drawCounter := 0
 	winCounter := 0
-	winSign := types.Score(1)
-	var score types.Score
+	winSign := chess.Score(1)
+	var score chess.Score
 
 	for moveCounter := 0; ; moveCounter++ {
 		var bm move.Move
@@ -155,7 +155,7 @@ func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err er
 
 	// determine the WDL result
 	// conver score to white's perspective
-	if b.STM == types.Black {
+	if b.STM == chess.Black {
 		score = -score
 	}
 
@@ -182,14 +182,14 @@ func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err er
 
 type Range int
 
-func (r Range) Contains(s types.Score) bool {
-	return types.Score(-r) <= s && s <= types.Score(r)
+func (r Range) Contains(s chess.Score) bool {
+	return chess.Score(-r) <= s && s <= chess.Score(r)
 }
 
-func (r Range) IsLowerThan(s types.Score) bool {
-	return types.Score(r) < s
+func (r Range) IsLowerThan(s chess.Score) bool {
+	return chess.Score(r) < s
 }
 
-func (r Range) IsHigherThan(s types.Score) bool {
-	return s < types.Score(-r)
+func (r Range) IsHigherThan(s chess.Score) bool {
+	return s < chess.Score(-r)
 }

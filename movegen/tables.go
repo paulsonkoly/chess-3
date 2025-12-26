@@ -1,12 +1,10 @@
 package movegen
 
 import (
-	"github.com/paulsonkoly/chess-3/board"
-
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-var kingMoves = [64]board.BitBoard{
+var kingMoves = [64]BitBoard{
 	0x0000000000000302, 0x0000000000000705, 0x0000000000000e0a, 0x0000000000001c14,
 	0x0000000000003828, 0x0000000000007050, 0x000000000000e0a0, 0x000000000000c040,
 	0x0000000000030203, 0x0000000000070507, 0x00000000000e0a0e, 0x00000000001c141c,
@@ -25,7 +23,7 @@ var kingMoves = [64]board.BitBoard{
 	0x2838000000000000, 0x5070000000000000, 0xa0e0000000000000, 0x40c0000000000000,
 }
 
-var knightMoves = [64]board.BitBoard{
+var knightMoves = [64]BitBoard{
 	0x0000000000020400, 0x0000000000050800, 0x00000000000a1100, 0x0000000000142200,
 	0x0000000000284400, 0x0000000000508800, 0x0000000000a01000, 0x0000000000402000,
 	0x0000000002040004, 0x0000000005080008, 0x000000000a110011, 0x0000000014220022,
@@ -44,7 +42,7 @@ var knightMoves = [64]board.BitBoard{
 	0x0044280000000000, 0x0088500000000000, 0x0010a00000000000, 0x0020400000000000,
 }
 
-var bishopMasks = [64]board.BitBoard{
+var bishopMasks = [64]BitBoard{
 	0x0040201008040200, 0x0000402010080400, 0x0000004020100a00, 0x0000000040221400,
 	0x0000000002442800, 0x0000000204085000, 0x0000020408102000, 0x0002040810204000,
 	0x0020100804020000, 0x0040201008040000, 0x00004020100a0000, 0x0000004022140000,
@@ -63,7 +61,7 @@ var bishopMasks = [64]board.BitBoard{
 	0x0028440200000000, 0x0050080402000000, 0x0020100804020000, 0x0040201008040200,
 }
 
-var rookMasks = [64]board.BitBoard{
+var rookMasks = [64]BitBoard{
 	0x000101010101017e, 0x000202020202027c, 0x000404040404047a, 0x0008080808080876,
 	0x001010101010106e, 0x002020202020205e, 0x004040404040403e, 0x008080808080807e,
 	0x0001010101017e00, 0x0002020202027c00, 0x0004040404047a00, 0x0008080808087600,
@@ -104,7 +102,7 @@ var rookShifts = [64]byte{
 	12, 11, 11, 11, 11, 11, 11, 12,
 }
 
-var bishopMagics = [64]board.BitBoard{
+var bishopMagics = [64]BitBoard{
 	0x01442b1002020240, 0x23280a482202e891, 0x685843810202408c, 0x287820d044d95020,
 	0x5a6b1041408282c3, 0x01482c0c60008813, 0x024a43083841f042, 0x24a0460150080c00,
 	0x4602412408220640, 0x2300a00142420042, 0x0100281806408228, 0x41100405020c1c62,
@@ -123,7 +121,7 @@ var bishopMagics = [64]board.BitBoard{
 	0x404601a741028600, 0x004fd42024091201, 0x262c888a14444400, 0x4208652400820202,
 }
 
-var rookMagics = [64]board.BitBoard{
+var rookMagics = [64]BitBoard{
 	0x0200128102002041, 0x64c0002002100440, 0x0100200008c05102, 0x0200120020043840,
 	0x1b00030008008410, 0x4200120054211008, 0x24000d5000880a04, 0x610000270000c886,
 	0x06ca801040022580, 0x0c0040045000a001, 0x0021001102c06000, 0x08d1001000a19b00,
@@ -142,10 +140,10 @@ var rookMagics = [64]board.BitBoard{
 	0x4c4600302004c822, 0x0122001008410462, 0x04be821803102084, 0x5202884c0500826a,
 }
 
-var bishopAttacks [64][512]board.BitBoard
-var rookAttacks [64][4096]board.BitBoard
+var bishopAttacks [64][512]BitBoard
+var rookAttacks [64][4096]BitBoard
 
-var inBetween [64][64]board.BitBoard
+var inBetween [64][64]BitBoard
 
 func initInBetween() {
 	var fileA, rankA, fileB, rankB Square
@@ -159,15 +157,15 @@ func initInBetween() {
 						iterR := rankA
 						fileD := Signum(fileB - fileA)
 						rankD := Signum(rankB - rankA)
-						result := board.BitBoard(0)
+						result := BitBoard(0)
 
 						for iterF != fileB || iterR != rankB {
-							result |= (board.BitBoard(1) << ((iterR << 3) + iterF))
+							result |= (BitBoard(1) << ((iterR << 3) + iterF))
 							iterF += fileD
 							iterR += rankD
 						}
 						inBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] =
-							result | (board.BitBoard(1) << ((rankB << 3) + fileB))
+							result | (BitBoard(1) << ((rankB << 3) + fileB))
 					} else {
 						inBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] = 0
 					}
@@ -178,7 +176,7 @@ func initInBetween() {
 }
 
 func initBishopMagic() {
-	for sq := Square(0); sq < 64; sq++ {
+	for sq := range Squares {
 		mask := bishopMasks[sq]
 		magic := bishopMagics[sq]
 		shift := bishopShifts[sq]
@@ -198,7 +196,7 @@ func initBishopMagic() {
 }
 
 func initRookMagic() {
-	for sq := Square(0); sq < 64; sq++ {
+	for sq := range Squares {
 		mask := rookMasks[sq]
 		magic := rookMagics[sq]
 		shift := rookShifts[sq]
@@ -223,8 +221,8 @@ func init() {
 	initInBetween()
 }
 
-func calcBishopAttacks(sq Square, occ board.BitBoard) board.BitBoard {
-	result := board.BitBoard(0)
+func calcBishopAttacks(sq Square, occ BitBoard) BitBoard {
+	result := BitBoard(0)
 
 	r := int(sq / 8)
 	f := int(sq % 8)
@@ -266,8 +264,8 @@ func calcBishopAttacks(sq Square, occ board.BitBoard) board.BitBoard {
 	return result
 }
 
-func calcRookAttacks(sq Square, occ board.BitBoard) board.BitBoard {
-	result := board.BitBoard(0)
+func calcRookAttacks(sq Square, occ BitBoard) BitBoard {
+	result := BitBoard(0)
 
 	r := int(sq / 8)
 	f := int(sq % 8)

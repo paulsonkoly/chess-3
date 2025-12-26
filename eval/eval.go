@@ -7,7 +7,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/movegen"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // ScoreType defines the evaluation result type. The engine uses int16 for
@@ -52,7 +52,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// queens
 		pieces := b.Pieces[Queen] & b.Colors[color]
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -65,7 +65,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// rooks
 		pieces = b.Pieces[Rook] & b.Colors[color]
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -78,7 +78,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// bishops
 		pieces = b.Pieces[Bishop] & b.Colors[color]
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -91,7 +91,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// knights
 		pieces = b.Pieces[Knight] & b.Colors[color]
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -105,7 +105,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// pawns
 		pieces = b.Pieces[Pawn] & b.Colors[color]
-		for piece := board.BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -125,7 +125,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	for color := White; color <= Black; color++ {
 		eCover := pw.cover[color.Flip()]
 
-		var safeChecks board.BitBoard
+		var safeChecks BitBoard
 
 		// Queen
 		eKAttack := pw.kingRays[color.Flip()][0] | pw.kingRays[color.Flip()][Rook-Bishop]
@@ -310,16 +310,16 @@ func (sp *scorePair[T]) endgameScore(b *board.Board) T {
 }
 
 type pieceWise struct {
-	occ           board.BitBoard
-	attacks       [2][6]board.BitBoard
-	kingRays      [2][2]board.BitBoard
+	occ           BitBoard
+	attacks       [2][6]BitBoard
+	kingRays      [2][2]BitBoard
 	kingSq        [2]Square
-	kingNb        [2]board.BitBoard
-	holes         [2]board.BitBoard
-	passers       [2]board.BitBoard
-	doubledPawns  [2]board.BitBoard
-	isolatedPawns [2]board.BitBoard
-	cover         [2]board.BitBoard
+	kingNb        [2]BitBoard
+	holes         [2]BitBoard
+	passers       [2]BitBoard
+	doubledPawns  [2]BitBoard
+	isolatedPawns [2]BitBoard
+	cover         [2]BitBoard
 }
 
 func (pw *pieceWise) calcOccupancy(b *board.Board) {
@@ -342,24 +342,24 @@ func (pw *pieceWise) calcKingSquares(b *board.Board) {
 
 // the player's side of the board with the extra 2 central squares included at
 // enemy side.
-var sideOfBoard = [2]board.BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
+var sideOfBoard = [2]BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
 
 func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 
-	ps := [...]board.BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
+	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
 
 	pw.attacks[White][0] = movegen.PawnCaptureMoves(ps[White], White)
 	pw.attacks[Black][0] = movegen.PawnCaptureMoves(ps[Black], Black)
 
 	// various useful pawn bitboards
-	frontSpan := [...]board.BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
-	rearSpan := [...]board.BitBoard{frontFill(ps[White], Black) >> 8, frontFill(ps[Black], White) << 8}
+	frontSpan := [...]BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
+	rearSpan := [...]BitBoard{frontFill(ps[White], Black) >> 8, frontFill(ps[Black], White) << 8}
 
 	// calculate holes in our position, squares that cannot be protected by one
 	// of our pawns.
-	cover := [...]board.BitBoard{
-		((frontSpan[White] & ^board.AFile) >> 1) | ((frontSpan[White] & ^board.HFile) << 1),
-		((frontSpan[Black] & ^board.HFile) << 1) | ((frontSpan[Black] & ^board.AFile) >> 1),
+	cover := [...]BitBoard{
+		((frontSpan[White] & ^AFile) >> 1) | ((frontSpan[White] & ^HFile) << 1),
+		((frontSpan[Black] & ^HFile) << 1) | ((frontSpan[Black] & ^AFile) >> 1),
 	}
 	pw.holes[White] = sideOfBoard[White] & ^cover[White]
 	pw.holes[Black] = sideOfBoard[Black] & ^cover[Black]
@@ -367,12 +367,12 @@ func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 	// neighbour files, files adjacent to files with pawns
 	wFiles := ps[White] | frontSpan[White] | rearSpan[White]
 	bFiles := ps[Black] | frontSpan[Black] | rearSpan[Black]
-	neighbourF := [...]board.BitBoard{
-		((wFiles & ^board.AFile) >> 1) | ((wFiles & ^board.HFile) << 1),
-		((bFiles & ^board.HFile) << 1) | ((bFiles & ^board.AFile) >> 1),
+	neighbourF := [...]BitBoard{
+		((wFiles & ^AFile) >> 1) | ((wFiles & ^HFile) << 1),
+		((bFiles & ^HFile) << 1) | ((bFiles & ^AFile) >> 1),
 	}
 
-	frontLine := [...]board.BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
+	frontLine := [...]BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
 
 	for color := White; color <= Black; color++ {
 		passers := frontLine[color] & ^(frontSpan[color.Flip()] | cover[color.Flip()])
@@ -383,7 +383,7 @@ func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 	}
 }
 
-func frontFill(b board.BitBoard, color Color) board.BitBoard {
+func frontFill(b BitBoard, color Color) BitBoard {
 	switch color {
 	case White:
 		b |= b << 8
@@ -423,7 +423,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 			}
 		}
 
-		for passer := board.BitBoard(0); passers != 0; passers ^= passer {
+		for passer := BitBoard(0); passers != 0; passers ^= passer {
 			passer = passers & -passers
 			sq := passer.LowestSet()
 
@@ -471,8 +471,8 @@ type kingAttacks[T ScoreType] struct {
 func (ka *kingAttacks[T]) addAttackPieces(
 	color Color,
 	pType Piece,
-	attacks board.BitBoard,
-	kingNB board.BitBoard,
+	attacks BitBoard,
+	kingNB BitBoard,
 	c *CoeffSet[T],
 ) {
 
@@ -482,7 +482,7 @@ func (ka *kingAttacks[T]) addAttackPieces(
 	}
 }
 
-func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks board.BitBoard, c *CoeffSet[T]) {
+func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
 	ka.score[0][color] += c.SafeChecks[0][pType-Knight] * T(safeChecks.Count())
 	ka.score[1][color] += c.SafeChecks[1][pType-Knight] * T(safeChecks.Count())
 }
@@ -523,14 +523,14 @@ func sigmoidal[T ScoreType](n T) T {
 	return T(600.0 / (1.0 + math.Exp(-0.2*(float64(n)-50.0))))
 }
 
-func (pw *pieceWise) calcQueenAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcQueenAttacks(color Color, sq Square) BitBoard {
 	attacks := movegen.BishopMoves(sq, pw.occ) | movegen.RookMoves(sq, pw.occ)
 
 	pw.attacks[color][Queen-Pawn] |= attacks
 	return attacks
 }
 
-func (pw *pieceWise) calcRookAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcRookAttacks(color Color, sq Square) BitBoard {
 	attacks := movegen.RookMoves(sq, pw.occ)
 
 	pw.attacks[color][Rook-Pawn] |= attacks
@@ -541,11 +541,11 @@ func (sp *scorePair[T]) addRookMobility(
 	b *board.Board,
 	color Color,
 	sq Square,
-	attacks board.BitBoard,
+	attacks BitBoard,
 	c *CoeffSet[T],
 ) {
 
-	rank := board.BitBoard(0xff) << (sq & 56)
+	rank := BitBoard(0xff) << (sq & 56)
 	hmob := (attacks & rank & ^b.Colors[color]).Count()
 	vmob := (attacks & ^rank & ^b.Colors[color]).Count()
 
@@ -562,21 +562,21 @@ func (sp *scorePair[T]) addRookMobility(
 	}
 }
 
-func (pw *pieceWise) calcBishopAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcBishopAttacks(color Color, sq Square) BitBoard {
 	attacks := movegen.BishopMoves(sq, pw.occ)
 
 	pw.attacks[color][Bishop-Pawn] |= attacks
 	return attacks
 }
 
-func (sp *scorePair[T]) addBishopMobility(b *board.Board, color Color, attacks board.BitBoard, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addBishopMobility(b *board.Board, color Color, attacks BitBoard, c *CoeffSet[T]) {
 
 	mobCnt := (attacks & ^b.Colors[color]).Count()
 	sp.mg[color] += c.MobilityBishop[0][mobCnt]
 	sp.eg[color] += c.MobilityBishop[1][mobCnt]
 }
 
-func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) board.BitBoard {
+func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) BitBoard {
 	attacks := movegen.KnightMoves(sq)
 
 	pw.attacks[color][Knight-Pawn] |= attacks
@@ -586,8 +586,8 @@ func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) board.BitBoard {
 func (sp *scorePair[T]) addKnightMobility(
 	b *board.Board,
 	color Color,
-	attacks board.BitBoard,
-	pawnCover board.BitBoard,
+	attacks BitBoard,
+	pawnCover BitBoard,
 	c *CoeffSet[T],
 ) {
 
@@ -599,9 +599,9 @@ func (sp *scorePair[T]) addKnightMobility(
 
 func (sp *scorePair[T]) addKnightOutposts(
 	color Color,
-	knightBB board.BitBoard,
+	knightBB BitBoard,
 	sq Square,
-	holes board.BitBoard,
+	holes BitBoard,
 	c *CoeffSet[T],
 ) {
 

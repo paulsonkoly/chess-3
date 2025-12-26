@@ -14,9 +14,9 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/paulsonkoly/chess-3/board"
+	"github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/types"
 )
 
 const PhaseBucketCount = 24
@@ -188,7 +188,7 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 
 		if filterNoisy {
 			// filter noisy best moves
-			if bm.Promo() != types.NoPiece {
+			if bm.Promo() != chess.NoPiece {
 				continue
 			}
 
@@ -196,7 +196,7 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 				return nil, err
 			}
 
-			if b.SquaresToPiece[bm.To()] != types.NoPiece {
+			if b.SquaresToPiece[bm.To()] != chess.NoPiece {
 				continue
 			}
 		}
@@ -226,7 +226,7 @@ func countPhases(entries []EPDEntry) ([]int, error) {
 		}
 
 		bucketIx := 0
-		for pt := types.Pawn; pt < types.King; pt++ {
+		for pt := chess.Pawn; pt < chess.King; pt++ {
 			bucketIx += b.Pieces[pt].Count() * eval.Phase[pt]
 		}
 

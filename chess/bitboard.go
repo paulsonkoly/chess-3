@@ -1,9 +1,7 @@
-package board
+package chess
 
 import (
 	"math/bits"
-
-	. "github.com/paulsonkoly/chess-3/types"
 )
 
 // A BitBoard is a 64 bit bitmap with one bit for each square of a chessboard.

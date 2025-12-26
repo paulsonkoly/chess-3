@@ -1,7 +1,7 @@
 package heur
 
 import (
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // Continuation is the heuristics table indexed with color, old move piece type

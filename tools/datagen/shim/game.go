@@ -2,7 +2,7 @@ package shim
 
 import (
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/types"
+	"github.com/paulsonkoly/chess-3/chess"
 )
 
 type Game struct {
@@ -21,5 +21,5 @@ const (
 type Position struct {
 	FEN   string
 	BM    move.Move
-	Score types.Score
+	Score chess.Score
 }

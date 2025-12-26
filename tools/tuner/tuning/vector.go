@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
+	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval"
-	. "github.com/paulsonkoly/chess-3/types"
 )
 
 // Vector represents the set of float64 values in a multi dimensional vector.

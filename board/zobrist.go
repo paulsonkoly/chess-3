@@ -3,7 +3,7 @@ package board
 import (
 	"math/rand/v2"
 
-	. "github.com/paulsonkoly/chess-3/types"
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // Hash is a chess position Zobrist hash.
