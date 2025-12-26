@@ -118,11 +118,11 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Move, stack
 		}
 	}
 
-	malus := -(Score(d)*20 - 15)
+	penalty := -(Score(d)*20 - 15)
 	if len(moves) >= 2 {
 		for _, m := range moves[:len(moves)-1] {
-			adjustScores(m, malus)
+			adjustScores(m, penalty)
 		}
 	}
-	adjustScores(moves[len(moves)-1], -malus) // bonus
+	adjustScores(moves[len(moves)-1], -penalty) // bonus
 }
