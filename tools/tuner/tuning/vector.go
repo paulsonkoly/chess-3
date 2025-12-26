@@ -214,7 +214,7 @@ func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	b.WriteString(fmt.Sprintf("// %v\n\n", time.Now()))
 
 	b.WriteString("import (\n")
-	b.WriteString("	. \"github.com/paulsonkoly/chess-3/types\"\n")
+	b.WriteString("	. \"github.com/paulsonkoly/chess-3/chess\"\n")
 	b.WriteString(")\n\n")
 
 	b.WriteString("var Coefficients = CoeffSet[Score]{\n")
