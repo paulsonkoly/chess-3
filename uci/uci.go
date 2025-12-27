@@ -14,7 +14,6 @@ import (
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/movegen"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/transp"
 
@@ -258,9 +257,8 @@ func parseUCIMove(b *board.Board, uciM string) (move.Move, error) {
 			return 0, errors.New("invalid uci move")
 		}
 	}
-	changesEnPassant := b.SquaresToPiece[from] == Pawn && Abs(to-from) == 16 && movegen.CanEnPassant(b, to)
 
-	return move.New(from, to, move.WithPromo(promo), move.WithEnPassant(changesEnPassant)), nil
+	return move.New(from, to, move.WithPromo(promo)), nil
 }
 
 func (e *Engine) handleEval() {

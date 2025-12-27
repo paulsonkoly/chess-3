@@ -1,8 +1,8 @@
 package board
 
 import (
-	"github.com/paulsonkoly/chess-3/move"
 	. "github.com/paulsonkoly/chess-3/chess"
+	"github.com/paulsonkoly/chess-3/move"
 )
 
 // Board is a chess position.
@@ -92,6 +92,7 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 	hash := b.Hash()
 
 	piece := b.SquaresToPiece[m.From()]
+	canEnPassant := piece == Pawn && Abs(m.From()-m.To()) == 16 && b.CanEnPassant(m.To())
 	captureSq := b.CaptureSq(m)
 	capture := b.SquaresToPiece[captureSq]
 
@@ -127,7 +128,7 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 	}
 
 	newEnPassant := Square(0)
-	if m.EnPassant() {
+	if canEnPassant {
 		newEnPassant = (m.From() + m.To()) / 2
 		hash ^= epFileRand[newEnPassant.File()]
 	}

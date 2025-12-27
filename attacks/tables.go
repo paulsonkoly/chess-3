@@ -1,4 +1,4 @@
-package movegen
+package attacks
 
 import (
 	. "github.com/paulsonkoly/chess-3/chess"
@@ -174,6 +174,8 @@ func initInBetween() {
 		}
 	}
 }
+
+func InBetween(a, b Square) BitBoard { return inBetween[a][b] }
 
 func initBishopMagic() {
 	for sq := range Squares {

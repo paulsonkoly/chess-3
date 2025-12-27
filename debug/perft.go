@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/paulsonkoly/chess-3/board"
+	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
-	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 func Perft(b *board.Board, depth Depth, split bool) int {
@@ -30,7 +30,7 @@ func perft(ms *move.Store, b *board.Board, depth Depth, split bool) int {
 	for _, m := range ms.Frame() {
 		r := b.MakeMove(m.Move)
 
-		if !movegen.InCheck(b, me) {
+		if !b.InCheck(me) {
 			v := perft(ms, b, depth-1, false)
 			if split {
 				fmt.Println(m, v, b.FEN())

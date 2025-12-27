@@ -28,13 +28,6 @@ func (p WithPromo) Apply(sm Move) Move {
 	return sm
 }
 
-// WithEnPassant is a MoveOption that sets the en-passant flag.
-type WithEnPassant bool
-
-func (ep WithEnPassant) Apply(m Move) Move {
-	m.SetEnPassant(bool(ep))
-	return m
-}
 
 // New creates a new move with to and from squares and additional options.
 func New(from, to Square, opts ...MoveOption) Move {
@@ -52,7 +45,6 @@ const (
 	fromShift    = 6
 	promoMsk     = Move((1<<3 - 1) << 12)
 	promoShift   = 12
-	enPassantMsk = Move((1<<1 - 1) << 15)
 )
 
 // To is the target square of the move.
@@ -72,18 +64,6 @@ func (s Move) Promo() Piece { return Piece((s & promoMsk) >> promoShift) }
 
 // SetPromo sets the promotion piece of the move.
 func (s *Move) SetPromo(p Piece) { *s = (*s & ^promoMsk) | Move(p)<<promoShift&promoMsk }
-
-// EnPassant indicates that this is a double pawn push changing the en passant state.
-func (s Move) EnPassant() bool { return (s & enPassantMsk) != 0 }
-
-// SetEnPassant sets the en passant flag.
-func (s *Move) SetEnPassant(ep bool) {
-	flag := Move(0)
-	if ep {
-		flag = enPassantMsk
-	}
-	*s = (*s & ^enPassantMsk) | flag
-}
 
 // Matches determines if a Move m matches s.
 func (s Move) Matches(m *Weighted) bool {
