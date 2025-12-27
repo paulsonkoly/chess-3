@@ -22,7 +22,7 @@ func TestIsCheckMate(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "somthered mate",
+			name: "smothered mate",
 			b:    Must(board.FromFEN("kr6/ppN5/8/8/8/8/8/K7 b - - 0 1")),
 			want: true,
 		},
