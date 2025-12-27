@@ -1,7 +1,7 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: Go tests
+name: Go builds
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  tests:
     name: Tests
     runs-on: ubuntu-latest
     steps:
@@ -19,7 +19,53 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.23.4'
 
     - name: Test
       run: go test -v ./...
+
+  tuner:
+    name: Tuner
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+
+    - name: Build
+      working-directory: tools/tuner
+      run: go build -o tuner
+
+  datagen:
+    name: Datagen
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+
+    - name: Build
+      working-directory: tools/datagen
+      run: go build -o datagen
+
+  extract:
+    name: Extract
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+
+    - name: Build
+      working-directory: tools/extract
+      run: go build -o extract
+
