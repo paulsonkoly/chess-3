@@ -142,7 +142,7 @@ func TestIsStalemate(t *testing.T) {
 		},
 		{
 			name: "pawn can capture",
-			b:    Must(board.FromFEN("7K/5P2/7k/8/8/8/8/6r1 w - - 0 1")),
+			b:    Must(board.FromFEN("7K/8/4pp1k/4P3/8/8/8/6r1 w - - 0 1")),
 			want: false,
 		},
 		{
