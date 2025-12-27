@@ -97,7 +97,7 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 
 					for _, pseudo := range moves {
 						r := b.MakeMove(pseudo.Move)
-						if !movegen.InCheck(b, b.STM.Flip()) { // legal
+						if !b.InCheck(b.STM.Flip()) { // legal
 							move = pseudo.Move
 							b.UndoMove(pseudo.Move, r)
 							break
@@ -222,7 +222,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
-	inCheck := movegen.InCheck(b, b.STM)
+	inCheck := b.InCheck(b.STM)
 	improving := false
 	staticEval := Inv
 
@@ -283,7 +283,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 		r := b.MakeMove(m.Move)
 
-		if movegen.InCheck(b, b.STM.Flip()) {
+		if b.InCheck(b.STM.Flip()) {
 			b.UndoMove(m.Move, r)
 			continue
 		}
@@ -525,14 +525,14 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		}
 	}
 
-	inCheck := movegen.InCheck(b, b.STM)
+	inCheck := b.InCheck(b.STM)
 
 	if inCheck {
-		if movegen.IsCheckmate(b) {
+		if b.IsCheckmate() {
 			return -Inf + Score(ply)
 		}
 	} else {
-		if movegen.IsStalemate(b) {
+		if b.IsStalemate() {
 			return 0
 		}
 	}
@@ -567,7 +567,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 
 		r := b.MakeMove(m.Move)
 
-		if movegen.InCheck(b, b.STM.Flip()) {
+		if b.InCheck(b.STM.Flip()) {
 			b.UndoMove(m.Move, r)
 			continue
 		}

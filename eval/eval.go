@@ -4,8 +4,8 @@ package eval
 import (
 	"math"
 
+	"github.com/paulsonkoly/chess-3/attacks"
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/movegen"
 
 	. "github.com/paulsonkoly/chess-3/chess"
 )
@@ -146,7 +146,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		ka.addSafeChecks(color, Bishop, safeChecks, c)
 
 		// Knight
-		eKAttack = movegen.KnightMoves(pw.kingSq[color.Flip()])
+		eKAttack = attacks.KnightMoves(pw.kingSq[color.Flip()])
 		safeChecks = pw.attacks[color][Knight-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
 
 		ka.addSafeChecks(color, Knight, safeChecks, c)
@@ -330,11 +330,11 @@ func (pw *pieceWise) calcKingSquares(b *board.Board) {
 	for color := White; color <= Black; color++ {
 		king := b.Colors[color] & b.Pieces[King]
 		kingSq := king.LowestSet()
-		kingA := movegen.KingMoves(kingSq)
+		kingA := attacks.KingMoves(kingSq)
 
 		pw.attacks[color][King-Pawn] = kingA
-		pw.kingRays[color][0] = movegen.BishopMoves(kingSq, pw.occ)
-		pw.kingRays[color][Rook-Bishop] = movegen.RookMoves(kingSq, pw.occ)
+		pw.kingRays[color][0] = attacks.BishopMoves(kingSq, pw.occ)
+		pw.kingRays[color][Rook-Bishop] = attacks.RookMoves(kingSq, pw.occ)
 		pw.kingSq[color] = kingSq
 		pw.kingNb[color] = king | kingA
 	}
@@ -348,8 +348,8 @@ func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 
 	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
 
-	pw.attacks[White][0] = movegen.PawnCaptureMoves(ps[White], White)
-	pw.attacks[Black][0] = movegen.PawnCaptureMoves(ps[Black], Black)
+	pw.attacks[White][0] = attacks.PawnCaptureMoves(ps[White], White)
+	pw.attacks[Black][0] = attacks.PawnCaptureMoves(ps[Black], Black)
 
 	// various useful pawn bitboards
 	frontSpan := [...]BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
@@ -524,14 +524,14 @@ func sigmoidal[T ScoreType](n T) T {
 }
 
 func (pw *pieceWise) calcQueenAttacks(color Color, sq Square) BitBoard {
-	attacks := movegen.BishopMoves(sq, pw.occ) | movegen.RookMoves(sq, pw.occ)
+	attacks := attacks.BishopMoves(sq, pw.occ) | attacks.RookMoves(sq, pw.occ)
 
 	pw.attacks[color][Queen-Pawn] |= attacks
 	return attacks
 }
 
 func (pw *pieceWise) calcRookAttacks(color Color, sq Square) BitBoard {
-	attacks := movegen.RookMoves(sq, pw.occ)
+	attacks := attacks.RookMoves(sq, pw.occ)
 
 	pw.attacks[color][Rook-Pawn] |= attacks
 	return attacks
@@ -563,7 +563,7 @@ func (sp *scorePair[T]) addRookMobility(
 }
 
 func (pw *pieceWise) calcBishopAttacks(color Color, sq Square) BitBoard {
-	attacks := movegen.BishopMoves(sq, pw.occ)
+	attacks := attacks.BishopMoves(sq, pw.occ)
 
 	pw.attacks[color][Bishop-Pawn] |= attacks
 	return attacks
@@ -577,7 +577,7 @@ func (sp *scorePair[T]) addBishopMobility(b *board.Board, color Color, attacks B
 }
 
 func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) BitBoard {
-	attacks := movegen.KnightMoves(sq)
+	attacks := attacks.KnightMoves(sq)
 
 	pw.attacks[color][Knight-Pawn] |= attacks
 	return attacks
