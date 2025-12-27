@@ -89,7 +89,7 @@ func TestIsCheckMate(t *testing.T) {
 		{
 			name: "pinned defender cannot capture",
 			b:    Must(board.FromFEN("6k1/8/8/4b3/8/r7/1B6/KR6 w - - 0 1")),
-			want: true, // Bishop is pinned by hypothetical bishop/rook
+			want: true,
 		},
 		{
 			name: "knight check with pinned pawn",
