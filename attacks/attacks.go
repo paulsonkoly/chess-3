@@ -6,11 +6,11 @@ import (
 )
 
 // KingMoves is the bitboard set where the king can move to from from. It does
-// not take into accound occupancies or legality or castling.
+// not take into account occupancies or legality or castling.
 func KingMoves(from Square) BitBoard { return kingMoves[from] }
 
 // KnightMoves is the bitboard set where a knight can move to from from. It does
-// not take into accound occupancies or legality.
+// not take into account occupancies or legality.
 func KnightMoves(from Square) BitBoard { return knightMoves[from] }
 
 // BishopMoves is the bitboard set where a bishop can move to from from. It
