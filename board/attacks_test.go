@@ -119,6 +119,100 @@ func TestIsCheckMate(t *testing.T) {
 	}
 }
 
+func TestIsStalemate(t *testing.T) {
+	tests := []struct {
+		name string
+		b    *board.Board
+		want bool
+	}{
+		{
+			name: "king can move",
+			b:    Must(board.FromFEN("7k/7p/6pP/4p1P1/4P3/3B4/8/1K6 b - - 0 1")),
+			want: false,
+		},
+		{
+			name: "king can't move",
+			b:    Must(board.FromFEN("7k/7p/6pP/4p1P1/2B1P3/8/8/1K6 b - - 0 1")),
+			want: true,
+		},
+		{
+			name: "pawn can push",
+			b:    Must(board.FromFEN("7K/5P2/7k/8/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pawn can capture",
+			b:    Must(board.FromFEN("7K/5P2/7k/8/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned queen can move",
+			b:    Must(board.FromFEN("7K/8/7k/4Q3/3b4/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned rook can't move",
+			b:    Must(board.FromFEN("7K/8/7k/4R3/3b4/8/8/6r1 w - - 0 1")),
+			want: true,
+		},
+		{
+			name: "pinned rook can move",
+			b:    Must(board.FromFEN("q3R2K/8/7k/8/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned knight can't move",
+			b:    Must(board.FromFEN("7K/8/7k/4N3/3b4/8/8/6r1 w - - 0 1")),
+			want: true,
+		},
+		{
+			name: "knight can move",
+			b:    Must(board.FromFEN("7K/8/7k/4N3/8/8/8/6r1 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "pinned pawn can't move",
+			b:    Must(board.FromFEN("7K/8/7k/4P3/3b4/8/8/6r1 w - - 0 1")),
+			want: true,
+		},
+		{
+			name: "en-passant captureable",
+			b:    Must(board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2N5/8/1K6 b - d3 0 1")),
+			want: false,
+		},
+		{
+			name: "en-passant pinned (diag)",
+			b:    Must(board.FromFEN("7k/7p/6pP/3B2P1/2pP4/2B5/8/1K6 b - d3 0 1")),
+			want: true,
+		},
+		{
+			name: "en-passant pinned (rank)",
+			b:    Must(board.FromFEN("1kb4q/6p1/3p2P1/r2Pp1K1/r7/8/8/8 w - e6 0 2")),
+			want: true,
+		},
+		{
+			name: "pawn can promote",
+			b:    Must(board.FromFEN("8/1P6/8/8/8/2rk2b1/8/3K4 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "knight not actually pinned",
+			b:    Must(board.FromFEN("8/8/8/BB2n2B/R6B/4k3/4p3/K3R3 w - - 0 1")),
+			want: false,
+		},
+		{
+			name: "edge pawn capture",
+			b:    Must(board.FromFEN("8/8/6pp/7P/5k1K/7P/8/8 w - - 0 1")),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.b.IsStalemate())
+		})
+	}
+}
+
 func TestEnPassantStates(t *testing.T) {
 	tests := []struct {
 		name   string
