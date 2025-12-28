@@ -47,9 +47,9 @@ const (
 	ThirdRankBB   = BitBoard(0x0000000000ff0000) // ThirdRankBB is a BitBoard with bits set for the third rank.
 	FourthRankBB  = BitBoard(0x00000000ff000000) // FourthRankBB is a BitBoard with bits set for the fourth rank.
 	FifthRankBB   = BitBoard(0x000000ff00000000) // FifthRankBB is a BitBoard with bits set for the fifth rank.
-	SixthRankBB   = BitBoard(0x0000ff0000000000) // SixthRankBB is a BitBoard with bits set for the six rank.
+	SixthRankBB   = BitBoard(0x0000ff0000000000) // SixthRankBB is a BitBoard with bits set for the sixth rank.
 	SeventhRankBB = BitBoard(0x00ff000000000000) // SeventhRankBB is a BitBoard with bits set for the seventh rank.
-	EighthRankBB  = BitBoard(0xff00000000000000) // EighthRankBB is a BitBoard with bits set for the eights rank.
+	EighthRankBB  = BitBoard(0xff00000000000000) // EighthRankBB is a BitBoard with bits set for the eighth rank.
 )
 
 var ranks = [...]BitBoard{
