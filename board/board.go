@@ -405,26 +405,26 @@ func (b *Board) IsPseudoLegal(m move.Move) bool {
 		switch {
 
 		case from == E1 && to == G1 && b.STM == White:
-			if b.Castles&ShortWhite == 0 || attacks.CastleMask[White][Short]&occ != b.Colors[b.STM]&b.Pieces[King] ||
-				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[White][Short]) {
+			if b.Castles&ShortWhite == 0 || BitBoardFromSquares(F1, G1)&occ != 0 ||
+				b.IsAttacked(b.STM.Flip(), occ, BitBoardFromSquares(E1, F1, G1)) {
 				return false
 			}
 
 		case from == E1 && to == C1 && b.STM == White:
-			if b.Castles&LongWhite == 0 || attacks.CastleMask[White][Long]&occ != b.Colors[b.STM]&b.Pieces[King] ||
-				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[White][Long]) {
+			if b.Castles&LongWhite == 0 || BitBoardFromSquares(D1, C1, B1)&occ != 0 ||
+				b.IsAttacked(b.STM.Flip(), occ, BitBoardFromSquares(E1, D1, C1)) {
 				return false
 			}
 
 		case from == E8 && to == G8 && b.STM == Black:
-			if b.Castles&ShortBlack == 0 || attacks.CastleMask[Black][Short]&occ != b.Colors[b.STM]&b.Pieces[King] ||
-				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[Black][Short]) {
+			if b.Castles&ShortBlack == 0 || BitBoardFromSquares(F8, G8)&occ != 0 ||
+				b.IsAttacked(b.STM.Flip(), occ, BitBoardFromSquares(E8, F8, G8)) {
 				return false
 			}
 
 		case from == E8 && to == C8 && b.STM == Black:
-			if b.Castles&LongBlack == 0 || attacks.CastleMask[Black][Long]&occ != b.Colors[b.STM]&b.Pieces[King] ||
-				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[Black][Long]) {
+			if b.Castles&LongBlack == 0 || BitBoardFromSquares(D8, C8, B8)&occ != 0 ||
+				b.IsAttacked(b.STM.Flip(), occ, BitBoardFromSquares(E8, D8, C8)) {
 				return false
 			}
 
@@ -458,7 +458,7 @@ func (b *Board) IsPseudoLegal(m move.Move) bool {
 				}
 
 			case 2: // double pawn push
-				if fromBB & RankBB(SecondRank.FromPerspectiveOf(b.STM)) == 0 {
+				if fromBB&RankBB(SecondRank.FromPerspectiveOf(b.STM)) == 0 {
 					return false
 				}
 

@@ -225,6 +225,12 @@ func TestIsPseudoLegal(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "castle not pseudo legal due castling through occupied square",
+			fen:  "4k3/8/8/8/8/8/8/RN2K3 w Q - 0 1",
+			move: move.New(E1, C1),
+			want: false,
+		},
+		{
 			name: "single pawn push pseudo legal",
 			fen:  "4k3/8/8/8/8/8/1P6/4K3 w - - 0 1",
 			move: move.New(B2, B3),
