@@ -1,6 +1,7 @@
 package board
 
 import (
+	"github.com/paulsonkoly/chess-3/attacks"
 	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
 )
@@ -303,7 +304,7 @@ func (b *Board) UndoNullMove(r Reverse) {
 // 	}
 //
 // 	for piece := Pawn; piece <= King; piece++ {
-// 		bb := BitBoard(0)
+// 		bb := Empty
 // 		for sq := A1; sq <= H8; sq++ {
 // 			if b.SquaresToPiece[sq] == piece {
 // 				bb |= 1 << sq
@@ -360,4 +361,124 @@ func (b Board) InvalidPieceCount() bool {
 		}
 	}
 	return false
+}
+
+func (b *Board) IsPseudoLegal(m move.Move) bool {
+	from := m.From()
+	fromBB := BitBoard(1) << from
+	to := m.To()
+	toBB := BitBoard(1) << to
+
+	if b.Colors[b.STM]&fromBB == 0 {
+		return false
+	}
+	if b.Colors[b.STM]&toBB != 0 {
+		return false
+	}
+
+	piece := b.SquaresToPiece[from]
+	occ := b.Colors[White] | b.Colors[Black]
+
+	switch piece {
+
+	case Knight:
+		if attacks.KnightMoves(from)&toBB == 0 {
+			return false
+		}
+
+	case Bishop:
+		if attacks.BishopMoves(from, occ)&toBB == 0 {
+			return false
+		}
+
+	case Rook:
+		if attacks.RookMoves(from, occ)&toBB == 0 {
+			return false
+		}
+
+	case Queen:
+		if (attacks.RookMoves(from, occ)|attacks.BishopMoves(from, occ))&toBB == 0 {
+			return false
+		}
+
+	case King:
+		switch {
+
+		case from == E1 && to == G1 && b.STM == White:
+			if b.Castles&ShortWhite == 0 || attacks.CastleMask[White][Short]&occ != b.Colors[b.STM]&b.Pieces[King] ||
+				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[White][Short]) {
+				return false
+			}
+
+		case from == E1 && to == C1 && b.STM == White:
+			if b.Castles&LongWhite == 0 || attacks.CastleMask[White][Long]&occ != b.Colors[b.STM]&b.Pieces[King] ||
+				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[White][Long]) {
+				return false
+			}
+
+		case from == E8 && to == G8 && b.STM == Black:
+			if b.Castles&ShortBlack == 0 || attacks.CastleMask[Black][Short]&occ != b.Colors[b.STM]&b.Pieces[King] ||
+				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[Black][Short]) {
+				return false
+			}
+
+		case from == E8 && to == C8 && b.STM == Black:
+			if b.Castles&LongBlack == 0 || attacks.CastleMask[Black][Long]&occ != b.Colors[b.STM]&b.Pieces[King] ||
+				b.IsAttacked(b.STM.Flip(), occ, attacks.CastleMask[Black][Long]) {
+				return false
+			}
+
+		default:
+			if attacks.KingMoves(from)&toBB == 0 {
+				return false
+			}
+		}
+
+	case Pawn:
+
+		if (from < to && b.STM == Black) || (from > to && b.STM == White) {
+			return false
+		}
+
+		switch Abs(from.File() - to.File()) {
+
+		case 0: // pawn pushing
+
+			switch Abs(from.Rank() - to.Rank()) {
+
+			case 1: // single pawn push
+				if occ&toBB != 0 {
+					return false
+				}
+
+				if RankBB(SecondRank.FromPerspectiveOf(b.STM.Flip()))&fromBB != 0 {
+					if m.Promo() == NoPiece {
+						return false
+					}
+				}
+
+			case 2: // double pawn push
+				if occ&(toBB|(BitBoard(1)<<((from+to)/2))) != 0 {
+					return false
+				}
+
+			default:
+				return false
+			}
+
+		case 1: // pawn capturing
+			if Abs(from.Rank()-to.Rank()) != 1 {
+				return false
+			}
+
+			if b.Colors[b.STM.Flip()]|(BitBoard(1)<<b.EnPassant)&toBB == 0 {
+				return false
+			}
+
+		default:
+			return false
+		}
+	}
+
+	return true
 }

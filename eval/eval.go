@@ -52,7 +52,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// queens
 		pieces := b.Pieces[Queen] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := Empty; pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -65,7 +65,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// rooks
 		pieces = b.Pieces[Rook] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := Empty; pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -78,7 +78,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// bishops
 		pieces = b.Pieces[Bishop] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := Empty; pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -91,7 +91,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// knights
 		pieces = b.Pieces[Knight] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := Empty; pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -105,7 +105,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// pawns
 		pieces = b.Pieces[Pawn] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := Empty; pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -423,7 +423,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 			}
 		}
 
-		for passer := BitBoard(0); passers != 0; passers ^= passer {
+		for passer := Empty; passers != 0; passers ^= passer {
 			passer = passers & -passers
 			sq := passer.LowestSet()
 
