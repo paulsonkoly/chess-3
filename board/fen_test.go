@@ -21,7 +21,7 @@ func TestFENConversion(t *testing.T) {
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1",
 		},
 		{ // TODO review these examples.
-			name: "Empty Board",
+			name: "BitBoard(0) Board",
 			fen:  "8/8/8/8/8/8/8/8 w - - 0 1",
 		},
 		{

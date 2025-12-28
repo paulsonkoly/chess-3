@@ -33,14 +33,14 @@ func (bb BitBoard) IsPow2() bool {
 }
 
 const (
-	AFile = BitBoard(0x0101010101010101) // AFile is a BitBoard with bits set for the A file.
-	BFile = BitBoard(0x0202020202020202) // BFile is a BitBoard with bits set for the B file.
-	CFile = BitBoard(0x0404040404040404) // CFile is a BitBoard with bits set for the C file.
-	DFile = BitBoard(0x0808080808080808) // DFile is a BitBoard with bits set for the D file.
-	EFile = BitBoard(0x1010101010101010) // EFile is a BitBoard with bits set for the E file.
-	FFile = BitBoard(0x2020202020202020) // FFile is a BitBoard with bits set for the F file.
-	GFile = BitBoard(0x4040404040404040) // GFile is a BitBoard with bits set for the G file.
-	HFile = BitBoard(0x8080808080808080) // HFile is a BitBoard with bits set for the H file.
+	AFileBB= BitBoard(0x0101010101010101) // AFileBB is a BitBoard with bits set for the A file.
+	BFileBB= BitBoard(0x0202020202020202) // BFileBB is a BitBoard with bits set for the B file.
+	CFileBB= BitBoard(0x0404040404040404) // CFileBB is a BitBoard with bits set for the C file.
+	DFileBB= BitBoard(0x0808080808080808) // DFileBB is a BitBoard with bits set for the D file.
+	EFileBB= BitBoard(0x1010101010101010) // EFileBB is a BitBoard with bits set for the E file.
+	FFileBB= BitBoard(0x2020202020202020) // FFileBB is a BitBoard with bits set for the F file.
+	GFileBB= BitBoard(0x4040404040404040) // GFileBB is a BitBoard with bits set for the G file.
+	HFileBB= BitBoard(0x8080808080808080) // HFileBB is a BitBoard with bits set for the H file.
 
 	FirstRankBB   = BitBoard(0x00000000000000ff) // FirstRankBB is a BitBoard with bits set for the fist rank.
 	SecondRankBB  = BitBoard(0x000000000000ff00) // SecondRankBB is a BitBoard with bits set for the second rank.
@@ -60,6 +60,5 @@ var ranks = [...]BitBoard{
 func RankBB(rank Square) BitBoard { return ranks[rank] }
 
 const (
-	Empty = BitBoard(0)                  // Empty is the 0 bitboard.
 	Full  = BitBoard(0xffffffffffffffff) // Full is a BitBoard with all 64 bits set.
 )

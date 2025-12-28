@@ -105,13 +105,13 @@ func TestIsPseudoLegal(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "move is not psudo legal due to no piece",
+			name: "move is not pseudo legal due to no piece",
 			fen:  "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
 			move: move.New(B2, B3),
 			want: false,
 		},
 		{
-			name: "move is not psudo legal due to wrong color",
+			name: "move is not pseudo legal due to wrong color",
 			fen:  "4k3/8/8/8/8/1p6/8/4K3 w - - 0 1",
 			move: move.New(B3, B2),
 			want: false,

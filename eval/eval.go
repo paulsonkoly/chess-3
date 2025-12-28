@@ -52,7 +52,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// queens
 		pieces := b.Pieces[Queen] & b.Colors[color]
-		for piece := Empty; pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -65,7 +65,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// rooks
 		pieces = b.Pieces[Rook] & b.Colors[color]
-		for piece := Empty; pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -78,7 +78,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// bishops
 		pieces = b.Pieces[Bishop] & b.Colors[color]
-		for piece := Empty; pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -91,7 +91,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// knights
 		pieces = b.Pieces[Knight] & b.Colors[color]
-		for piece := Empty; pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -105,7 +105,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// pawns
 		pieces = b.Pieces[Pawn] & b.Colors[color]
-		for piece := Empty; pieces != 0; pieces ^= piece {
+		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			sq := piece.LowestSet()
 
@@ -358,8 +358,8 @@ func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 	// calculate holes in our position, squares that cannot be protected by one
 	// of our pawns.
 	cover := [...]BitBoard{
-		((frontSpan[White] & ^AFile) >> 1) | ((frontSpan[White] & ^HFile) << 1),
-		((frontSpan[Black] & ^HFile) << 1) | ((frontSpan[Black] & ^AFile) >> 1),
+		((frontSpan[White] & ^AFileBB) >> 1) | ((frontSpan[White] & ^HFileBB) << 1),
+		((frontSpan[Black] & ^HFileBB) << 1) | ((frontSpan[Black] & ^AFileBB) >> 1),
 	}
 	pw.holes[White] = sideOfBoard[White] & ^cover[White]
 	pw.holes[Black] = sideOfBoard[Black] & ^cover[Black]
@@ -368,8 +368,8 @@ func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 	wFiles := ps[White] | frontSpan[White] | rearSpan[White]
 	bFiles := ps[Black] | frontSpan[Black] | rearSpan[Black]
 	neighbourF := [...]BitBoard{
-		((wFiles & ^AFile) >> 1) | ((wFiles & ^HFile) << 1),
-		((bFiles & ^HFile) << 1) | ((bFiles & ^AFile) >> 1),
+		((wFiles & ^AFileBB) >> 1) | ((wFiles & ^HFileBB) << 1),
+		((bFiles & ^HFileBB) << 1) | ((bFiles & ^AFileBB) >> 1),
 	}
 
 	frontLine := [...]BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
@@ -423,7 +423,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 			}
 		}
 
-		for passer := Empty; passers != 0; passers ^= passer {
+		for passer := BitBoard(0); passers != 0; passers ^= passer {
 			passer = passers & -passers
 			sq := passer.LowestSet()
 
