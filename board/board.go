@@ -440,6 +440,12 @@ func (b *Board) IsPseudoLegal(m move.Move) bool {
 			return false
 		}
 
+		if RankBB(SeventhRank.FromPerspectiveOf(b.STM))&fromBB != 0 {
+			if m.Promo() == NoPiece {
+				return false
+			}
+		}
+
 		switch Abs(from.File() - to.File()) {
 
 		case 0: // pawn pushing
@@ -451,13 +457,11 @@ func (b *Board) IsPseudoLegal(m move.Move) bool {
 					return false
 				}
 
-				if RankBB(SecondRank.FromPerspectiveOf(b.STM.Flip()))&fromBB != 0 {
-					if m.Promo() == NoPiece {
-						return false
-					}
+			case 2: // double pawn push
+				if fromBB & RankBB(SecondRank.FromPerspectiveOf(b.STM)) == 0 {
+					return false
 				}
 
-			case 2: // double pawn push
 				if occ&(toBB|(BitBoard(1)<<((from+to)/2))) != 0 {
 					return false
 				}
@@ -471,7 +475,7 @@ func (b *Board) IsPseudoLegal(m move.Move) bool {
 				return false
 			}
 
-			if b.Colors[b.STM.Flip()]|(BitBoard(1)<<b.EnPassant)&toBB == 0 {
+			if (b.Colors[b.STM.Flip()]|(BitBoard(1)<<b.EnPassant))&toBB == 0 {
 				return false
 			}
 
