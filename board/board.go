@@ -304,7 +304,7 @@ func (b *Board) UndoNullMove(r Reverse) {
 // 	}
 //
 // 	for piece := Pawn; piece <= King; piece++ {
-// 		bb := BitBoard(0)
+// 		bb := Empty
 // 		for sq := A1; sq <= H8; sq++ {
 // 			if b.SquaresToPiece[sq] == piece {
 // 				bb |= 1 << sq

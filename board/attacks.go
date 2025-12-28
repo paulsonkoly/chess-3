@@ -9,7 +9,7 @@ func (b *Board) Attackers(squares BitBoard, occ BitBoard, color Color) BitBoard 
 	opp := b.Colors[color]
 	var res BitBoard
 
-	for sqrs, sqBB := squares, BitBoard(0); sqrs != 0; sqrs ^= sqBB {
+	for sqrs, sqBB := squares, Empty; sqrs != 0; sqrs ^= sqBB {
 		sqBB = sqrs & -sqrs
 		sq := sqBB.LowestSet()
 
@@ -28,14 +28,14 @@ func (b *Board) Attackers(squares BitBoard, occ BitBoard, color Color) BitBoard 
 
 func (b *Board) Block(squares BitBoard, color Color) BitBoard {
 	blockers := b.Colors[color]
-	res := BitBoard(0)
+	res := Empty
 	occ := b.Colors[White] | b.Colors[Black]
 
-	for square, eachSquare := BitBoard(0), squares; eachSquare != 0; eachSquare ^= square {
+	for square, eachSquare := Empty, squares; eachSquare != 0; eachSquare ^= square {
 		square = eachSquare & -eachSquare
 		sq := square.LowestSet()
 
-		sub := BitBoard(0)
+		sub := Empty
 
 		/* king can't block */
 		sub |= attacks.KnightMoves(sq) & b.Pieces[Knight]
@@ -74,7 +74,7 @@ func (b *Board) IsCheckmate() bool {
 	kingSq := king.LowestSet()
 	kMvs := attacks.KingMoves(kingSq) & ^b.Colors[b.STM]
 
-	for to := BitBoard(0); kMvs != 0; kMvs ^= to {
+	for to := Empty; kMvs != 0; kMvs ^= to {
 		to = kMvs & -kMvs
 
 		if !b.IsAttacked(b.STM.Flip(), occ&^king, to) {
@@ -95,7 +95,7 @@ func (b *Board) IsCheckmate() bool {
 	defenders &= ^king
 
 	// are all my defenders pinned in a way that they can't capture the attacker
-	for defender := BitBoard(0); defenders != 0; defenders ^= defender {
+	for defender := Empty; defenders != 0; defenders ^= defender {
 		defender = defenders & -defenders
 		nocc := occ
 		pinned := false
@@ -130,7 +130,7 @@ func (b *Board) IsCheckmate() bool {
 
 	defenders = b.Block(blocked, b.STM)
 
-	for defender := BitBoard(0); defenders != 0; defenders ^= defender {
+	for defender := Empty; defenders != 0; defenders ^= defender {
 		defender = defenders & -defenders
 		nocc := occ
 		opp := b.Colors[b.STM.Flip()]
@@ -194,7 +194,7 @@ func (b *Board) IsStalemate() bool {
 	// queens can't be pinned to the extent that they can't move, for instance
 	// they can always capture the pinner.
 	pieces = b.Pieces[Queen] & me
-	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := Empty; pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 
@@ -206,7 +206,7 @@ func (b *Board) IsStalemate() bool {
 	// bishop can only be paralyzed by rook or queen but in case of queen not the
 	// one it can capture
 	pieces = b.Pieces[Bishop] & me
-	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := Empty; pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 		nocc := occ & ^piece
@@ -221,7 +221,7 @@ func (b *Board) IsStalemate() bool {
 	//  rooks can only be paralyzed by bishop or queen but in case of queen not the
 	//   one it can capture
 	pieces = b.Pieces[Rook] & me
-	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := Empty; pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 		nocc := occ & ^piece
@@ -235,7 +235,7 @@ func (b *Board) IsStalemate() bool {
 
 	//  knight move in pins cannot be legal
 	pieces = b.Pieces[Knight] & me
-	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := Empty; pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 		sq := piece.LowestSet()
 		nocc := occ & ^piece
@@ -255,7 +255,7 @@ func (b *Board) IsStalemate() bool {
 	}
 
 	kMoves := attacks.KingMoves(kingSq) & ^me
-	for kMove := BitBoard(0); kMoves != 0; kMoves ^= kMove {
+	for kMove := Empty; kMoves != 0; kMoves ^= kMove {
 		kMove = kMoves & -kMoves
 
 		if !b.IsAttacked(b.STM.Flip(), occ&^king, kMove) {
@@ -265,7 +265,7 @@ func (b *Board) IsStalemate() bool {
 
 	//  maybe pinned pawns
 	pieces = b.Pieces[Pawn] & me & maybePinned
-	for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+	for piece := Empty; pieces != 0; pieces ^= piece {
 		piece = pieces & -pieces
 
 		targets := attacks.PawnSinglePushMoves(piece, b.STM) & ^occ
@@ -303,7 +303,7 @@ func (b *Board) IsStalemate() bool {
 		pieces := attacks.PawnCaptureMoves(enPassantBB, b.STM.Flip()) & b.Pieces[Pawn] & me
 		remove := attacks.PawnSinglePushMoves(enPassantBB, b.STM.Flip())
 
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
+		for piece := Empty; pieces != 0; pieces ^= piece {
 			piece = pieces & -pieces
 			nocc := (occ & ^piece & ^remove) | enPassantBB
 			pinned := false
@@ -331,7 +331,7 @@ func (b *Board) IsAttacked(by Color, occ, target BitBoard) bool {
 		return true
 	}
 
-	for tSqr := BitBoard(0); target != 0; target ^= tSqr {
+	for tSqr := Empty; target != 0; target ^= tSqr {
 		tSqr = target & -target
 		sq := tSqr.LowestSet()
 
