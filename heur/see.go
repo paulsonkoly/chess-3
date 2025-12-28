@@ -1,9 +1,9 @@
 package heur
 
 import (
+	"github.com/paulsonkoly/chess-3/attacks"
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/move"
-	"github.com/paulsonkoly/chess-3/movegen"
 
 	. "github.com/paulsonkoly/chess-3/chess"
 )
@@ -46,12 +46,12 @@ func SEE(b *board.Board, m move.Move, threshold Score) bool {
 	// will be added for sliding pieces as they are discovered with changing
 	// occupancy.
 	attackers :=
-		(movegen.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White]) |
-			(movegen.PawnCaptureMoves(toBB, White) & b.Pieces[Pawn] & b.Colors[Black]) |
-			(movegen.KnightMoves(to) & b.Pieces[Knight]) |
-			(movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])) |
-			(movegen.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen])) |
-			(movegen.KingMoves(to) & b.Pieces[King])
+		(attacks.PawnCaptureMoves(toBB, Black) & b.Pieces[Pawn] & b.Colors[White]) |
+			(attacks.PawnCaptureMoves(toBB, White) & b.Pieces[Pawn] & b.Colors[Black]) |
+			(attacks.KnightMoves(to) & b.Pieces[Knight]) |
+			(attacks.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])) |
+			(attacks.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen])) |
+			(attacks.KingMoves(to) & b.Pieces[King])
 
 	res := Score(1)
 
@@ -81,7 +81,7 @@ func SEE(b *board.Board, m move.Move, threshold Score) bool {
 					return res == 1
 				}
 				occ &= ^(fromBB & -fromBB)
-				attackers |= (movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen]))
+				attackers |= (attacks.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen]))
 				break
 			}
 			fallthrough
@@ -113,7 +113,7 @@ func SEE(b *board.Board, m move.Move, threshold Score) bool {
 					return res == 1
 				}
 				occ &= ^(fromBB & -fromBB)
-				attackers |= (movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen]))
+				attackers |= (attacks.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen]))
 				break
 			}
 
@@ -124,7 +124,7 @@ func SEE(b *board.Board, m move.Move, threshold Score) bool {
 					return res == 1
 				}
 				occ &= ^(fromBB & -fromBB)
-				attackers |= (movegen.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen]))
+				attackers |= (attacks.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen]))
 				break
 			}
 
@@ -135,8 +135,8 @@ func SEE(b *board.Board, m move.Move, threshold Score) bool {
 					return res == 1
 				}
 				occ &= ^(fromBB & -fromBB)
-				attackers |= (movegen.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])) |
-					(movegen.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen]))
+				attackers |= (attacks.BishopMoves(to, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])) |
+					(attacks.RookMoves(to, occ) & (b.Pieces[Rook] | b.Pieces[Queen]))
 				break
 			}
 
