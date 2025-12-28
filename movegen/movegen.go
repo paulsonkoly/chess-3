@@ -20,7 +20,7 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 
 		tSqrs := attacks.KingMoves(from) & ^g.self & toMsk
 
-		for tSqr := Empty; tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -34,13 +34,13 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 	// knight moves
 	knights := g.self & b.Pieces[Knight] & fromMsk
 
-	for knight := Empty; knights != 0; knights ^= knight {
+	for knight := BitBoard(0); knights != 0; knights ^= knight {
 		knight = knights & -knights
 		from := knight.LowestSet()
 
 		tSqrs := attacks.KnightMoves(from) & ^g.self & toMsk
 
-		for tSqr := Empty; tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -53,13 +53,13 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// bishop moves
 	bishops := g.self & b.Pieces[Bishop] & fromMsk
-	for bishop := Empty; bishops != 0; bishops ^= bishop {
+	for bishop := BitBoard(0); bishops != 0; bishops ^= bishop {
 		bishop = bishops & -bishops
 		from := bishop.LowestSet()
 
 		tSqrs := attacks.BishopMoves(from, g.occ) & ^g.self & toMsk
 
-		for tSqr := Empty; tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -72,13 +72,13 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	rooks := g.self & b.Pieces[Rook] & fromMsk
 
-	for rook := Empty; rooks != 0; rooks ^= rook {
+	for rook := BitBoard(0); rooks != 0; rooks ^= rook {
 		rook = rooks & -rooks
 		from := rook.LowestSet()
 
 		tSqrs := attacks.RookMoves(from, g.occ) & ^g.self & toMsk
 
-		for tSqr := Empty; tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -90,13 +90,13 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 
 func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	queens := g.self & b.Pieces[Queen] & fromMsk
-	for queen := Empty; queens != 0; queens ^= queen {
+	for queen := BitBoard(0); queens != 0; queens ^= queen {
 		queen = queens & -queens
 		from := queen.LowestSet()
 
 		tSqrs := (attacks.BishopMoves(from, g.occ) | attacks.RookMoves(from, g.occ)) & ^g.self & toMsk
 
-		for tSqr := Empty; tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 			m := ms.Alloc()
@@ -184,7 +184,7 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 
 		tSqrs := attacks.PawnCaptureMoves(pawn, b.STM) & g.them
 
-		for tSqr := Empty; tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 
@@ -214,7 +214,7 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 		from := pawn.LowestSet()
 
 		tSqrs := attacks.PawnCaptureMoves(pawn, b.STM) & g.them
-		for tSqr := Empty; tSqrs != 0; tSqrs ^= tSqr {
+		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
 
@@ -235,7 +235,7 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 
 	// en-passant
 	ep := attacks.PawnCaptureMoves(1<<b.EnPassant, b.STM.Flip())
-	for pawns, pawn := ep&g.self&b.Pieces[Pawn], Empty; pawns != 0; pawns ^= pawn {
+	for pawns, pawn := ep&g.self&b.Pieces[Pawn], BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 

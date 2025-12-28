@@ -160,7 +160,7 @@ func initInBetween() {
 						iterR := rankA
 						fileD := Signum(fileB - fileA)
 						rankD := Signum(rankB - rankA)
-						result := Empty
+						result := BitBoard(0)
 
 						for iterF != fileB || iterR != rankB {
 							result |= (BitBoard(1) << ((iterR << 3) + iterF))
@@ -225,7 +225,7 @@ func init() {
 }
 
 func calcBishopAttacks(sq Square, occ BitBoard) BitBoard {
-	result := Empty
+	result := BitBoard(0)
 
 	r := int(sq / 8)
 	f := int(sq % 8)
@@ -268,7 +268,7 @@ func calcBishopAttacks(sq Square, occ BitBoard) BitBoard {
 }
 
 func calcRookAttacks(sq Square, occ BitBoard) BitBoard {
-	result := Empty
+	result := BitBoard(0)
 
 	r := int(sq / 8)
 	f := int(sq % 8)
