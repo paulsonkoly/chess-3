@@ -475,7 +475,11 @@ func (b *Board) IsPseudoLegal(m move.Move) bool {
 				return false
 			}
 
-			if (b.Colors[b.STM.Flip()]|(BitBoard(1)<<b.EnPassant))&toBB == 0 {
+			enPassant := BitBoard(0)
+			if b.EnPassant != 0 {
+				enPassant = BitBoard(1) << BitBoard(b.EnPassant)
+			}
+			if (b.Colors[b.STM.Flip()]|enPassant)&toBB == 0 {
 				return false
 			}
 

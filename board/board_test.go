@@ -333,6 +333,12 @@ func TestIsPseudoLegal(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "en passant not pseudo legal when en-passant is null value",
+			fen:  "4k3/8/8/8/8/8/1p6/4K3 b - - 0 1",
+			move: move.New(B2, A1, move.WithPromo(Bishop)),
+			want: false,
+		},
+		{
 			name: "promo push pseudo legal",
 			fen:  "4k3/1P6/8/8/8/8/8/4K3 w - - 0 1",
 			move: move.New(B7, B8, move.WithPromo(Knight)),
