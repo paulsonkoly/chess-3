@@ -210,7 +210,7 @@ func TestIsStalemate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			assert.Equal(t, tt.want, b.IsStalemate())
+			assert.Equal(t, tt.want, b.IsStalemate(), "fen: %s", tt.fen)
 		})
 	}
 }
