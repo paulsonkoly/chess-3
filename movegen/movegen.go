@@ -13,7 +13,7 @@ type generator struct {
 	mySndRank, theirSndRank BitBoard
 }
 
-func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g *generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// king moves
 	if piece := g.self & b.Pieces[King] & fromMsk; piece != 0 {
 		from := piece.LowestSet()
@@ -30,7 +30,7 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 	}
 }
 
-func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g *generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// knight moves
 	knights := g.self & b.Pieces[Knight] & fromMsk
 
@@ -50,7 +50,7 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 	}
 }
 
-func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g *generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// bishop moves
 	bishops := g.self & b.Pieces[Bishop] & fromMsk
 	for bishop := BitBoard(0); bishops != 0; bishops ^= bishop {
@@ -69,7 +69,7 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 	}
 }
 
-func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g *generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	rooks := g.self & b.Pieces[Rook] & fromMsk
 
 	for rook := BitBoard(0); rooks != 0; rooks ^= rook {
@@ -88,7 +88,7 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 	}
 }
 
-func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g *generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	queens := g.self & b.Pieces[Queen] & fromMsk
 	for queen := BitBoard(0); queens != 0; queens ^= queen {
 		queen = queens & -queens
@@ -108,7 +108,7 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bit
 
 var shifts = [2]Square{8, -8}
 
-func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g *generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	shift := shifts[b.STM]
@@ -125,7 +125,7 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 	}
 }
 
-func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g *generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := ((g.occ >> 8) << (b.STM << 4)) | ((g.occ << 8) >> (b.STM.Flip() << 4))
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	shift := shifts[b.STM]
@@ -144,7 +144,7 @@ func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoa
 	}
 }
 
-func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g *generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	occ2 := (g.occ >> 16) << (b.STM << 5)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
@@ -162,7 +162,7 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 	}
 }
 
-func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
+func (g *generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
@@ -195,7 +195,7 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 	}
 }
 
-func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
+func (g *generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
@@ -228,7 +228,7 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 	}
 }
 
-func (g generator) enPassant(ms *move.Store, b *board.Board) {
+func (g *generator) enPassant(ms *move.Store, b *board.Board) {
 	if b.EnPassant == 0 {
 		return
 	}
@@ -245,7 +245,7 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 	}
 }
 
-func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
+func (g *generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castling short
 	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&attacks.CastleMask[b.STM][Short] == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
@@ -262,7 +262,7 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard)
 	}
 }
 
-func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
+func (g *generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castle long
 	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(attacks.CastleMask[b.STM][Long]>>1) == 0 {
 		if attacks.CastleMask[b.STM][Long]&rChkMsk != 0 {
