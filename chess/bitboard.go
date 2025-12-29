@@ -42,7 +42,7 @@ const (
 	GFileBB= BitBoard(0x4040404040404040) // GFileBB is a BitBoard with bits set for the G file.
 	HFileBB= BitBoard(0x8080808080808080) // HFileBB is a BitBoard with bits set for the H file.
 
-	FirstRankBB   = BitBoard(0x00000000000000ff) // FirstRankBB is a BitBoard with bits set for the fist rank.
+	FirstRankBB   = BitBoard(0x00000000000000ff) // FirstRankBB is a BitBoard with bits set for the first rank.
 	SecondRankBB  = BitBoard(0x000000000000ff00) // SecondRankBB is a BitBoard with bits set for the second rank.
 	ThirdRankBB   = BitBoard(0x0000000000ff0000) // ThirdRankBB is a BitBoard with bits set for the third rank.
 	FourthRankBB  = BitBoard(0x00000000ff000000) // FourthRankBB is a BitBoard with bits set for the fourth rank.
