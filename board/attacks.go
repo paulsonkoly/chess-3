@@ -126,7 +126,7 @@ func (b *Board) IsCheckmate() bool {
 
 	// block the attacker
 	aSq := attacker.LowestSet()
-	blocked := attacks.InBetween(kingSq, aSq) & ^(king | attacker)
+	blocked := attacks.InBetween[kingSq][aSq] & ^(king | attacker)
 
 	defenders = b.Block(blocked, b.STM)
 

@@ -143,7 +143,10 @@ var rookMagics = [64]BitBoard{
 var bishopAttacks [64][512]BitBoard
 var rookAttacks [64][4096]BitBoard
 
-var inBetween [64][64]BitBoard
+// InBetween is a bitboard table indexed by 2 squares that are supposed to be
+// either lateral or diagonal to each other. The BitBoard has the bits set for
+// the squares in between the two indexing squares.
+var InBetween [64][64]BitBoard
 
 func initInBetween() {
 	var fileA, rankA, fileB, rankB Square
@@ -164,18 +167,16 @@ func initInBetween() {
 							iterF += fileD
 							iterR += rankD
 						}
-						inBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] =
+						InBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] =
 							result | (BitBoard(1) << ((rankB << 3) + fileB))
 					} else {
-						inBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] = 0
+						InBetween[(rankA<<3)+fileA][(rankB<<3)+fileB] = 0
 					}
 				}
 			}
 		}
 	}
 }
-
-func InBetween(a, b Square) BitBoard { return inBetween[a][b] }
 
 func initBishopMagic() {
 	for sq := range Squares {
