@@ -55,44 +55,45 @@ func TestInvalidPieceCount(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		b       *board.Board
+		fen     string
 		invalid bool // validity test result
 	}{
 		{
 			name:    "startpos",
-			b:       Must(board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")),
+			fen:     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			invalid: false,
 		},
 		{
 			name:    "8 queens",
-			b:       Must(board.FromFEN("3k4/8/8/8/8/3K4/QQQQQQQQ/8 w - - 0 1")),
+			fen:     "3k4/8/8/8/8/3K4/QQQQQQQQ/8 w - - 0 1",
 			invalid: false,
 		},
 		{
 			name:    "9 queens",
-			b:       Must(board.FromFEN("3k4/8/8/8/8/3K4/QQQQQQQQ/3Q4 w - - 0 1")),
+			fen:     "3k4/8/8/8/8/3K4/QQQQQQQQ/3Q4 w - - 0 1",
 			invalid: false,
 		},
 		{
 			name:    "10 queens",
-			b:       Must(board.FromFEN("3k4/8/8/8/8/3K4/QQQQQQQQ/3QQ3 w - - 0 1")),
+			fen:     "3k4/8/8/8/8/3K4/QQQQQQQQ/3QQ3 w - - 0 1",
 			invalid: true,
 		},
 		{
 			name:    "2 queens 8 pawns",
-			b:       Must(board.FromFEN("k7/8/8/8/PPPPPPPP/KQ6/Q7/8 w - - 0 1")),
+			fen:     "k7/8/8/8/PPPPPPPP/KQ6/Q7/8 w - - 0 1",
 			invalid: true,
 		},
 		{
 			name:    "4 pawns 5 queens 3 knights",
-			b:       Must(board.FromFEN("2k5/8/8/8/8/PPPP4/KQQ2NNN/QQQ5 w - - 0 1")),
+			fen:     "2k5/8/8/8/8/PPPP4/KQQ2NNN/QQQ5 w - - 0 1",
 			invalid: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.invalid, tt.b.InvalidPieceCount())
+			b := Must(board.FromFEN(tt.fen))
+			assert.Equal(t, tt.invalid, b.InvalidPieceCount(), "fen: %s", tt.fen)
 		})
 	}
 }
