@@ -73,8 +73,10 @@ const (
 	Squares
 )
 
+type Coord int8
+
 const (
-	FirstRank Square = iota
+	FirstRank Coord = iota
 	SecondRank
 	ThirdRank
 	FourthRank
@@ -93,16 +95,16 @@ func (s Square) String() string {
 	return fmt.Sprintf("%c%c", s%8+'a', s/8+'1')
 }
 
-func (s Square) File() Square {
-	return s & 7
+func (s Square) File() Coord {
+	return Coord(s & 7)
 }
 
-func (s Square) Rank() Square {
-	return (s >> 3) & 7
+func (s Square) Rank() Coord {
+	return Coord((s >> 3) & 7)
 }
 
 // FromPerspectiveOf flips a rank of s to be from c's perspective. For white
 // it's untouched, for black 0 maps to 7 and 7 maps to 0.
-func (s Square) FromPerspectiveOf(c Color) Square {
-	return Square(c.Flip())*(s) + Square(c)*(7-s)
+func (r Coord) FromPerspectiveOf(c Color) Coord {
+	return Coord(c.Flip())*(r) + Coord(c)*(7-r)
 }

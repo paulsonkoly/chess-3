@@ -57,7 +57,7 @@ var ranks = [...]BitBoard{
 }
 
 // RankBB is the BitBoard with bits set for the rankth rank from White's perspective.
-func RankBB(rank Square) BitBoard { return ranks[rank] }
+func RankBB(rank Coord) BitBoard { return ranks[rank] }
 
 const (
 	Full  = BitBoard(0xffffffffffffffff) // Full is a BitBoard with all 64 bits set.
