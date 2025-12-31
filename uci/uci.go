@@ -258,7 +258,12 @@ func parseUCIMove(b *board.Board, uciM string) (move.Move, error) {
 		}
 	}
 
-	return move.New(from, to, move.WithPromo(promo)), nil
+	m := move.New(from, to, move.WithPromo(promo))
+	if !b.IsPseudoLegal(m) {
+		return 0, errors.New("uci move not pseudo-legal")
+	}
+
+	return m, nil
 }
 
 func (e *Engine) handleEval() {

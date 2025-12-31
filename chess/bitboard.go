@@ -33,24 +33,32 @@ func (bb BitBoard) IsPow2() bool {
 }
 
 const (
-	AFile = BitBoard(0x0101010101010101) // AFile is a BitBoard with bits set for the A file.
-	BFile = BitBoard(0x0202020202020202) // BFile is a BitBoard with bits set for the B file.
-	CFile = BitBoard(0x0404040404040404) // CFile is a BitBoard with bits set for the C file.
-	DFile = BitBoard(0x0808080808080808) // DFile is a BitBoard with bits set for the D file.
-	EFile = BitBoard(0x1010101010101010) // EFile is a BitBoard with bits set for the E file.
-	FFile = BitBoard(0x2020202020202020) // FFile is a BitBoard with bits set for the F file.
-	GFile = BitBoard(0x4040404040404040) // GFile is a BitBoard with bits set for the G file.
-	HFile = BitBoard(0x8080808080808080) // HFile is a BitBoard with bits set for the H file.
+	AFileBB= BitBoard(0x0101010101010101) // AFileBB is a BitBoard with bits set for the A file.
+	BFileBB= BitBoard(0x0202020202020202) // BFileBB is a BitBoard with bits set for the B file.
+	CFileBB= BitBoard(0x0404040404040404) // CFileBB is a BitBoard with bits set for the C file.
+	DFileBB= BitBoard(0x0808080808080808) // DFileBB is a BitBoard with bits set for the D file.
+	EFileBB= BitBoard(0x1010101010101010) // EFileBB is a BitBoard with bits set for the E file.
+	FFileBB= BitBoard(0x2020202020202020) // FFileBB is a BitBoard with bits set for the F file.
+	GFileBB= BitBoard(0x4040404040404040) // GFileBB is a BitBoard with bits set for the G file.
+	HFileBB= BitBoard(0x8080808080808080) // HFileBB is a BitBoard with bits set for the H file.
 
-	FirstRank   = BitBoard(0x00000000000000ff) // FirstRank is a BitBoard with bits set for the fist rank.
-	SecondRank  = BitBoard(0x000000000000ff00) // SecondRank is a BitBoard with bits set for the second rank.
-	ThirdRank   = BitBoard(0x0000000000ff0000) // ThirdRank is a BitBoard with bits set for the third rank.
-	FourthRank  = BitBoard(0x00000000ff000000) // FourthRank is a BitBoard with bits set for the fourth rank.
-	FifthRank   = BitBoard(0x000000ff00000000) // FifthRank is a BitBoard with bits set for the fifth rank.
-	SixthRank   = BitBoard(0x0000ff0000000000) // SixthRank is a BitBoard with bits set for the six rank.
-	SeventhRank = BitBoard(0x00ff000000000000) // SeventhRank is a BitBoard with bits set for the seventh rank.
-	EighthRank  = BitBoard(0xff00000000000000) // EighthRank is a BitBoard with bits set for the eights rank.
+	FirstRankBB   = BitBoard(0x00000000000000ff) // FirstRankBB is a BitBoard with bits set for the first rank.
+	SecondRankBB  = BitBoard(0x000000000000ff00) // SecondRankBB is a BitBoard with bits set for the second rank.
+	ThirdRankBB   = BitBoard(0x0000000000ff0000) // ThirdRankBB is a BitBoard with bits set for the third rank.
+	FourthRankBB  = BitBoard(0x00000000ff000000) // FourthRankBB is a BitBoard with bits set for the fourth rank.
+	FifthRankBB   = BitBoard(0x000000ff00000000) // FifthRankBB is a BitBoard with bits set for the fifth rank.
+	SixthRankBB   = BitBoard(0x0000ff0000000000) // SixthRankBB is a BitBoard with bits set for the sixth rank.
+	SeventhRankBB = BitBoard(0x00ff000000000000) // SeventhRankBB is a BitBoard with bits set for the seventh rank.
+	EighthRankBB  = BitBoard(0xff00000000000000) // EighthRankBB is a BitBoard with bits set for the eighth rank.
 )
 
-// Full is a BitBoard with all 64 bits set.
-const Full = BitBoard(0xffffffffffffffff)
+var ranks = [...]BitBoard{
+	FirstRankBB, SecondRankBB, ThirdRankBB, FourthRankBB, FifthRankBB, SixthRankBB, SeventhRankBB, EighthRankBB,
+}
+
+// RankBB is the BitBoard with bits set for the rankth rank from White's perspective.
+func RankBB(rank Square) BitBoard { return ranks[rank] }
+
+const (
+	Full  = BitBoard(0xffffffffffffffff) // Full is a BitBoard with all 64 bits set.
+)

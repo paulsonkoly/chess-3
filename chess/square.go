@@ -74,6 +74,17 @@ const (
 )
 
 const (
+	FirstRank Square = iota
+	SecondRank
+	ThirdRank
+	FourthRank
+	FifthRank
+	SixthRank
+	SeventhRank
+	EighthRank
+)
+
+const (
 	FileMask = Square(7)
 	RankMask = Square(7 << 3)
 )
@@ -88,4 +99,10 @@ func (s Square) File() Square {
 
 func (s Square) Rank() Square {
 	return (s >> 3) & 7
+}
+
+// FromPerspectiveOf flips a rank of s to be from c's perspective. For white
+// it's untouched, for black 0 maps to 7 and 7 maps to 0.
+func (s Square) FromPerspectiveOf(c Color) Square {
+	return Square(c.Flip())*(s) + Square(c)*(7-s)
 }

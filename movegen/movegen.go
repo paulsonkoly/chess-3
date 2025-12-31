@@ -8,15 +8,6 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-var (
-	// SecondRank[stm] is the second rank from stm's perspective.
-	mySecondRank = [...]BitBoard{SecondRank, SeventhRank}
-	castleMask   = [2][2]BitBoard{
-		{(1 << E1) | (1 << F1) | (1 << G1), (1 << E1) | (1 << D1) | (1 << C1)},
-		{(1 << E8) | (1 << F8) | (1 << G8), (1 << E8) | (1 << D8) | (1 << C8)},
-	}
-)
-
 type generator struct {
 	self, them, occ BitBoard
 }
@@ -119,11 +110,11 @@ var shifts = [2]Square{8, -8}
 func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	theirSndRank := mySecondRank[b.STM.Flip()]
 	shift := shifts[b.STM]
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
 
 	// single pawn pushes (no promotions)
-	for pawns, pawn := pushable&fromMsk & ^theirSndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk & ^mySeventhRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -136,11 +127,11 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := ((g.occ >> 8) << (b.STM << 4)) | ((g.occ << 8) >> (b.STM.Flip() << 4))
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	theirSndRank := mySecondRank[b.STM.Flip()]
 	shift := shifts[b.STM]
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
 
 	// promotions pushes
-	for pawns, pawn := pushable&fromMsk&theirSndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk&mySeventhRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
@@ -156,11 +147,11 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	occ2 := (g.occ >> 16) << (b.STM << 5)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
-	mySndRank := mySecondRank[b.STM]
 	shift := shifts[b.STM]
+	mySecondRank := RankBB(SecondRank.FromPerspectiveOf(b.STM))
 
 	// double pawn pushes
-	for pawns, pawn := pushable & ^occ2 & fromMsk & mySndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable & ^occ2 & fromMsk & mySecondRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -170,22 +161,22 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 	}
 }
 
-
 func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
-	theirSndRank := mySecondRank[b.STM.Flip()]
 
 	if b.STM == White {
-		occ1l = (g.them &^ HFile) >> 7
-		occ1r = (g.them &^ AFile) >> 9
+		occ1l = (g.them &^ HFileBB) >> 7
+		occ1r = (g.them &^ AFileBB) >> 9
 	} else {
-		occ1l = (g.them &^ AFile) << 7
-		occ1r = (g.them &^ HFile) << 9
+		occ1l = (g.them &^ AFileBB) << 7
+		occ1r = (g.them &^ HFileBB) << 9
 	}
 
-	pawns := g.self & b.Pieces[Pawn] & ^theirSndRank & (occ1l | occ1r)
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
+
+	pawns := g.self & b.Pieces[Pawn] & ^mySeventhRank & (occ1l | occ1r)
 	for pawn := BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
@@ -207,17 +198,17 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
-	theirSndRank := mySecondRank[b.STM.Flip()]
 
 	if b.STM == White {
-		occ1l = (g.them &^ HFile) >> 7
-		occ1r = (g.them &^ AFile) >> 9
+		occ1l = (g.them &^ HFileBB) >> 7
+		occ1r = (g.them &^ AFileBB) >> 9
 	} else {
-		occ1l = (g.them &^ AFile) << 7
-		occ1r = (g.them &^ HFile) << 9
+		occ1l = (g.them &^ AFileBB) << 7
+		occ1r = (g.them &^ HFileBB) << 9
 	}
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
 	// pawn captures with promotions
-	for pawns, pawn := g.self&b.Pieces[Pawn]&theirSndRank&(occ1l|occ1r), BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := g.self&b.Pieces[Pawn]&mySeventhRank&(occ1l|occ1r), BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -255,12 +246,12 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 
 func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castling short
-	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&castleMask[b.STM][Short] == g.self&b.Pieces[King] {
+	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&attacks.CastleMask[b.STM][Short] == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
 		// calculate if the rook gives check this condition is simple, and would
 		// suffice most of the time
-		if castleMask[b.STM][Short]&rChkMsk != 0 {
-			if !b.IsAttacked(b.STM.Flip(), g.occ, castleMask[b.STM][Short]) {
+		if attacks.CastleMask[b.STM][Short]&rChkMsk != 0 {
+			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Short]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
 				m := ms.Alloc()
 				m.SetFrom(from)
@@ -272,9 +263,9 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard)
 
 func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castle long
-	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(castleMask[b.STM][Long]>>1) == 0 {
-		if castleMask[b.STM][Long]&rChkMsk != 0 {
-			if !b.IsAttacked(b.STM.Flip(), g.occ, castleMask[b.STM][Long]) {
+	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(attacks.CastleMask[b.STM][Long]>>1) == 0 {
+		if attacks.CastleMask[b.STM][Long]&rChkMsk != 0 {
+			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Long]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
 				m := ms.Alloc()
 				m.SetFrom(from)

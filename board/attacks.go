@@ -26,10 +26,6 @@ func (b *Board) Attackers(squares BitBoard, occ BitBoard, color Color) BitBoard 
 	return res
 }
 
-var (
-	myFourthRank = [...]BitBoard{FourthRank, FifthRank}
-)
-
 func (b *Board) Block(squares BitBoard, color Color) BitBoard {
 	blockers := b.Colors[color]
 	res := BitBoard(0)
@@ -56,7 +52,7 @@ func (b *Board) Block(squares BitBoard, color Color) BitBoard {
 	occNoPawn := occ & ^(b.Pieces[Pawn] & blockers)
 
 	/* double pawn push blocking */
-	dpawn := myFourthRank[color] & squares
+	dpawn := RankBB(FourthRank.FromPerspectiveOf(color)) & squares
 	dpawn = attacks.PawnSinglePushMoves(dpawn, color.Flip()) &^ occ
 	dpawn = attacks.PawnSinglePushMoves(dpawn, color.Flip()) &^ occNoPawn
 
@@ -130,7 +126,7 @@ func (b *Board) IsCheckmate() bool {
 
 	// block the attacker
 	aSq := attacker.LowestSet()
-	blocked := attacks.InBetween(kingSq, aSq) & ^(king | attacker)
+	blocked := attacks.InBetween[kingSq][aSq] & ^(king | attacker)
 
 	defenders = b.Block(blocked, b.STM)
 
@@ -181,7 +177,7 @@ func (b *Board) IsStalemate() bool {
 			return false
 		}
 
-		if (((pieces & ^AFile)<<7)|((pieces & ^HFile)<<9))&opp != 0 {
+		if (((pieces & ^AFileBB)<<7)|((pieces & ^HFileBB)<<9))&opp != 0 {
 			return false
 		}
 
@@ -190,7 +186,7 @@ func (b *Board) IsStalemate() bool {
 			return false
 		}
 
-		if (((pieces & ^HFile)>>7)|((pieces & ^AFile)>>9))&opp != 0 {
+		if (((pieces & ^HFileBB)>>7)|((pieces & ^AFileBB)>>9))&opp != 0 {
 			return false
 		}
 	}
@@ -383,7 +379,7 @@ func (b *Board) CanEnPassant(to Square) bool {
 	dest := BitBoard(1) << (to - shift)
 
 	// pawns that are able to en-passant
-	ables := ((target & ^AFile >> 1) | (target & ^HFile << 1)) & b.Pieces[Pawn] & them
+	ables := ((target & ^AFileBB >> 1) | (target & ^HFileBB << 1)) & b.Pieces[Pawn] & them
 	for able := BitBoard(0); ables != 0; ables ^= able {
 		able = ables & -ables
 		// remove the pawns from the occupancy

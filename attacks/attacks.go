@@ -38,8 +38,8 @@ func RookMoves(from Square, occ BitBoard) BitBoard {
 // PawnCaptureMoves is the bitboard set where the pawns of color color can
 // capture, from any of the squares set in b.
 func PawnCaptureMoves(b BitBoard, color Color) BitBoard {
-	return ((((b & ^AFile) << 7) | ((b & ^HFile) << 9)) >> (color << 4)) |
-		((((b & ^HFile) >> 7) | ((b & ^AFile) >> 9)) << (color.Flip() << 4))
+	return ((((b & ^AFileBB) << 7) | ((b & ^HFileBB) << 9)) >> (color << 4)) |
+		((((b & ^HFileBB) >> 7) | ((b & ^AFileBB) >> 9)) << (color.Flip() << 4))
 }
 
 // PawnSinglePushMoves is the bitboard set where the pawns of color color can
@@ -47,3 +47,12 @@ func PawnCaptureMoves(b BitBoard, color Color) BitBoard {
 func PawnSinglePushMoves(b BitBoard, color Color) BitBoard {
 	return ((b)<<8)>>((color)<<4) | ((b)>>8)<<((color^1)<<4)
 }
+
+var (
+	// CastleMask[color][side] is the set of affected cells in castling for color
+	// and side of Short / Long.
+	CastleMask = [2][2]BitBoard{
+		{(1 << E1) | (1 << F1) | (1 << G1), (1 << E1) | (1 << D1) | (1 << C1)},
+		{(1 << E8) | (1 << F8) | (1 << G8), (1 << E8) | (1 << D8) | (1 << C8)},
+	}
+)
