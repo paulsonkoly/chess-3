@@ -1,8 +1,8 @@
 # Chess 3
 
-chess-3 is a UCI compatible chess engine. It is a successor of [chess2](https://github.com/paulsonkoly/chess-2) and [chess](https://github.com/paulsonkoly/chess).
+chess-3 is a UCI-compatible chess engine. It is a successor of [chess2](https://github.com/paulsonkoly/chess-2) and [chess](https://github.com/paulsonkoly/chess).
 
-chess-3 is occasionally online on lichess using chess-2's [lichess account](http://lichess.org/@/chess-2-bot).
+chess-3 is occasionally online on Lichess using chess-2's [Lichess account](http://lichess.org/@/chess-2-bot).
 
 ## CCRL
 
