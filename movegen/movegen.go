@@ -9,11 +9,10 @@ import (
 )
 
 type generator struct {
-	self, them, occ         BitBoard
-	mySndRank, theirSndRank BitBoard
+	self, them, occ BitBoard
 }
 
-func (g *generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// king moves
 	if piece := g.self & b.Pieces[King] & fromMsk; piece != 0 {
 		from := piece.LowestSet()
@@ -30,7 +29,7 @@ func (g *generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bit
 	}
 }
 
-func (g *generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// knight moves
 	knights := g.self & b.Pieces[Knight] & fromMsk
 
@@ -50,7 +49,7 @@ func (g *generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk B
 	}
 }
 
-func (g *generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	// bishop moves
 	bishops := g.self & b.Pieces[Bishop] & fromMsk
 	for bishop := BitBoard(0); bishops != 0; bishops ^= bishop {
@@ -69,7 +68,7 @@ func (g *generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk B
 	}
 }
 
-func (g *generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	rooks := g.self & b.Pieces[Rook] & fromMsk
 
 	for rook := BitBoard(0); rooks != 0; rooks ^= rook {
@@ -88,7 +87,7 @@ func (g *generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bit
 	}
 }
 
-func (g *generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
+func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitBoard) {
 	queens := g.self & b.Pieces[Queen] & fromMsk
 	for queen := BitBoard(0); queens != 0; queens ^= queen {
 		queen = queens & -queens
@@ -108,13 +107,14 @@ func (g *generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 
 var shifts = [2]Square{8, -8}
 
-func (g *generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	shift := shifts[b.STM]
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
 
 	// single pawn pushes (no promotions)
-	for pawns, pawn := pushable&fromMsk & ^g.theirSndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk & ^mySeventhRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -124,13 +124,14 @@ func (g *generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitB
 	}
 }
 
-func (g *generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := ((g.occ >> 8) << (b.STM << 4)) | ((g.occ << 8) >> (b.STM.Flip() << 4))
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	shift := shifts[b.STM]
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
 
 	// promotions pushes
-	for pawns, pawn := pushable&fromMsk&g.theirSndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable&fromMsk&mySeventhRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
@@ -142,14 +143,15 @@ func (g *generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 	}
 }
 
-func (g *generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
+func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBoard) {
 	occ1 := (g.occ >> 8) << (b.STM << 4)
 	occ2 := (g.occ >> 16) << (b.STM << 5)
 	pushable := g.self & b.Pieces[Pawn] & ^occ1
 	shift := shifts[b.STM]
+	mySecondRank := RankBB(SecondRank.FromPerspectiveOf(b.STM))
 
 	// double pawn pushes
-	for pawns, pawn := pushable & ^occ2 & fromMsk & g.mySndRank, BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := pushable & ^occ2 & fromMsk & mySecondRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -159,7 +161,7 @@ func (g *generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitB
 	}
 }
 
-func (g *generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
+func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
@@ -172,7 +174,9 @@ func (g *generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 		occ1r = (g.them &^ HFileBB) << 9
 	}
 
-	pawns := g.self & b.Pieces[Pawn] & ^g.theirSndRank & (occ1l | occ1r)
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
+
+	pawns := g.self & b.Pieces[Pawn] & ^mySeventhRank & (occ1l | occ1r)
 	for pawn := BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
@@ -190,7 +194,7 @@ func (g *generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 	}
 }
 
-func (g *generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
+func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 	var (
 		occ1l, occ1r BitBoard
 	)
@@ -202,8 +206,9 @@ func (g *generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 		occ1l = (g.them &^ AFileBB) << 7
 		occ1r = (g.them &^ HFileBB) << 9
 	}
+	mySeventhRank := RankBB(SeventhRank.FromPerspectiveOf(b.STM))
 	// pawn captures with promotions
-	for pawns, pawn := g.self&b.Pieces[Pawn]&g.theirSndRank&(occ1l|occ1r), BitBoard(0); pawns != 0; pawns ^= pawn {
+	for pawns, pawn := g.self&b.Pieces[Pawn]&mySeventhRank&(occ1l|occ1r), BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
@@ -222,7 +227,7 @@ func (g *generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 	}
 }
 
-func (g *generator) enPassant(ms *move.Store, b *board.Board) {
+func (g generator) enPassant(ms *move.Store, b *board.Board) {
 	if b.EnPassant == 0 {
 		return
 	}
@@ -239,7 +244,7 @@ func (g *generator) enPassant(ms *move.Store, b *board.Board) {
 	}
 }
 
-func (g *generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
+func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castling short
 	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&attacks.CastleMask[b.STM][Short] == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
@@ -256,7 +261,7 @@ func (g *generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard
 	}
 }
 
-func (g *generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
+func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
 	// castle long
 	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(attacks.CastleMask[b.STM][Long]>>1) == 0 {
 		if attacks.CastleMask[b.STM][Long]&rChkMsk != 0 {
@@ -274,11 +279,9 @@ func (g *generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard)
 func GenMoves(ms *move.Store, b *board.Board) {
 
 	gen := generator{
-		self:         b.Colors[b.STM],
-		them:         b.Colors[b.STM.Flip()],
-		occ:          b.Colors[White] | b.Colors[Black],
-		mySndRank:    RankBB(SecondRank.FromPerspectiveOf(b.STM)),
-		theirSndRank: RankBB(SecondRank.FromPerspectiveOf(b.STM.Flip())),
+		self: b.Colors[b.STM],
+		them: b.Colors[b.STM.Flip()],
+		occ:  b.Colors[White] | b.Colors[Black],
 	}
 
 	gen.kingMoves(ms, b, Full, Full)
@@ -308,11 +311,9 @@ func GenForcing(ms *move.Store, b *board.Board) {
 	occ := b.Colors[White] | b.Colors[Black]
 
 	gen := generator{
-		self:         self,
-		them:         them,
-		occ:          occ,
-		mySndRank:    RankBB(SecondRank.FromPerspectiveOf(b.STM)),
-		theirSndRank: RankBB(SecondRank.FromPerspectiveOf(b.STM.Flip())),
+		self: self,
+		them: them,
+		occ:  occ,
 	}
 
 	gen.kingMoves(ms, b, Full, them)
