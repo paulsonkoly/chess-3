@@ -96,7 +96,7 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 
 					for _, pseudo := range *moves {
 						r := b.MakeMove(pseudo)
-						if !movegen.InCheck(b, b.STM.Flip()) { // legal
+						if !b.InCheck(b.STM.Flip()) { // legal
 							move = pseudo
 							b.UndoMove(pseudo, r)
 							break

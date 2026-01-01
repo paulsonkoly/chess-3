@@ -1,6 +1,6 @@
 package stack
 
-import . "github.com/paulsonkoly/chess-3/types"
+import . "github.com/paulsonkoly/chess-3/chess"
 
 // SliceArena is a stack frame based slice arena storage.
 //
