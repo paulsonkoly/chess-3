@@ -104,7 +104,7 @@ func Run(args []string) {
 func generateOpenings(openings chan<- *board.Board) {
 
 	generate := OpeningGenerator{
-		ms:     move.NewStore(),
+		moves:  make([]move.Move, 0, chess.MaxMoves),
 		search: search.New(1 * transp.MegaBytes),
 		rnd:    rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0x82a1_73b1_69cc_df15)),
 	}
@@ -115,7 +115,7 @@ func generateOpenings(openings chan<- *board.Board) {
 }
 
 type OpeningGenerator struct {
-	ms     *move.Store
+	moves  []move.Move
 	search *search.Search
 	rnd    *rand.Rand
 }
@@ -124,24 +124,21 @@ type OpeningGenerator struct {
 func (og *OpeningGenerator) Opening() *board.Board {
 	var b *board.Board
 
-	ms := og.ms
-
 Retry:
 	for {
-		ms.Clear()
 		b = board.StartPos()
 
 		for range serverConfig.openingDepth {
-			ms.Push()
-			movegen.GenMoves(ms, b)
-			moves := ms.Frame()
+			og.moves = og.moves[:0]
+			movegen.GenMoves(&og.moves, b)
+			moves := og.moves
 
 			if len(moves) < 1 {
 				goto Retry
 			}
 
-			move := &moves[og.rnd.IntN(len(moves))]
-			b.MakeMove(move.Move)
+			move := moves[og.rnd.IntN(len(moves))]
+			b.MakeMove(move)
 			if b.InCheck(b.STM.Flip()) { // pseudo legality check
 				goto Retry
 			}
