@@ -11,11 +11,11 @@ import (
 )
 
 func Perft(b *board.Board, depth Depth, split bool) int {
-	ms := stack.NewSliceArena[move.Move]()
+	ms := stack.NewSliceArena[move.Weighted]()
 	return perft(ms, b, depth, split)
 }
 
-func perft(ms *stack.SliceArena[move.Move], b *board.Board, depth Depth, split bool) int {
+func perft(ms *stack.SliceArena[move.Weighted], b *board.Board, depth Depth, split bool) int {
 	if depth == 0 {
 		return 1
 	}
@@ -29,7 +29,7 @@ func perft(ms *stack.SliceArena[move.Move], b *board.Board, depth Depth, split b
 	movegen.GenMoves(moves, b)
 
 	for _, m := range *moves {
-		r := b.MakeMove(m)
+		r := b.MakeMove(m.Move)
 
 		if !b.InCheck(me) {
 			v := perft(ms, b, depth-1, false)
@@ -39,7 +39,7 @@ func perft(ms *stack.SliceArena[move.Move], b *board.Board, depth Depth, split b
 			cnt += v
 		}
 
-		b.UndoMove(m, r)
+		b.UndoMove(m.Move, r)
 	}
 
 	return cnt

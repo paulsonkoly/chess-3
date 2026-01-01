@@ -15,8 +15,7 @@ type Search struct {
 	tt      *transp.Table
 	hist    *heur.History
 	cont    [2]*heur.Continuation
-	moves   *stack.SliceArena[move.Move]
-	weights *stack.SliceArena[Score]
+	ms      *stack.SliceArena[move.Weighted]
 	hstack  *historyStack
 	pv      *pv
 	gen     transp.Gen
@@ -26,20 +25,18 @@ type Search struct {
 // New creates a new Search object.
 func New(size int) *Search {
 	return &Search{
-		tt:      transp.New(size),
-		moves:   stack.NewSliceArena[move.Move](),
-		weights: stack.NewSliceArena[Score](),
-		hist:    heur.NewHistory(),
-		cont:    [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
-		hstack:  newHistStack(),
-		pv:      newPV(),
+		tt:     transp.New(size),
+		ms:     stack.NewSliceArena[move.Weighted](),
+		hist:   heur.NewHistory(),
+		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
+		hstack: newHistStack(),
+		pv:     newPV(),
 	}
 }
 
 // refresh prepares the state for a new search.
 func (s *Search) refresh() {
-	s.moves.Clear()
-	s.weights.Clear()
+	s.ms.Clear()
 	s.hstack.reset()
 	s.aborted = false
 }

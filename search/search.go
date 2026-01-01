@@ -89,19 +89,19 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 				// the first legal move, regardless of its quality, if there is none we
 				// return null move.
 				if move == 0 {
-					moves := s.moves.Push()
-					defer s.moves.Pop()
+					moves := s.ms.Push()
+					defer s.ms.Pop()
 
 					movegen.GenMoves(moves, b)
 
 					for _, pseudo := range *moves {
-						r := b.MakeMove(pseudo)
+						r := b.MakeMove(pseudo.Move)
 						if !b.InCheck(b.STM.Flip()) { // legal
-							move = pseudo
-							b.UndoMove(pseudo, r)
+							move = pseudo.Move
+							b.UndoMove(pseudo.Move, r)
 							break
 						}
-						b.UndoMove(pseudo, r)
+						b.UndoMove(pseudo.Move, r)
 					}
 				}
 				return
@@ -256,18 +256,15 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
-	moves := s.moves.Push()
-	defer s.moves.Pop()
+	moves := s.ms.Push()
+	defer s.ms.Pop()
 
 	movegen.GenMoves(moves, b)
 
-	weights := s.weights.Push()
-	defer s.weights.Pop()
-
-	s.rankMovesAB(b, *moves, weights)
+	s.rankMovesAB(b, *moves)
 
 	var (
-		m        move.Move
+		m        *move.Weighted
 		ix       int
 		bestMove move.Move
 	)
@@ -278,14 +275,14 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	moveCnt := 0
 	quietCnt := 0
 
-	for m, ix = getNextMove(*moves, *weights, -1); m != 0; m, ix = getNextMove(*moves, *weights, ix) {
+	for m, ix = getNextMove(*moves, -1); m != nil; m, ix = getNextMove(*moves, ix) {
 		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[b.CaptureSq(m)]
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
-		r := b.MakeMove(m)
+		r := b.MakeMove(m.Move)
 
 		if b.InCheck(b.STM.Flip()) {
-			b.UndoMove(m, r)
+			b.UndoMove(m.Move, r)
 			continue
 		}
 
@@ -335,7 +332,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	Fin:
 
-		b.UndoMove(m, r)
+		b.UndoMove(m.Move, r)
 		s.hstack.pop()
 
 		if value > maxim {
@@ -352,7 +349,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
+				transpT.Insert(b.Hash(), s.gen, d, ply, m.Move, value, transp.LowerBound)
 
 				hSize := s.hstack.size()
 				bonus := -(Score(d)*20 - 15)
@@ -391,8 +388,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			// value > alpha
 			failLow = false
 			alpha = value
-			bestMove = m
-			s.pv.insert(ply, m)
+			bestMove = m.Move
+			s.pv.insert(ply, m.Move)
 		}
 
 		// LMP
@@ -544,8 +541,8 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		return standPat
 	}
 
-	moves := s.moves.Push()
-	defer s.moves.Pop()
+	moves := s.ms.Push()
+	defer s.ms.Pop()
 
 	movegen.GenForcing(moves, b)
 
@@ -554,23 +551,20 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	maxim := standPat
 	alpha = max(alpha, standPat)
 
-	weights := s.weights.Push()
-	defer s.weights.Pop()
+	rankMovesQ(b, *moves)
 
-	rankMovesQ(b, *moves, weights)
+	for m, ix := getNextMove(*moves, -1); m!= nil; m, ix = getNextMove(*moves, ix) {
 
-	for m, ix := getNextMove(*moves, *weights, -1); m != 0; m, ix = getNextMove(*moves, *weights, ix) {
-
-		if (*weights)[ix] < 0 {
+		if m.Weight < 0 {
 			break
 		}
 
-		captured := b.SquaresToPiece[b.CaptureSq(m)]
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
-		r := b.MakeMove(m)
+		r := b.MakeMove(m.Move)
 
 		if b.InCheck(b.STM.Flip()) {
-			b.UndoMove(m, r)
+			b.UndoMove(m.Move, r)
 			continue
 		}
 
@@ -581,15 +575,15 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		}
 
 		if gain+delta < alpha {
-			b.UndoMove(m, r)
+			b.UndoMove(m.Move, r)
 			break
 		}
 
 		curr := -s.quiescence(b, -beta, -alpha, ply+1, opts)
-		b.UndoMove(m, r)
+		b.UndoMove(m.Move, r)
 
 		if curr >= beta {
-			transpT.Insert(b.Hash(), s.gen, 0, ply, m, curr, transp.LowerBound)
+			transpT.Insert(b.Hash(), s.gen, 0, ply, m.Move, curr, transp.LowerBound)
 			return curr
 		}
 		maxim = max(maxim, curr)
@@ -605,64 +599,65 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	return maxim
 }
 
-func (s *Search) rankMovesAB(b *board.Board, moves []move.Move, weights *[]Score) {
+func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
 	transPE, _ := s.tt.LookUp(b.Hash())
 
-	for _, m := range moves {
+	for i, m := range moves {
+		var val Score
 
 		switch {
-		case transPE != nil && transPE.Move == m:
-			*weights = append(*weights, heur.HashMove)
+		case transPE != nil && transPE.Move == m.Move:
+			val = heur.HashMove
 
-		case m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m)] != NoPiece:
-			*weights = append(*weights, heur.MVVLVA(b, m, heur.SEE(b, m, 0)))
+		case m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m.Move)] != NoPiece:
+			val = heur.MVVLVA(b, m.Move, heur.SEE(b, m.Move, 0))
 
 		default:
-			score := s.hist.LookUp(b.STM, m.From(), m.To())
+			val = s.hist.LookUp(b.STM, m.From(), m.To())
 			moved := b.SquaresToPiece[m.From()]
 
 			if s.hstack.size() >= 1 {
 				hist := s.hstack.top(0)
-				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
+				val += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
 			}
 
 			if s.hstack.size() >= 2 {
 				hist := s.hstack.top(1)
-				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
+				val += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
 			}
 
-			*weights = append(*weights, score)
 		}
+
+		moves[i].Weight = val
 	}
 }
 
-func rankMovesQ(b *board.Board, moves []move.Move, weights *[]Score) {
-	for _, m := range moves {
+func rankMovesQ(b *board.Board, moves []move.Weighted) {
+	for i, m := range moves {
 		val := -Inf
-		if heur.SEE(b, m, 0) {
-			val = heur.MVVLVA(b, m, true)
+		if heur.SEE(b, m.Move, 0) {
+			val = heur.MVVLVA(b, m.Move, true)
 		}
-		*weights = append(*weights, val)
+		moves[i].Weight = val
 	}
 }
 
-func getNextMove(moves []move.Move, weights []Score, ix int) (move.Move, int) {
+func getNextMove(moves []move.Weighted, ix int) (*move.Weighted, int) {
 	maxim := -Inf - 1
 	best := -1
 	for jx := ix + 1; jx < len(moves); jx++ {
-		if maxim < weights[jx] {
-			maxim = weights[jx]
+		if maxim < moves[jx].Weight {
+			maxim = moves[jx].Weight
 			best = jx
 		}
 	}
 
 	if best == -1 {
-		return 0, ix
+		return nil, ix
 	}
 	ix++
 
 	moves[ix], moves[best] = moves[best], moves[ix]
-	weights[ix], weights[best] = weights[best], weights[ix]
 
-	return moves[ix], ix
+	return &moves[ix], ix
 }
