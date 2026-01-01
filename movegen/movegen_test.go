@@ -236,26 +236,21 @@ func TestMoves(t *testing.T) {
 		},
 	}
 
-	ms := move.NewStore()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := tt.b
 
-			ms.Push()
-			defer ms.Pop()
-
-			movegen.GenMoves(ms, b)
-
-			filter := ms.Frame()[:0]
-			for _, m := range ms.Frame() {
-				r := b.MakeMove(m.Move)
+			moves := make([]move.Move, 0, MaxMoves)
+			movegen.GenMoves(&moves, b)
+			filter := moves
+			for _, m := range moves {
+				r := b.MakeMove(m)
 
 				if b.InCheck(b.STM.Flip()) {
-					b.UndoMove(m.Move, r)
+					b.UndoMove(m, r)
 					continue
 				}
-				b.UndoMove(m.Move, r)
+				b.UndoMove(m, r)
 
 				filter = append(filter, m)
 			}
@@ -300,26 +295,22 @@ func TestGenForcing(t *testing.T) {
 		},
 	}
 
-	ms := move.NewStore()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := tt.b
 
-			ms.Push()
-			defer ms.Pop()
 
-			movegen.GenForcing(ms, b)
-
-			filter := ms.Frame()[:0]
-			for _, m := range ms.Frame() {
-				r := b.MakeMove(m.Move)
+			moves := make([]move.Move, 0, MaxMoves)
+			movegen.GenForcing(&moves, b)
+			filter := moves
+			for _, m := range moves {
+				r := b.MakeMove(m)
 
 				if b.InCheck(b.STM.Flip()) {
-					b.UndoMove(m.Move, r)
+					b.UndoMove(m, r)
 					continue
 				}
-				b.UndoMove(m.Move, r)
+				b.UndoMove(m, r)
 
 				filter = append(filter, m)
 			}

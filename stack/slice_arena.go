@@ -37,7 +37,7 @@ import . "github.com/paulsonkoly/chess-3/chess"
 //  
 //  // allocate store
 //  s = NewSliceArena[int]()
-//  f(5)
+//  f(s, 5)
 //
 // This is the storage layout after 2 recursive calls of f()
 //

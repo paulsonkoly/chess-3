@@ -56,15 +56,11 @@ func Run(args []string) {
 }
 
 type Generator struct {
-	search    *search.Search
-	moveStore *move.Store
+	search *search.Search
 }
 
 func NewGenerator() Generator {
-	s := search.New(1 * transp.MegaBytes)
-	ms := move.NewStore()
-
-	return Generator{search: s, moveStore: ms}
+	return Generator{search: search.New(1 * transp.MegaBytes)}
 }
 
 func (g Generator) Games(config shim.Config, client shim.Client) {
