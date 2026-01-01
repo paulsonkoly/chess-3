@@ -242,7 +242,7 @@ func TestMoves(t *testing.T) {
 
 			moves := make([]move.Move, 0, MaxMoves)
 			movegen.GenMoves(&moves, b)
-			filter := moves
+			filter := moves[:0]
 			for _, m := range moves {
 				r := b.MakeMove(m)
 
@@ -302,7 +302,7 @@ func TestGenForcing(t *testing.T) {
 
 			moves := make([]move.Move, 0, MaxMoves)
 			movegen.GenForcing(&moves, b)
-			filter := moves
+			filter := moves[:0]
 			for _, m := range moves {
 				r := b.MakeMove(m)
 
