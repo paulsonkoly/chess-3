@@ -13,6 +13,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/stack"
 )
 
 // PieceValues approximates the value of each piece type for SEE and heuristic
@@ -62,28 +63,26 @@ type StackMove struct {
 	Score Score
 }
 
-func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ []StackMove) Score {
+func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[StackMove]) Score {
 	return MVVLVA(b, m, SEE(b, m, 0))
 }
 
-func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack []StackMove) Score {
+func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[StackMove]) Score {
 	score := mr.history.LookUp(b.STM, m.From(), m.To())
 	moved := b.SquaresToPiece[m.From()]
 
-	if len(stack) >= 1 {
-		hist := stack[len(stack)-1]
+	if hist, ok := stack.Top(0); ok {
 		score += 3 * mr.continuations[0].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
 	}
 
-	if len(stack) >= 2 {
-		hist := stack[len(stack)-2]
+	if hist, ok := stack.Top(1); ok {
 		score += 2 * mr.continuations[1].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
 	}
 
 	return score
 }
 
-func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack []StackMove) {
+func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
 	adjustScores := func(m move.Move, bonus Score) {
 		moved := b.SquaresToPiece[m.From()]
 		// TODO en-passant
@@ -92,13 +91,11 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 		if captured == NoPiece && m.Promo() == NoPiece {
 			mr.history.Add(b.STM, m.From(), m.To(), bonus)
 
-			if len(stack) >= 1 {
-				hist := stack[len(stack)-1]
+			if hist, ok := stack.Top(0); ok {
 				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
 			}
 
-			if len(stack) >= 2 {
-				hist := stack[len(stack)-2]
+			if hist, ok := stack.Top(1); ok {
 				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
 			}
 		}

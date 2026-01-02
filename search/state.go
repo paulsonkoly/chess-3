@@ -3,6 +3,7 @@ package search
 import (
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/stack"
 	"github.com/paulsonkoly/chess-3/transp"
 
 	. "github.com/paulsonkoly/chess-3/chess"
@@ -14,7 +15,7 @@ type Search struct {
 	tt      *transp.Table
 	ranker  heur.MoveRanker
 	ms      *move.Store
-	hstack  *historyStack
+	hstack  *stack.Stack[heur.StackMove]
 	pv      *pv
 	gen     transp.Gen
 	aborted bool
@@ -26,7 +27,7 @@ func New(size int) *Search {
 		tt:     transp.New(size),
 		ms:     move.NewStore(),
 		ranker: heur.NewMoveRanker(),
-		hstack: newHistStack(),
+		hstack: stack.New[heur.StackMove](),
 		pv:     newPV(),
 	}
 }
@@ -34,7 +35,7 @@ func New(size int) *Search {
 // refresh prepares the state for a new search.
 func (s *Search) refresh() {
 	s.ms.Clear()
-	s.hstack.reset()
+	s.hstack.Reset()
 	s.aborted = false
 }
 

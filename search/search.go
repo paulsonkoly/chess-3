@@ -229,7 +229,14 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	if !inCheck {
 		staticEval = eval.Eval(b, &eval.Coefficients)
 
-		improving = s.hstack.oldScore() < staticEval
+		oldScore := Inv
+		if old, ok := s.hstack.Top(1); ok && old.Score != Inv {
+			oldScore = old.Score
+		} else if old, ok := s.hstack.Top(3); ok {
+			oldScore = old.Score
+		}
+
+		improving = oldScore < staticEval
 
 		// RFP
 		if d < RFPDepthLimit && staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
@@ -291,7 +298,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		hasLegal = true
 		moveCnt++
 
-		s.hstack.push(moved, m.To(), staticEval)
+		s.hstack.Push(heur.StackMove{Piece: moved, To: m.To(), Score: staticEval})
 
 		var value Score
 
@@ -335,7 +342,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	Fin:
 
 		b.UndoMove(m.Move, r)
-		s.hstack.pop()
+		s.hstack.Pop()
 
 		if value > maxim {
 			maxim = value
@@ -352,7 +359,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			if value >= beta {
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), s.gen, d, ply, m.Move, value, transp.LowerBound)
-				s.ranker.FailHigh(d, b, moves[:ix+1], s.hstack.top(2))
+				s.ranker.FailHigh(d, b, moves[:ix+1], s.hstack)
 
 				return value
 			}
@@ -582,9 +589,9 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
 		case ok && transPE.Matches(&m):
 			val = heur.HashMove
 		case m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m.Move)] != NoPiece:
-			val = s.ranker.RankNoisy(m.Move, b, s.hstack.top(2))
+			val = s.ranker.RankNoisy(m.Move, b, s.hstack)
 		default:
-			val = s.ranker.RankQuiet(m.Move, b, s.hstack.top(2))
+			val = s.ranker.RankQuiet(m.Move, b, s.hstack)
 		}
 
 		moves[ix].Weight = val
@@ -593,7 +600,7 @@ func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
 
 func (s *Search) rankMovesQ(b *board.Board, moves []move.Weighted) {
 	for ix, m := range moves {
-		moves[ix].Weight = s.ranker.RankNoisy(m.Move, b, s.hstack.top(2))
+		moves[ix].Weight = s.ranker.RankNoisy(m.Move, b, s.hstack)
 	}
 }
 
