@@ -10,6 +10,7 @@ import (
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/picker"
 	"github.com/paulsonkoly/chess-3/transp"
 
 	. "github.com/paulsonkoly/chess-3/chess"
@@ -201,23 +202,27 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		return 0
 	}
 
-	transpT := s.tt
-	if transpE, ok := transpT.LookUp(b.Hash()); ok && nType != PVNode && transpE.Depth() >= d {
-		tpVal := transpE.Value(ply)
+	var hashMove move.Move
+	if transpE, ok := s.tt.LookUp(b.Hash()); ok {
+		hashMove = transpE.Move
 
-		switch transpE.Type() {
+		if nType != PVNode && transpE.Depth() >= d {
+			tpVal := transpE.Value(ply)
 
-		case transp.Exact:
-			return tpVal
+			switch transpE.Type() {
 
-		case transp.LowerBound:
-			if tpVal >= beta {
+			case transp.Exact:
 				return tpVal
-			}
 
-		case transp.UpperBound:
-			if tpVal <= alpha {
-				return tpVal
+			case transp.LowerBound:
+				if tpVal >= beta {
+					return tpVal
+				}
+
+			case transp.UpperBound:
+				if tpVal <= alpha {
+					return tpVal
+				}
 			}
 		}
 	}
@@ -264,17 +269,11 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
+	pck := picker.NewPicker(b, hashMove, s.ms, &s.ranker, s.hstack)
 	s.ms.Push()
 	defer s.ms.Pop()
 
-	movegen.GenMoves(s.ms, b)
-	moves := s.ms.Frame()
-
-	s.rankMovesAB(b, moves)
-
 	var (
-		m        *move.Weighted
-		ix       int
 		bestMove move.Move
 	)
 
@@ -284,14 +283,16 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	moveCnt := 0
 	quietCnt := 0
 
-	for m, ix = getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
-		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
+	for pck.Next() {
+		m := pck.Move()
 
-		r := b.MakeMove(m.Move)
+		moved := b.SquaresToPiece[m.From()]
+		captured := b.SquaresToPiece[b.CaptureSq(m)]
+
+		r := b.MakeMove(m)
 
 		if b.InCheck(b.STM.Flip()) {
-			b.UndoMove(m.Move, r)
+			b.UndoMove(m, r)
 			continue
 		}
 
@@ -341,7 +342,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	Fin:
 
-		b.UndoMove(m.Move, r)
+		b.UndoMove(m, r)
 		s.hstack.Pop()
 
 		if value > maxim {
@@ -358,8 +359,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				transpT.Insert(b.Hash(), s.gen, d, ply, m.Move, value, transp.LowerBound)
-				s.ranker.FailHigh(d, b, moves[:ix+1], s.hstack)
+				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
+				pck.FailHigh(d)
 
 				return value
 			}
@@ -367,8 +368,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			// value > alpha
 			failLow = false
 			alpha = value
-			bestMove = m.Move
-			s.pv.insert(ply, m.Move)
+			bestMove = m
+			s.pv.insert(ply, m)
 		}
 
 		// LMP
@@ -393,9 +394,9 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	if failLow {
 		// store node as fail low (All-node)
-		transpT.Insert(b.Hash(), s.gen, d, ply, 0, maxim, transp.UpperBound)
+		s.tt.Insert(b.Hash(), s.gen, d, ply, 0, maxim, transp.UpperBound)
 	} else {
-		transpT.Insert(b.Hash(), s.gen, d, ply, bestMove, maxim, transp.Exact)
+		s.tt.Insert(b.Hash(), s.gen, d, ply, bestMove, maxim, transp.Exact)
 	}
 
 	return maxim
@@ -578,24 +579,6 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	transpT.Insert(b.Hash(), s.gen, 0, ply, 0, maxim, transp.UpperBound)
 
 	return maxim
-}
-
-func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
-	transPE, ok := s.tt.LookUp(b.Hash())
-
-	for ix, m := range moves {
-		var val Score
-		switch {
-		case ok && transPE.Matches(&m):
-			val = heur.HashMove
-		case m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m.Move)] != NoPiece:
-			val = s.ranker.RankNoisy(m.Move, b, s.hstack)
-		default:
-			val = s.ranker.RankQuiet(m.Move, b, s.hstack)
-		}
-
-		moves[ix].Weight = val
-	}
 }
 
 func (s *Search) rankMovesQ(b *board.Board, moves []move.Weighted) {
