@@ -10,7 +10,9 @@
 package heur
 
 import (
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
+	"github.com/paulsonkoly/chess-3/move"
 )
 
 // PieceValues approximates the value of each piece type for SEE and heuristic
@@ -31,4 +33,82 @@ func init() {
 	if Captures < 6*MaxHistory {
 		panic("gap is not big enough in move weight layout for history scores")
 	}
+}
+
+// MoveRanker is a composition of heuristic stores that can rank a move.
+type MoveRanker struct {
+	history       *History
+	continuations [2]*Continuation
+}
+
+// NewMoveRanker creates a new move ranker.
+func NewMoveRanker() MoveRanker {
+	return MoveRanker{history: NewHistory(), continuations: [2]*Continuation{NewContinuation(), NewContinuation()}}
+}
+
+// Clear clears the stores in mr.
+func (mr *MoveRanker) Clear() {
+	mr.history.Clear()
+	mr.continuations[0].Clear()
+	mr.continuations[1].Clear()
+}
+
+// Mode defines the operation mode of a MoveRanker.
+type Mode byte
+
+type StackMove struct {
+	Piece Piece
+	To    Square
+	Score Score
+}
+
+func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ []StackMove) Score {
+	return MVVLVA(b, m, SEE(b, m, 0))
+}
+
+func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack []StackMove) Score {
+	score := mr.history.LookUp(b.STM, m.From(), m.To())
+	moved := b.SquaresToPiece[m.From()]
+
+	if len(stack) >= 1 {
+		hist := stack[len(stack)-1]
+		score += 3 * mr.continuations[0].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
+	}
+
+	if len(stack) >= 2 {
+		hist := stack[len(stack)-2]
+		score += 2 * mr.continuations[1].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
+	}
+
+	return score
+}
+
+func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack []StackMove) {
+	adjustScores := func(m move.Move, bonus Score) {
+		moved := b.SquaresToPiece[m.From()]
+		// TODO en-passant
+		captured := b.SquaresToPiece[m.To()]
+
+		if captured == NoPiece && m.Promo() == NoPiece {
+			mr.history.Add(b.STM, m.From(), m.To(), bonus)
+
+			if len(stack) >= 1 {
+				hist := stack[len(stack)-1]
+				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
+			}
+
+			if len(stack) >= 2 {
+				hist := stack[len(stack)-2]
+				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
+			}
+		}
+	}
+
+	penalty := -(Score(d)*20 - 15)
+	if len(moves) >= 2 {
+		for _, m := range moves[:len(moves)-1] {
+			adjustScores(m.Move, penalty)
+		}
+	}
+	adjustScores(moves[len(moves)-1].Move, -penalty) // bonus
 }

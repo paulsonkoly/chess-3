@@ -12,8 +12,7 @@ import (
 // searches.
 type Search struct {
 	tt      *transp.Table
-	hist    *heur.History
-	cont    [2]*heur.Continuation
+	ranker  heur.MoveRanker
 	ms      *move.Store
 	hstack  *historyStack
 	pv      *pv
@@ -26,8 +25,7 @@ func New(size int) *Search {
 	return &Search{
 		tt:     transp.New(size),
 		ms:     move.NewStore(),
-		hist:   heur.NewHistory(),
-		cont:   [2]*heur.Continuation{heur.NewContinuation(), heur.NewContinuation()},
+		ranker: heur.NewMoveRanker(),
 		hstack: newHistStack(),
 		pv:     newPV(),
 	}
@@ -44,9 +42,7 @@ func (s *Search) refresh() {
 func (s *Search) Clear() {
 	s.gen = 0
 	s.tt.Clear()
-	s.hist.Clear()
-	s.cont[0].Clear()
-	s.cont[1].Clear()
+	s.ranker.Clear()
 }
 
 type options struct {

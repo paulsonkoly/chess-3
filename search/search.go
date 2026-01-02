@@ -352,37 +352,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			if value >= beta {
 				// store node as fail high (cut-node)
 				transpT.Insert(b.Hash(), s.gen, d, ply, m.Move, value, transp.LowerBound)
-
-				hSize := s.hstack.size()
-				bonus := -(Score(d)*20 - 15)
-
-				for i, m := range moves {
-					if i == ix {
-						bonus = -bonus
-					}
-
-					moved := b.SquaresToPiece[m.From()]
-					// TODO en-passant
-					captured := b.SquaresToPiece[m.To()]
-
-					if captured == NoPiece && m.Promo() == NoPiece {
-						s.hist.Add(b.STM, m.From(), m.To(), bonus)
-
-						if hSize >= 1 {
-							hist := s.hstack.top(0)
-							s.cont[0].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
-						}
-
-						if hSize >= 2 {
-							hist := s.hstack.top(1)
-							s.cont[1].Add(b.STM, hist.piece, hist.to, moved, m.To(), bonus)
-						}
-					}
-
-					if i == ix {
-						break
-					}
-				}
+				s.ranker.FailHigh(d, b, moves[:ix+1], s.hstack.top(2))
 
 				return value
 			}
@@ -555,7 +525,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 
 	moves := s.ms.Frame()
 
-	rankMovesQ(b, moves)
+	s.rankMovesQ(b, moves)
 
 	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
 
@@ -604,43 +574,26 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 }
 
 func (s *Search) rankMovesAB(b *board.Board, moves []move.Weighted) {
-	transPE, _ := s.tt.LookUp(b.Hash())
+	transPE, ok := s.tt.LookUp(b.Hash())
 
 	for ix, m := range moves {
-
+		var val Score
 		switch {
-		case transPE != nil && transPE.Matches(&m):
-			moves[ix].Weight = heur.HashMove
-
+		case ok && transPE.Matches(&m):
+			val = heur.HashMove
 		case m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m.Move)] != NoPiece:
-			moves[ix].Weight = heur.MVVLVA(b, m.Move, heur.SEE(b, m.Move, 0))
-
+			val = s.ranker.RankNoisy(m.Move, b, s.hstack.top(2))
 		default:
-			score := s.hist.LookUp(b.STM, m.From(), m.To())
-			moved := b.SquaresToPiece[m.From()]
-
-			if s.hstack.size() >= 1 {
-				hist := s.hstack.top(0)
-				score += 3 * s.cont[0].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
-			}
-
-			if s.hstack.size() >= 2 {
-				hist := s.hstack.top(1)
-				score += 2 * s.cont[1].LookUp(b.STM, hist.piece, hist.to, moved, m.To())
-			}
-
-			moves[ix].Weight = score
+			val = s.ranker.RankQuiet(m.Move, b, s.hstack.top(2))
 		}
+
+		moves[ix].Weight = val
 	}
 }
 
-func rankMovesQ(b *board.Board, moves []move.Weighted) {
+func (s *Search) rankMovesQ(b *board.Board, moves []move.Weighted) {
 	for ix, m := range moves {
-		moves[ix].Weight = -Inf
-
-		if heur.SEE(b, m.Move, 0) {
-			moves[ix].Weight = heur.MVVLVA(b, m.Move, true)
-		}
+		moves[ix].Weight = s.ranker.RankNoisy(m.Move, b, s.hstack.top(2))
 	}
 }
 
