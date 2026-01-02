@@ -57,16 +57,20 @@ func (mr *MoveRanker) Clear() {
 // Mode defines the operation mode of a MoveRanker.
 type Mode byte
 
+// StackMove represents an already played move, identified by moving piece type
+// and to squares. It is coupled with static evaluation of the position.
 type StackMove struct {
-	Piece Piece
-	To    Square
-	Score Score
+	Piece Piece  // Piece is the moved piece type.
+	To    Square // To is the destination square of the move.
+	Score Score  // Score is the static evaluation of the position.
 }
 
+// RankNoisy returns the heuristic rank of a noisy move.
 func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[StackMove]) Score {
 	return MVVLVA(b, m, SEE(b, m, 0))
 }
 
+// RankQuiet returns the heuristic rank of a quiet move.
 func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[StackMove]) Score {
 	score := mr.history.LookUp(b.STM, m.From(), m.To())
 	moved := b.SquaresToPiece[m.From()]
@@ -82,6 +86,9 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	return score
 }
 
+// FailHigh updates the history / continuation stores based on the move buffer
+// moves. We assume all moves preceding the last are fail low, and the last
+// one is fail high. Naturally this would be true in a move loop.
 func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
 	adjustScores := func(m move.Move, bonus Score) {
 		moved := b.SquaresToPiece[m.From()]
