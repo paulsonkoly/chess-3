@@ -379,6 +379,10 @@ func (b *Board) IsPseudoLegal(m move.Move) bool {
 	piece := b.SquaresToPiece[from]
 	occ := b.Colors[White] | b.Colors[Black]
 
+	if m.Promo() != NoPiece && piece != Pawn {
+		return false
+	}
+
 	switch piece {
 
 	case Knight:
