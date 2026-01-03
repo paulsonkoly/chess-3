@@ -356,6 +356,12 @@ func TestIsPseudoLegal(t *testing.T) {
 			move: move.New(B2, G7),
 			want: false,
 		},
+		{
+			name: "when otherwise normal and legal non-pawn move contains promo",
+			fen:  "8/1P5k/2p2r2/3pr2q/1Q4p1/5pPp/5P1K/2RR4 w - - 0 1",
+			move: move.New(H2, H1, move.WithPromo(Queen)),
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {
