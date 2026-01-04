@@ -133,7 +133,8 @@ Retry:
 
 		for range serverConfig.openingDepth {
 			ms.Push()
-			movegen.GenMoves(ms, b)
+			movegen.GenNoisy(ms, b)
+			movegen.GenNotNoisy(ms, b)
 			moves := ms.Frame()
 
 			if len(moves) < 1 {
