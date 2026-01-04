@@ -98,14 +98,20 @@ func TestPicker(t *testing.T) {
 			state := verifyHash
 			currWeight := heur.HashMove
 
-			done := make(map[move.Move]struct{})
+			yielded := make([]move.Move,0)
 
 			cnt := 0
 			for pck.Next() {
 				m := pck.Move()
 
-				assert.NotContains(t, done, m, "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
-				done[m] = struct{}{}
+				assert.NotContains(t, yielded, m, "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
+				yielded = append(yielded, m)
+
+				actual := make([]move.Move,0 )
+				for _, m := range pck.YieldedMoves() {
+					actual = append(actual, m.Move)
+				}
+				assert.Equal(t, yielded, actual, "fen %s yielded moves mismatch")
 
 				cnt++
 
