@@ -54,9 +54,6 @@ func (mr *MoveRanker) Clear() {
 	mr.continuations[1].Clear()
 }
 
-// Mode defines the operation mode of a MoveRanker.
-type Mode byte
-
 // StackMove represents an already played move, identified by moving piece type
 // and to squares. It is coupled with static evaluation of the position.
 type StackMove struct {

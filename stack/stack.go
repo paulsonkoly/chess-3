@@ -24,6 +24,9 @@ func (s *Stack[T]) Reset() {
 
 // Push pushes one element to the stack.
 func (s *Stack[T]) Push(v T) {
+	if s.sp >= MaxPlies {
+		panic("overflow")
+	}
 	s.data[s.sp] = v
 	s.sp++
 }
@@ -31,7 +34,7 @@ func (s *Stack[T]) Push(v T) {
 // Pop pops the last element from the stack.
 func (s *Stack[T]) Pop() {
 	if s.sp <= 0 {
-		panic("underpop")
+		panic("underflow")
 	}
 	s.sp--
 }
