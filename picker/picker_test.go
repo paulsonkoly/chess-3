@@ -113,7 +113,7 @@ func TestPicker(t *testing.T) {
 				for _, m := range pck.YieldedMoves() {
 					actual = append(actual, m.Move)
 				}
-				assert.Equal(t, yielded, actual, "fen %s yielded moves mismatch")
+				assert.Equal(t, yielded, actual, "fen %s yielded moves mismatch", tt.fen)
 
 				cnt++
 
