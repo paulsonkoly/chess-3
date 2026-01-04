@@ -1,3 +1,5 @@
+// Package picker is a lazy move loop iterator. Generating moves or ranking
+// them dre delayed in the hopes of beta cut or pruning.
 package picker
 
 import (
@@ -9,16 +11,7 @@ import (
 	"github.com/paulsonkoly/chess-3/stack"
 )
 
-type state byte
-
-const (
-	pickHash state = iota
-	genNoisy
-	yieldGoodNoisy
-	genQuiet
-	yieldRest
-)
-
+// Picker is the move iterator for a given position.
 type Picker struct {
 	board    *board.Board
 	ms       *move.Store
@@ -30,6 +23,19 @@ type Picker struct {
 	state    state
 }
 
+type state byte
+
+const (
+	pickHash state = iota
+	genNoisy
+	yieldGoodNoisy
+	genQuiet
+	yieldRest
+)
+
+// NewPicker creates a new move iterator for the position represented by b.
+// hashMove will be yielded first. ms points to the move store. ranker points
+// to heur.Ranker. hstack points to the history stack.
 func NewPicker(
 	b *board.Board,
 	hashMove move.Move,
@@ -55,7 +61,7 @@ func (p *Picker) Next() bool {
 
 	case genNoisy:
 		p.state = yieldGoodNoisy
-		movegen.GenForcing(p.ms, p.board)
+		movegen.GenNoisy(p.ms, p.board)
 		moves := p.ms.Frame()
 
 		// remove duplicate hashmove
@@ -70,12 +76,7 @@ func (p *Picker) Next() bool {
 		}
 
 		for i := p.ix; i < len(moves); i++ {
-			m := moves[i]
-			// if m.Promo() != NoPiece || p.board.SquaresToPiece[p.board.CaptureSq(m.Move)] != NoPiece {
-			moves[i].Weight = p.ranker.RankNoisy(m.Move, p.board, p.hstack)
-			// } else {
-			// 	panic("oops")
-			// }
+			moves[i].Weight = p.ranker.RankNoisy(moves[i].Move, p.board, p.hstack)
 		}
 		p.moves = moves
 
@@ -105,7 +106,7 @@ func (p *Picker) Next() bool {
 		p.state = yieldRest
 
 		quietStart := len(p.ms.Frame())
-		movegen.GenNotForcing(p.ms, p.board)
+		movegen.GenNotNoisy(p.ms, p.board)
 		moves := p.ms.Frame()
 
 		// remove duplicate hashmove
@@ -118,11 +119,7 @@ func (p *Picker) Next() bool {
 		}
 
 		for i := quietStart; i < len(moves); i++ {
-			// if m.Promo() == NoPiece && p.board.SquaresToPiece[p.board.CaptureSq(m.Move)] == NoPiece {
 			moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
-			// } else {
-			// 	panic("whops")
-			// }
 		}
 		p.moves = moves
 
@@ -149,10 +146,13 @@ func (p *Picker) Next() bool {
 	return false
 }
 
+// Move is the currently yielded move. It's only valid if Next() is called
+// first and if it returned true.
 func (p *Picker) Move() move.Move {
 	return p.moves[p.ix-1].Move
 }
 
-func (p *Picker) FailHigh(d Depth) {
-	p.ranker.FailHigh(d, p.board, p.moves[:p.ix], p.hstack)
+// YieldedMoves returns a slice of yielded moves so far.
+func (p *Picker) YieldedMoves() []move.Weighted {
+	return p.moves[:p.ix]
 }

@@ -245,7 +245,8 @@ func TestMoves(t *testing.T) {
 			ms.Push()
 			defer ms.Pop()
 
-			movegen.GenMoves(ms, b)
+			movegen.GenNoisy(ms, b)
+			movegen.GenNotNoisy(ms, b)
 
 			filter := ms.Frame()[:0]
 			for _, m := range ms.Frame() {
@@ -271,7 +272,7 @@ func TestMoves(t *testing.T) {
 	}
 }
 
-func TestGenForcing(t *testing.T) {
+func TestGenNoisy(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
@@ -309,7 +310,7 @@ func TestGenForcing(t *testing.T) {
 			ms.Push()
 			defer ms.Pop()
 
-			movegen.GenForcing(ms, b)
+			movegen.GenNoisy(ms, b)
 
 			filter := ms.Frame()[:0]
 			for _, m := range ms.Frame() {

@@ -93,7 +93,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 					s.ms.Push()
 					defer s.ms.Pop()
 
-					movegen.GenMoves(s.ms, b)
+					movegen.GenNoisy(s.ms, b)
+					movegen.GenNotNoisy(s.ms, b)
 					moves := s.ms.Frame()
 
 					for _, pseudo := range moves {
@@ -360,7 +361,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			if value >= beta {
 				// store node as fail high (cut-node)
 				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
-				pck.FailHigh(d)
+				s.ranker.FailHigh(d, b, pck.YieldedMoves(), s.hstack)
 
 				return value
 			}
@@ -524,7 +525,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	s.ms.Push()
 	defer s.ms.Pop()
 
-	movegen.GenForcing(s.ms, b)
+	movegen.GenNoisy(s.ms, b)
 
 	delta := standPat + 110
 	// fail soft upper bound
