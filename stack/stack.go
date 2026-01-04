@@ -30,6 +30,9 @@ func (s *Stack[T]) Push(v T) {
 
 // Pop pops the last element from the stack.
 func (s *Stack[T]) Pop() {
+	if s.sp <= 0 {
+		panic("underpop")
+	}
 	s.sp--
 }
 
@@ -39,5 +42,6 @@ func (s *Stack[T]) Top(n int) (T, bool) {
 	if s.sp > n {
 		return s.data[s.sp-n-1], true
 	}
-	return s.data[0], false
+	var zero T
+	return zero, false
 }

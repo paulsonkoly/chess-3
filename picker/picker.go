@@ -1,5 +1,5 @@
 // Package picker is a lazy move loop iterator. Generating moves or ranking
-// them dre delayed in the hopes of beta cut or pruning.
+// them are delayed in the hopes of beta cut or pruning.
 package picker
 
 import (
