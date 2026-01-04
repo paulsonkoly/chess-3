@@ -13,8 +13,10 @@ type state byte
 
 const (
 	pickHash state = iota
-	genMoves
-	yieldMoves
+	genNoisy
+	yieldGoodNoisy
+	genQuiet
+	yieldRest
 )
 
 type Picker struct {
@@ -42,7 +44,7 @@ func (p *Picker) Next() bool {
 	switch p.state {
 
 	case pickHash:
-		p.state = genMoves
+		p.state = genNoisy
 		if p.board.IsPseudoLegal(p.hashMove) {
 			(*p.ms.Alloc()).Move = p.hashMove
 			p.moves = p.ms.Frame()
@@ -51,9 +53,9 @@ func (p *Picker) Next() bool {
 		}
 		fallthrough
 
-	case genMoves:
-		p.state = yieldMoves
-		movegen.GenMoves(p.ms, p.board)
+	case genNoisy:
+		p.state = yieldGoodNoisy
+		movegen.GenForcing(p.ms, p.board)
 		moves := p.ms.Frame()
 
 		// remove duplicate hashmove
@@ -69,21 +71,64 @@ func (p *Picker) Next() bool {
 
 		for i := p.ix; i < len(moves); i++ {
 			m := moves[i]
-			var val Score
-			switch {
-			case m.Promo() != NoPiece || p.board.SquaresToPiece[p.board.CaptureSq(m.Move)] != NoPiece:
-				val = p.ranker.RankNoisy(m.Move, p.board, p.hstack)
-			default:
-				val = p.ranker.RankQuiet(m.Move, p.board, p.hstack)
-			}
-
-			moves[i].Weight = val
+			// if m.Promo() != NoPiece || p.board.SquaresToPiece[p.board.CaptureSq(m.Move)] != NoPiece {
+			moves[i].Weight = p.ranker.RankNoisy(m.Move, p.board, p.hstack)
+			// } else {
+			// 	panic("oops")
+			// }
 		}
 		p.moves = moves
 
 		fallthrough
 
-	case yieldMoves:
+	case yieldGoodNoisy:
+
+		maxim := Score(0) // start at 0 to filter out bad noisy
+		best := -1
+		for i := p.ix; i < len(p.moves); i++ {
+			if maxim < p.moves[i].Weight {
+				maxim = p.moves[i].Weight
+				best = i
+			}
+		}
+
+		if best != -1 {
+			p.moves[p.ix], p.moves[best] = p.moves[best], p.moves[p.ix]
+			p.ix++
+			return true
+		}
+
+		p.state = genQuiet
+		fallthrough
+
+	case genQuiet:
+		p.state = yieldRest
+
+		quietStart := len(p.ms.Frame())
+		movegen.GenNotForcing(p.ms, p.board)
+		moves := p.ms.Frame()
+
+		// remove duplicate hashmove
+		for i := quietStart; i < len(moves); i++ {
+			if p.hashMove == moves[i].Move {
+				moves[len(moves)-1], moves[i] = moves[i], moves[len(moves)-1]
+				moves = moves[:len(moves)-1]
+				break
+			}
+		}
+
+		for i := quietStart; i < len(moves); i++ {
+			// if m.Promo() == NoPiece && p.board.SquaresToPiece[p.board.CaptureSq(m.Move)] == NoPiece {
+			moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
+			// } else {
+			// 	panic("whops")
+			// }
+		}
+		p.moves = moves
+
+		fallthrough
+
+	case yieldRest:
 
 		maxim := -Inf - 1
 		best := -1
@@ -94,14 +139,11 @@ func (p *Picker) Next() bool {
 			}
 		}
 
-		if best == -1 {
-			return false
+		if best != -1 {
+			p.moves[p.ix], p.moves[best] = p.moves[best], p.moves[p.ix]
+			p.ix++
+			return true
 		}
-
-		p.moves[p.ix], p.moves[best] = p.moves[best], p.moves[p.ix]
-		p.ix++
-
-		return true
 	}
 
 	return false

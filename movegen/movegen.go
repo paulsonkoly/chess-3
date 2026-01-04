@@ -328,3 +328,28 @@ func GenForcing(ms *move.Store, b *board.Board) {
 	gen.enPassant(ms, b)
 
 }
+
+func GenNotForcing(ms *move.Store, b *board.Board) {
+
+	self := b.Colors[b.STM]
+	them := b.Colors[b.STM.Flip()]
+	occ := b.Colors[White] | b.Colors[Black]
+
+	gen := generator{
+		self: self,
+		them: them,
+		occ:  occ,
+	}
+
+	gen.kingMoves(ms, b, Full, ^them)
+	gen.knightMoves(ms, b, Full, ^them)
+	gen.bishopMoves(ms, b, Full, ^them)
+	gen.rookMoves(ms, b, Full, ^them)
+	gen.queenMoves(ms, b, Full, ^them)
+
+	gen.singlePushMoves(ms, b, Full)
+	gen.doublePushMoves(ms, b, Full)
+
+	gen.shortCastle(ms, b, Full)
+	gen.longCastle(ms, b, Full)
+}
