@@ -71,6 +71,8 @@ func TestPicker(t *testing.T) {
 		{"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"},
 	}
 
+	rng := rand.New(rand.NewPCG(832473287, 23292478578))
+
 	for tix, tt := range tests {
 		ms := move.NewStore()
 		ranker := heur.NewMoveRanker()
@@ -87,7 +89,7 @@ func TestPicker(t *testing.T) {
 
 			numMoves := len(ms.Frame())
 
-			hashMoveIx := rand.IntN(numMoves)
+			hashMoveIx := rng.IntN(numMoves)
 			hashMove := ms.Frame()[hashMoveIx].Move
 
 			ms.Clear()
@@ -98,7 +100,7 @@ func TestPicker(t *testing.T) {
 			state := verifyHash
 			currWeight := heur.HashMove
 
-			yielded := make([]move.Move,0)
+			yielded := make([]move.Move, 0)
 
 			cnt := 0
 			for pck.Next() {
@@ -107,7 +109,7 @@ func TestPicker(t *testing.T) {
 				assert.NotContains(t, yielded, m, "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
 				yielded = append(yielded, m)
 
-				actual := make([]move.Move,0 )
+				actual := make([]move.Move, 0)
 				for _, m := range pck.YieldedMoves() {
 					actual = append(actual, m.Move)
 				}
