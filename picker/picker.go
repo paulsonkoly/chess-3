@@ -68,7 +68,7 @@ func (p *Picker) Next() bool {
 
 		for i := p.ix; i < len(moves); i++ {
 			if p.hashMove == moves[i].Move {
-				// hash move was alredy yielded
+				// hash move was already yielded
 				moves[i].Weight = -heur.HashMove
 			} else {
 				moves[i].Weight = p.ranker.RankNoisy(moves[i].Move, p.board, p.hstack)
@@ -107,7 +107,7 @@ func (p *Picker) Next() bool {
 
 		for i := quietStart; i < len(moves); i++ {
 			if p.hashMove == moves[i].Move {
-				// hash move was alredy yielded
+				// hash move was already yielded
 				moves[i].Weight = -heur.HashMove
 			} else {
 				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
