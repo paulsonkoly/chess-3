@@ -270,7 +270,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
-	pck := picker.NewPicker(b, hashMove, s.ms, &s.ranker, s.hstack)
+	pck := picker.New(b, hashMove, s.ms, &s.ranker, s.hstack)
 	s.ms.Push()
 	defer s.ms.Pop()
 

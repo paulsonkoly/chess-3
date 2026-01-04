@@ -17,7 +17,6 @@ type Picker struct {
 	ms       *move.Store
 	ranker   *heur.MoveRanker
 	hstack   *stack.Stack[heur.StackMove]
-	moves    []move.Weighted
 	ix       int
 	hashMove move.Move
 	state    state
@@ -33,10 +32,10 @@ const (
 	yieldRest
 )
 
-// NewPicker creates a new move iterator for the position represented by b.
+// New creates a new move iterator for the position represented by b.
 // hashMove will be yielded first. ms points to the move store. ranker points
 // to heur.Ranker. hstack points to the history stack.
-func NewPicker(
+func New(
 	b *board.Board,
 	hashMove move.Move,
 	ms *move.Store,
@@ -52,8 +51,11 @@ func (p *Picker) Next() bool {
 	case pickHash:
 		p.state = genNoisy
 		if p.board.IsPseudoLegal(p.hashMove) {
-			(*p.ms.Alloc()).Move = p.hashMove
-			p.moves = p.ms.Frame()
+			// we put the hash move in the actual store move buffer, in case we need
+			// to update histories on fail high
+			m := p.ms.Alloc()
+			m.Move = p.hashMove
+			m.Weight = heur.HashMove
 			p.ix++
 			return true
 		}
@@ -64,37 +66,31 @@ func (p *Picker) Next() bool {
 		movegen.GenNoisy(p.ms, p.board)
 		moves := p.ms.Frame()
 
-		// remove duplicate hashmove
-		if p.ix > 0 {
-			for i := p.ix; i < len(moves); i++ {
-				if p.hashMove == moves[i].Move {
-					moves[len(moves)-1], moves[i] = moves[i], moves[len(moves)-1]
-					moves = moves[:len(moves)-1]
-					break
-				}
+		for i := p.ix; i < len(moves); i++ {
+			if p.hashMove == moves[i].Move {
+				// hash move was alredy yielded
+				moves[i].Weight = -heur.HashMove
+			} else {
+				moves[i].Weight = p.ranker.RankNoisy(moves[i].Move, p.board, p.hstack)
 			}
 		}
-
-		for i := p.ix; i < len(moves); i++ {
-			moves[i].Weight = p.ranker.RankNoisy(moves[i].Move, p.board, p.hstack)
-		}
-		p.moves = moves
 
 		fallthrough
 
 	case yieldGoodNoisy:
+		moves := p.ms.Frame()
 
 		maxim := Score(0) // start at 0 to filter out bad noisy
 		best := -1
-		for i := p.ix; i < len(p.moves); i++ {
-			if maxim < p.moves[i].Weight {
-				maxim = p.moves[i].Weight
+		for i := p.ix; i < len(moves); i++ {
+			if maxim < moves[i].Weight {
+				maxim = moves[i].Weight
 				best = i
 			}
 		}
 
 		if best != -1 {
-			p.moves[p.ix], p.moves[best] = p.moves[best], p.moves[p.ix]
+			moves[p.ix], moves[best] = moves[best], moves[p.ix]
 			p.ix++
 			return true
 		}
@@ -109,35 +105,30 @@ func (p *Picker) Next() bool {
 		movegen.GenNotNoisy(p.ms, p.board)
 		moves := p.ms.Frame()
 
-		// remove duplicate hashmove
 		for i := quietStart; i < len(moves); i++ {
 			if p.hashMove == moves[i].Move {
-				moves[len(moves)-1], moves[i] = moves[i], moves[len(moves)-1]
-				moves = moves[:len(moves)-1]
-				break
+				// hash move was alredy yielded
+				moves[i].Weight = -heur.HashMove
+			} else {
+				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
 			}
 		}
-
-		for i := quietStart; i < len(moves); i++ {
-			moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
-		}
-		p.moves = moves
-
 		fallthrough
 
 	case yieldRest:
+		moves := p.ms.Frame()
 
-		maxim := -Inf - 1
+		maxim := -heur.HashMove + 1
 		best := -1
-		for i := p.ix; i < len(p.moves); i++ {
-			if maxim < p.moves[i].Weight {
-				maxim = p.moves[i].Weight
+		for i := p.ix; i < len(moves); i++ {
+			if maxim < moves[i].Weight {
+				maxim = moves[i].Weight
 				best = i
 			}
 		}
 
 		if best != -1 {
-			p.moves[p.ix], p.moves[best] = p.moves[best], p.moves[p.ix]
+			moves[p.ix], moves[best] = moves[best], moves[p.ix]
 			p.ix++
 			return true
 		}
@@ -149,10 +140,10 @@ func (p *Picker) Next() bool {
 // Move is the currently yielded move. It's only valid if Next() is called
 // first and if it returned true.
 func (p *Picker) Move() move.Move {
-	return p.moves[p.ix-1].Move
+	return p.ms.Frame()[p.ix-1].Move
 }
 
 // YieldedMoves returns a slice of yielded moves so far.
 func (p *Picker) YieldedMoves() []move.Weighted {
-	return p.moves[:p.ix]
+	return p.ms.Frame()[:p.ix]
 }
