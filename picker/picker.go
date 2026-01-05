@@ -43,7 +43,7 @@ const (
 )
 
 // veryBadQuietThreshold controls when we switch from heuristic order to generation order.
-const veryBadQuietThreshold = Score(-7500) //-heur.MaxHistory / 4
+const veryBadQuietThreshold = Score(-244) //-heur.MaxHistory / 4
 
 // New creates a new move iterator for the position represented by b. hashMove
 // will be yielded first. ms points to the move store. ranker points to
