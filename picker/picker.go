@@ -23,6 +23,7 @@ type Picker struct {
 	goodQuiets    bitset.BitSet
 	badQuiets     bitset.BitSet
 	veryBadQuiets bitset.BitSet
+	yieldedHash   bool
 	yielded       bitset.BitSet
 	hashMove      move.Move
 	state         state
@@ -63,6 +64,7 @@ func (p *Picker) Next() (move.Move, bool) {
 	case pickHash:
 		p.state = genNoisy
 		if p.board.IsPseudoLegal(p.hashMove) {
+			p.yieldedHash = true
 			return p.hashMove, true
 		}
 		fallthrough
@@ -222,14 +224,14 @@ func (p *Picker) FailHigh(m move.Move, d Depth) {
 	bonus := Score(d)*20 - 15
 	malus := -bonus
 
-	if p.hashMove != 0 {
+	if p.yieldedHash {
 		adjustment := bonus
 		if p.hashMove != m {
 			adjustment = malus
 		}
-		moved := p.board.SquaresToPiece[m.From()]
+		moved := p.board.SquaresToPiece[p.hashMove.From()]
 		// TODO en-passant
-		captured := p.board.SquaresToPiece[m.To()]
+		captured := p.board.SquaresToPiece[p.hashMove.To()]
 
 		if captured == NoPiece && m.Promo() == NoPiece {
 			p.ranker.Adjust(p.board.STM, p.hashMove, moved, p.hstack, adjustment)

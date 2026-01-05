@@ -4,8 +4,6 @@
 //
 //	// Declare a BitSet with null value.
 //	s := BitSet{}
-//	// Declare a tracking set to keep track what of we iterated.
-//	t := BitSet{}
 //
 //	// Set some bits
 //	s.Set(13)
@@ -13,10 +11,10 @@
 //	s.Set(113)
 //
 //	// Loop over set bits.
-//	for ix, ok := s.Next(t); ok; ix, ok = s.Next(t) {
+//	for ix := s.Next(t); ix != -1; ix, ix = s.Next(t) {
 //		fmt.Println(ix) // prints 13, 40, 113
-//		// Set ix in t to mark it completed.
-//		t.Set(ix)
+//		// Remove ix otherwise Next yields it again.
+//		t.Clear(ix)
 //	}
 package bitset
 
@@ -43,12 +41,14 @@ func (b *BitSet) Clear(ix int) {
 	b[ix>>6] &= ^(uint64(1) << (ix & 63))
 }
 
+// AndNot performs a self modifying and with not o.
 func (b *BitSet) AndNot(o *BitSet) {
 	for i := range 4 {
 		b[i] &= ^o[i]
 	}
 }
 
+// Next returns the lowest significant set bit index in b.
 func (b *BitSet) Next() int {
 	for i := range 4 {
 		if x := b[i]; x != 0 {
@@ -58,9 +58,11 @@ func (b *BitSet) Next() int {
 	return -1
 }
 
+// String is a debug string represention of b.
 func (b BitSet) String() string {
 	vals := make([]string, 0)
 	for i := b.Next(); i != -1; i = b.Next() {
+		b.Clear(i)
 		vals = append(vals, strconv.Itoa(i))
 	}
 	return "[" + strings.Join(vals, ", ") + "]"
