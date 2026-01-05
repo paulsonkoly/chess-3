@@ -2,20 +2,20 @@
 //
 // # example
 //
-//  // Declare a BitSet with null value.
-//  s := BitSet{}
-//  
-//  // Set some bits
-//  s.Set(13)
-//  s.Set(40)
-//  s.Set(113)
-//  
-//  // Loop over set bits.
-//  for ix := s.Next(); ix != -1; ix = s.Next() {
-//  	fmt.Println(ix) // prints 13, 40, 113
-//  	// Remove ix otherwise Next yields it again.
-//  	s.Clear(ix)
-//  }
+//	// Declare a BitSet with null value.
+//	s := BitSet{}
+//
+//	// Set some bits
+//	s.Set(13)
+//	s.Set(40)
+//	s.Set(113)
+//
+//	// Loop over set bits.
+//	for ix := s.Next(); ix != -1; ix = s.Next() {
+//		fmt.Println(ix) // prints 13, 40, 113
+//		// Remove ix otherwise Next yields it again.
+//		s.Clear(ix)
+//	}
 package bitset
 
 import (
@@ -29,14 +29,14 @@ type BitSet [4]uint64
 
 // Set adds ix to b.
 //
-// Index is expect to be between 0 and 255.
+// Index is expected to be between 0 and 255. This function panics if out of bounds.
 func (b *BitSet) Set(ix int) {
 	b[ix>>6] |= uint64(1) << (ix & 63)
 }
 
 // Clear clears ix in b.
 //
-// Index is expect to be between 0 and 255.
+// Index is expected to be between 0 and 255. This function panics if out of bounds.
 func (b *BitSet) Clear(ix int) {
 	b[ix>>6] &= ^(uint64(1) << (ix & 63))
 }
