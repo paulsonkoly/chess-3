@@ -233,7 +233,7 @@ func (p *Picker) FailHigh(m move.Move, d Depth) {
 		// TODO en-passant
 		captured := p.board.SquaresToPiece[p.hashMove.To()]
 
-		if captured == NoPiece && m.Promo() == NoPiece {
+		if captured == NoPiece && p.hashMove.Promo() == NoPiece {
 			p.ranker.Adjust(p.board.STM, p.hashMove, moved, p.hstack, adjustment)
 		}
 	}

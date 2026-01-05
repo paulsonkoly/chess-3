@@ -54,5 +54,4 @@ func TestBitMapString(t *testing.T) {
 	s.Set(113)
 
 	assert.Equal(t, "[13, 40, 113]", s.String())
-
 }

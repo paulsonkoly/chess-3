@@ -2,20 +2,20 @@
 //
 // # example
 //
-//	// Declare a BitSet with null value.
-//	s := BitSet{}
-//
-//	// Set some bits
-//	s.Set(13)
-//	s.Set(40)
-//	s.Set(113)
-//
-//	// Loop over set bits.
-//	for ix := s.Next(t); ix != -1; ix, ix = s.Next(t) {
-//		fmt.Println(ix) // prints 13, 40, 113
-//		// Remove ix otherwise Next yields it again.
-//		t.Clear(ix)
-//	}
+//  // Declare a BitSet with null value.
+//  s := BitSet{}
+//  
+//  // Set some bits
+//  s.Set(13)
+//  s.Set(40)
+//  s.Set(113)
+//  
+//  // Loop over set bits.
+//  for ix := s.Next(); ix != -1; ix = s.Next() {
+//  	fmt.Println(ix) // prints 13, 40, 113
+//  	// Remove ix otherwise Next yields it again.
+//  	s.Clear(ix)
+//  }
 package bitset
 
 import (
@@ -58,7 +58,7 @@ func (b *BitSet) Next() int {
 	return -1
 }
 
-// String is a debug string represention of b.
+// String is a debug string representation of b.
 func (b BitSet) String() string {
 	vals := make([]string, 0)
 	for i := b.Next(); i != -1; i = b.Next() {
