@@ -284,9 +284,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	moveCnt := 0
 	quietCnt := 0
 
-	for pck.Next() {
-		m := pck.Move()
-
+	for m, ok := pck.Next(); ok; m, ok = pck.Next() {
 		moved := b.SquaresToPiece[m.From()]
 		captured := b.SquaresToPiece[b.CaptureSq(m)]
 
@@ -361,7 +359,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			if value >= beta {
 				// store node as fail high (cut-node)
 				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
-				s.ranker.FailHigh(d, b, pck.YieldedMoves(), s.hstack)
+				pck.FailHigh(m, d)
 
 				return value
 			}

@@ -83,27 +83,24 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	return score
 }
 
+func (mr * MoveRanker) Adjust(stm Color, m move.Move, moved Piece, stack * stack.Stack[StackMove] ,adj Score ) {
+			mr.history.Add(stm, m.From(), m.To(), adj)
+
+			if hist, ok := stack.Top(0); ok {
+				mr.continuations[0].Add(stm, hist.Piece, hist.To, moved, m.To(), adj)
+			}
+
+			if hist, ok := stack.Top(1); ok {
+				mr.continuations[1].Add(stm, hist.Piece, hist.To, moved, m.To(), adj)
+			}
+}
+
 // FailHigh updates the history / continuation stores based on the move buffer
 // moves. We assume all moves preceding the last are fail low, and the last
 // one is fail high. Naturally this would be true in a move loop.
 // This function panics if the moves buffer is empty.
 func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
 	adjustScores := func(m move.Move, bonus Score) {
-		moved := b.SquaresToPiece[m.From()]
-		// TODO en-passant
-		captured := b.SquaresToPiece[m.To()]
-
-		if captured == NoPiece && m.Promo() == NoPiece {
-			mr.history.Add(b.STM, m.From(), m.To(), bonus)
-
-			if hist, ok := stack.Top(0); ok {
-				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
-			}
-
-			if hist, ok := stack.Top(1); ok {
-				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
-			}
-		}
 	}
 
 	penalty := -(Score(d)*20 - 15)

@@ -3,6 +3,7 @@
 package picker
 
 import (
+	"github.com/paulsonkoly/chess-3/bitset"
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/heur"
@@ -13,13 +14,17 @@ import (
 
 // Picker is the move iterator for a given position.
 type Picker struct {
-	board    *board.Board
-	ms       *move.Store
-	ranker   *heur.MoveRanker
-	hstack   *stack.Stack[heur.StackMove]
-	ix       int
-	hashMove move.Move
-	state    state
+	board       *board.Board
+	ms          *move.Store
+	ranker      *heur.MoveRanker
+	hstack      *stack.Stack[heur.StackMove]
+	goodNoisies bitset.BitSet
+	badNoisies  bitset.BitSet
+	goodQuiets  bitset.BitSet
+	badQuiets   bitset.BitSet
+	yielded     bitset.BitSet
+	hashMove    move.Move
+	state       state
 }
 
 type state byte
@@ -29,7 +34,9 @@ const (
 	genNoisy
 	yieldGoodNoisy
 	genQuiet
-	yieldRest
+	yieldGoodQuiet
+	yieldBadQuiet
+	yieldBadNoisy
 )
 
 // New creates a new move iterator for the position represented by b.
@@ -45,19 +52,13 @@ func New(
 	return Picker{board: b, hashMove: hashMove, ms: ms, hstack: hstack, ranker: ranker}
 }
 
-func (p *Picker) Next() bool {
+func (p *Picker) Next() (move.Move, bool) {
 	switch p.state {
 
 	case pickHash:
 		p.state = genNoisy
 		if p.board.IsPseudoLegal(p.hashMove) {
-			// we put the hash move in the actual store move buffer, in case we need
-			// to update histories on fail high
-			m := p.ms.Alloc()
-			m.Move = p.hashMove
-			m.Weight = heur.HashMove
-			p.ix++
-			return true
+			return p.hashMove, true
 		}
 		fallthrough
 
@@ -66,84 +67,178 @@ func (p *Picker) Next() bool {
 		movegen.GenNoisy(p.ms, p.board)
 		moves := p.ms.Frame()
 
-		for i := p.ix; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
-				// hash move was already yielded
-				moves[i].Weight = -heur.HashMove
+		for i, m := range moves {
+			if p.hashMove == m.Move {
+				p.yielded.Set(i)
 			} else {
-				moves[i].Weight = p.ranker.RankNoisy(moves[i].Move, p.board, p.hstack)
+				weight := p.ranker.RankNoisy(m.Move, p.board, p.hstack)
+				if weight >= 0 {
+					p.goodNoisies.Set(i)
+				} else {
+					p.badNoisies.Set(i)
+				}
+				moves[i].Weight = weight
 			}
 		}
 
 		fallthrough
 
 	case yieldGoodNoisy:
-		moves := p.ms.Frame()
-
-		maxim := Score(0) // start at 0 to filter out bad noisy
+		maxim := -Inf
 		best := -1
-		for i := p.ix; i < len(moves); i++ {
-			if maxim < moves[i].Weight {
-				maxim = moves[i].Weight
-				best = i
+		iter := p.goodNoisies
+		iter.AndNot(&p.yielded)
+		moves := p.ms.Frame()
+		for ix := iter.Next(); ix != -1; ix = iter.Next() {
+			iter.Clear(ix)
+			if maxim < moves[ix].Weight {
+				maxim = moves[ix].Weight
+				best = ix
 			}
 		}
 
 		if best != -1 {
-			moves[p.ix], moves[best] = moves[best], moves[p.ix]
-			p.ix++
-			return true
+			p.yielded.Set(best)
+			return moves[best].Move, true
 		}
 
 		p.state = genQuiet
 		fallthrough
 
 	case genQuiet:
-		p.state = yieldRest
+		p.state = yieldGoodQuiet
 
 		quietStart := len(p.ms.Frame())
 		movegen.GenNotNoisy(p.ms, p.board)
-		moves := p.ms.Frame()
+		moves := p.ms.Frame()[quietStart:]
 
-		for i := quietStart; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
-				// hash move was already yielded
-				moves[i].Weight = -heur.HashMove
+		for i, m := range moves {
+			if p.hashMove == m.Move {
+				p.yielded.Set(quietStart + i)
 			} else {
-				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
+				weight := p.ranker.RankQuiet(m.Move, p.board, p.hstack)
+				if weight > 0 {
+					p.goodQuiets.Set(quietStart + i)
+				} else {
+					p.badQuiets.Set(quietStart + i)
+				}
+				moves[i].Weight = weight
 			}
 		}
+
 		fallthrough
 
-	case yieldRest:
-		moves := p.ms.Frame()
-
-		maxim := -heur.HashMove + 1
+	case yieldGoodQuiet:
+		maxim := -Inf
 		best := -1
-		for i := p.ix; i < len(moves); i++ {
-			if maxim < moves[i].Weight {
-				maxim = moves[i].Weight
-				best = i
+		iter := p.goodQuiets
+		iter.AndNot(&p.yielded)
+		moves := p.ms.Frame()
+		for ix := iter.Next(); ix != -1; ix = iter.Next() {
+			iter.Clear(ix)
+			if maxim < moves[ix].Weight {
+				maxim = moves[ix].Weight
+				best = ix
 			}
 		}
 
 		if best != -1 {
-			moves[p.ix], moves[best] = moves[best], moves[p.ix]
-			p.ix++
-			return true
+			p.yielded.Set(best)
+			return moves[best].Move, true
+		}
+
+		p.state = yieldBadQuiet
+		fallthrough
+
+	case yieldBadQuiet:
+		// return badQuiets in heuristic order, this is up to debate. whether we
+		// want bucket system, or pure generation order.
+		// we are most likely in an unfortunate AllNode.
+		maxim := -Inf
+		best := -1
+		iter := p.badQuiets
+		iter.AndNot(&p.yielded)
+		moves := p.ms.Frame()
+		for ix := iter.Next(); ix != -1; ix = iter.Next() {
+			iter.Clear(ix)
+			if maxim < moves[ix].Weight {
+				maxim = moves[ix].Weight
+				best = ix
+			}
+		}
+
+		if best != -1 {
+			p.yielded.Set(best)
+			return p.ms.Frame()[best].Move, true
+		}
+		p.state = yieldBadNoisy
+
+	case yieldBadNoisy:
+		// return badNoisies in heuristic order, this is up to debate, at this point
+		// we are most likely in an unfortunate AllNode.
+		maxim := -Inf
+		best := -1
+		iter := p.badNoisies
+		iter.AndNot(&p.yielded)
+		moves := p.ms.Frame()
+		for ix := iter.Next(); ix != -1; ix = iter.Next() {
+			iter.Clear(ix)
+			if maxim < moves[ix].Weight {
+				maxim = moves[ix].Weight
+				best = ix
+			}
+		}
+
+		if best != -1 {
+			p.yielded.Set(best)
+			return moves[best].Move, true
 		}
 	}
 
-	return false
+	return 0, false
 }
 
-// Move is the currently yielded move. It's only valid if Next() is called
-// first and if it returned true.
-func (p *Picker) Move() move.Move {
-	return p.ms.Frame()[p.ix-1].Move
-}
+func (p *Picker) FailHigh(m move.Move, d Depth) {
+	bonus := Score(d)*20 - 15
+	malus := -bonus
 
-// YieldedMoves returns a slice of yielded moves so far.
-func (p *Picker) YieldedMoves() []move.Weighted {
-	return p.ms.Frame()[:p.ix]
+	if p.hashMove != 0 {
+		adjustment := bonus
+		if p.hashMove != m {
+			adjustment = malus
+		}
+		moved := p.board.SquaresToPiece[m.From()]
+		// TODO en-passant
+		captured := p.board.SquaresToPiece[m.To()]
+
+		if captured == NoPiece && m.Promo() == NoPiece {
+			p.ranker.Adjust(p.board.STM, p.hashMove, moved, p.hstack, adjustment)
+		}
+	}
+
+	// we are destroying yielded at this point
+	for ix := p.yielded.Next(); ix != -1; ix = p.yielded.Next() {
+		p.yielded.Clear(ix)
+		curr := p.ms.Frame()[ix].Move
+
+		moved := p.board.SquaresToPiece[m.From()]
+		// TODO en-passant
+		captured := p.board.SquaresToPiece[m.To()]
+
+		if captured != NoPiece || m.Promo() != NoPiece {
+			continue
+		}
+
+		switch curr {
+
+		case p.hashMove:
+			continue
+
+		case m:
+			p.ranker.Adjust(p.board.STM, curr, moved, p.hstack, bonus)
+
+		default:
+			p.ranker.Adjust(p.board.STM, curr, moved, p.hstack, malus)
+		}
+	}
 }
