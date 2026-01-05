@@ -103,17 +103,10 @@ func TestPicker(t *testing.T) {
 			yielded := make([]move.Move, 0)
 
 			cnt := 0
-			for pck.Next() {
-				m := pck.Move()
+			for m, ok := pck.Next(); ok; m, ok = pck.Next() {
 
 				assert.NotContains(t, yielded, m, "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
 				yielded = append(yielded, m)
-
-				actual := make([]move.Move, 0)
-				for _, m := range pck.YieldedMoves() {
-					actual = append(actual, m.Move)
-				}
-				assert.Equal(t, yielded, actual, "fen %s yielded moves mismatch", tt.fen)
 
 				cnt++
 
@@ -121,7 +114,7 @@ func TestPicker(t *testing.T) {
 
 				case verifyHash:
 					state = verifyGoodCaptures
-					assert.Equal(t, hashMove, m, "fen %s, hashmove %s yielded %s", tt.fen, hashMove, pck.Move())
+					assert.Equal(t, hashMove, m, "fen %s, hashmove %s yielded %s", tt.fen, hashMove, m)
 
 				case verifyGoodCaptures:
 					if (m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m)] != NoPiece) && heur.SEE(b, m, 0) {

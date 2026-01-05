@@ -41,12 +41,12 @@ const (
 	yieldBadNoisy
 )
 
-// controls when we switch from heuristic order to generation order
-const veryBadQuietThreshold = Score(-64)
+// veryBadQuietThreshold controls when we switch from heuristic order to generation order.
+const veryBadQuietThreshold = -heur.MaxHistory / 4
 
-// New creates a new move iterator for the position represented by b.
-// hashMove will be yielded first. ms points to the move store. ranker points
-// to heur.Ranker. hstack points to the history stack.
+// New creates a new move iterator for the position represented by b. hashMove
+// will be yielded first. ms points to the move store. ranker points to
+// heur.Ranker. hstack points to the history stack.
 func New(
 	b *board.Board,
 	hashMove move.Move,
@@ -192,6 +192,7 @@ func (p *Picker) Next() (move.Move, bool) {
 			return p.ms.Frame()[ix].Move, true
 		}
 		p.state = yieldBadNoisy
+		fallthrough
 
 	case yieldBadNoisy:
 		// return badNoisies in heuristic order, this is up to debate
@@ -240,11 +241,11 @@ func (p *Picker) FailHigh(m move.Move, d Depth) {
 		p.yielded.Clear(ix)
 		curr := p.ms.Frame()[ix].Move
 
-		moved := p.board.SquaresToPiece[m.From()]
+		moved := p.board.SquaresToPiece[curr.From()]
 		// TODO en-passant
-		captured := p.board.SquaresToPiece[m.To()]
+		captured := p.board.SquaresToPiece[curr.To()]
 
-		if captured != NoPiece || m.Promo() != NoPiece {
+		if captured != NoPiece || curr.Promo() != NoPiece {
 			continue
 		}
 
