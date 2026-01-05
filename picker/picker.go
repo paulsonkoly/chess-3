@@ -14,17 +14,18 @@ import (
 
 // Picker is the move iterator for a given position.
 type Picker struct {
-	board       *board.Board
-	ms          *move.Store
-	ranker      *heur.MoveRanker
-	hstack      *stack.Stack[heur.StackMove]
-	goodNoisies bitset.BitSet
-	badNoisies  bitset.BitSet
-	goodQuiets  bitset.BitSet
-	badQuiets   bitset.BitSet
-	yielded     bitset.BitSet
-	hashMove    move.Move
-	state       state
+	board         *board.Board
+	ms            *move.Store
+	ranker        *heur.MoveRanker
+	hstack        *stack.Stack[heur.StackMove]
+	goodNoisies   bitset.BitSet
+	badNoisies    bitset.BitSet
+	goodQuiets    bitset.BitSet
+	badQuiets     bitset.BitSet
+	veryBadQuiets bitset.BitSet
+	yielded       bitset.BitSet
+	hashMove      move.Move
+	state         state
 }
 
 type state byte
@@ -36,8 +37,12 @@ const (
 	genQuiet
 	yieldGoodQuiet
 	yieldBadQuiet
+	yieldVeryBadQuiet
 	yieldBadNoisy
 )
+
+// controls when we switch from heuristic order to generation order
+const veryBadQuietThreshold = Score(-64)
 
 // New creates a new move iterator for the position represented by b.
 // hashMove will be yielded first. ms points to the move store. ranker points
@@ -117,10 +122,14 @@ func (p *Picker) Next() (move.Move, bool) {
 				p.yielded.Set(quietStart + i)
 			} else {
 				weight := p.ranker.RankQuiet(m.Move, p.board, p.hstack)
-				if weight > 0 {
+
+				switch {
+				case 0 <= weight:
 					p.goodQuiets.Set(quietStart + i)
-				} else {
+				case veryBadQuietThreshold < weight:
 					p.badQuiets.Set(quietStart + i)
+				default:
+					p.veryBadQuiets.Set(quietStart + i)
 				}
 				moves[i].Weight = weight
 			}
@@ -151,9 +160,6 @@ func (p *Picker) Next() (move.Move, bool) {
 		fallthrough
 
 	case yieldBadQuiet:
-		// return badQuiets in heuristic order, this is up to debate. whether we
-		// want bucket system, or pure generation order.
-		// we are most likely in an unfortunate AllNode.
 		maxim := -Inf
 		best := -1
 		iter := p.badQuiets
@@ -171,11 +177,24 @@ func (p *Picker) Next() (move.Move, bool) {
 			p.yielded.Set(best)
 			return p.ms.Frame()[best].Move, true
 		}
+		p.state = yieldVeryBadQuiet
+		fallthrough
+
+	case yieldVeryBadQuiet:
+		// return veryBadQuiets in generation order, this is up to debate. Whether
+		// we want bucket system, or pure generation order. We are most likely in
+		// an unfortunate AllNode.
+
+		// this is destructive to p.veryBadQuiets
+		if ix := p.veryBadQuiets.Next(); ix != -1 {
+			p.veryBadQuiets.Clear(ix)
+			p.yielded.Set(ix)
+			return p.ms.Frame()[ix].Move, true
+		}
 		p.state = yieldBadNoisy
 
 	case yieldBadNoisy:
-		// return badNoisies in heuristic order, this is up to debate, at this point
-		// we are most likely in an unfortunate AllNode.
+		// return badNoisies in heuristic order, this is up to debate
 		maxim := -Inf
 		best := -1
 		iter := p.badNoisies
