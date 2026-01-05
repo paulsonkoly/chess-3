@@ -112,7 +112,7 @@ var OBBenchSet = [...]string{
 func runOBBench() {
 	nCnt := 0
 	allTime := int64(0)
-	s := search.New(8 * transp.MegaBytes)
+	s := search.New(1 * transp.MegaBytes)
 	for _, fen := range OBBenchSet {
 		b := Must(board.FromFEN(fen))
 		counters := search.Counters{}
