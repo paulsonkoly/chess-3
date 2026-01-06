@@ -92,8 +92,7 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
 	adjustScores := func(m move.Move, bonus Score) {
 		moved := b.SquaresToPiece[m.From()]
-		// TODO en-passant
-		captured := b.SquaresToPiece[m.To()]
+		captured := b.SquaresToPiece[b.CaptureSq(m)]
 
 		if captured == NoPiece && m.Promo() == NoPiece {
 			mr.history.Add(b.STM, m.From(), m.To(), bonus)
