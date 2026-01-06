@@ -347,7 +347,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			if value >= beta {
 				// store node as fail high (cut-node)
 				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
-				pck.FailHigh(m, d, value-beta, nType)
+				pck.FailHigh(m, d, value>beta, nType)
 
 				return value
 			}
