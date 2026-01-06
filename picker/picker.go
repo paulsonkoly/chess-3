@@ -43,7 +43,7 @@ const (
 )
 
 // veryBadQuietThreshold controls when we switch from heuristic order to generation order.
-const veryBadQuietThreshold = Score(-110) //-heur.MaxHistory / 4
+const veryBadQuietThreshold = -heur.MaxHistory / 4
 
 // New creates a new move iterator for the position represented by b. hashMove
 // will be yielded first. ms points to the move store. ranker points to
@@ -126,7 +126,7 @@ func (p *Picker) Next() (move.Move, bool) {
 				weight := p.ranker.RankQuiet(m.Move, p.board, p.hstack)
 
 				switch {
-				case 0 <= weight:
+				case -20 <= weight:
 					p.goodQuiets.Set(quietStart + i)
 				case veryBadQuietThreshold < weight:
 					p.badQuiets.Set(quietStart + i)
