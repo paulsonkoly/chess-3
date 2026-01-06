@@ -196,7 +196,7 @@ func (p *Picker) Next() (move.Move, bool) {
 
 func (p *Picker) FailHigh(m move.Move, d Depth) {
 	bonus := Score(d)*20 - 15
-	malus := -bonus
+	malus := -bonus/2
 
 	if p.yieldedHash {
 		adjustment := bonus
