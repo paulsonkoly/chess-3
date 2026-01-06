@@ -170,18 +170,6 @@ func pvInfo(moves []move.Move) string {
 	return sb.String()
 }
 
-// Node is the predicted type of the node.
-type Node = byte
-
-const (
-	// PVNode expects the score to be in the window.
-	PVNode Node = iota
-	// CutNode expects the node to fail high.
-	CutNode
-	// AllNode expects the node to fail low.
-	AllNode
-)
-
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
 func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
@@ -359,7 +347,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			if value >= beta {
 				// store node as fail high (cut-node)
 				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
-				pck.FailHigh(m, d)
+				pck.FailHigh(m, d, value-beta, nType)
 
 				return value
 			}

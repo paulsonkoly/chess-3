@@ -194,9 +194,18 @@ func (p *Picker) Next() (move.Move, bool) {
 	return 0, false
 }
 
-func (p *Picker) FailHigh(m move.Move, d Depth) {
-	bonus := Score(d)*20 - 15
-	malus := -bonus/2
+func (p *Picker) FailHigh(m move.Move, d Depth, scoreDiff Score, nType Node) {
+	var nodeFactor Score
+	switch nType {
+	case AllNode:
+		nodeFactor = 10
+	case CutNode:
+		nodeFactor = 8
+	case PVNode:
+		nodeFactor = 6
+	}
+	bonus := nodeFactor * (Score(d)*5 + min(scoreDiff, 200)) / 8
+	malus := -bonus / 2
 
 	if p.yieldedHash {
 		adjustment := bonus

@@ -97,6 +97,18 @@ func (p Piece) String() string {
 	return string(" pnbrqk"[p])
 }
 
+// Node is the predicted type of the node.
+type Node = byte
+
+const (
+	// PVNode expects the score to be in the window.
+	PVNode Node = iota
+	// CutNode expects the node to fail high.
+	CutNode
+	// AllNode expects the node to fail low.
+	AllNode
+)
+
 func Abs[T constraints.Signed](x T) T {
 	if x < 0 {
 		return -x
