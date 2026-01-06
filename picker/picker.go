@@ -204,7 +204,7 @@ func (p *Picker) FailHigh(m move.Move, d Depth, scoreDiff Score, nType Node) {
 	case PVNode:
 		nodeFactor = 6
 	}
-	bonus := nodeFactor * (Score(d)*5 + min(scoreDiff, 200)) / 8
+	bonus := nodeFactor * (Score(d)*5 /*+ min(scoreDiff, 200)*/) / 8
 	malus := -bonus / 2
 
 	if p.yieldedHash {
