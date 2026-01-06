@@ -195,7 +195,7 @@ func (p *Picker) Next() (move.Move, bool) {
 }
 
 func (p *Picker) FailHigh(m move.Move, d Depth, failedSoft bool, nType Node) {
-	bonus := Score(d) * 5
+	bonus := Score(d) * 20
 	if failedSoft {
 		bonus++
 	}
