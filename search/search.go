@@ -48,9 +48,8 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move
 	return s.iterativeDeepen(b, &options)
 }
 
-// iterativeDeepen is the main entry point to the engine. It performs and
-// iterative-deepened alpha-beta with aspiration window. depth is iterated
-// between 0 and d inclusive.
+// iterativeDeepen performs an iterative-deepened alpha-beta with aspiration
+// window. depth is iterated between 0 and d inclusive.
 func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, move move.Move) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1

@@ -122,3 +122,15 @@ func TestSearchStability(t *testing.T) {
 		})
 	}
 }
+
+// TestGoNodes0 tests the edge case of hard node count being 0, but beyond that
+// it also tests that we always return a legal move (in a hard timeout setting).
+func TestGoNodes0(t *testing.T) {
+	b := board.StartPos()
+	s := search.New(1 * transp.MegaBytes)
+
+	counters := search.Counters{}
+	_, move := s.Go(b, search.WithNodes(0), search.WithCounters(&counters), search.WithInfo(false))
+	assert.Zero(t, counters.Nodes)
+	assert.True(t, b.IsPseudoLegal(move), "not pseudo legal %s", move)
+}
