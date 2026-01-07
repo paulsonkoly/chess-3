@@ -71,10 +71,13 @@ func TestSearchStability(t *testing.T) {
 		{fen: "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"},
 	}
 
-	for tix, tt := range tests {
-		s := search.New(1 * transp.MegaBytes)
+	t.Parallel()
 
+	for tix, tt := range tests {
 		t.Run(fmt.Sprintf("stability test %d", tix), func(t *testing.T) {
+			t.Parallel()
+
+			s := search.New(1 * transp.MegaBytes)
 			b := Must(board.FromFEN(tt.fen))
 
 			s.Clear()
@@ -85,11 +88,15 @@ func TestSearchStability(t *testing.T) {
 			score1, move1 := s.Go(b, search.WithCounters(&counters), search.WithSoftTime(10), search.WithInfo(false))
 			nodes1 := counters.Nodes
 
+			assert.Positive(t, nodes1, "fen %s", tt.fen)
+
 			counters.Nodes = 0
 
 			// run again, this time with non-initial state
 			score2, move2 := s.Go(b, search.WithCounters(&counters), search.WithSoftTime(10), search.WithInfo(false))
 			nodes2 := counters.Nodes
+
+			assert.Positive(t, nodes2, "fen %s", tt.fen)
 
 			counters.Nodes = 0
 
