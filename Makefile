@@ -1,12 +1,21 @@
 EXE=chess3
+# only enable SPSA for SPSA tuning.
+SPSA ?= 0
 
-files=$(shell find . -name '*.go')
+files := $(shell find . -name '*.go')
+
+# Optional build tags
+ifeq ($(SPSA),1)
+	GO_TAGS := -tags spsa
+else
+	GO_TAGS :=
+endif
 
 $(EXE): chess3.pprof $(files)
-	go build -pgo chess3.pprof -o $@ main.go
+	go build $(GO_TAGS) -pgo chess3.pprof -o $@ main.go
 
 chess3.pprof: $(EXE).nopgo $(files)
-	./$(EXE).nopgo -cpuProf $@ bench 
+	./$(EXE).nopgo -cpuProf $@ bench
 
 $(EXE).nopgo: $(files)
-	go build -o $@ main.go
+	go build $(GO_TAGS) -o $@ main.go

@@ -10,22 +10,11 @@ import (
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/movegen"
+	"github.com/paulsonkoly/chess-3/params"
 	"github.com/paulsonkoly/chess-3/picker"
 	"github.com/paulsonkoly/chess-3/transp"
 
 	. "github.com/paulsonkoly/chess-3/chess"
-)
-
-const (
-	NMPDiffFactor = Score(51)
-	NMPDepthLimit = Depth(1)
-	NMPInit       = Depth(4)
-
-	RFPDepthLimit = Depth(8)
-)
-
-const (
-	WindowSize = 50 // half a pawn left and right around score
 )
 
 // Go is the main entry point into the engine. It kicks off the search on board
@@ -68,11 +57,11 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 			switch {
 
 			case scoreSample <= alpha:
-				alpha -= factor * WindowSize
+				alpha -= factor * Score(params.WindowSize)
 				factor *= 2
 
 			case scoreSample >= beta:
-				beta += factor * WindowSize
+				beta += factor * Score(params.WindowSize)
 				factor *= 2
 
 			default:
@@ -127,8 +116,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 			return
 		}
 
-		alpha = score - WindowSize
-		beta = score + WindowSize
+		alpha = score - Score(params.WindowSize)
+		beta = score + Score(params.WindowSize)
 	}
 	return
 }
@@ -244,16 +233,18 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		improving = oldScore < staticEval
 
 		// RFP
-		if d < RFPDepthLimit && staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
+		if d < Depth(params.RFPDepthLimit) && staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
 			return staticEval
 		}
 
 		// null move pruning
-		if d > NMPDepthLimit && staticEval >= beta && b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
+		if d > Depth(params.NMPDepthLimit) &&
+			staticEval >= beta &&
+			b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
 			rev := b.MakeNullMove()
 
-			red := NMPInit + Depth(Clamp((staticEval-beta)/NMPDiffFactor, 0, MaxPlies))
+			red := Depth(params.NMPInit) + Depth(Clamp((staticEval-beta)/Score(params.NMPDiffFactor), 0, MaxPlies))
 
 			value := -s.alphaBeta(b, -beta, -beta+1, max(d-red, 0), ply+1, CutNode, opts)
 
@@ -314,7 +305,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		// Late move reduction and null-window search. Skip it on the first legal
 		// move, which is likely to be the hash move.
 		fullSearched := false
-		if d > 1 && quietCnt > 2 && !inCheck {
+		if d > 1 && quietCnt > params.LMRStart && !inCheck {
 			rd := lmr(d, moveCnt-1, improving, nType)
 
 			// reduced depth first, then re-try with full depth and null window.
@@ -531,7 +522,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 
 	movegen.GenNoisy(s.ms, b)
 
-	delta := standPat + 110
+	delta := standPat + Score(params.StandPatDelta)
 	// fail soft upper bound
 	maxim := standPat
 	alpha = max(alpha, standPat)
