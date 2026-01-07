@@ -284,7 +284,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	quietCnt := 0
 
 	for pck.Next() {
-		m := pck.Move()
+		w := pck.Move()
+		m := w.Move
 
 		moved := b.SquaresToPiece[m.From()]
 		captured := b.SquaresToPiece[b.CaptureSq(m)]
@@ -366,10 +367,13 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			}
 
 			// value > alpha
+			w.Weight = value
 			failLow = false
 			alpha = value
 			bestMove = m
 			s.pv.insert(ply, m)
+		} else {
+			w.Weight = 0
 		}
 
 		// LMP
