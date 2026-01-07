@@ -113,6 +113,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 	if len(moves) >= 2 {
 		for _, m := range moves[:len(moves)-1] {
 			// adjustment 0..8
+			// m.Weight was set to score by the search, or -Inf for upbounds.
 			adj := Score(256+Clamp(m.Weight, -256, 256)) / 64
 
 			adjustScores(m.Move, penalty+adj)
