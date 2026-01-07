@@ -12,9 +12,9 @@ import (
 )
 
 // TestSearchStability is for search reproducibility testing. Given we obtain a
-// PGN that crashed with node counts, we should be able to reproduce the crash,
-// assuming we play out the same searches driven by hard node count. We have to
-// set the same transposition size though.
+// PGN that crashed with node count information, we should be able to reproduce
+// the crash, assuming we play out the same searches driven by hard node count.
+// We have to set the same transposition size though.
 func TestSearchStability(t *testing.T) {
 	tests := []struct {
 		fen string
