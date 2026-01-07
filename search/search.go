@@ -373,7 +373,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			bestMove = m
 			s.pv.insert(ply, m)
 		} else {
-			w.Weight = 0
+			// upbound move, this will be useful in history penalties
+			w.Weight = -Inf
 		}
 
 		// LMP
