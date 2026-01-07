@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestSearchStability is for search reproducability testing. Given we obtain a
-// pgn that crashed with node counts, we should be able to repro the crash,
+// TestSearchStability is for search reproducibility testing. Given we obtain a
+// PGN that crashed with node counts, we should be able to reproduce the crash,
 // assuming we play out the same searches driven by hard node count. We have to
 // set the same transposition size though.
 func TestSearchStability(t *testing.T) {
