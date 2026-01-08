@@ -22,6 +22,8 @@ const (
 	HistAdjReduction = 7
 )
 
+// UCIOptions returns the uci options string for tunable parameters in an spsa build.
 func UCIOptions() string { return "" }
 
+// OpenbenchInfo returns the openbench spsa input in an spsa build.
 func OpenbenchInfo() string { return "" }
