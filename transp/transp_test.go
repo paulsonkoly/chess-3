@@ -72,7 +72,7 @@ func TestBucket(t *testing.T) {
 	// key1 is lowest quality, 0 gen depth 1
 	tt.Insert(key1, 0, 1, 3, move.New(E1, F1), 0, transp.UpperBound)
 	tt.Insert(key2, 2, 2, 3, move.New(E1, G1), 100, transp.Exact)
-	tt.Insert(key3, 2, 3, 2, move.New(E1, H1), -50, transp.LowerBound)
+	tt.Insert(key3, 2, 5, 2, move.New(E1, H1), -50, transp.LowerBound)
 	tt.Insert(key4, 1, 1, 4, move.New(E1, H1), 70, transp.Exact)
 	// no matching key, replace lowest quality
 	tt.Insert(key5, 2, 5, 4, 0, 70, transp.Exact)
@@ -89,7 +89,7 @@ func TestBucket(t *testing.T) {
 	assert.Equal(t, transp.Exact, entry.Type())
 
 	// new gen, lower depth replace keeping move
-	tt.Insert(key3, 3, 2, 4, 0, 70, transp.Exact)
+	tt.Insert(key3, 3, 3, 4, 0, 70, transp.Exact)
 
 	entry, ok = tt.LookUp(key3)
 
@@ -99,6 +99,19 @@ func TestBucket(t *testing.T) {
 	// move kept, not the same position.
 	assert.Equal(t, move.New(E1, H1), entry.Move)
 	assert.Equal(t, Score(70), entry.Value(2))
-	assert.Equal(t, Depth(2), entry.Depth())
+	assert.Equal(t, Depth(3), entry.Depth())
+	assert.Equal(t, transp.Exact, entry.Type())
+
+	// low quality insert not performed on matching key
+	tt.Insert(key3, 3, 0, 6, 0, 100, transp.LowerBound)
+
+	entry, ok = tt.LookUp(key3)
+
+	assert.True(t, ok)
+	assert.NotNil(t, entry)
+
+	assert.Equal(t, move.New(E1, H1), entry.Move)
+	assert.Equal(t, Score(70), entry.Value(2))
+	assert.Equal(t, Depth(3), entry.Depth())
 	assert.Equal(t, transp.Exact, entry.Type())
 }
