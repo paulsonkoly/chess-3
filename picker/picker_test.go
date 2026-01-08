@@ -104,7 +104,7 @@ func TestPicker(t *testing.T) {
 
 			cnt := 0
 			for pck.Next() {
-				m := pck.Move()
+				m := pck.Move().Move
 
 				assert.NotContains(t, yielded, m, "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
 				yielded = append(yielded, m)

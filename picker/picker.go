@@ -139,8 +139,8 @@ func (p *Picker) Next() bool {
 
 // Move is the currently yielded move. It's only valid if Next() is called
 // first and if it returned true.
-func (p *Picker) Move() move.Move {
-	return p.ms.Frame()[p.ix-1].Move
+func (p *Picker) Move() *move.Weighted {
+	return &p.ms.Frame()[p.ix-1]
 }
 
 // YieldedMoves returns a slice of yielded moves so far.
