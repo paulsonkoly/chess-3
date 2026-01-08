@@ -13,13 +13,17 @@ import (
 )
 
 var (
-	NMPDiffFactor = 51
-	NMPDepthLimit = 1
-	NMPInit       = 4
-	RFPDepthLimit = 8
-	WindowSize    = 50
-	LMRStart      = 2
-	StandPatDelta = 110
+	NMPDiffFactor    = 51
+	NMPDepthLimit    = 1
+	NMPInit          = 4
+	RFPDepthLimit    = 8
+	WindowSize       = 50
+	LMRStart         = 2
+	StandPatDelta    = 110
+	HistBonusMul     = 20
+	HistBonusLin     = 15
+	HistAdjRange     = 8
+	HistAdjReduction = 6
 )
 
 var tunables = [...]struct {
@@ -35,6 +39,10 @@ var tunables = [...]struct {
 	{&WindowSize, "WindowSize", 30, 100},
 	{&LMRStart, "LMRStart", 0, 4},
 	{&StandPatDelta, "StandPatDelta", 80, 130},
+	{&HistBonusMul, "HistBonusMul", 15, 25},
+	{&HistBonusMul, "HistBonusLin", 0, 20},
+	{&HistAdjRange, "HistAdjRange", 4, 10},
+	{&HistAdjReduction, "HistAdjReduction", 4, 10},
 }
 
 func UCIOptions() string {

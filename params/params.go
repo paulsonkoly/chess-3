@@ -9,13 +9,17 @@ package params
 // between the two files must be maintained.
 
 const (
-	NMPDiffFactor = 51
-	NMPDepthLimit = 1
-	NMPInit       = 4
-	RFPDepthLimit = 8
-	WindowSize    = 50
-	LMRStart      = 2
-	StandPatDelta = 110
+	NMPDiffFactor    = 51
+	NMPDepthLimit    = 1
+	NMPInit          = 4
+	RFPDepthLimit    = 8
+	WindowSize       = 50
+	LMRStart         = 2
+	StandPatDelta    = 110
+	HistBonusMul     = 20
+	HistBonusLin     = 15
+	HistAdjRange     = 8
+	HistAdjReduction = 6
 )
 
 func UCIOptions() string { return "" }
