@@ -185,6 +185,15 @@ func (e *Engine) handleSetOption(args []string) {
 
 		// TODO re-allocate or better yet increase  / reduce the tt only
 		e.Search = search.New(val * transp.MegaBytes) // we need to re-allocate the hash table
+
+	default:
+		val, err := strconv.Atoi(args[3])
+		if err != nil {
+			return
+		}
+		if err := params.Set(args[1], val); err != nil {
+			fmt.Fprint(os.Stderr, err)
+		}
 	}
 }
 

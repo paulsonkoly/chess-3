@@ -5,7 +5,7 @@ package params
 
 // This file is not included in spsa builds. It must contain
 // exported constants for all the tunable engine parameters. In an
-// spsa build look into params/spsa.go instead. The symmetry
+// spsa build look into params/spsa.o instead. The symmetry
 // between the two files must be maintained.
 
 const (
@@ -29,3 +29,7 @@ func UCIOptions() string { return "" }
 // OpenbenchInfo returns the openbench spsa input in an spsa build. For
 // non-spsa builds it returns empty.
 func OpenbenchInfo() string { return "" }
+
+// Set sets the named parameter to value val in spsa build. In non-spsa
+// build it does nothing.
+func Set(name string, val int) error { return nil }
