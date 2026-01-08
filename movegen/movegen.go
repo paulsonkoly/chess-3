@@ -22,9 +22,7 @@ func (g generator) kingMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
-			m.SetFrom(from)
-			m.SetTo(to)
+			ms.Alloc(move.From(from) | move.To(to))
 		}
 	}
 }
@@ -42,9 +40,7 @@ func (g generator) knightMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
-			m.SetFrom(from)
-			m.SetTo(to)
+			ms.Alloc(move.From(from) | move.To(to))
 		}
 	}
 }
@@ -61,9 +57,7 @@ func (g generator) bishopMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bi
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
-			m.SetFrom(from)
-			m.SetTo(to)
+			ms.Alloc(move.From(from) | move.To(to))
 		}
 	}
 }
@@ -80,9 +74,7 @@ func (g generator) rookMoves(ms *move.Store, b *board.Board, fromMsk, toMsk BitB
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
-			m.SetFrom(from)
-			m.SetTo(to)
+			ms.Alloc(move.From(from) | move.To(to))
 		}
 	}
 }
@@ -98,9 +90,7 @@ func (g generator) queenMoves(ms *move.Store, b *board.Board, fromMsk, toMsk Bit
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-			m := ms.Alloc()
-			m.SetFrom(from)
-			m.SetTo(to)
+			ms.Alloc(move.From(from) | move.To(to))
 		}
 	}
 }
@@ -118,9 +108,7 @@ func (g generator) singlePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 
-		m := ms.Alloc()
-		m.SetFrom(from)
-		m.SetTo(from + shift)
+		ms.Alloc(move.From(from) | move.To(from+shift))
 	}
 }
 
@@ -135,10 +123,7 @@ func (g generator) promoPushMoves(ms *move.Store, b *board.Board, fromMsk BitBoa
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
 		for promo := Queen; promo > Pawn; promo-- {
-			m := ms.Alloc()
-			m.SetFrom(from)
-			m.SetTo(from + shift)
-			m.SetPromo(promo)
+			ms.Alloc(move.From(from) | move.To(from+shift) | move.Promo(promo))
 		}
 	}
 }
@@ -154,10 +139,7 @@ func (g generator) doublePushMoves(ms *move.Store, b *board.Board, fromMsk BitBo
 	for pawns, pawn := pushable & ^occ2 & fromMsk & mySecondRank, BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
-
-		m := ms.Alloc()
-		m.SetFrom(from)
-		m.SetTo(from + 2*shift)
+		ms.Alloc(move.From(from) | move.To(from+2*shift))
 	}
 }
 
@@ -186,10 +168,7 @@ func (g generator) pawnCaptureMoves(ms *move.Store, b *board.Board) {
 		for tSqr := BitBoard(0); tSqrs != 0; tSqrs ^= tSqr {
 			tSqr = tSqrs & -tSqrs
 			to := tSqr.LowestSet()
-
-			m := ms.Alloc()
-			m.SetFrom(from)
-			m.SetTo(to)
+			ms.Alloc(move.From(from) | move.To(to))
 		}
 	}
 }
@@ -218,10 +197,7 @@ func (g generator) pawnCapturePromoMoves(ms *move.Store, b *board.Board) {
 			to := tSqr.LowestSet()
 
 			for promo := Queen; promo > Pawn; promo-- {
-				m := ms.Alloc()
-				m.SetFrom(from)
-				m.SetTo(to)
-				m.SetPromo(promo)
+				ms.Alloc(move.From(from) | move.To(to) | move.Promo(promo))
 			}
 		}
 	}
@@ -237,10 +213,7 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 	for pawns, pawn := ep&g.self&b.Pieces[Pawn], BitBoard(0); pawns != 0; pawns ^= pawn {
 		pawn = pawns & -pawns
 		from := pawn.LowestSet()
-
-		m := ms.Alloc()
-		m.SetFrom(from)
-		m.SetTo(b.EnPassant)
+		ms.Alloc(move.From(from) | move.To(b.EnPassant))
 	}
 }
 
@@ -253,9 +226,7 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard)
 		if attacks.CastleMask[b.STM][Short]&rChkMsk != 0 {
 			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Short]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
-				m := ms.Alloc()
-				m.SetFrom(from)
-				m.SetTo(from + 2)
+				ms.Alloc(move.From(from) | move.To(from+2))
 			}
 		}
 	}
@@ -267,9 +238,7 @@ func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) 
 		if attacks.CastleMask[b.STM][Long]&rChkMsk != 0 {
 			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Long]) {
 				from := (g.self & b.Pieces[King]).LowestSet()
-				m := ms.Alloc()
-				m.SetFrom(from)
-				m.SetTo(from - 2)
+				ms.Alloc(move.From(from) | move.To(from-2))
 			}
 		}
 	}

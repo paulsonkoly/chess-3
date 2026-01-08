@@ -225,31 +225,31 @@ func TestEnPassantStates(t *testing.T) {
 		{
 			name: "En passant possible after pawn move",
 			fen:  "4k3/8/8/8/3p4/8/2P5/4K3 w - - 0 1",
-			move: move.New(C2, C4),
+			move: move.From(C2) | move.To(C4),
 			want: C3,
 		},
 		{
 			name: "En passant not possible due to no pawn",
 			fen:  "4k3/8/8/8/8/8/2P5/4K3 w - - 0 1",
-			move: move.New(C2, C4),
+			move: move.From(C2) | move.To(C4),
 			want: 0,
 		},
 		{
 			name: "En passant not possible due to simple pin",
 			fen:  "8/8/1k6/8/3p4/8/2P5/3K2B1 w - - 0 1",
-			move: move.New(C2, C4),
+			move: move.From(C2) | move.To(C4),
 			want: 0,
 		},
 		{
 			name: "En passant not possible due to tricky pin",
 			fen:  "8/8/8/8/k2p3R/8/2P5/3K4 w - - 0 1",
-			move: move.New(C2, C4),
+			move: move.From(C2) | move.To(C4),
 			want: 0,
 		},
 		{
 			name: "En passant possible in pin that's not affected",
 			fen:  "4r3/pkp3b1/1p5p/2P1npp1/P2rp3/6PN/1P2PPBP/1RR3K1 w - - 0 22",
-			move: move.New(F2, F4),
+			move: move.From(F2) | move.To(F4),
 			want: F3,
 		},
 	}
