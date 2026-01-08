@@ -40,7 +40,7 @@ var tunables = [...]struct {
 	{&LMRStart, "LMRStart", 0, 4},
 	{&StandPatDelta, "StandPatDelta", 80, 130},
 	{&HistBonusMul, "HistBonusMul", 15, 25},
-	{&HistBonusMul, "HistBonusLin", 0, 20},
+	{&HistBonusLin, "HistBonusLin", 0, 20},
 	{&HistAdjRange, "HistAdjRange", 4, 10},
 	{&HistAdjReduction, "HistAdjReduction", 4, 10},
 }
