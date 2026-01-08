@@ -192,7 +192,7 @@ func (e *Engine) handleSetOption(args []string) {
 			return
 		}
 		if err := params.Set(args[1], val); err != nil {
-			fmt.Fprint(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, err)
 		}
 	}
 }

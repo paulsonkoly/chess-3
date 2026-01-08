@@ -5,7 +5,7 @@ package params
 
 // This file is not included in spsa builds. It must contain
 // exported constants for all the tunable engine parameters. In an
-// spsa build look into params/spsa.o instead. The symmetry
+// spsa build look into params/spsa.go instead. The symmetry
 // between the two files must be maintained.
 
 const (
