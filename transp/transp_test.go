@@ -96,7 +96,7 @@ func TestBucket(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, entry)
 
-	// move kept, not the same position.
+	// move kept, same position.
 	assert.Equal(t, move.New(E1, H1), entry.Move)
 	assert.Equal(t, Score(70), entry.Value(2))
 	assert.Equal(t, Depth(3), entry.Depth())
