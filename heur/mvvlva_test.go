@@ -23,15 +23,21 @@ func TestMVVLVA(t *testing.T) {
 	moves := ms.Frame()
 
 	for i, m := range moves {
-		good := heur.SEE(b, m.Move, 0)
-		moves[i].Weight = heur.MVVLVA(b, m.Move, good)
+		moves[i].Weight = heur.MVVLVA(b, m.Move, true)
 	}
 
 	slices.SortFunc(moves, func(a, b move.Weighted) int {
-		return int(b.Weight - a.Weight)
+		switch {
+		case a.Weight < b.Weight:
+			return 1
+		case a.Weight > b.Weight:
+			return -1
+		default: // ==
+			return 0
+		}
 	})
 
-	listMoves := make([]string, 0)
+	listMoves := make([]string, 0, len(moves))
 	for _, m := range moves {
 		listMoves = append(listMoves, m.String())
 	}
