@@ -14,6 +14,7 @@ import (
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/params"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/transp"
 
@@ -112,6 +113,8 @@ func (e *Engine) handleCommand(command string) {
 		fmt.Printf("option name Hash type spin default %d min 1 max 128\n", defaultHash)
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
+		// spsa options
+		fmt.Print(params.UCIOptions())
 		fmt.Println("uciok")
 
 	case "ucinewgame":
@@ -162,6 +165,9 @@ func (e *Engine) handleCommand(command string) {
 		case "off":
 			e.debug = false
 		}
+
+	case "spsa":
+		fmt.Print(params.OpenbenchInfo())
 	}
 }
 
@@ -179,6 +185,15 @@ func (e *Engine) handleSetOption(args []string) {
 
 		// TODO re-allocate or better yet increase  / reduce the tt only
 		e.Search = search.New(val * transp.MegaBytes) // we need to re-allocate the hash table
+
+	default:
+		val, err := strconv.Atoi(args[3])
+		if err != nil {
+			return
+		}
+		if err := params.Set(args[1], val); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 	}
 }
 

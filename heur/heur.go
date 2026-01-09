@@ -13,6 +13,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/move"
+	"github.com/paulsonkoly/chess-3/params"
 	"github.com/paulsonkoly/chess-3/stack"
 )
 
@@ -107,14 +108,16 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 		}
 	}
 
-	bonus := Score(d)*20 - 15
+	bonus := Score(d)*Score(params.HistBonusMul) - Score(params.HistBonusLin)
 	penalty := -bonus
+
+	rng := Score(1) << params.HistAdjRange
+	red := Score(1) << params.HistAdjReduction
 
 	if len(moves) >= 2 {
 		for _, m := range moves[:len(moves)-1] {
-			// adjustment 0..4
 			// m.Weight was set to score by the search, or -Inf for upbounds.
-			adj := Score(256+Clamp(m.Weight, -256, 256)) / 128
+			adj := Score(rng+Clamp(m.Weight, -rng, rng)) / red
 
 			adjustScores(m.Move, penalty+adj)
 		}
