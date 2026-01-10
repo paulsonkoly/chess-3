@@ -3,8 +3,6 @@ package chess
 import (
 	"fmt"
 	"iter"
-
-	"golang.org/x/exp/constraints"
 )
 
 const StartPosFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -25,14 +23,16 @@ func (s Score) String() string {
 		return "Inv"
 	}
 
-	if Abs(s) >= Inf-MaxPlies {
-		diff := Inf - s
+	a := Abs(s)
+	if a >= Inf-MaxPlies {
+		diff := Inf - a
+		sign := ""
 
 		if s < 0 {
-			diff = -s - Inf
+			sign = "-"
 		}
 
-		return fmt.Sprintf("mate %d", (diff+1)/2)
+		return fmt.Sprintf("mate %s%d", sign, (diff+1)/2)
 	}
 
 	return fmt.Sprintf("cp %d", s)
@@ -95,33 +95,4 @@ func (p Piece) String() string {
 		return ""
 	}
 	return string(" pnbrqk"[p])
-}
-
-func Abs[T constraints.Signed](x T) T {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
-func Signum[T constraints.Signed](x T) T {
-	switch {
-	case x < 0:
-		return -1
-	case x > 0:
-		return 1
-	}
-	return 0
-}
-
-// Clamp clamps the value x between a and b.
-func Clamp[T constraints.Signed](x, a, b T) T {
-	return min(b, max(x, a))
-}
-
-func Must[T any](v T, err error) T {
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
