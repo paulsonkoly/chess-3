@@ -10,9 +10,7 @@ type Weighted struct {
 }
 
 // Move represents a chess move, it contains the to and from squares and the
-// promotion piece type. Additionally it contains an en-passant flag indicating
-// that the move is a double pawn-push, that should assign new en-passant state
-// to the board.
+// promotion piece type.
 type Move uint16
 
 const (

@@ -36,7 +36,7 @@ func (s *Store) Clear() {
 func (s *Store) Alloc(m Move) *Weighted {
 	s.allocIx++
 	ptr := &s.data[s.allocIx-1]
-	*ptr = Weighted{Move: m} // reset to zero value
+	*ptr = Weighted{Move: m} // reset Weight to zero value
 	return ptr
 }
 
