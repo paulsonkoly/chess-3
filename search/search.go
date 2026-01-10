@@ -233,7 +233,9 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		improving = oldScore < staticEval
 
 		// RFP
-		if d < Depth(params.RFPDepthLimit) && staticEval >= beta+Score(d)*105 && beta > -Inf+MaxPlies {
+		if d < Depth(params.RFPDepthLimit) &&
+			staticEval >= beta+Score(d)*Score(params.RFPScoreFactor) &&
+			beta > -Inf+MaxPlies {
 			return staticEval
 		}
 

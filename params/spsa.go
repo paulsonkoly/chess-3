@@ -18,6 +18,7 @@ var (
 	NMPDepthLimit    = 1
 	NMPInit          = 4
 	RFPDepthLimit    = 8
+	RFPScoreFactor   = 105
 	WindowSize       = 50
 	LMRStart         = 2
 	StandPatDelta    = 110
@@ -37,8 +38,9 @@ var tunables = [...]struct {
 	{&NMPDepthLimit, "NMPDepthLimit", 0, 5},
 	{&NMPInit, "NMPInit", 1, 6},
 	{&RFPDepthLimit, "RFPDepthLimit", 5, 10},
+	{&RFPScoreFactor, "ScoreFactor", 70, 130},
 	{&WindowSize, "WindowSize", 30, 100},
-	{&LMRStart, "LMRStart", 0, 4},
+	{&LMRStart, "LMRStart", 0, 10},
 	{&StandPatDelta, "StandPatDelta", 80, 130},
 	{&HistBonusMul, "HistBonusMul", 15, 25},
 	{&HistBonusLin, "HistBonusLin", 0, 20},
