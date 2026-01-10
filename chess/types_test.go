@@ -1,6 +1,7 @@
 package chess_test
 
 import (
+	"strconv"
 	"testing"
 
 	. "github.com/paulsonkoly/chess-3/chess"
@@ -24,6 +25,9 @@ func TestScoreString(t *testing.T) {
 		{"score for mating opponent in 1 move", Inf - 1, "mate 1"},
 		{"score for being mated in 1 move", -Inf + 2, "mate -1"},
 		{"score for mating opponent in 2 moves", Inf - 3, "mate 2"},
+		{"score for being mated in 2 moves", -Inf + 4, "mate -2"},
+		{"score under mate boundary", Inf - MaxPlies - 1, "cp " + strconv.Itoa(int(Inf-MaxPlies-1))},
+		{"score in mate boundary", Inf - MaxPlies, "mate " + strconv.Itoa(MaxPlies/2)},
 		{"score for being mated in 2 moves", -Inf + 4, "mate -2"},
 	}
 
