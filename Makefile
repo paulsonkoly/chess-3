@@ -1,6 +1,6 @@
 EXE=chess3
 # only enable SPSA for SPSA tuning.
-SPSA ?= 0
+SPSA ?= 1
 
 files := $(shell find . -name '*.go')
 
