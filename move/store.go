@@ -33,10 +33,10 @@ func (s *Store) Clear() {
 //
 // This method panics if s has run out of space, and more than StoreSize moves
 // have been allocated.
-func (s *Store) Alloc() *Weighted {
+func (s *Store) Alloc(m Move) *Weighted {
 	s.allocIx++
 	ptr := &s.data[s.allocIx-1]
-	*ptr = Weighted{} // reset to zero value
+	*ptr = Weighted{Move: m} // reset Weight to zero value
 	return ptr
 }
 

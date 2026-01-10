@@ -24,14 +24,14 @@ func TestTransposition(t *testing.T) {
 	assert.False(t, ok)
 	assert.Nil(t, entry)
 
-	tt.Insert(key, 0, 1, 1, move.New(E1, F1), 100, transp.Exact)
+	tt.Insert(key, 0, 1, 1, move.From(E1)|move.To(F1), 100, transp.Exact)
 
 	entry, ok = tt.LookUp(key)
 
 	assert.True(t, ok)
 	assert.NotNil(t, entry)
 
-	assert.Equal(t, move.New(E1, F1), entry.Move)
+	assert.Equal(t, move.From(E1)|move.To(F1), entry.Move)
 	assert.Equal(t, Score(100), entry.Value(1))
 	assert.Equal(t, Depth(1), entry.Depth())
 	assert.Equal(t, transp.Exact, entry.Type())
@@ -47,14 +47,14 @@ func TestTransposition(t *testing.T) {
 func TestMateScores(t *testing.T) {
 	tt := transp.New(1 * transp.MegaBytes)
 
-	tt.Insert(key, 0, 1, 3, move.New(E1, F1), -Inf+5, transp.Exact)
+	tt.Insert(key, 0, 1, 3, move.From(E1)|move.To(F1), -Inf+5, transp.Exact)
 
 	entry, ok := tt.LookUp(key)
 
 	assert.True(t, ok)
 	assert.NotNil(t, entry)
 
-	assert.Equal(t, move.New(E1, F1), entry.Move)
+	assert.Equal(t, move.From(E1)|move.To(F1), entry.Move)
 	assert.Equal(t, -Inf+9, entry.Value(7))
 	assert.Equal(t, Depth(1), entry.Depth())
 	assert.Equal(t, transp.Exact, entry.Type())
@@ -70,10 +70,10 @@ func TestBucket(t *testing.T) {
 	tt := transp.New(1 * transp.MegaBytes)
 
 	// key1 is lowest quality, 0 gen depth 1
-	tt.Insert(key1, 0, 1, 3, move.New(E1, F1), 0, transp.UpperBound)
-	tt.Insert(key2, 2, 2, 3, move.New(E1, G1), 100, transp.Exact)
-	tt.Insert(key3, 2, 5, 2, move.New(E1, H1), -50, transp.LowerBound)
-	tt.Insert(key4, 1, 1, 4, move.New(E1, H1), 70, transp.Exact)
+	tt.Insert(key1, 0, 1, 3, move.From(E1)|move.To(F1), 0, transp.UpperBound)
+	tt.Insert(key2, 2, 2, 3, move.From(E1)|move.To(G1), 100, transp.Exact)
+	tt.Insert(key3, 2, 5, 2, move.From(E1)|move.To(H1), -50, transp.LowerBound)
+	tt.Insert(key4, 1, 1, 4, move.From(E1)|move.To(H1), 70, transp.Exact)
 	// no matching key, replace lowest quality
 	tt.Insert(key5, 2, 5, 4, 0, 70, transp.Exact)
 
@@ -97,7 +97,7 @@ func TestBucket(t *testing.T) {
 	assert.NotNil(t, entry)
 
 	// move kept, same position.
-	assert.Equal(t, move.New(E1, H1), entry.Move)
+	assert.Equal(t, move.From(E1)|move.To(H1), entry.Move)
 	assert.Equal(t, Score(70), entry.Value(2))
 	assert.Equal(t, Depth(3), entry.Depth())
 	assert.Equal(t, transp.Exact, entry.Type())
@@ -110,7 +110,7 @@ func TestBucket(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, entry)
 
-	assert.Equal(t, move.New(E1, H1), entry.Move)
+	assert.Equal(t, move.From(E1)|move.To(H1), entry.Move)
 	assert.Equal(t, Score(70), entry.Value(2))
 	assert.Equal(t, Depth(3), entry.Depth())
 	assert.Equal(t, transp.Exact, entry.Type())

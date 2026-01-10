@@ -53,8 +53,7 @@ func (p *Picker) Next() bool {
 		if p.board.IsPseudoLegal(p.hashMove) {
 			// we put the hash move in the actual store move buffer, in case we need
 			// to update histories on fail high
-			m := p.ms.Alloc()
-			m.Move = p.hashMove
+			m := p.ms.Alloc(p.hashMove)
 			m.Weight = heur.HashMove
 			p.ix++
 			return true

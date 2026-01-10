@@ -10,60 +10,35 @@ type Weighted struct {
 }
 
 // Move represents a chess move, it contains the to and from squares and the
-// promotion piece type. Additionally it contains an en-passant flag indicating
-// that the move is a double pawn-push, that should assign new en-passant state
-// to the board.
+// promotion piece type.
 type Move uint16
 
-// MoveOption is an optional argument to New.
-type MoveOption interface {
-	Apply(sm Move) Move
-}
-
-// WithPromo is a MoveOption setting the promotion piece type.
-type WithPromo Piece
-
-func (p WithPromo) Apply(sm Move) Move {
-	sm.SetPromo(Piece(p))
-	return sm
-}
-
-
-// New creates a new move with to and from squares and additional options.
-func New(from, to Square, opts ...MoveOption) Move {
-	sm := (Move(to) << toShift & toMsk) | (Move(from) << fromShift & fromMsk)
-	for _, opt := range opts {
-		sm = opt.Apply(sm)
-	}
-	return sm
-}
-
 const (
-	toMsk        = Move(1<<6 - 1)
-	toShift      = 0
-	fromMsk      = Move((1<<6 - 1) << 6)
-	fromShift    = 6
-	promoMsk     = Move((1<<3 - 1) << 12)
-	promoShift   = 12
+	toMsk      = Move(1<<6 - 1)
+	toShift    = 0
+	fromMsk    = Move((1<<6 - 1) << 6)
+	fromShift  = 6
+	promoMsk   = Move((1<<3 - 1) << 12)
+	promoShift = 12
 )
+
+// From constructs a move that has the from square set.
+func From(from Square) Move { return (Move(from) << fromShift) & fromMsk }
+
+// To constructs a move that has the to square set.
+func To(to Square) Move { return (Move(to) << toShift) & toMsk }
+
+// Promo constructs a move that has the promotion piece type set.
+func Promo(p Piece) Move { return (Move(p) << promoShift) & promoMsk }
 
 // To is the target square of the move.
 func (s Move) To() Square { return Square((s & toMsk) >> toShift) }
 
-// SetTo sets the target square of the move.
-func (s *Move) SetTo(sq Square) { *s = (*s & ^toMsk) | (Move(sq) << toShift & toMsk) }
-
 // From is the source square of the move.
 func (s Move) From() Square { return Square((s & fromMsk) >> fromShift) }
 
-// SetFrom sets the source square of the move.
-func (s *Move) SetFrom(sq Square) { *s = (*s & ^fromMsk) | Move(sq)<<fromShift&fromMsk }
-
 // Promo is the promotion piece of the move.
 func (s Move) Promo() Piece { return Piece((s & promoMsk) >> promoShift) }
-
-// SetPromo sets the promotion piece of the move.
-func (s *Move) SetPromo(p Piece) { *s = (*s & ^promoMsk) | Move(p)<<promoShift&promoMsk }
 
 // Matches determines if a Move m matches s.
 func (s Move) Matches(m *Weighted) bool {
