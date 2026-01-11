@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 var (
@@ -18,6 +20,7 @@ var (
 	NMPDepthLimit    = 1
 	NMPInit          = 4
 	RFPDepthLimit    = 8
+	RFPScoreFactor   = 105
 	WindowSize       = 50
 	LMRStart         = 2
 	StandPatDelta    = 110
@@ -37,8 +40,9 @@ var tunables = [...]struct {
 	{&NMPDepthLimit, "NMPDepthLimit", 0, 5},
 	{&NMPInit, "NMPInit", 1, 6},
 	{&RFPDepthLimit, "RFPDepthLimit", 5, 10},
+	{&RFPScoreFactor, "RFPScoreFactor", 70, 130},
 	{&WindowSize, "WindowSize", 30, 100},
-	{&LMRStart, "LMRStart", 0, 4},
+	{&LMRStart, "LMRStart", 0, 10},
 	{&StandPatDelta, "StandPatDelta", 80, 130},
 	{&HistBonusMul, "HistBonusMul", 15, 25},
 	{&HistBonusLin, "HistBonusLin", 0, 20},
@@ -50,7 +54,7 @@ func UCIOptions() string {
 	b := strings.Builder{}
 
 	for _, t := range tunables {
-		b.WriteString(fmt.Sprintf("option name %s type spin default %d min %d max %d\n", t.name, *t.ptr, t.min, t.max))
+		fmt.Fprintf(&b, "option name %s type spin default %d min %d max %d\n", t.name, *t.ptr, t.min, t.max)
 	}
 
 	return b.String()
@@ -60,7 +64,8 @@ func OpenbenchInfo() string {
 	b := strings.Builder{}
 
 	for _, t := range tunables {
-		b.WriteString(fmt.Sprintf("%s, int, %d.0, %d.0, %d.0, 2.25, 0.002\n", t.name, *t.ptr, t.min, t.max))
+		lrStep := float64(Abs(t.max-t.min)) / 20
+		fmt.Fprintf(&b, "%s, int, %d.0, %d.0, %d.0, %.3f, 0.002\n", t.name, *t.ptr, t.min, t.max, lrStep)
 	}
 
 	return b.String()
