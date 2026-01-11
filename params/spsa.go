@@ -40,7 +40,7 @@ var tunables = [...]struct {
 	{&NMPDepthLimit, "NMPDepthLimit", 0, 5},
 	{&NMPInit, "NMPInit", 1, 6},
 	{&RFPDepthLimit, "RFPDepthLimit", 5, 10},
-	{&RFPScoreFactor, "ScoreFactor", 70, 130},
+	{&RFPScoreFactor, "RFPScoreFactor", 70, 130},
 	{&WindowSize, "WindowSize", 30, 100},
 	{&LMRStart, "LMRStart", 0, 10},
 	{&StandPatDelta, "StandPatDelta", 80, 130},
