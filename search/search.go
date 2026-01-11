@@ -152,7 +152,7 @@ func pvInfo(moves []move.Move) string {
 	space := ""
 	for _, m := range moves {
 		sb.WriteString(space)
-		sb.WriteString(fmt.Sprint(m))
+		fmt.Fprint(&sb, m)
 		space = " "
 	}
 	return sb.String()
