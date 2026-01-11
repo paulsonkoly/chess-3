@@ -16,16 +16,16 @@ import (
 )
 
 var (
-	NMPDiffFactor    = 51
+	NMPDiffFactor    = 50
 	NMPDepthLimit    = 1
 	NMPInit          = 4
 	RFPDepthLimit    = 8
 	RFPScoreFactor   = 105
-	WindowSize       = 50
+	WindowSize       = 46
 	LMRStart         = 2
-	StandPatDelta    = 110
+	StandPatDelta    = 111
 	HistBonusMul     = 20
-	HistBonusLin     = 15
+	HistBonusLin     = 16
 	HistAdjRange     = 8
 	HistAdjReduction = 7
 )
@@ -65,7 +65,13 @@ func OpenbenchInfo() string {
 
 	for _, t := range tunables {
 		lrStep := float64(Abs(t.max-t.min)) / 20
-		fmt.Fprintf(&b, "%s, int, %d.0, %d.0, %d.0, %.3f, 0.002\n", t.name, *t.ptr, t.min, t.max, lrStep)
+
+		if lrStep < 1.0 {
+			lrStep = 1.0
+		}
+
+		fmt.Fprintf(&b, "%s, int, %d.0, %d.0, %d.0, %.3f, 0.002\n",
+			t.name, *t.ptr, t.min, t.max, lrStep)
 	}
 
 	return b.String()
