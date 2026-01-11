@@ -9,16 +9,16 @@ package params
 // between the two files must be maintained.
 
 const (
-	NMPDiffFactor    = 51
+	NMPDiffFactor    = 50
 	NMPDepthLimit    = 1
 	NMPInit          = 4
 	RFPDepthLimit    = 8
 	RFPScoreFactor   = 105
-	WindowSize       = 50
+	WindowSize       = 46
 	LMRStart         = 2
-	StandPatDelta    = 110
+	StandPatDelta    = 111
 	HistBonusMul     = 20
-	HistBonusLin     = 15
+	HistBonusLin     = 16
 	HistAdjRange     = 8
 	HistAdjReduction = 7
 )

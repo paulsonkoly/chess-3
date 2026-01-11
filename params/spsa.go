@@ -65,13 +65,7 @@ func OpenbenchInfo() string {
 
 	for _, t := range tunables {
 		lrStep := float64(Abs(t.max-t.min)) / 20
-
-		if lrStep < 1.0 {
-			lrStep = 1.0
-		}
-
-		fmt.Fprintf(&b, "%s, int, %d.0, %d.0, %d.0, %.3f, 0.002\n",
-			t.name, *t.ptr, t.min, t.max, lrStep)
+		fmt.Fprintf(&b, "%s, int, %d.0, %d.0, %d.0, %.3f, 0.002\n", t.name, *t.ptr, t.min, t.max, lrStep)
 	}
 
 	return b.String()
