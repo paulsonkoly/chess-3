@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 
 	"slices"
 
@@ -110,28 +112,48 @@ var OBBenchSet = [...]string{
 }
 
 func runOBBench() {
-	nCnt := 0
+	allNodes := 0
+	allABNodes := 0
 	allTime := int64(0)
+	allMoves := 0
+	allFirstCuts := 0
 	s := search.New(1 * transp.MegaBytes)
 	for _, fen := range OBBenchSet {
 		b := Must(board.FromFEN(fen))
 		counters := search.Counters{}
-		s.Go(b, search.WithDepth(15), search.WithCounters(&counters))
+		s.Go(b, search.WithDepth(15), search.WithCounters(&counters), search.WithDebug(true))
 
 		nodes := counters.Nodes
+		abNodes := counters.ABNodes
 		time := counters.Time
+		moves := counters.Moves
+		firstCuts := counters.FirstCut
+		bf := math.Inf(1)
+		firstCutP := "N/A"
+		if abNodes > 0 {
+			bf = float64(moves) / float64(abNodes)
+			firstCutP = strconv.Itoa(firstCuts*100/abNodes) + "%"
+		}
+		fmt.Printf("nodes %d time %d bf %.4f first cut %s\n", nodes, time, bf, firstCutP)
 
-		fmt.Printf("nodes %d time %d\n", nodes, time)
-
-		nCnt += nodes
+		allNodes += nodes
+		allABNodes += abNodes
 		allTime += time
+		allMoves += moves
+		allFirstCuts += firstCuts
 		s.Clear()
 	}
-	fmt.Printf("nodes %d time %d\n", nCnt, allTime)
+
+	bf := math.Inf(1)
+	firstCutP := "N/A"
+	if allABNodes > 0 {
+		bf = float64(allMoves) / float64(allABNodes)
+		firstCutP = strconv.Itoa(allFirstCuts*100/allABNodes) + "%"
+	}
+	fmt.Printf("nodes %d time %d bf %.4f first cut %s\n", allNodes, allTime, bf, firstCutP)
 	if allTime == 0 {
 		fmt.Printf("nps Inf\n")
 	} else {
-		fmt.Printf("nps %d\n", 1000*nCnt/int(allTime))
+		fmt.Printf("nps %d\n", 1000*allNodes/int(allTime))
 	}
-
 }

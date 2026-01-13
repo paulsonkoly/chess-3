@@ -122,6 +122,11 @@ func WithSoftNodes(nodes int) Option {
 
 // Counters are various search counters.
 type Counters struct {
-	Nodes int   // Nodes is the total node count.
-	Time  int64 // Time is the search time in milliseconds.
+	Nodes   int   // Nodes is the total node count.
+	ABNodes int   // ABNodes is the total node count limited to alpha-beta not counting leafs (d==0).
+	Time    int64 // Time is the search time in milliseconds.
+	// Moves is the total explored (searched) move count. Moves / ABNodes ~ avg. branching factor
+	// Only counted if debug is set.
+	Moves    int
+	FirstCut int // FirstCut counts how many times AB searched exactly 1 move. Only counted if debug is set.
 }
