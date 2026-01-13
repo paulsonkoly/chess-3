@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 
 	"slices"
 
@@ -128,12 +129,12 @@ func runOBBench() {
 		moves := counters.Moves
 		firstCuts := counters.FirstCut
 		bf := math.Inf(1)
-		firstCutP := -1
+		firstCutP := "N/A"
 		if abNodes > 0 {
 			bf = float64(moves) / float64(abNodes)
-			firstCutP = firstCuts * 100 / abNodes
+			firstCutP = strconv.Itoa(firstCuts*100/abNodes) + "%"
 		}
-		fmt.Printf("nodes %d time %d bf %.4f first cut %d%%\n", nodes, time, bf, firstCutP)
+		fmt.Printf("nodes %d time %d bf %.4f first cut %s\n", nodes, time, bf, firstCutP)
 
 		allNodes += nodes
 		allABNodes += abNodes
@@ -144,12 +145,12 @@ func runOBBench() {
 	}
 
 	bf := math.Inf(1)
-	firstCutP := -1
+	firstCutP := "N/A"
 	if allABNodes > 0 {
 		bf = float64(allMoves) / float64(allABNodes)
-		firstCutP = allFirstCuts * 100 / allABNodes
+		firstCutP = strconv.Itoa(allFirstCuts*100/allABNodes) + "%"
 	}
-	fmt.Printf("nodes %d time %d bf %.4f first cut %d%%\n", allNodes, allTime, bf, firstCutP)
+	fmt.Printf("nodes %d time %d bf %.4f first cut %s\n", allNodes, allTime, bf, firstCutP)
 	if allTime == 0 {
 		fmt.Printf("nps Inf\n")
 	} else {
