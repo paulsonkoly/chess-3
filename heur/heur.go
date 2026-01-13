@@ -85,7 +85,7 @@ func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[Stac
 		promo -= Pawn // Knight, Bishop, Rook, Queen => buckets: 0: NoPiece, 1: Knight, ... etc.
 	}
 
-	bucket := int(promo)*6 + int(victim) // bucket in range of 0 .. 30
+	bucket := int(promo)*6 + int(victim) // bucket in range of 0 .. 29
 
 	// MVV/LVA the bucket index is determined by promotion / victim; within the
 	// bucket the score is a blend of inverted attacker and captHist.
