@@ -144,7 +144,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
 			}
 		} else if captured != NoPiece {
-			mr.captHist.Add(moved, captured, m.To(), Score(d))
+			mr.captHist.Add(moved, captured, m.To(), Signum(bonus)*Score(d))
 		}
 	}
 
