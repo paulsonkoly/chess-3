@@ -85,7 +85,7 @@ func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[Stac
 		promo -= Pawn // Knight, Bishop, Rook, Queen => buckets: 0: NoPiece, 1: Knight, ... etc.
 	}
 
-	bucket := int((promo-Pawn))*6 + int(victim) // bucket in range of 0 .. 30
+	bucket := int(promo)*6 + int(victim) // bucket in range of 0 .. 30
 
 	// MVV/LVA the bucket index is determined by promotion / victim; within the
 	// bucket the score is a blend of inverted attacker and captHist.
@@ -93,7 +93,8 @@ func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[Stac
 	if victim != NoPiece {
 		adjCaptHist = mr.captHist.LookUp(attacker, victim, m.To()) + MaxCaptHistory // translate -max..+max range to 0..2*max
 	}
-	invAttacker := Score(King - attacker) // attacker reversing order
+	invAttacker := Score(King - attacker)                  // attacker reversing order
+	invAttacker = (invAttacker - 2) * (MaxCaptHistory / 8) // aligning attacker value with captHist Range
 
 	score = (2*MaxCaptHistory)*Score(bucket) + Clamp(adjCaptHist+invAttacker, 0, 2*MaxCaptHistory)
 
