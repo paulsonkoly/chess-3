@@ -22,12 +22,16 @@ import (
 var PieceValues = [...]Score{0, 100, 300, 300, 500, 900, Inf}
 
 const (
+	k = Score(1024)
 	// HashMove is assigned to a move from Hash, either PV or fail-high.
 	HashMove = Score(15000)
 	// Captures is the minimal score for captures, actual score is this plus SEE.
-	Captures = Score(8192)
+	Captures     = 7 * k
+	CaptureRange = 8 * k
 	// MaxHistory is the maximal absolute value in either the history or the continuation stores.
-	MaxHistory = Score(1024)
+	MaxHistory = k
+	// MaxCaptHistory is the maximal score in the capthist table.
+	MaxCaptHistory = Score(128)
 )
 
 func init() {
@@ -40,17 +44,23 @@ func init() {
 // MoveRanker is a composition of heuristic stores that can rank a move.
 type MoveRanker struct {
 	history       *History
+	captHist      *CaptHist
 	continuations [2]*Continuation
 }
 
 // NewMoveRanker creates a new move ranker.
 func NewMoveRanker() MoveRanker {
-	return MoveRanker{history: NewHistory(), continuations: [2]*Continuation{NewContinuation(), NewContinuation()}}
+	return MoveRanker{
+		history:       NewHistory(),
+		captHist:      NewCaptHist(),
+		continuations: [2]*Continuation{NewContinuation(), NewContinuation()},
+	}
 }
 
 // Clear clears the stores in mr.
 func (mr *MoveRanker) Clear() {
 	mr.history.Clear()
+	mr.captHist.Clear()
 	mr.continuations[0].Clear()
 	mr.continuations[1].Clear()
 }
@@ -65,7 +75,35 @@ type StackMove struct {
 
 // RankNoisy returns the heuristic rank of a noisy move.
 func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[StackMove]) Score {
-	return MVVLVA(b, m, SEE(b, m, 0))
+	var score Score
+
+	promo := m.Promo()
+	attacker := b.SquaresToPiece[m.From()]
+	victim := b.SquaresToPiece[b.CaptureSq(m)]
+
+	if promo != NoPiece {
+		promo -= Pawn // Knight, Bishop, Rook, Queen => buckets: 0: NoPiece, 1: Knight, ... etc.
+	}
+
+	bucket := int((promo-Pawn))*6 + int(victim) // bucket in range of 0 .. 30
+
+	// MVV/LVA the bucket index is determined by promotion / victim; within the
+	// bucket the score is a blend of inverted attacker and captHist.
+	var adjCaptHist Score
+	if victim != NoPiece {
+		adjCaptHist = mr.captHist.LookUp(attacker, victim, m.To()) + MaxCaptHistory // translate -max..+max range to 0..2*max
+	}
+	invAttacker := Score(King - attacker) // attacker reversing order
+
+	score = (2*MaxCaptHistory)*Score(bucket) + Clamp(adjCaptHist+invAttacker, 0, 2*MaxCaptHistory)
+
+	if SEE(b, m, 0) {
+		// good capture
+		return Captures + score
+	} else {
+		// bad capture
+		return -Captures - CaptureRange + score
+	}
 }
 
 // RankQuiet returns the heuristic rank of a quiet move.
@@ -104,6 +142,8 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 			if hist, ok := stack.Top(1); ok {
 				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
 			}
+		} else if captured != NoPiece {
+			mr.captHist.Add(moved, captured, m.To(), Score(d))
 		}
 	}
 
