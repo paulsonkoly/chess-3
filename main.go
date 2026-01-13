@@ -110,8 +110,11 @@ var OBBenchSet = [...]string{
 }
 
 func runOBBench() {
-	nCnt := 0
+	allNodes := 0
+	allABNodes := 0
 	allTime := int64(0)
+	allMoves := 0
+	allFirstCuts := 0
 	s := search.New(1 * transp.MegaBytes)
 	for _, fen := range OBBenchSet {
 		b := Must(board.FromFEN(fen))
@@ -119,19 +122,36 @@ func runOBBench() {
 		s.Go(b, search.WithDepth(15), search.WithCounters(&counters))
 
 		nodes := counters.Nodes
+		abNodes := counters.ABNodes
 		time := counters.Time
+		moves := counters.Moves
+		firstCuts := counters.FirstCut
 
-		fmt.Printf("nodes %d time %d\n", nodes, time)
+		fmt.Printf(
+			"nodes %d time %d bf %.4f first cut %d%%\n",
+			nodes,
+			time,
+			float64(moves)/float64(abNodes),
+			firstCuts * 100 / nodes,
+		)
 
-		nCnt += nodes
+		allNodes += nodes
+		allABNodes += abNodes
 		allTime += time
+		allMoves += moves
+		allFirstCuts += firstCuts
 		s.Clear()
 	}
-	fmt.Printf("nodes %d time %d\n", nCnt, allTime)
+	fmt.Printf(
+		"nodes %d time %d bf %.4f first cut %d%%\n",
+		allNodes,
+		allTime,
+		float64(allMoves)/float64(allABNodes),
+		allFirstCuts * 100 / allNodes,
+	)
 	if allTime == 0 {
 		fmt.Printf("nps Inf\n")
 	} else {
-		fmt.Printf("nps %d\n", 1000*nCnt/int(allTime))
+		fmt.Printf("nps %d\n", 1000*allNodes/int(allTime))
 	}
-
 }

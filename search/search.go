@@ -180,6 +180,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	}
 
 	s.incrementNodes(opts)
+	opts.counters.ABNodes ++
 
 	if s.abort(opts) {
 		return Inv
@@ -355,6 +356,10 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 				// store node as fail high (cut-node)
 				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
 				s.ranker.FailHigh(d, b, pck.YieldedMoves(), s.hstack)
+				opts.counters.Moves += moveCnt
+				if moveCnt == 1 {
+					opts.counters.FirstCut++
+				}
 
 				return value
 			}
@@ -379,6 +384,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			break
 		}
 	}
+
+	opts.counters.Moves += moveCnt
 
 	if !hasLegal {
 		maxim = Score(0)
