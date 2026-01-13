@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -126,14 +127,13 @@ func runOBBench() {
 		time := counters.Time
 		moves := counters.Moves
 		firstCuts := counters.FirstCut
-
-		fmt.Printf(
-			"nodes %d time %d bf %.4f first cut %d%%\n",
-			nodes,
-			time,
-			float64(moves)/float64(abNodes),
-			firstCuts * 100 / nodes,
-		)
+		bf := math.Inf(1)
+		firstCutP := -1
+		if abNodes > 0 {
+			bf = float64(moves) / float64(abNodes)
+			firstCutP = firstCuts * 100 / abNodes
+		}
+		fmt.Printf("nodes %d time %d bf %.4f first cut %d%%\n", nodes, time, bf, firstCutP)
 
 		allNodes += nodes
 		allABNodes += abNodes
@@ -142,13 +142,14 @@ func runOBBench() {
 		allFirstCuts += firstCuts
 		s.Clear()
 	}
-	fmt.Printf(
-		"nodes %d time %d bf %.4f first cut %d%%\n",
-		allNodes,
-		allTime,
-		float64(allMoves)/float64(allABNodes),
-		allFirstCuts * 100 / allNodes,
-	)
+
+	bf := math.Inf(1)
+	firstCutP := -1
+	if allABNodes > 0 {
+		bf = float64(allMoves) / float64(allABNodes)
+		firstCutP = allFirstCuts * 100 / allABNodes
+	}
+	fmt.Printf("nodes %d time %d bf %.4f first cut %d%%\n", allNodes, allTime, bf, firstCutP)
 	if allTime == 0 {
 		fmt.Printf("nps Inf\n")
 	} else {
