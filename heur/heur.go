@@ -129,38 +129,51 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 //
 // This function panics if the moves buffer is empty.
 func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
-	adjustScores := func(m move.Move, bonus Score) {
-		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[b.CaptureSq(m)]
-
-		if captured == NoPiece && m.Promo() == NoPiece {
-			mr.history.Add(b.STM, m.From(), m.To(), bonus)
-
-			if hist, ok := stack.Top(0); ok {
-				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
-			}
-
-			if hist, ok := stack.Top(1); ok {
-				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
-			}
-		} else if captured != NoPiece {
-			mr.captHist.Add(moved, captured, m.To(), Signum(bonus)*Score(d))
-		}
-	}
-
 	bonus := Score(d)*Score(params.HistBonusMul) - Score(params.HistBonusLin)
-	penalty := -bonus
 
 	rng := Score(1) << params.HistAdjRange
 	red := Score(1) << params.HistAdjReduction
 
-	if len(moves) >= 2 {
-		for _, m := range moves[:len(moves)-1] {
-			// m.Weight was set to score by the search, or -Inf for upbounds.
-			adj := Score(rng+Clamp(m.Weight, -rng, rng)) / red
+	for i, m := range moves {
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
+		capture := captured != NoPiece
+		quiet := m.Promo() == NoPiece && captured == NoPiece
+		last := i == len(moves)-1
 
-			adjustScores(m.Move, penalty+adj)
+		var value Score
+		switch {
+
+		case quiet && last:
+			value = bonus
+
+		case quiet && !last:
+			// m.Weight was set to score by the search, or -Inf for upbounds.
+			value = -bonus + Score(rng+Clamp(m.Weight, -rng, rng))/red
+
+		case capture && last:
+			value = Score(d)
+
+		case capture && !last:
+			value = -Score(d)
+		}
+
+		moved := b.SquaresToPiece[m.From()]
+
+		switch {
+
+		case capture:
+			mr.captHist.Add(moved, captured, m.To(), value)
+
+		case quiet:
+			mr.history.Add(b.STM, m.From(), m.To(), value)
+
+			if hist, ok := stack.Top(0); ok {
+				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value)
+			}
+
+			if hist, ok := stack.Top(1); ok {
+				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value)
+			}
 		}
 	}
-	adjustScores(moves[len(moves)-1].Move, bonus)
 }
