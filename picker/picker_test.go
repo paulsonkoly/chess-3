@@ -101,7 +101,6 @@ func TestPicker(t *testing.T) {
 			hashMove := ms.Frame()[hashMoveIx].Move
 
 			ms.Clear()
-			ranker.Clear()
 
 			pck := picker.New(b, hashMove, ms, &ranker, hStack)
 
