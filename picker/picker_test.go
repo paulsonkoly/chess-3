@@ -76,20 +76,26 @@ func TestPicker(t *testing.T) {
 
 	for tix, tt := range tests {
 		ms := move.NewStore()
-		ranker := heur.NewMoveRanker()
 		hStack := stack.New[heur.StackMove]()
 
 		t.Run(fmt.Sprintf("picker test %d", tix), func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 
+			ranker := heur.NewMoveRanker()
 			hStack.Reset()
 			ms.Clear()
 			ms.Push()
 			movegen.GenNoisy(ms, b)
 			movegen.GenNotNoisy(ms, b)
 			allMoves := slices.Clone(ms.Frame())
+			numMoves := len(allMoves)
 
-			numMoves := len(ms.Frame())
+			rand.Shuffle(len(allMoves), func(i, j int) {
+				allMoves[i], allMoves[j] = allMoves[j], allMoves[i]
+			})
+
+			failHighIx := rng.IntN(numMoves)
+			ranker.FailHigh(3, b, allMoves[:failHighIx], hStack)
 
 			hashMoveIx := rng.IntN(numMoves)
 			hashMove := ms.Frame()[hashMoveIx].Move
@@ -106,8 +112,9 @@ func TestPicker(t *testing.T) {
 			for pck.Next() {
 				m := pck.Move().Move
 
-				assert.NotContains(t, yielded, m, "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
+				assert.NotContains(t, yielded, *pck.Move(), "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
 				yielded = append(yielded, *pck.Move())
+
 
 				switch state {
 
