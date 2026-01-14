@@ -48,9 +48,9 @@ func (p packed) Type() Type { return Type(p & 3) }
 
 type entry struct {
 	move.Move       // SimpleMove is the hash move. (2 bytes)
-	value           Score // (2 bytes).
-	packed                // packed depth and type (1 byte)
-	gen             Gen
+	value     Score // (2 bytes)
+	packed          // packed depth and type. (1 byte)
+	gen       Gen   // (1 byte)
 }
 
 // Value is the score of the entry corrected for current ply in case of mate score.
@@ -119,8 +119,8 @@ func (t Table) HashFull(gen Gen) int {
 		panic("tt size is too small to measure permill HashFull")
 	}
 	for _, bucket := range t.data[:1000] {
-		for _, entry := range bucket.entries {
-			if entry.Depth() > 0 && entry.gen == gen {
+		for i, entry := range bucket.entries {
+			if (bucket.pKeys>>(i*partialKeyBits))&(1<<partialKeyBits-1) != 0 && entry.gen == gen {
 				cnt++
 			}
 		}
@@ -183,7 +183,7 @@ func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.Move, val
 	bucketKeys := bucket.pKeys
 
 	// sufficiently large start value for minimum search
-	minQ := 1<<50
+	minQ := 1 << 50
 	var replace int
 	var target *entry
 	for i := range bucketEntryCnt {
@@ -220,10 +220,10 @@ func (t *Table) Insert(hash board.Hash, gen Gen, d, ply Depth, sm move.Move, val
 	}
 
 	bucket.entries[replace] = entry{
-		Move: sm,
-		value:      value,
-		packed:     packed(d)<<2 | packed(typ),
-		gen:        gen,
+		Move:   sm,
+		value:  value,
+		packed: packed(d)<<2 | packed(typ),
+		gen:    gen,
 	}
 
 	bucket.pKeys &= ^(((1 << partialKeyBits) - 1) << (replace * partialKeyBits))
