@@ -28,7 +28,7 @@ var (
 	HistBonusLin     = 15
 	HistAdjRange     = 8
 	HistAdjReduction = 7
-	IIIRDepthLimit   = 5
+	IIRDepthLimit    = 5
 )
 
 var tunables = [...]struct {
