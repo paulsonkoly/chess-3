@@ -268,7 +268,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	defer s.ms.Pop()
 
 	// iir
-	if nType != AllNode && d > params.IIRDepthLimit && hashMove == 0 {
+	if nType != AllNode && d > Depth(params.IIRDepthLimit) && hashMove == 0 {
 		d--
 	}
 
