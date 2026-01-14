@@ -24,7 +24,7 @@ var PieceValues = [...]Score{0, 100, 300, 300, 500, 900, Inf}
 const (
 	k = Score(1024)
 	// HashMove is assigned to a move from Hash, either PV or fail-high.
-	HashMove = Score(15000)
+	HashMove = 16 * k
 	// Captures is the minimal score for captures, actual score is this plus SEE.
 	Captures     = 7 * k
 	CaptureRange = 8 * k
