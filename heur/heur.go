@@ -94,7 +94,7 @@ func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[Stac
 		adjCaptHist = mr.captHist.LookUp(attacker, victim, m.To()) + MaxCaptHistory // translate -max..+max range to 0..2*max
 	}
 	invAttacker := Score(King - attacker)                  // attacker reversing order
-	invAttacker = (invAttacker - 2) * (MaxCaptHistory / 8) // aligning attacker value with captHist Range
+	invAttacker = (invAttacker - 2) * (MaxCaptHistory / 4) // aligning attacker value with captHist Range
 
 	score = (2*MaxCaptHistory)*Score(bucket) + Clamp(adjCaptHist+invAttacker, 0, 2*MaxCaptHistory)
 
