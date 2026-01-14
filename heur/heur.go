@@ -126,8 +126,6 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 // FailHigh updates the history / continuation stores based on the move buffer
 // moves. We assume all moves preceding the last are bad, and the last one is
 // good. Naturally this would be true in a move loop.
-//
-// This function panics if the moves buffer is empty.
 func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
 	bonus := Score(d)*Score(params.HistBonusMul) - Score(params.HistBonusLin)
 
