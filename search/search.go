@@ -267,10 +267,12 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	s.ms.Push()
 	defer s.ms.Pop()
 
-	var (
-		bestMove move.Move
-	)
+	// iir
+	if nType != AllNode && d > 5 && hashMove == 0 {
+		d--
+	}
 
+	var bestMove move.Move
 	hasLegal := false
 	failLow := true
 	maxim := -Inf - 1
@@ -461,11 +463,6 @@ var log = [...]int{
 //	10.times.map {|d| 30.times.map {|m| (x[d] * x[m] )>>14}}
 func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 	value := (log[d] * log[min(mCount, len(log)-1)]) >> 14
-
-	// if !quiet {
-	// 	value /= 2
-	// }
-	//
 
 	if nType != PVNode {
 		value++
