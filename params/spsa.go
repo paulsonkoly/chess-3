@@ -28,6 +28,7 @@ var (
 	HistBonusLin     = 15
 	HistAdjRange     = 8
 	HistAdjReduction = 7
+	IIIRDepthLimit   = 5
 )
 
 var tunables = [...]struct {
@@ -48,6 +49,7 @@ var tunables = [...]struct {
 	{&HistBonusLin, "HistBonusLin", 0, 20},
 	{&HistAdjRange, "HistAdjRange", 4, 10},
 	{&HistAdjReduction, "HistAdjReduction", 4, 10},
+	{&IIRDepthLimit, "IIRDepthLimit", 2, 7},
 }
 
 func UCIOptions() string {
