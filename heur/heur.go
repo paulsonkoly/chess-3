@@ -4,8 +4,8 @@
 //
 //   - hash: [HashMove]
 //   - good captures: [Captures] ... [HashMove]
-//   - quiets: -6*[MaxHistory]..6*[MaxHistory]
-//     (3 * cont[0] + 2 * cont[1] + hist) each <= [MaxHistory]
+//   - quiets: -3*[MaxHistory]..3*[MaxHistory]
+//     (cont[0] + cont[1] + hist) each <= [MaxHistory]
 //   - bad captures: -Inf..-[Captures]
 package heur
 
@@ -31,8 +31,8 @@ const (
 )
 
 func init() {
-	// 1 * history + 2 * continuation[1] + 3 * continuation[0]
-	if Captures < 6*MaxHistory {
+	// 1 * history + continuation[1] + 1 * continuation[0]
+	if Captures < 3*MaxHistory {
 		panic("gap is not big enough in move weight layout for history scores")
 	}
 }
@@ -74,11 +74,11 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	moved := b.SquaresToPiece[m.From()]
 
 	if hist, ok := stack.Top(0); ok {
-		score += 3 * mr.continuations[0].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
+		score += mr.continuations[0].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
 	}
 
 	if hist, ok := stack.Top(1); ok {
-		score += 2 * mr.continuations[1].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
+		score += mr.continuations[1].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
 	}
 
 	return score
@@ -102,7 +102,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 			}
 
 			if hist, ok := stack.Top(1); ok {
-				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
+				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus/2)
 			}
 		}
 	}
