@@ -4,8 +4,8 @@
 //
 //   - hash: [HashMove]
 //   - good captures: [Captures] ... [HashMove]
-//   - quiets: -6*[MaxHistory]..6*[MaxHistory]
-//     (3 * cont[0] + 2 * cont[1] + hist) each <= [MaxHistory]
+//   - quiets: -3*[MaxHistory]..3*[MaxHistory]
+//     (cont[0] + cont[1] + hist) each <= [MaxHistory]
 //   - bad captures: -Inf..-[Captures]
 package heur
 
@@ -31,7 +31,7 @@ const (
 )
 
 func init() {
-	// 1 * history + 0.5 * continuation[1] + 1 * continuation[0]
+	// 1 * history + continuation[1] + 1 * continuation[0]
 	if Captures < 3*MaxHistory {
 		panic("gap is not big enough in move weight layout for history scores")
 	}
