@@ -22,7 +22,7 @@ const (
 	HistAdjRange          = 8
 	HistAdjReduction      = 7
 	IIRDepthLimit         = 5
-	CaptHistGoodThreshold = 100
+	CaptHistGoodThreshold = 900
 )
 
 // UCIOptions returns the uci options string for tunable parameters in an spsa

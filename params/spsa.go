@@ -29,7 +29,7 @@ var (
 	HistAdjRange          = 8
 	HistAdjReduction      = 7
 	IIRDepthLimit         = 5
-	CaptHistGoodThreshold = 100
+	CaptHistGoodThreshold = 900
 )
 
 var tunables = [...]struct {

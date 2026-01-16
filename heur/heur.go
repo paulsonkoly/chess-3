@@ -27,11 +27,9 @@ const (
 	HashMove = 16 * k
 	// Captures is the minimal score for captures, actual score is this plus SEE.
 	Captures     = 7 * k
-	CaptureRange = 8 * k
+	CaptureRange = 1 * k
 	// MaxHistory is the maximal absolute value in either the history or the continuation stores.
 	MaxHistory = k
-	// MaxCaptHistory is the maximal score in the capthist table.
-	MaxCaptHistory = Score(128)
 )
 
 func init() {
@@ -75,34 +73,32 @@ type StackMove struct {
 
 // RankNoisy returns the heuristic rank of a noisy move.
 func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[StackMove]) Score {
-	var score Score
-
 	promo := m.Promo()
 	attacker := b.SquaresToPiece[m.From()]
 	victim := b.SquaresToPiece[b.CaptureSq(m)]
 
 	if promo != NoPiece {
-		promo -= Pawn // Knight, Bishop, Rook, Queen => buckets: 0: NoPiece, 1: Knight, ... etc.
+		promo -= Pawn // Knight, Bishop, Rook, Queen => 0: NoPiece, 1: Knight, ... etc.
 	}
 
-	bucket := int(promo)*6 + int(victim) // bucket in range of 0 .. 29
+	// Promo/MVV/LVA
+	// we tried replacing LVA with capthist, but it doesn't give much for us.
+	// Within a Promo/MVV bucket there is hardly ever more than 1 move. The
+	// ordering there doesn't matter much.
+	invAttacker := King - attacker
+	// invAttacker range 0..5
+	// victim range 0..6
+	// promo range 0..3
+	score := Score(promo)*6*7 + Score(victim)*6 + Score(invAttacker)
 
-	// MVV/LVA the bucket index is determined by promotion / victim; within the
-	// bucket the score is a blend of inverted attacker and captHist.
-	var (
-		captHist    Score
-		adjCaptHist Score
-	)
+	var captHist Score
 	if victim != NoPiece {
 		captHist = mr.captHist.LookUp(attacker, victim, m.To())
-		adjCaptHist = captHist + MaxCaptHistory // translate -max..+max range to 0..2*max
 	}
-	invAttacker := Score(King - attacker)                  // attacker reversing order
-	invAttacker = (invAttacker - 2) * (MaxCaptHistory / 8) // aligning attacker value with captHist Range
 
-	score = (2*MaxCaptHistory)*Score(bucket) + Clamp(adjCaptHist+invAttacker, 0, 2*MaxCaptHistory)
-
-	if captHist > 100 || SEE(b, m, 0) {
+	// allow bad captures to break out of the bad capture bucket, provided that
+	// they are likely to fail high.
+	if captHist > Score(params.CaptHistGoodThreshold) || SEE(b, m, 0) {
 		// good capture
 		return Captures + score
 	} else {

@@ -21,11 +21,11 @@ func (c *CaptHist) Clear() {
 
 // Add increments the capture history heuristics for the move by bonus.
 func (c *CaptHist) Add(moved, captured Piece, sq Square, bonus Score) {
-	clampedBonus := Clamp(bonus, -MaxCaptHistory, MaxCaptHistory)
+	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
 	moved -= Pawn // offset range ignoring NoPiece
 	captured -= Pawn
 	c.data[moved][captured][sq] +=
-		clampedBonus - Score(int(c.data[moved][captured][sq])*int(Abs(clampedBonus))/int(MaxCaptHistory))
+		clampedBonus - Score(int(c.data[moved][captured][sq])*int(Abs(clampedBonus))/int(MaxHistory))
 }
 
 // LookUp returns the history heuristics entry for the move.
