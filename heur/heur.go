@@ -98,7 +98,7 @@ func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[Stac
 
 	// allow bad captures to break out of the bad capture bucket, provided that
 	// they are likely to fail high. non-negative SEE scores are always good
-	// captures. negative SEE scores only have to beat their inverted capthist,
+	// captures. negative SEE scores only have to beat their negated capthist,
 	// for instance a capthist > Rook allows for losing a Rook.
 	if SEE(b, m, min(0, -captHist)) {
 		// good capture
