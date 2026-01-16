@@ -3,6 +3,7 @@ package picker_test
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -75,47 +76,44 @@ func TestPicker(t *testing.T) {
 
 	for tix, tt := range tests {
 		ms := move.NewStore()
-		ranker := heur.NewMoveRanker()
-		hist := stack.New[heur.StackMove]()
+		hStack := stack.New[heur.StackMove]()
 
 		t.Run(fmt.Sprintf("picker test %d", tix), func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 
-			hist.Reset()
+			ranker := heur.NewMoveRanker()
+			hStack.Reset()
 			ms.Clear()
 			ms.Push()
 			movegen.GenNoisy(ms, b)
 			movegen.GenNotNoisy(ms, b)
+			allMoves := slices.Clone(ms.Frame())
+			numMoves := len(allMoves)
 
-			numMoves := len(ms.Frame())
+			rand.Shuffle(len(allMoves), func(i, j int) {
+				allMoves[i], allMoves[j] = allMoves[j], allMoves[i]
+			})
+
+			failHighIx := rng.IntN(numMoves)
+			ranker.FailHigh(3, b, allMoves[:failHighIx], hStack)
 
 			hashMoveIx := rng.IntN(numMoves)
 			hashMove := ms.Frame()[hashMoveIx].Move
 
 			ms.Clear()
-			ranker.Clear()
 
-			pck := picker.New(b, hashMove, ms, &ranker, hist)
+			pck := picker.New(b, hashMove, ms, &ranker, hStack)
 
 			state := verifyHash
-			currWeight := heur.HashMove
 
-			yielded := make([]move.Move, 0)
+			yielded := make([]move.Weighted, 0)
 
-			cnt := 0
 			for pck.Next() {
 				m := pck.Move().Move
 
-				assert.NotContains(t, yielded, m, "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
-				yielded = append(yielded, m)
+				assert.NotContains(t, yielded, *pck.Move(), "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
+				yielded = append(yielded, *pck.Move())
 
-				actual := make([]move.Move, 0)
-				for _, m := range pck.YieldedMoves() {
-					actual = append(actual, m.Move)
-				}
-				assert.Equal(t, yielded, actual, "fen %s yielded moves mismatch", tt.fen)
-
-				cnt++
 
 				switch state {
 
@@ -125,17 +123,7 @@ func TestPicker(t *testing.T) {
 
 				case verifyGoodCaptures:
 					if (m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m)] != NoPiece) && heur.SEE(b, m, 0) {
-						curr := heur.MVVLVA(b, m, true)
-						assert.LessOrEqual(
-							t,
-							curr,
-							currWeight,
-							"fen %s good capture decrease from %d to %d move %s",
-							tt.fen,
-							currWeight,
-							curr,
-							m)
-						currWeight = curr
+						assert.GreaterOrEqual(t, pck.Move().Weight, heur.Captures, "fen %s capture weight too low %s", tt.fen, m)
 						continue
 					}
 
@@ -144,29 +132,39 @@ func TestPicker(t *testing.T) {
 
 				case verifyQuiets:
 					if m.Promo() == NoPiece && b.SquaresToPiece[b.CaptureSq(m)] == NoPiece {
-						// it's hard to emulate history stores, so no verification here
-						currWeight = 0
+						assert.Greater(t, pck.Move().Weight, -heur.Captures, "fen %s quiet weight too low %s", tt.fen, m)
+						assert.Less(t, pck.Move().Weight, heur.Captures, "fen %s quiet weight too high %s", tt.fen, m)
 						continue
 					}
 					state = verifyBadCaptures
 					fallthrough
 
 				case verifyBadCaptures:
-					curr := heur.MVVLVA(b, m, false)
-					assert.LessOrEqual(
-						t,
-						curr,
-						currWeight,
-						"fen %s bad capture decrease from %d to %d move %s",
-						tt.fen,
-						currWeight,
-						curr,
-						m)
-					currWeight = curr
+					assert.Less(t, pck.Move().Weight, -heur.Captures, "fen %s capture weight too high %s", tt.fen, m)
 				}
 			}
 
-			assert.Equal(t, numMoves, cnt, "fen %s numMoves %d counter %d", tt.fen, numMoves, cnt)
+			ym := pck.YieldedMoves()
+			assert.Equal(t, ym, yielded, "fen %s", tt.fen)
+			for i := range yielded {
+				yielded[i].Weight = 0 // zero out for set-wise comparison
+			}
+			assert.ElementsMatch(t, yielded, allMoves, "fen %s", tt.fen)
+
+			// weight order is decreasing
+			for i, m := range ym {
+				if i > 0 {
+					assert.LessOrEqual(
+						t,
+						int(m.Weight),
+						int(ym[i-1].Weight),
+						"fen %s non-decreasing weights %s !>= %s",
+						tt.fen,
+						ym[i-1],
+						m,
+					)
+				}
+			}
 		})
 	}
 }

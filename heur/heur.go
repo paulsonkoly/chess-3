@@ -22,12 +22,14 @@ import (
 var PieceValues = [...]Score{0, 100, 300, 300, 500, 900, Inf}
 
 const (
+	k = Score(1024)
 	// HashMove is assigned to a move from Hash, either PV or fail-high.
-	HashMove = Score(15000)
+	HashMove = 16 * k
 	// Captures is the minimal score for captures, actual score is this plus SEE.
-	Captures = Score(8192)
+	Captures     = 7 * k
+	CaptureRange = 1 * k
 	// MaxHistory is the maximal absolute value in either the history or the continuation stores.
-	MaxHistory = Score(1024)
+	MaxHistory = k
 )
 
 func init() {
@@ -40,17 +42,23 @@ func init() {
 // MoveRanker is a composition of heuristic stores that can rank a move.
 type MoveRanker struct {
 	history       *History
+	captHist      *CaptHist
 	continuations [2]*Continuation
 }
 
 // NewMoveRanker creates a new move ranker.
 func NewMoveRanker() MoveRanker {
-	return MoveRanker{history: NewHistory(), continuations: [2]*Continuation{NewContinuation(), NewContinuation()}}
+	return MoveRanker{
+		history:       NewHistory(),
+		captHist:      NewCaptHist(),
+		continuations: [2]*Continuation{NewContinuation(), NewContinuation()},
+	}
 }
 
 // Clear clears the stores in mr.
 func (mr *MoveRanker) Clear() {
 	mr.history.Clear()
+	mr.captHist.Clear()
 	mr.continuations[0].Clear()
 	mr.continuations[1].Clear()
 }
@@ -65,7 +73,40 @@ type StackMove struct {
 
 // RankNoisy returns the heuristic rank of a noisy move.
 func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[StackMove]) Score {
-	return MVVLVA(b, m, SEE(b, m, 0))
+	promo := m.Promo()
+	attacker := b.SquaresToPiece[m.From()]
+	victim := b.SquaresToPiece[b.CaptureSq(m)]
+
+	if promo != NoPiece {
+		promo -= Pawn // Knight, Bishop, Rook, Queen => 0: NoPiece, 1: Knight, ... etc.
+	}
+
+	// Promo/MVV/LVA
+	// we tried replacing LVA with capthist, but it doesn't give much for us.
+	// Within a Promo/MVV bucket there is hardly ever more than 1 move. The
+	// ordering there doesn't matter much.
+	invAttacker := King - attacker
+	// invAttacker range 0..5
+	// victim range 0..6
+	// promo range 0..3
+	score := Score(promo)*6*7 + Score(victim)*6 + Score(invAttacker)
+
+	var captHist Score
+	if victim != NoPiece {
+		captHist = mr.captHist.LookUp(attacker, victim, m.To())
+	}
+
+	// allow bad captures to break out of the bad capture bucket, provided that
+	// they are likely to fail high. non-negative SEE scores are always good
+	// captures. negative SEE scores only have to beat their negated capthist,
+	// for instance a capthist > Rook allows for losing a Rook.
+	if SEE(b, m, min(0, -captHist)) {
+		// good capture
+		return Captures + score
+	} else {
+		// bad capture
+		return -Captures - CaptureRange + score
+	}
 }
 
 // RankQuiet returns the heuristic rank of a quiet move.
@@ -87,39 +128,52 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 // FailHigh updates the history / continuation stores based on the move buffer
 // moves. We assume all moves preceding the last are bad, and the last one is
 // good. Naturally this would be true in a move loop.
-//
-// This function panics if the moves buffer is empty.
 func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
-	adjustScores := func(m move.Move, bonus Score) {
-		moved := b.SquaresToPiece[m.From()]
-		captured := b.SquaresToPiece[b.CaptureSq(m)]
-
-		if captured == NoPiece && m.Promo() == NoPiece {
-			mr.history.Add(b.STM, m.From(), m.To(), bonus)
-
-			if hist, ok := stack.Top(0); ok {
-				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus)
-			}
-
-			if hist, ok := stack.Top(1); ok {
-				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), bonus/2)
-			}
-		}
-	}
-
 	bonus := Score(d)*Score(params.HistBonusMul) - Score(params.HistBonusLin)
-	penalty := -bonus
 
 	rng := Score(1) << params.HistAdjRange
 	red := Score(1) << params.HistAdjReduction
 
-	if len(moves) >= 2 {
-		for _, m := range moves[:len(moves)-1] {
-			// m.Weight was set to score by the search, or -Inf for upbounds.
-			adj := Score(rng+Clamp(m.Weight, -rng, rng)) / red
+	for i, m := range moves {
+		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
+		capture := captured != NoPiece
+		quiet := m.Promo() == NoPiece && captured == NoPiece
+		last := i == len(moves)-1
 
-			adjustScores(m.Move, penalty+adj)
+		var value Score
+		switch {
+
+		case quiet && last:
+			value = bonus
+
+		case quiet && !last:
+			// m.Weight was set to score by the search, or -Inf for upbounds.
+			value = -bonus + Score(rng+Clamp(m.Weight, -rng, rng))/red
+
+		case capture && last:
+			value = Score(d) * Score(d)
+
+		case capture && !last:
+			value = -Score(d) * Score(d)
+		}
+
+		moved := b.SquaresToPiece[m.From()]
+
+		switch {
+
+		case capture:
+			mr.captHist.Add(moved, captured, m.To(), value)
+
+		case quiet:
+			mr.history.Add(b.STM, m.From(), m.To(), value)
+
+			if hist, ok := stack.Top(0); ok {
+				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value)
+			}
+
+			if hist, ok := stack.Top(1); ok {
+				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value/2)
+			}
 		}
 	}
-	adjustScores(moves[len(moves)-1].Move, bonus)
 }
