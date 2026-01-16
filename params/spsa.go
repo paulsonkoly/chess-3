@@ -16,19 +16,19 @@ import (
 )
 
 var (
-	NMPDiffFactor         = 51
-	NMPDepthLimit         = 1
-	NMPInit               = 4
-	RFPDepthLimit         = 8
-	RFPScoreFactor        = 105
-	WindowSize            = 50
-	LMRStart              = 2
-	StandPatDelta         = 110
-	HistBonusMul          = 20
-	HistBonusLin          = 15
-	HistAdjRange          = 8
-	HistAdjReduction      = 7
-	IIRDepthLimit         = 5
+	NMPDiffFactor    = 51
+	NMPDepthLimit    = 1
+	NMPInit          = 4
+	RFPDepthLimit    = 8
+	RFPScoreFactor   = 105
+	WindowSize       = 50
+	LMRStart         = 2
+	StandPatDelta    = 110
+	HistBonusMul     = 20
+	HistBonusLin     = 15
+	HistAdjRange     = 8
+	HistAdjReduction = 7
+	IIRDepthLimit    = 5
 )
 
 var tunables = [...]struct {
