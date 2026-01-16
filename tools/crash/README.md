@@ -6,7 +6,7 @@ Assuming we have a _PGN_ with node counts we should be able to replay the game i
 
 ## Caveats
 
-Deterministic engine behaviour can only be guaranteed in a single threaded scenario. The transposition table size has to be set to the same size as the original run.
+Deterministic engine behaviour can only be guaranteed in a single-threaded scenario. The transposition table size has to be set to the same size as the original run.
 
 ## Example
 
@@ -51,7 +51,7 @@ Qb2 {-3.66 18/0 210 375320, White disconnects} 0-1
 Since it's white that crashed, we want to re-create the game from white's perspective:
 
 ```
-$ bin/python3 crash white crash.pgn
+$ bin/python3 crash.py white crash.pgn
 uci
 ucinewgame
 position startpos moves e2e4 c7c5 c2c3 d7d5 e4d5 d8d5 d2d4 g7g6 g1f3 b8c6 f1e2 g8h6 c3c4 d5d6 d4d5 c6e5
