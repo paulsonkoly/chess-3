@@ -29,7 +29,6 @@ var (
 	HistAdjRange          = 8
 	HistAdjReduction      = 7
 	IIRDepthLimit         = 5
-	CaptHistGoodThreshold = 900
 )
 
 var tunables = [...]struct {
@@ -51,7 +50,6 @@ var tunables = [...]struct {
 	{&HistAdjRange, "HistAdjRange", 4, 10},
 	{&HistAdjReduction, "HistAdjReduction", 4, 10},
 	{&IIRDepthLimit, "IIRDepthLimit", 2, 7},
-	{&CaptHistGoodThreshold, "CaptHistGoodThreshold", 0, 1000},
 }
 
 func UCIOptions() string {

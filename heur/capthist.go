@@ -20,6 +20,8 @@ func (c *CaptHist) Clear() {
 }
 
 // Add increments the capture history heuristics for the move by bonus.
+// moved should be at least a Pawn and captured should be between a Pawn and a
+// Queen, otherwise this function can panic.
 func (c *CaptHist) Add(moved, captured Piece, sq Square, bonus Score) {
 	clampedBonus := Clamp(bonus, -MaxHistory, MaxHistory)
 	moved -= Pawn // offset range ignoring NoPiece
@@ -29,6 +31,8 @@ func (c *CaptHist) Add(moved, captured Piece, sq Square, bonus Score) {
 }
 
 // LookUp returns the history heuristics entry for the move.
+// moved should be at least a Pawn and captured should be between a Pawn and a
+// Queen, otherwise this function can panic.
 func (c *CaptHist) LookUp(moved, captured Piece, sq Square) Score {
 	moved -= Pawn // offset range ignoring NoPiece
 	captured -= Pawn
