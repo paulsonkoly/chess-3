@@ -89,16 +89,20 @@ func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[Stac
 
 	// MVV/LVA the bucket index is determined by promotion / victim; within the
 	// bucket the score is a blend of inverted attacker and captHist.
-	var adjCaptHist Score
+	var (
+		captHist    Score
+		adjCaptHist Score
+	)
 	if victim != NoPiece {
-		adjCaptHist = mr.captHist.LookUp(attacker, victim, m.To()) + MaxCaptHistory // translate -max..+max range to 0..2*max
+		captHist = mr.captHist.LookUp(attacker, victim, m.To())
+		adjCaptHist = captHist + MaxCaptHistory // translate -max..+max range to 0..2*max
 	}
 	invAttacker := Score(King - attacker)                  // attacker reversing order
-	invAttacker = (invAttacker - 2) * (MaxCaptHistory / 4) // aligning attacker value with captHist Range
+	invAttacker = (invAttacker - 2) * (MaxCaptHistory / 8) // aligning attacker value with captHist Range
 
 	score = (2*MaxCaptHistory)*Score(bucket) + Clamp(adjCaptHist+invAttacker, 0, 2*MaxCaptHistory)
 
-	if SEE(b, m, 0) {
+	if captHist > 100 || SEE(b, m, 0) {
 		// good capture
 		return Captures + score
 	} else {
@@ -149,10 +153,10 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 			value = -bonus + Score(rng+Clamp(m.Weight, -rng, rng))/red
 
 		case capture && last:
-			value = Score(d)
+			value = Score(d) * Score(d)
 
 		case capture && !last:
-			value = -Score(d)
+			value = -Score(d) * Score(d)
 		}
 
 		moved := b.SquaresToPiece[m.From()]
@@ -170,7 +174,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 			}
 
 			if hist, ok := stack.Top(1); ok {
-				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value / 2)
+				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value/2)
 			}
 		}
 	}
