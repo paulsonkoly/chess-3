@@ -38,6 +38,10 @@ type CoeffSet[T ScoreType] struct {
 	// BishopPair is the bonus for bishop pair per friendly pawn count.
 	BishopPair [9]T
 
+	OpBishops               [1]T
+	OpBishopsOutsidePassers [1]T
+	OpBishopsPawnDelta      [4]T
+
 	// ProtectedPasser is the bonus for each protected passed pawn.
 	ProtectedPasser [2]T
 	// PasserKingDist is the bonus for our king being close / enemy king being far from passed pawn.
@@ -215,10 +219,13 @@ var Coefficients = CoeffSet[Score]{
 			0, 0, 0, 20, 18, 0, 0, 0,
 		},
 	},
-	ConnectedRooks:  [2]Score{2, 14},
-	BishopPair:      [9]Score{9, 52, 58, 52, 46, 41, 35, 31, 24},
-	ProtectedPasser: [2]Score{20, 5},
-	PasserKingDist:  [2]Score{-2, 11},
+	ConnectedRooks:          [2]Score{2, 14},
+	BishopPair:              [9]Score{9, 52, 58, 52, 46, 41, 35, 31, 24},
+	OpBishops:               [1]Score{70},
+	OpBishopsOutsidePassers: [1]Score{50},
+	OpBishopsPawnDelta:      [4]Score{50, 50, 50, 50},
+	ProtectedPasser:         [2]Score{20, 5},
+	PasserKingDist:          [2]Score{-2, 11},
 	PasserRank: [2][6]Score{
 		{-13, -21, -16, 11, 36, 68},
 		{17, 19, 43, 67, 120, 77},
