@@ -162,6 +162,11 @@ func TestFENConversion(t *testing.T) {
 			fen:  "rnbqkbnr/pppppppp/9/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1",
 			err:  errors.New("invalid char 9"),
 		},
+		{
+			name: "Regress/1 en passant single character terminates the string",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ a",
+			err:  errors.New("premature end of fen"),
+		},
 	}
 
 	for _, tt := range tests {

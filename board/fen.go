@@ -170,6 +170,9 @@ func (fp *fenParser) cRights() error {
 
 func (fp *fenParser) enPassant() error {
 	if fp.fen[fp.ix] != '-' {
+		if fp.ix+1 >= len(fp.fen) {
+			return errors.New("premature end of fen")
+		}
 		if fp.fen[fp.ix] < 'a' || fp.fen[fp.ix] > 'h' || fp.fen[fp.ix+1] < '1' || fp.fen[fp.ix+1] > '8' {
 			return fmt.Errorf("square expected got %c%c", fp.fen[fp.ix], fp.fen[fp.ix+1])
 		}
@@ -234,7 +237,7 @@ func (b Board) FEN() string {
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf(" %c ", "wb"[b.STM]))
+	fmt.Fprintf(&sb, " %c ", "wb"[b.STM])
 
 	if b.Castles&ShortWhite != 0 {
 		sb.WriteString("K")
@@ -262,7 +265,7 @@ func (b Board) FEN() string {
 		sb.WriteString(b.EnPassant.String())
 	}
 	sb.WriteString(" ")
-	sb.WriteString(fmt.Sprintf("%d 1", b.FiftyCnt))
+	fmt.Fprintf(&sb, "%d 1", b.FiftyCnt)
 
 	// if (board->en_passant) {
 	//   SQUARE ep = __builtin_ctzll(board->en_passant);
