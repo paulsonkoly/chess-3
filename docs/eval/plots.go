@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -358,6 +359,15 @@ func processPairedArray(field reflect.Value, name string, sections *[]MarkdownSe
 func processSingleSequence(field reflect.Value, name, outputFile string, sections *[]MarkdownSection) {
 	var data bytes.Buffer
 	maxX := field.Len() - 1
+
+	if maxX == 0 {
+		if val, ok := field.Index(0).Interface().(Score); ok {
+			*sections = append(*sections, MarkdownSection{
+				Title: name + " : " + strconv.Itoa(int(val)),
+			})
+		}
+		return
+	}
 
 	for i := range field.Len() {
 		val := field.Index(i).Interface().(Score)
