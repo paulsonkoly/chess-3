@@ -47,12 +47,10 @@ func (b Board) calculateHash() Hash {
 	var hash Hash
 
 	for color := White; color <= Black; color++ {
-		occ := b.Colors[color]
+		
 
-		for piece := BitBoard(0); occ != 0; occ = occ ^ piece {
-			piece = occ & -occ
-
-			sq := piece.LowestSet()
+		for occ := b.Colors[color]; occ != 0; occ &= occ -1 {
+			sq := occ.LowestSet()
 
 			hash ^= piecesRand[color][b.SquaresToPiece[sq]][sq]
 		}

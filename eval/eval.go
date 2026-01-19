@@ -51,10 +51,9 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		eKNb := pw.kingNb[color.Flip()]
 
 		// queens
-		pieces := b.Pieces[Queen] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
+
+		for pieces := b.Pieces[Queen] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
+			sq := pieces.LowestSet()
 
 			attacks := pw.calcQueenAttacks(color, sq)
 
@@ -64,10 +63,9 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// rooks
-		pieces = b.Pieces[Rook] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
+
+		for pieces := b.Pieces[Rook] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
+			sq := pieces.LowestSet()
 
 			attacks := pw.calcRookAttacks(color, sq)
 
@@ -77,10 +75,9 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// bishops
-		pieces = b.Pieces[Bishop] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
+
+		for pieces := b.Pieces[Bishop] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
+			sq := pieces.LowestSet()
 
 			attacks := pw.calcBishopAttacks(color, sq)
 
@@ -90,24 +87,22 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// knights
-		pieces = b.Pieces[Knight] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
+
+		for pieces := b.Pieces[Knight] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
+			sq := pieces.LowestSet()
 
 			attacks := pw.calcKnightAttacks(color, sq)
 
 			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
-			sp.addKnightOutposts(color, piece, sq, pw.holes[color.Flip()]&pw.attacks[color][0], c)
+			sp.addKnightOutposts(color, sq, pw.holes[color.Flip()]&pw.attacks[color][0], c)
 			sp.addPSqT(color, Knight, sq, c)
 		}
 
 		// pawns
-		pieces = b.Pieces[Pawn] & b.Colors[color]
-		for piece := BitBoard(0); pieces != 0; pieces ^= piece {
-			piece = pieces & -pieces
-			sq := piece.LowestSet()
+
+		for pieces := b.Pieces[Pawn] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
+			sq := pieces.LowestSet()
 
 			sp.addPSqT(color, Pawn, sq, c)
 		}
@@ -423,14 +418,15 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 			}
 		}
 
-		for passer := BitBoard(0); passers != 0; passers ^= passer {
-			passer = passers & -passers
-			sq := passer.LowestSet()
+		for ; passers != 0; passers &= passers-1 {
+			sq := passers.LowestSet()
 
 			rank := sq / 8
 			if color == Black {
 				rank ^= 7
 			}
+
+			passer := passers & -passers
 
 			// if protected passers add protection bonus
 			if passer&pw.attacks[color][0] != 0 { // Pawn - Pawn
@@ -599,14 +595,13 @@ func (sp *scorePair[T]) addKnightMobility(
 
 func (sp *scorePair[T]) addKnightOutposts(
 	color Color,
-	knightBB BitBoard,
 	sq Square,
 	holes BitBoard,
 	c *CoeffSet[T],
 ) {
 
 	// calculate knight outputs
-	if (knightBB)&holes != 0 {
+	if (BitBoard(1)<<sq)&holes != 0 {
 		// the hole square is from the enemy's perspective, white's in black's territory
 		if color == White {
 			sq ^= 56
