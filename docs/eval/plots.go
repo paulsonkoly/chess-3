@@ -6,11 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
 	"text/template"
 
-	"github.com/paulsonkoly/chess-3/eval"
 	. "github.com/paulsonkoly/chess-3/chess"
+	"github.com/paulsonkoly/chess-3/eval"
 )
 
 const chessboardTemplate = `# Set up the heatmap
@@ -247,7 +248,7 @@ func generateChessboardPlot(field reflect.Value, title, outputFile string) {
 			// with rank 1 at the bottom, so we reverse the rows
 			idx := i*8 + j
 			val := field.Index(idx).Interface().(Score)
-			buf.WriteString(fmt.Sprintf("%d ", val))
+			fmt.Fprintf(&buf, "%d ", val)
 		}
 		buf.WriteString("\n")
 	}
@@ -281,7 +282,7 @@ func generateTruncatedChessboardPlot(field reflect.Value, title, outputFile stri
 		for file := range 8 {
 			idx := rank*8 + file
 			val := field.Index(idx).Interface().(Score)
-			buf.WriteString(fmt.Sprintf("%d ", val))
+			fmt.Fprintf(&buf, "%d ", val)
 		}
 		buf.WriteString("\n")
 	}
@@ -359,9 +360,18 @@ func processSingleSequence(field reflect.Value, name, outputFile string, section
 	var data bytes.Buffer
 	maxX := field.Len() - 1
 
+	if maxX == 0 {
+		if val, ok := field.Index(0).Interface().(Score); ok {
+			*sections = append(*sections, MarkdownSection{
+				Title: name + " : " + strconv.Itoa(int(val)),
+			})
+		}
+		return
+	}
+
 	for i := range field.Len() {
 		val := field.Index(i).Interface().(Score)
-		data.WriteString(fmt.Sprintf("%d %d\n", i, val))
+		fmt.Fprintf(&data, "%d %d\n", i, val)
 	}
 
 	plotData := SingleLinePlot{
@@ -398,8 +408,8 @@ func processNestedPairedArray(mg, eg reflect.Value, name, outputFile string, sec
 	for i := range mg.Len() {
 		mgVal := mg.Index(i).Interface().(Score)
 		egVal := eg.Index(i).Interface().(Score)
-		data1.WriteString(fmt.Sprintf("%d %d\n", i, mgVal))
-		data2.WriteString(fmt.Sprintf("%d %d\n", i, egVal))
+		fmt.Fprintf(&data1, "%d %d\n", i, mgVal)
+		fmt.Fprintf(&data2, "%d %d\n", i, egVal)
 	}
 
 	data := LinePlot{
@@ -437,8 +447,8 @@ func processSimplePairedArray(mg, eg reflect.Value, name, outputFile string, sec
 	for i := range mg.Len() {
 		mgVal := mg.Index(i).Interface().(Score)
 		egVal := eg.Index(i).Interface().(Score)
-		data1.WriteString(fmt.Sprintf("%d %d\n", i, mgVal))
-		data2.WriteString(fmt.Sprintf("%d %d\n", i, egVal))
+		fmt.Fprintf(&data1, "%d %d\n", i, mgVal)
+		fmt.Fprintf(&data2, "%d %d\n", i, egVal)
 	}
 
 	data := LinePlot{
