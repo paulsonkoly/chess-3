@@ -395,7 +395,6 @@ func frontFill(b BitBoard, color Color) BitBoard {
 }
 
 func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T]) {
-
 	for color := White; color <= Black; color++ {
 
 		passers := pw.passers[color]
@@ -418,7 +417,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 			}
 		}
 
-		for ; passers != 0; passers &= passers-1 {
+		for ; passers != 0; passers &= passers - 1 {
 			sq := passers.LowestSet()
 
 			rank := sq / 8
