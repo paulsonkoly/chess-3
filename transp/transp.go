@@ -79,9 +79,8 @@ type bucket struct {
 
 // Table is the transposition table.
 type Table struct {
-	raw    []byte   // raw is reference to unaligned underlying data to keep it from GC
-	data   []bucket // Cache entries minus the pKey.
-	ixMask board.Hash
+	raw  []byte   // raw is reference to unaligned underlying data to keep it from GC
+	data []bucket // Cache entries minus the pKey.
 }
 
 func init() {
@@ -94,24 +93,22 @@ func init() {
 // New creates a new transposition table. size is the table size in bytes, and
 // only power of 2 sizes are supported.
 func New(size int) *Table {
-	t := Table{ixMask: board.Hash(0xffffffffffffffff)}
+	t := Table{}
 	t.Resize(size)
 	return &t
 }
 
-// Resize resizes to table to size bytes, potentially reallocating its
+// Resize resizes the table to size bytes, potentially reallocating its
 // resources. The table data is not guaranteed to be kept in-tact. It is
 // recommended, but not a must to clear the table after a resize.
 func (t *Table) Resize(size int) {
 	validateSize(size)
 
 	requiredBuckets := size / bucketSize
-	requiredBytes := size
-	availableBytes := (int(t.ixMask) + 1) * bucketSize
 
-	if availableBytes >= requiredBytes {
-		// underlying raw buffer doesn't need to be touched, we just resize the buckets slice and the ixMask
-		t.data = unsafe.Slice(&t.data[0], requiredBuckets)
+	if len(t.data) >= requiredBuckets {
+		// underlying raw buffer doesn't need to be touched, we just resize the buckets slice
+		t.data = t.data[:requiredBuckets]
 	} else {
 		// over allocate raw pool, so we can start at bucket alignment. We want
 		// buckets to fall on a single 64 byte CPU cache line, contained in either
@@ -123,8 +120,6 @@ func (t *Table) Resize(size int) {
 		ptr := unsafe.Pointer(aligned)
 		t.data = unsafe.Slice((*bucket)(ptr), requiredBuckets)
 	}
-
-	t.ixMask = board.Hash(requiredBuckets - 1)
 }
 
 func validateSize(size int) {
@@ -162,7 +157,11 @@ func (t *Table) Clear() {
 
 // bucketIx returns the index of the bucket for hash.
 func (t *Table) bucketIx(hash board.Hash) int {
-	return int(hash & t.ixMask)
+	// Lemire's fast modulo trick. If the table grows beyond 4GB, only the
+	// collision rate increases; correctness is unaffected. See:
+	// https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+	h := uint32(hash)
+	return int(uint64(h) * uint64(len(t.data)) >> 32)
 }
 
 const (
