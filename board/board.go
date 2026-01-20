@@ -11,10 +11,11 @@ type Board struct {
 	SquaresToPiece [64]Piece
 	Pieces         [7]BitBoard
 	Colors         [2]BitBoard
+	hashes         []Hash
+	fullMoves      int
 	STM            Color
 	EnPassant      Square
 	Castles        Castles
-	hashes         []Hash
 	FiftyCnt       Depth
 }
 
@@ -89,6 +90,8 @@ func (r *Reverse) setCapture(p Piece) {
 // can be used in UndoMove().
 func (b *Board) MakeMove(m move.Move) Reverse {
 	var r Reverse
+
+	b.fullMoves += int(b.STM)
 
 	hash := b.Hash()
 
@@ -210,6 +213,7 @@ func (b *Board) UndoMove(m move.Move, r Reverse) {
 
 	b.Castles ^= r.castlingChange()
 	b.FiftyCnt = r.fiftyCnt()
+	b.fullMoves -= int(b.STM)
 
 	// b.consistencyCheck()
 }

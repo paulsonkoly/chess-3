@@ -371,3 +371,23 @@ func TestIsPseudoLegal(t *testing.T) {
 		})
 	}
 }
+
+func TestMoveCounts(t *testing.T) {
+	b := Must(board.FromFEN("6k1/1n3ppp/4r3/8/8/3B3P/2R2PP1/6K1 w - - 10 111"))
+
+	r1 := b.MakeMove(move.From(C2) | move.To(C7))
+	assert.Equal(t, "6k1/1nR2ppp/4r3/8/8/3B3P/5PP1/6K1 b - - 11 111", b.FEN())
+	// black move increments full move counter
+	r2 := b.MakeMove(move.From(B7) | move.To(D6))
+	assert.Equal(t, "6k1/2R2ppp/3nr3/8/8/3B3P/5PP1/6K1 w - - 12 112", b.FEN())
+	// pawn move resets fifty move counter
+	r3 := b.MakeMove(move.From(G2) | move.To(G3))
+	assert.Equal(t, "6k1/2R2ppp/3nr3/8/8/3B2PP/5P2/6K1 b - - 0 112", b.FEN())
+
+	b.UndoMove(move.From(G2)|move.To(G3), r3)
+	assert.Equal(t, "6k1/2R2ppp/3nr3/8/8/3B3P/5PP1/6K1 w - - 12 112", b.FEN())
+	b.UndoMove(move.From(B7)|move.To(D6), r2)
+	assert.Equal(t, "6k1/1nR2ppp/4r3/8/8/3B3P/5PP1/6K1 b - - 11 111", b.FEN())
+	b.UndoMove(move.From(C2)|move.To(C7), r1)
+	assert.Equal(t, "6k1/1n3ppp/4r3/8/8/3B3P/2R2PP1/6K1 w - - 10 111", b.FEN())
+}
