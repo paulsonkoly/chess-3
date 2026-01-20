@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math/bits"
 	"os"
 	"strconv"
 	"strings"
@@ -22,7 +23,9 @@ import (
 )
 
 const (
-	defaultHash = 8
+	defaultHash = 1
+	minimalHash = 1
+	maximalHash = 1024
 )
 
 type Engine struct {
@@ -110,7 +113,7 @@ func (e *Engine) handleCommand(command string) {
 	case "uci":
 		fmt.Println("id name chess-3")
 		fmt.Println("id author Paul Sonkoly")
-		fmt.Printf("option name Hash type spin default %d min 1 max 128\n", defaultHash)
+		fmt.Printf("option name Hash type spin default %d min %d max %d\n", defaultHash, minimalHash, maximalHash)
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Println("option name Threads type spin default 1 min 1 max 1")
 		// spsa options
@@ -179,12 +182,19 @@ func (e *Engine) handleSetOption(args []string) {
 
 	case "Hash":
 		val, err := strconv.Atoi(args[3])
-		if err != nil || val < 1 || val&(val-1) != 0 {
+		// silent return, GUI is violating our uci params. We are allowed to ignore as per UCI spec.
+		if err != nil || val < minimalHash || val > maximalHash {
 			return
 		}
 
-		// TODO re-allocate or better yet increase  / reduce the tt only
-		e.Search = search.New(val * transp.MegaBytes) // we need to re-allocate the hash table
+		// noisy warn user, we can't do non power of 2 sizes but UCI does not allow
+		// for expressing that via uci params.
+		if val&(val-1) != 0 {
+			val = 1 << (bits.Len(uint(val)) - 1)
+			fmt.Fprintf(os.Stderr, "dropping non-power of 2 tt size to %d\n", val)
+		}
+
+		e.Search.ResizeTT(val * transp.MegaBytes)
 
 	default:
 		val, err := strconv.Atoi(args[3])
