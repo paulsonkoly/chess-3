@@ -39,6 +39,7 @@ func ParseFEN(b *Board, fen []byte) error {
 		p.cRights,
 		p.enPassant,
 		p.fifty,
+		p.fullMoves,
 	); err != nil {
 		return err
 	}
@@ -170,7 +171,7 @@ func (fp *fenParser) cRights() error {
 
 func (fp *fenParser) enPassant() error {
 	if fp.fen[fp.ix] != '-' {
-		if fp.ix+1 >= len(fp.fen) {
+		if fp.ix+1 >= fp.l {
 			return errors.New("premature end of fen")
 		}
 		if fp.fen[fp.ix] < 'a' || fp.fen[fp.ix] > 'h' || fp.fen[fp.ix+1] < '1' || fp.fen[fp.ix+1] > '8' {
@@ -186,18 +187,45 @@ func (fp *fenParser) enPassant() error {
 }
 
 func (fp *fenParser) fifty() error {
+	cnt, err := fp.counter()
+	if err != nil {
+		return err
+	}
+
+	if cnt < 0 || cnt > 100 {
+		return fmt.Errorf("fifty move count out of range %d", cnt)
+	}
+
+	fp.b.FiftyCnt = Depth(cnt)
+	return nil
+}
+
+func (fp *fenParser) fullMoves() error {
+	cnt, err := fp.counter()
+	if err != nil {
+		return err
+	}
+
+	if cnt < 1 {
+		return fmt.Errorf("full move count out of range %d", cnt)
+	}
+
+	fp.b.fullMoves = cnt
+	return nil
+}
+
+func (fp *fenParser) counter() (int, error) {
 	cnt := 0
 	for fp.ix < fp.l && fp.fen[fp.ix] != ' ' {
 		if fp.fen[fp.ix] < '0' || fp.fen[fp.ix] > '9' {
-			return fmt.Errorf("digit expected got %c", fp.fen[fp.ix])
+			return 0, fmt.Errorf("digit expected got %c", fp.fen[fp.ix])
 		}
 		cnt *= 10
 		cnt += int(fp.fen[fp.ix] - '0')
 		fp.ix++
 	}
 
-	fp.b.FiftyCnt = Depth(cnt)
-	return nil
+	return cnt, nil
 }
 
 func (b Board) FEN() string {
@@ -265,17 +293,7 @@ func (b Board) FEN() string {
 		sb.WriteString(b.EnPassant.String())
 	}
 	sb.WriteString(" ")
-	fmt.Fprintf(&sb, "%d 1", b.FiftyCnt)
-
-	// if (board->en_passant) {
-	//   SQUARE ep = __builtin_ctzll(board->en_passant);
-	//   SQUARE f = (ep & 7), r = (ep >> 3);
-	//
-	//   printf(" %c%c 0 1 ", 'a' + f, '1' + r);
-	// }
-	// else {
-	//   printf(" - 0 1 ");
-	// }
+	fmt.Fprintf(&sb, "%d %d", b.FiftyCnt, b.fullMoves)
 
 	return sb.String()
 }

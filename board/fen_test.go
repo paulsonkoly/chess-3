@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -163,6 +162,21 @@ func TestFENConversion(t *testing.T) {
 			err:  errors.New("invalid char 9"),
 		},
 		{
+			name: "50 move counter too low",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - -1 1",
+			err:  errors.New("digit expected got -"),
+		},
+		{
+			name: "50 move counter too high",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 101 1",
+			err:  errors.New("fifty move count out of range 101"),
+		},
+		{
+			name: "fullmove counter too low",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 50 0",
+			err:  errors.New("full move count out of range 0"),
+		},
+		{
 			name: "Regress/1 en passant single character terminates the string",
 			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ a",
 			err:  errors.New("premature end of fen"),
@@ -177,19 +191,9 @@ func TestFENConversion(t *testing.T) {
 			if tt.err != nil {
 				assert.EqualError(t, err, tt.err.Error())
 			} else {
-
 				require.NoError(t, err)
-				assert.NotNil(t, board)
-
-				if board != nil {
-
-					// Convert Board back to FEN
-					outputFEN := board.FEN()
-
-					// Compare the FENs using cmp
-					if diff := cmp.Diff(tt.fen, outputFEN); diff != "" {
-						t.Errorf("FEN conversion failed (-expected +actual):\n%s", diff)
-					}
+				if assert.NotNil(t, board) {
+					assert.Equal(t, tt.fen, board.FEN())
 				}
 			}
 		})
