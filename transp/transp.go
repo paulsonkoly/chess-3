@@ -94,22 +94,43 @@ func init() {
 // New creates a new transposition table. size is the table size in bytes, and
 // only power of 2 sizes are supported.
 func New(size int) *Table {
+	t := Table{}
+	t.Resize(size)
+	return &t
+}
+
+// Resize resizes to table to size bytes, potentially reallocating its
+// resources. The table data is not guaranteed to be kept in-tact. It is
+// recommended, but not a must to clear the table after a resize.
+func (t *Table) Resize(size int) {
+	validateSize(size)
+
+	requiredBuckets := size / bucketSize
+	requiredBytes := size
+	availableBytes := (int(t.ixMask)+1) * bucketSize
+
+	if availableBytes >= requiredBytes {
+		// underlying raw buffer doesn't need to be touched, we just resize the buckets slice and the ixMask
+		t.data = unsafe.Slice(&t.data[0], requiredBuckets)
+	} else {
+		// over allocate raw pool, so we can start at bucket alignment. We want
+		// buckets to fall on a single 64 byte CPU cache line, contained in either
+		// the low or the high 32 bytes.
+		t.raw = make([]byte, size+bucketSize-1)
+		base := uintptr(unsafe.Pointer(&t.raw[0]))
+		aligned := (base + uintptr(bucketSize-1)) &^ uintptr(bucketSize-1)
+
+		ptr := unsafe.Pointer(aligned)
+		t.data = unsafe.Slice((*bucket)(ptr), requiredBuckets)
+	}
+
+	t.ixMask = board.Hash(requiredBuckets - 1)
+}
+
+func validateSize(size int) {
 	if size < bucketSize || size&(size-1) != 0 {
 		panic(fmt.Sprintf("invalid transposition table size %d", size))
 	}
-
-	numBuckets := size / bucketSize
-
-	// over allocate raw pool, so we can start at bucket alignment. We want
-	// buckets to fall on a single 64 byte CPU cache line.
-	raw := make([]byte, size+bucketSize-1)
-	base := uintptr(unsafe.Pointer(&raw[0]))
-	aligned := (base + uintptr(bucketSize-1)) &^ uintptr(bucketSize-1)
-
-	ptr := unsafe.Pointer(aligned)
-	buckets := unsafe.Slice((*bucket)(ptr), numBuckets)
-
-	return &Table{raw: raw, data: buckets, ixMask: board.Hash(numBuckets - 1)}
 }
 
 // HashFull is the permill use estimate of the tt.
