@@ -94,7 +94,7 @@ func init() {
 // New creates a new transposition table. size is the table size in bytes, and
 // only power of 2 sizes are supported.
 func New(size int) *Table {
-	t := Table{}
+	t := Table{ixMask: board.Hash(0xffffffffffffffff)}
 	t.Resize(size)
 	return &t
 }
@@ -107,7 +107,7 @@ func (t *Table) Resize(size int) {
 
 	requiredBuckets := size / bucketSize
 	requiredBytes := size
-	availableBytes := (int(t.ixMask)+1) * bucketSize
+	availableBytes := (int(t.ixMask) + 1) * bucketSize
 
 	if availableBytes >= requiredBytes {
 		// underlying raw buffer doesn't need to be touched, we just resize the buckets slice and the ixMask
