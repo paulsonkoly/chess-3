@@ -35,7 +35,7 @@ const (
 // the engine code if needed.
 type Driver struct {
 	board      *board.Board
-	search     *search.Search
+	search     Search
 	input      *bufio.Scanner
 	output     io.Writer
 	err        io.Writer
@@ -45,39 +45,52 @@ type Driver struct {
 }
 
 type Search interface {
-	Go(...search.Option)
+	Go(*board.Board, ...search.Option) (Score, move.Move)
 	Clear()
+	ResizeTT(int)
 }
 
 type driverOpts struct {
 	input  io.Reader
 	output io.Writer
 	err    io.Writer
+	search Search
 }
 
-// WithInput replaces the default os.Stdin in the driver by the user specified io.Reader.
+// WithInput replaces the default os.Stdin in the driver with the user specified io.Reader.
 func WithInput(input io.Reader) DriverOpt { return func(o *driverOpts) { o.input = input } }
 
-// WithOutput replaces the default os.Stdout in the driver by the user specified io.Writer.
+// WithOutput replaces the default os.Stdout in the driver with the user specified io.Writer.
 func WithOutput(output io.Writer) DriverOpt { return func(o *driverOpts) { o.output = output } }
 
-// WithError replaces the default os.Stderr in the driver by the user specified io.Writer.
+// WithError replaces the default os.Stderr in the driver with the user specified io.Writer.
 func WithError(err io.Writer) DriverOpt { return func(o *driverOpts) { o.err = err } }
+
+// WithSearch replaces the default Search with the user specified one.
+func WithSearch(s Search) DriverOpt { return func(o *driverOpts) { o.search = s } }
 
 // DriverOpt is an option for creating a new UCI driver.
 type DriverOpt func(*driverOpts)
 
 // NewDriver creates a new UCI driver based on opts.
 func NewDriver(opts ...DriverOpt) *Driver {
-	actual := driverOpts{input: os.Stdin, output: os.Stdout, err: os.Stderr}
+	actual := driverOpts{
+		input:  os.Stdin,
+		output: os.Stdout,
+		err:    os.Stderr,
+	}
 
 	for _, opt := range opts {
 		opt(&actual)
 	}
 
+	if actual.search == nil {
+		actual.search = search.New(1 * transp.MegaBytes)
+	}
+
 	return &Driver{
 		board:  board.StartPos(),
-		search: search.New(defaultHash * transp.MegaBytes),
+		search: actual.search,
 		input:  bufio.NewScanner(actual.input),
 		output: actual.output,
 		err:    actual.err,
@@ -87,40 +100,39 @@ func NewDriver(opts ...DriverOpt) *Driver {
 // Run executes an input loop reading from stdin and in parallel running and
 // controlling the search. It supports search interrupts with time control or
 // stop command.
-func (e *Driver) Run() {
+func (d *Driver) Run() {
 	wg := sync.WaitGroup{}
 
-	e.input = bufio.NewScanner(os.Stdin)
-	e.inputLines = make(chan string)
-	e.stop = make(chan struct{})
+	d.inputLines = make(chan string)
+	d.stop = make(chan struct{})
 
 	wg.Add(2)
 
 	go func() {
-		e.readInput()
-		close(e.inputLines)
+		d.readInput()
+		close(d.inputLines)
 		wg.Done()
 	}()
 
 	go func() {
-		e.handleInput()
+		d.handleInput()
 		wg.Done()
 	}()
 
 	wg.Wait()
 
-	close(e.stop)
+	close(d.stop)
 }
 
-func (e *Driver) readInput() {
-	for e.input.Scan() {
-		line := e.input.Text()
+func (d *Driver) readInput() {
+	for d.input.Scan() {
+		line := d.input.Text()
 
 		switch line {
 
 		case "stop":
 			select {
-			case e.stop <- struct{}{}:
+			case d.stop <- struct{}{}:
 			default:
 				// no search is running. Ignore.
 			}
@@ -129,21 +141,21 @@ func (e *Driver) readInput() {
 			return
 
 		case "isready":
-			fmt.Println("readyok")
+			fmt.Fprintln(d.output, "readyok")
 
 		default:
-			e.inputLines <- line
+			d.inputLines <- line
 		}
 	}
 }
 
-func (e *Driver) handleInput() {
-	for line := range e.inputLines {
-		e.handleCommand(line)
+func (d *Driver) handleInput() {
+	for line := range d.inputLines {
+		d.handleCommand(line)
 	}
 }
 
-func (e *Driver) handleCommand(command string) {
+func (d *Driver) handleCommand(command string) {
 	parts := strings.Fields(command)
 	if len(parts) == 0 {
 		return
@@ -151,70 +163,67 @@ func (e *Driver) handleCommand(command string) {
 
 	switch parts[0] {
 	case "uci":
-		fmt.Println("id name chess-3")
-		fmt.Println("id author Paul Sonkoly")
-		fmt.Printf("option name Hash type spin default %d min %d max %d\n", defaultHash, minimalHash, maximalHash)
+		fmt.Fprintln(d.output, "id name chess-3")
+		fmt.Fprintln(d.output, "id author Paul Sonkoly")
+		fmt.Fprintf(d.output, "option name Hash type spin default %d min %d max %d\n", defaultHash, minimalHash, maximalHash)
 		// these are here to conform ob. we don't actually support these options.
-		fmt.Println("option name Threads type spin default 1 min 1 max 1")
+		fmt.Fprintln(d.output, "option name Threads type spin default 1 min 1 max 1")
 		// spsa options
-		fmt.Print(params.UCIOptions())
-		fmt.Println("uciok")
+		fmt.Fprint(d.output, params.UCIOptions())
+		fmt.Fprintln(d.output, "uciok")
 
 	case "ucinewgame":
-		e.search.Clear()
+		d.search.Clear()
 
 	case "position":
-		e.handlePosition(parts[1:])
+		d.handlePosition(parts[1:])
 
 	case "go":
-		e.handleGo(parts[1:])
+		d.handleGo(parts[1:])
 
 	case "fen":
-		fmt.Println(e.board.FEN())
+		fmt.Fprintln(d.output, d.board.FEN())
 
 	case "setoption":
-		e.handleSetOption(parts[1:])
+		d.handleSetOption(parts[1:])
 
 	case "eval":
-		e.handleEval()
-
-	case "quit":
-		os.Exit(0)
+		d.handleEval()
 
 	case "perft":
 		if len(parts) < 2 {
-			fmt.Fprintln(os.Stderr, "depth missing")
+			fmt.Fprintln(d.err, "depth missing")
 			break
 		}
 
-		d, err := strconv.Atoi(parts[1])
+		depth, err := strconv.Atoi(parts[1])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(d.err, err)
 			break
 		}
-		if d < 0 || d > 30 {
-			fmt.Fprintln(os.Stderr, "unsupported depth")
+		if depth < 0 || depth > 30 {
+			fmt.Fprintln(d.err, "unsupported depth")
 			break
 		}
 
-		fmt.Println(debug.Perft(e.board, Depth(d), true))
+		fmt.Fprintln(d.output, debug.Perft(d.board, Depth(depth), true))
 
 	case "debug":
 		switch parts[1] {
 
 		case "on":
-			e.debug = true
+			d.debug = true
 
 		case "off":
-			e.debug = false
+			d.debug = false
 		}
 
 	case "spsa":
-		fmt.Print(params.OpenbenchInfo())
+		fmt.Fprint(d.output, params.OpenbenchInfo())
 	}
 }
 
-func (e *Driver) handleSetOption(args []string) {
+func (d *Driver) handleSetOption(args []string) {
 	if len(args) != 4 || args[0] != "name" || args[2] != "value" {
 		return
 	}
@@ -226,7 +235,7 @@ func (e *Driver) handleSetOption(args []string) {
 			return
 		}
 
-		e.Search.ResizeTT(val * transp.MegaBytes)
+		d.search.ResizeTT(val * transp.MegaBytes)
 
 	default:
 		val, err := strconv.Atoi(args[3])
@@ -234,12 +243,12 @@ func (e *Driver) handleSetOption(args []string) {
 			return
 		}
 		if err := params.Set(args[1], val); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(d.err, err)
 		}
 	}
 }
 
-func (e *Driver) handlePosition(args []string) {
+func (d *Driver) handlePosition(args []string) {
 	if len(args) == 0 {
 		return
 	}
@@ -247,42 +256,42 @@ func (e *Driver) handlePosition(args []string) {
 	switch args[0] {
 
 	case "startpos":
-		e.board = board.StartPos()
+		d.board = board.StartPos()
 		if len(args) > 2 && args[1] == "moves" {
-			e.applyMoves(args[2:])
+			d.applyMoves(args[2:])
 		}
 
 	case "fen":
 		if len(args) < 7 {
-			fmt.Fprintf(os.Stderr, "not enough arguments %d\n", len(args))
+			fmt.Fprintf(d.err, "not enough arguments %d\n", len(args))
 			return
 		}
 
 		fen := strings.Join(args[1:7], " ")
 		b, err := board.FromFEN(fen)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "invalid fen %v\n", err)
+			fmt.Fprintf(d.err, "invalid fen %v\n", err)
 			return
 		}
 		if b.InvalidPieceCount() {
-			fmt.Fprintln(os.Stderr, "invalid piece counts")
+			fmt.Fprintln(d.err, "invalid piece counts")
 			return
 		}
-		e.board = b
+		d.board = b
 
 		if len(args) >= 8 && args[7] == "moves" {
-			e.applyMoves(args[8:])
+			d.applyMoves(args[8:])
 		}
 	}
 }
 
-func (e *Driver) applyMoves(moves []string) {
-	b := e.board
+func (d *Driver) applyMoves(moves []string) {
+	b := d.board
 	for _, ms := range moves {
 		m, err := parseUCIMove(b, ms)
 
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(d.err, err)
 			return
 		}
 
@@ -323,8 +332,8 @@ func parseUCIMove(b *board.Board, uciM string) (move.Move, error) {
 	return m, nil
 }
 
-func (e *Driver) handleEval() {
-	fmt.Println(eval.Eval(e.board, &eval.Coefficients))
+func (d *Driver) handleEval() {
+	fmt.Fprintln(d.output, eval.Eval(d.board, &eval.Coefficients))
 }
 
 type timeControl struct {
@@ -384,7 +393,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 	return Clamp(4*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
 }
 
-func (e *Driver) handleGo(args []string) {
+func (d *Driver) handleGo(args []string) {
 	opts := make([]search.Option, 0, 4)
 
 	tc := timeControl{}
@@ -414,12 +423,12 @@ func (e *Driver) handleGo(args []string) {
 	stop := make(chan struct{})
 	opts = append(opts, search.WithStop(stop))
 
-	stm := e.board.STM
+	stm := d.board.STM
 	if tc.timedMode(stm) {
 		opts = append(opts, search.WithSoftTime(tc.softLimit(stm)))
 	}
 
-	if e.debug {
+	if d.debug {
 		opts = append(opts, search.WithDebug(true))
 	}
 
@@ -428,7 +437,7 @@ func (e *Driver) handleGo(args []string) {
 	searchFin := make(chan struct{})
 
 	go func() {
-		_, bm = e.search.Go(e.board, opts...)
+		_, bm = d.search.Go(d.board, opts...)
 		close(searchFin)
 	}()
 
@@ -445,7 +454,7 @@ func (e *Driver) handleGo(args []string) {
 				close(stop)
 			}
 
-		case <-e.stop:
+		case <-d.stop:
 			if !stopped {
 				stopped = true
 				close(stop)
@@ -457,7 +466,7 @@ func (e *Driver) handleGo(args []string) {
 		close(stop)
 	}
 
-	fmt.Printf("bestmove %s\n", bm)
+	fmt.Fprintf(d.output, "bestmove %s\n", bm)
 }
 
 func parseInt(value string) int {
