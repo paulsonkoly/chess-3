@@ -25,13 +25,13 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move
 		s.gen++
 	}()
 
-	options := options{depth: MaxPlies, nodes: -1, softNodes: -1, info: true}
+	options := Options{Depth: MaxPlies, Nodes: -1, SoftNodes: -1, Info: true}
 	for _, opt := range opts {
 		opt(&options)
 	}
 
-	if options.counters == nil {
-		options.counters = &Counters{}
+	if options.Counters == nil {
+		options.Counters = &Counters{}
 	}
 
 	return s.iterativeDeepen(b, &options)
@@ -39,14 +39,14 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move
 
 // iterativeDeepen performs an iterative-deepened alpha-beta with aspiration
 // window. depth is iterated between 0 and d inclusive.
-func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, move move.Move) {
+func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, move move.Move) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
 
 	start := time.Now()
 
-	for idD := range opts.depth + 1 {
+	for idD := range opts.Depth + 1 {
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
 		var scoreSample Score
@@ -70,8 +70,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 
 			if s.abort(opts) {
 				// have a final node count for debugging purposes
-				if opts.info {
-					fmt.Printf("info depth %d nodes %d\n", idD, opts.counters.Nodes)
+				if opts.Info {
+					fmt.Printf("info depth %d nodes %d\n", idD, opts.Counters.Nodes)
 				}
 
 				// we hit hard timeout/abort and we don't have a move. We try to return
@@ -105,14 +105,14 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 
 		elapsed := time.Since(start)
 		miliSec := elapsed.Milliseconds()
-		cnts := opts.counters
+		cnts := opts.Counters
 		cnts.Time = miliSec
-		if opts.info {
+		if opts.Info {
 			fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
 				idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 		}
 
-		if move != 0 && opts.softAbort(miliSec, opts.counters.Nodes) {
+		if move != 0 && opts.softAbort(miliSec, opts.Counters.Nodes) {
 			return
 		}
 
@@ -122,13 +122,13 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *options) (score Score, mo
 	return
 }
 
-func (s *Search) abort(opts *options) bool {
+func (s *Search) abort(opts *Options) bool {
 	if s.aborted {
 		return true
 	}
-	if opts.stop != nil {
+	if opts.Stop != nil {
 		select {
-		case <-opts.stop:
+		case <-opts.Stop:
 			s.aborted = true
 			return true
 		default:
@@ -139,9 +139,9 @@ func (s *Search) abort(opts *options) bool {
 
 // incrementNodes increments node count in opts.counters, except if it would
 // overrun the alloted nodes in which case it sets abort.
-func (s *Search) incrementNodes(opts *options) {
-	if opts.nodes == -1 || opts.counters.Nodes < opts.nodes {
-		opts.counters.Nodes++
+func (s *Search) incrementNodes(opts *Options) {
+	if opts.Nodes == -1 || opts.Counters.Nodes < opts.Nodes {
+		opts.Counters.Nodes++
 	} else {
 		s.aborted = true
 	}
@@ -172,7 +172,7 @@ const (
 
 // AlphaBeta performs an alpha beta search to depth d, and then transitions
 // into Quiesence() search.
-func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *options) Score {
+func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nType Node, opts *Options) Score {
 	s.pv.setNull(ply)
 
 	if d == 0 || ply >= MaxPlies-1 {
@@ -180,7 +180,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	}
 
 	s.incrementNodes(opts)
-	opts.counters.ABNodes++
+	opts.Counters.ABNodes++
 
 	if s.abort(opts) {
 		return Inv
@@ -358,10 +358,10 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 				// store node as fail high (cut-node)
 				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
 				s.ranker.FailHigh(d, b, pck.YieldedMoves(), s.hstack)
-				if opts.debug {
-					opts.counters.Moves += moveCnt
+				if opts.Debug {
+					opts.Counters.Moves += moveCnt
 					if moveCnt == 1 {
-						opts.counters.FirstCut++
+						opts.Counters.FirstCut++
 					}
 				}
 
@@ -389,8 +389,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
-	if opts.debug {
-		opts.counters.Moves += moveCnt
+	if opts.Debug {
+		opts.Counters.Moves += moveCnt
 	}
 
 	if !hasLegal {
@@ -476,7 +476,7 @@ func lmr(d Depth, mCount int, improving bool, nType Node) Depth {
 }
 
 // Quiescence resolves the position to a quiet one, and then evaluates.
-func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *options) Score {
+func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *Options) Score {
 
 	s.incrementNodes(opts)
 
