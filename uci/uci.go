@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"math/bits"
 	"os"
 	"strconv"
 	"strings"
@@ -182,16 +181,8 @@ func (e *Engine) handleSetOption(args []string) {
 
 	case "Hash":
 		val, err := strconv.Atoi(args[3])
-		// silent return, GUI is violating our uci params. We are allowed to ignore as per UCI spec.
 		if err != nil || val < minimalHash || val > maximalHash {
 			return
-		}
-
-		// noisy warn user, we can't do non power of 2 sizes but UCI does not allow
-		// for expressing that via uci params.
-		if val&(val-1) != 0 {
-			val = 1 << (bits.Len(uint(val)) - 1)
-			fmt.Fprintf(os.Stderr, "dropping non-power of 2 tt size to %d\n", val)
 		}
 
 		e.Search.ResizeTT(val * transp.MegaBytes)

@@ -33,7 +33,7 @@ func New(size int) *Search {
 }
 
 // ResizeTT resizes the current tt to new size potentially re-allocating it.
-func (s * Search)ResizeTT(size int) { s.tt.Resize(size) }
+func (s *Search) ResizeTT(size int) { s.tt.Resize(size) }
 
 // refresh prepares the state for a new search.
 func (s *Search) refresh() {
