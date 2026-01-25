@@ -135,7 +135,7 @@ func TestHashSettings(t *testing.T) {
 		{"hash at maximum", "setoption name Hash value 1024", 1024 * transp.MegaBytes, ""},
 		{"hash below minimum", "setoption name Hash value 0", 0, ""},
 		{"hash above maximum", "setoption name Hash value 2048", 0, ""},
-		{"invalid hash value", "nsetoption name Hash value invalid", 0, ""},
+		{"invalid hash value", "setoption name Hash value invalid", 0, ""},
 		{"malformed setoption - missing value", "setoption name Hash", 0, "argument missing"},
 		{"malformed setoption - wrong structure", "setoption whops Hash value 16", 0, ""},
 		{"unknown option name", "setoption name Unknown value 100", 0, ""},
