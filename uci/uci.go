@@ -404,7 +404,13 @@ func (d *Driver) handleGo(args []string) {
 
 	tc := timeControl{}
 
+	checkLen := true
 	for i := range args {
+		if checkLen && len(args) <= i+1 {
+			fmt.Fprintln(d.err, "argument missing")
+			return
+		}
+		checkLen = false
 		switch args[i] {
 		case "wtime":
 			tc.wtime = parseInt64(args[i+1])
@@ -422,6 +428,8 @@ func (d *Driver) handleGo(args []string) {
 			opts = append(opts, search.WithNodes(nodes))
 		case "movetime":
 			tc.mtime = parseInt64(args[i+1])
+		default:
+			checkLen = true
 		}
 	}
 

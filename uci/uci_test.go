@@ -83,13 +83,8 @@ func TestIsReady(t *testing.T) {
 			errors := &bytes.Buffer{}
 			search := &MockSearch{}
 
-			prelude := "uci\n"
-			prolog := "\ngo\nquit\n"
-
-			inputs := prelude + tt.inputs + prolog
-
 			d := uci.NewDriver(
-				uci.WithInput(strings.NewReader(inputs)),
+				uci.WithInput(strings.NewReader(tt.inputs)),
 				uci.WithOutput(outputs),
 				uci.WithError(errors),
 				uci.WithSearch(search),
@@ -213,31 +208,48 @@ quit
 	assert.Contains(t, outputs.String(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 }
 
-func TestGo(t *testing.T) {
-	inputs := `uci
-go depth 5
-quit
-`
+func TestGoTime(t *testing.T) {
+	tests := []struct {
+		name      string
+		inputs    string
+		wantError string
+	}{
+		{"go wtime/winc/btime/binc", "go wtime 1000 winc 300 btime 900 binc 200", ""},
+		{"go wtime time missing", "go wtime", "argument missing"},
+	}
 
-	outputs := &bytes.Buffer{}
-	errors := &bytes.Buffer{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputs := &bytes.Buffer{}
+			errors := &bytes.Buffer{}
+			search := &MockSearch{}
 
-	search := &MockSearch{}
+			search.MockMove(move.From(E2) | move.To(E4))
+			search.MockScore(-123)
 
-	search.MockMove(move.From(E2) | move.To(E4))
-	search.MockScore(-123)
+			prelude := "uci\n"
+			prolog := "\nquit\n"
 
-	d := uci.NewDriver(
-		uci.WithInput(strings.NewReader(inputs)),
-		uci.WithOutput(outputs),
-		uci.WithError(errors),
-		uci.WithSearch(search),
-	)
+			inputs := prelude + tt.inputs + prolog
 
-	d.Run()
+			d := uci.NewDriver(
+				uci.WithInput(strings.NewReader(inputs)),
+				uci.WithOutput(outputs),
+				uci.WithError(errors),
+				uci.WithSearch(search),
+			)
 
-	assert.Empty(t, errors)
-	assert.Contains(t, outputs.String(), "bestmove e2e4")
+			d.Run()
+
+			if tt.wantError != "" {
+				assert.NotContains(t, outputs.String(), "bestmove")
+				assert.Contains(t, errors.String(), tt.wantError)
+			} else {
+				assert.Empty(t, errors)
+				assert.Contains(t, outputs.String(), "bestmove e2e4")
+			}
+		})
+	}
 }
 
 func TestGoDepth(t *testing.T) {
