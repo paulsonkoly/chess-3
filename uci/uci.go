@@ -197,6 +197,11 @@ func (d *Driver) handleCommand(command string) {
 		}
 
 	case "quit":
+		// notice how a clean shutdown on quit is problematic with the blocking io
+		// read of readInput(). we can be in a blocking read syscall, which is
+		// basically uninterruptable from go. The only way out would be a
+		// non-blocking io reader, requiring a lot of extra machinery just to
+		// recreate a non-blocking version of bufio.Scanner.
 		os.Exit(0)
 
 	case "isready":
