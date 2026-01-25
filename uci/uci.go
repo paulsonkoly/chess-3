@@ -127,6 +127,7 @@ func (d *Driver) Run() {
 func (d *Driver) readInput() {
 	for d.input.Scan() {
 		line := d.input.Text()
+		line = strings.TrimSpace(line)
 
 		switch line {
 
@@ -209,6 +210,11 @@ func (d *Driver) handleCommand(command string) {
 		fmt.Fprintln(d.output, debug.Perft(d.board, Depth(depth), true))
 
 	case "debug":
+		if len(parts) < 2 {
+			fmt.Fprintln(d.err, "on/off missing")
+			break
+		}
+
 		switch parts[1] {
 
 		case "on":

@@ -67,23 +67,40 @@ quit
 }
 
 func TestIsReady(t *testing.T) {
-	inputs := `uci
+	tests := []struct {
+		name   string
+		inputs string
+	}{
+		{"isready", "uci\nisready\nquit\n"},
+		{"whitespace at front", "uci\n  \tisready\nquit\n"},
+		{"whitespace at the back", "uci\nisready \t \nquit\n"},
+		{"whitespaces everywhere", "uci \n \t isready \n \t \n quit\n"},
+	}
 
-isready
-quit
-`
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputs := &bytes.Buffer{}
+			errors := &bytes.Buffer{}
+			search := &MockSearch{}
 
-	outputs := &bytes.Buffer{}
-	errors := &bytes.Buffer{}
-	d := uci.NewDriver(uci.WithInput(strings.NewReader(inputs)),
-		uci.WithOutput(outputs),
-		uci.WithError(errors),
-		uci.WithSearch(&MockSearch{}))
+			prelude := "uci\n"
+			prolog := "\ngo\nquit\n"
 
-	d.Run()
+			inputs := prelude + tt.inputs + prolog
 
-	assert.Empty(t, errors)
-	assert.Contains(t, outputs.String(), "readyok")
+			d := uci.NewDriver(
+				uci.WithInput(strings.NewReader(inputs)),
+				uci.WithOutput(outputs),
+				uci.WithError(errors),
+				uci.WithSearch(search),
+			)
+
+			d.Run()
+
+			assert.Empty(t, errors)
+			assert.Contains(t, outputs.String(), "readyok")
+		})
+	}
 }
 
 func TestUCINewGame(t *testing.T) {
@@ -127,7 +144,7 @@ quit
 	d.Run()
 
 	assert.Empty(t, errors)
-	assert.Equal(t, 16 * transp.MegaBytes, search.TTSize)
+	assert.Equal(t, 16*transp.MegaBytes, search.TTSize)
 }
 
 func TestInitialFen(t *testing.T) {
@@ -201,6 +218,7 @@ func TestGo(t *testing.T) {
 go depth 5
 quit
 `
+
 	outputs := &bytes.Buffer{}
 	errors := &bytes.Buffer{}
 
@@ -227,6 +245,7 @@ func TestGoDepth(t *testing.T) {
 go depth 5
 quit
 `
+
 	outputs := &bytes.Buffer{}
 	errors := &bytes.Buffer{}
 
@@ -243,4 +262,83 @@ quit
 
 	assert.Empty(t, errors)
 	assert.Equal(t, Depth(5), search.Options.Depth)
+}
+
+func TestDebug(t *testing.T) {
+	tests := []struct {
+		name      string
+		inputs    string
+		want      bool
+		wantError string
+	}{
+		{"debug with no arguments", "debug", false, "on/off missing"},
+		{"debug with extra arguments after", "debug on extra", true, ""},
+		{"debug with extra arguments in between", "debug extra on", false, ""},
+		{"debug with invalid argument", "debug invalid", false, ""},
+		{"debug on and off sequence", "debug on\ndebug off", false, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputs := &bytes.Buffer{}
+			errors := &bytes.Buffer{}
+			search := &MockSearch{}
+
+			prelude := "uci\n"
+			prolog := "\ngo\nquit\n"
+
+			inputs := prelude + tt.inputs + prolog
+
+			d := uci.NewDriver(
+				uci.WithInput(strings.NewReader(inputs)),
+				uci.WithOutput(outputs),
+				uci.WithError(errors),
+				uci.WithSearch(search),
+			)
+
+			d.Run()
+
+			assert.NotEmpty(t, outputs.String())
+			assert.Equal(t, tt.want, search.Options.Debug)
+			assert.Contains(t, errors.String(), tt.wantError)
+		})
+	}
+}
+
+func TestSetOptionValidation(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputs         string
+		expectedTTSize int
+	}{
+		{"hash within valid range", "uci\nsetoption name Hash value 16\nquit\n", 16 * transp.MegaBytes},
+		{"hash at minimum", "uci\nsetoption name Hash value 1\nquit\n", 1 * transp.MegaBytes},
+		{"hash at maximum", "uci\nsetoption name Hash value 1024\nquit\n", 1024 * transp.MegaBytes},
+		{"hash below minimum", "uci\nsetoption name Hash value 0\nquit\n", 0},
+		{"hash above maximum", "uci\nsetoption name Hash value 2048\nquit\n", 0},
+		{"invalid hash value", "uci\nsetoption name Hash value invalid\nquit\n", 0},
+		{"malformed setoption - missing value", "uci\nsetoption name Hash\nquit\n", 0},
+		{"malformed setoption - wrong structure", "uci\nsetoption Hash 16\nquit\n", 0},
+		{"unknown option name", "uci\nsetoption name Unknown value 100\nquit\n", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputs := &bytes.Buffer{}
+			errors := &bytes.Buffer{}
+			search := &MockSearch{}
+
+			d := uci.NewDriver(
+				uci.WithInput(strings.NewReader(tt.inputs)),
+				uci.WithOutput(outputs),
+				uci.WithError(errors),
+				uci.WithSearch(search),
+			)
+
+			d.Run()
+
+			assert.Empty(t, errors)
+			assert.Equal(t, tt.expectedTTSize, search.TTSize)
+		})
+	}
 }
