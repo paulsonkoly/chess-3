@@ -43,7 +43,6 @@ type Driver struct {
 	output     io.Writer
 	err        io.Writer
 	inputLines chan string
-	quit       chan struct{}
 	debug      bool
 }
 
@@ -106,7 +105,6 @@ func NewDriver(opts ...DriverOpt) *Driver {
 func (d *Driver) Run() {
 
 	d.inputLines = make(chan string)
-	d.quit = make(chan struct{})
 
 	wg := sync.WaitGroup{}
 	wg.Go(func() {
