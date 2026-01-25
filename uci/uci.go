@@ -140,6 +140,11 @@ func (d *Driver) readInput() {
 			}
 
 		case "quit":
+			select {
+			case d.stop <- struct{}{}:
+			default:
+				// no search is running. Ignore.
+			}
 			return
 
 		case "isready":
@@ -231,7 +236,11 @@ func (d *Driver) handleCommand(command string) {
 }
 
 func (d *Driver) handleSetOption(args []string) {
-	if len(args) != 4 || args[0] != "name" || args[2] != "value" {
+	if len(args) < 4 {
+		fmt.Fprintln(d.err, "argument missing")
+		return
+	}
+	if args[0] != "name" || args[2] != "value" {
 		return
 	}
 	switch args[1] {

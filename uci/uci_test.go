@@ -121,25 +121,53 @@ quit
 }
 
 func TestHashSettings(t *testing.T) {
-	inputs := `uci
+	tests := []struct {
+		name      string
+		inputs    string
+		want      int
+		wantError string
+	}{
+		{"set hash to 16 Mb", "setoption name Hash value 16", 16 * transp.MegaBytes, ""},
+		{"dangling tokens", "setoption name Hash value 17 extra", 17 * transp.MegaBytes, ""},
+		{"arguments missing", "setoption name Hash", 0, "argument missing"},
+		{"hash at minimum", "setoption name Hash value 1", 1 * transp.MegaBytes, ""},
+		{"hash at maximum", "setoption name Hash value 1024", 1024 * transp.MegaBytes, ""},
+		{"hash below minimum", "setoption name Hash value 0", 0, ""},
+		{"hash above maximum", "setoption name Hash value 2048", 0, ""},
+		{"invalid hash value", "nsetoption name Hash value invalid", 0, ""},
+		{"malformed setoption - missing value", "setoption name Hash", 0, "argument missing"},
+		{"malformed setoption - wrong structure", "setoption whops Hash value 16", 0, ""},
+		{"unknown option name", "setoption name Unknown value 100", 0, ""},
+	}
 
-setoption name Hash value 16
-quit
-`
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputs := &bytes.Buffer{}
+			errors := &bytes.Buffer{}
+			search := &MockSearch{}
 
-	outputs := &bytes.Buffer{}
-	errors := &bytes.Buffer{}
-	search := &MockSearch{}
+			prelude := "uci\n"
+			prolog := "\nquit\n"
 
-	d := uci.NewDriver(uci.WithInput(strings.NewReader(inputs)),
-		uci.WithOutput(outputs),
-		uci.WithError(errors),
-		uci.WithSearch(search))
+			inputs := prelude + tt.inputs + prolog
 
-	d.Run()
+			d := uci.NewDriver(
+				uci.WithInput(strings.NewReader(inputs)),
+				uci.WithOutput(outputs),
+				uci.WithError(errors),
+				uci.WithSearch(search),
+			)
 
-	assert.Empty(t, errors)
-	assert.Equal(t, 16*transp.MegaBytes, search.TTSize)
+			d.Run()
+
+			if tt.wantError != "" {
+				assert.Contains(t, errors.String(), tt.wantError)
+			} else {
+				assert.Empty(t, errors)
+				assert.Equal(t, tt.want, search.TTSize)
+			}
+		})
+	}
 }
 
 func TestInitialFen(t *testing.T) {
@@ -317,40 +345,3 @@ func TestDebug(t *testing.T) {
 	}
 }
 
-func TestSetOptionValidation(t *testing.T) {
-	tests := []struct {
-		name           string
-		inputs         string
-		expectedTTSize int
-	}{
-		{"hash within valid range", "uci\nsetoption name Hash value 16\nquit\n", 16 * transp.MegaBytes},
-		{"hash at minimum", "uci\nsetoption name Hash value 1\nquit\n", 1 * transp.MegaBytes},
-		{"hash at maximum", "uci\nsetoption name Hash value 1024\nquit\n", 1024 * transp.MegaBytes},
-		{"hash below minimum", "uci\nsetoption name Hash value 0\nquit\n", 0},
-		{"hash above maximum", "uci\nsetoption name Hash value 2048\nquit\n", 0},
-		{"invalid hash value", "uci\nsetoption name Hash value invalid\nquit\n", 0},
-		{"malformed setoption - missing value", "uci\nsetoption name Hash\nquit\n", 0},
-		{"malformed setoption - wrong structure", "uci\nsetoption Hash 16\nquit\n", 0},
-		{"unknown option name", "uci\nsetoption name Unknown value 100\nquit\n", 0},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			outputs := &bytes.Buffer{}
-			errors := &bytes.Buffer{}
-			search := &MockSearch{}
-
-			d := uci.NewDriver(
-				uci.WithInput(strings.NewReader(tt.inputs)),
-				uci.WithOutput(outputs),
-				uci.WithError(errors),
-				uci.WithSearch(search),
-			)
-
-			d.Run()
-
-			assert.Empty(t, errors)
-			assert.Equal(t, tt.expectedTTSize, search.TTSize)
-		})
-	}
-}
