@@ -339,9 +339,12 @@ func TestDebug(t *testing.T) {
 
 			d.Run()
 
-			assert.NotEmpty(t, outputs.String())
-			assert.Equal(t, tt.want, search.Options.Debug)
-			assert.Contains(t, errors.String(), tt.wantError)
+			if tt.wantError == "" {
+				assert.Empty(t, errors)
+				assert.Equal(t, tt.want, search.Options.Debug)
+			} else {
+				assert.Contains(t, errors.String(), tt.wantError)
+			}
 		})
 	}
 }
