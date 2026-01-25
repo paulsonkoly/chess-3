@@ -119,7 +119,12 @@ func (d *Driver) Run() {
 
 func (d *Driver) readInput() {
 	for d.input.Scan() {
-		d.inputLines <- d.input.Text()
+		line := d.input.Text()
+		d.inputLines <- line
+
+		if firstWord(line) == "quit" {
+			return
+		}
 	}
 }
 
@@ -153,7 +158,9 @@ func (d *Driver) handleCommand(command string) {
 		d.handlePosition(parts[1:])
 
 	case "go":
-		d.handleGo(parts[1:])
+		if d.handleGo(parts[1:]) {
+			return
+		}
 
 	case "fen":
 		fmt.Fprintln(d.output, d.board.FEN())
@@ -197,12 +204,7 @@ func (d *Driver) handleCommand(command string) {
 		}
 
 	case "quit":
-		// notice how a clean shutdown on quit is problematic with the blocking io
-		// read of readInput(). we can be in a blocking read syscall, which is
-		// basically uninterruptable from go. The only way out would be a
-		// non-blocking io reader, requiring a lot of extra machinery just to
-		// recreate a non-blocking version of bufio.Scanner.
-		os.Exit(0)
+		return
 
 	case "isready":
 		fmt.Fprintln(d.output, "readyok")
@@ -386,7 +388,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 	return Clamp(4*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
 }
 
-func (d *Driver) handleGo(args []string) {
+func (d *Driver) handleGo(args []string) (quit bool) {
 	opts := make([]search.Option, 0, 4)
 
 	tc := timeControl{}
@@ -395,7 +397,7 @@ func (d *Driver) handleGo(args []string) {
 		if slices.Contains([]string{"wtime", "btime", "winc", "binc", "depth", "nodes", "movetime"}, args[i]) &&
 			len(args) <= i+1 {
 			fmt.Fprintln(d.err, "argument missing")
-			return
+			return false
 		}
 
 		switch args[i] {
@@ -456,20 +458,22 @@ func (d *Driver) handleGo(args []string) {
 			case <-hardTimer.C:
 				return
 
-			case line := <-d.inputLines:
-				args := strings.Fields(line)
+			case line, ok := <-d.inputLines:
 
-				if len(args) < 1 {
-					continue
+				if ! ok {
+					return // d.readInput is finished.
 				}
 
-				switch args[0] {
+				cmd := firstWord(line)
+
+				switch cmd {
 
 				case "stop":
 					return
 
 				case "quit":
-					os.Exit(0)
+					quit = true
+					return
 
 				case "isready":
 					fmt.Fprintln(d.output, "readyok")
@@ -488,6 +492,8 @@ func (d *Driver) handleGo(args []string) {
 	wg.Wait()
 
 	fmt.Fprintf(d.output, "bestmove %s\n", bm)
+
+	return quit
 }
 
 func parseInt(value string) int {
@@ -504,4 +510,18 @@ func parseInt64(value string) int64 {
 		return 0
 	}
 	return result
+}
+
+func firstWord(s string) string {
+	i := 0
+	for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
+		i++
+	}
+
+	start := i
+	for i < len(s) && s[i] != ' ' && s[i] != '\t' {
+		i++
+	}
+
+	return s[start:i]
 }
