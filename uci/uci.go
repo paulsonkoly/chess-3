@@ -441,8 +441,13 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 	wg.Go(func() {
 		defer close(stop)
 
-		hardTimer := time.NewTimer(time.Duration(tc.hardLimit(stm)) * time.Millisecond)
-		defer hardTimer.Stop()
+		var hardTimer *time.Timer
+		var hardC <-chan time.Time
+		if tc.timedMode(stm) {
+			hardTimer = time.NewTimer(time.Duration(tc.hardLimit(stm)) * time.Millisecond)
+			hardC = hardTimer.C
+			defer hardTimer.Stop()
+		}
 
 		for {
 			// there are a set of reasons why the search needs interrupting.
@@ -455,12 +460,12 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 			case <-searchFin:
 				return
 
-			case <-hardTimer.C:
+			case <-hardC:
 				return
 
 			case line, ok := <-d.inputLines:
 
-				if ! ok {
+				if !ok {
 					return // d.readInput is finished.
 				}
 
