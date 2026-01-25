@@ -75,6 +75,7 @@ func TestIsReady(t *testing.T) {
 		{"whitespace at front", "uci\n  \tisready\nquit\n"},
 		{"whitespace at the back", "uci\nisready \t \nquit\n"},
 		{"whitespaces everywhere", "uci \n \t isready \n \t \n quit\n"},
+		{"extra token", "uci \n \t isready quit\n \t \n quit\n"},
 	}
 
 	for _, tt := range tests {

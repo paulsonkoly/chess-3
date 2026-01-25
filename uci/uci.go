@@ -128,9 +128,13 @@ func (d *Driver) Run() {
 func (d *Driver) readInput() {
 	for d.input.Scan() {
 		line := d.input.Text()
-		line = strings.TrimSpace(line)
+		args := strings.Fields(line)
 
-		switch line {
+		if len(args) < 1 {
+			continue
+		}
+
+		switch args[0] {
 
 		case "stop":
 			select {
