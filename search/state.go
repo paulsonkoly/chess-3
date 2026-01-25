@@ -49,78 +49,81 @@ func (s *Search) Clear() {
 	s.ranker.Clear()
 }
 
-type options struct {
-	stop      chan struct{}
-	softTime  int64
-	nodes     int
-	softNodes int
-	counters  *Counters
-	depth     Depth
-	debug     bool
-	info      bool
+// Options structure contains all search options. The functional options
+// pattern can be used to invoke Go.Search, this struct does not have to be
+// used directly.
+type Options struct {
+	Stop      chan struct{} // Stop channel interrupts the search.
+	SoftTime  int64         // SoftTime sets the soft timeout.
+	Nodes     int           // Nodes sets the hard node count limit.
+	SoftNodes int           // SoftNodes sets the soft node count limit.
+	Counters  *Counters     // Counters sets the location where search has to gather statistics.
+	Depth     Depth         // Depth sets the search depth limit.
+	Debug     bool          // Debug turns extra debugging on.
+	Info      bool          // Info enables search info lines.
 }
 
 // softAbort determines if elapsed times or nodes count justify a soft abort;
 // that is aborting after a full completion of a given depth.
-func (o *options) softAbort(elapsed int64, nodes int) bool {
-	return (o.softTime > 0 && elapsed > o.softTime) || (o.softNodes > 0 && nodes > o.softNodes)
+func (o *Options) softAbort(elapsed int64, nodes int) bool {
+	return (o.SoftTime > 0 && elapsed > o.SoftTime) || (o.SoftNodes > 0 && nodes > o.SoftNodes)
 }
 
 // Option modifies how a search runs, this should be set per search.
-type Option = func(*options)
+type Option = func(*Options)
 
 // WithStop runs the search with a stop channel. When the channel is signalled
 // the search stops.
 func WithStop(stop chan struct{}) Option {
-	return func(o *options) {
-		o.stop = stop
+	return func(o *Options) {
+		o.Stop = stop
 	}
 }
 
 // WithDebug runs the search with debug outputs.
 func WithDebug(debug bool) Option {
-	return func(o *options) {
-		o.debug = debug
+	return func(o *Options) {
+		o.Debug = debug
 	}
 }
 
 // WithInfo runs the search with uci info line outputs.
 func WithInfo(info bool) Option {
-	return func(o *options) {
-		o.info = info
+	return func(o *Options) {
+		o.Info = info
 	}
 }
 
 // WithCounters instructs the search to collect statistics in counters.
 func WithCounters(counters *Counters) Option {
-	return func(o *options) {
-		o.counters = counters
+	return func(o *Options) {
+		o.Counters = counters
 	}
 }
 
 // WithSoftTime controls time limit in milliseconds. <= 0 for no limit.
 // TODO: should this be time.Duration?
 func WithSoftTime(st int64) Option {
-	return func(o *options) {
-		o.softTime = st
+	return func(o *Options) {
+		o.SoftTime = st
 	}
 }
 
 // WithDepth runs the search with depth limit. Useful for "go depth" uci command.
 func WithDepth(d Depth) Option {
-	return func(o *options) { o.depth = d }
+	return func(o *Options) { o.Depth = d }
 }
 
 // WithNodes runs the search with hard node count limit. Useful for "go nodes"
 // uci command.
 func WithNodes(nodes int) Option {
-	return func(o *options) { o.nodes = nodes }
+	return func(o *Options) { o.Nodes = nodes }
 }
 
 // WithSoftNodes sets a soft node count limit. When exceeded after completing
 // a depth, the search will stop. <= 0 for no limit.
 func WithSoftNodes(nodes int) Option {
-	return func(o *options) { o.softNodes = nodes }
+	return func(o *Options) { o.SoftNodes = nodes }
 }
 
 // Counters are various search counters.

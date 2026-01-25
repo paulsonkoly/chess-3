@@ -42,7 +42,7 @@ func main() {
 	if slices.Contains(os.Args, "bench") {
 		runOBBench()
 	} else {
-		uci.NewEngine().Run()
+		uci.NewDriver().Run()
 	}
 
 	if *memProf != "" {
