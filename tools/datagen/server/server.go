@@ -148,7 +148,7 @@ Retry:
 			}
 		}
 
-		score, _ := og.search.Go(b,
+		score, _, _ := og.search.Go(b,
 			search.WithSoftNodes(serverConfig.softNodes),
 			search.WithNodes(serverConfig.hardNodes),
 			search.WithInfo(false))
