@@ -108,6 +108,9 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 		case 0:
 		case 1:
 			move = s.pv.active()[0]
+			// in case we have a short PV, clear ponder from previous iteration, as
+			// there is no guarantee the ponder move is still legal after move.
+			ponder = 0
 		default:
 			move = s.pv.active()[0]
 			ponder = s.pv.active()[1]
