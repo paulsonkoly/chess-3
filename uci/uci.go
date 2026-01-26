@@ -408,11 +408,12 @@ func (d *Driver) handleEval() {
 }
 
 type timeControl struct {
-	wtime int64 // White time in milliseconds
-	btime int64 // Black time in milliseconds
-	winc  int64 // White increment per move in milliseconds
-	binc  int64 // Black increment per move in milliseconds
-	mtime int64 // move time
+	wtime     int64 // White time in milliseconds
+	btime     int64 // Black time in milliseconds
+	winc      int64 // White increment per move in milliseconds
+	binc      int64 // Black increment per move in milliseconds
+	mtime     int64 // move time
+	movestogo int64 // uci movestogo option
 }
 
 func (tc timeControl) timedMode(stm Color) bool {
@@ -430,12 +431,19 @@ func (tc timeControl) softLimit(stm Color) int64 {
 		return tc.mtime
 	}
 
+	var movestogo int64
+	if tc.movestogo > 0 {
+		movestogo = min(tc.movestogo, PredictedMoves)
+	} else {
+		movestogo = PredictedMoves
+	}
+
 	if stm == White && tc.wtime > 0 {
-		return tc.wtime/PredictedMoves + tc.winc/2
+		return tc.wtime/movestogo + tc.winc/2
 	}
 
 	if stm == Black && tc.btime > 0 {
-		return tc.btime/PredictedMoves + tc.binc/2
+		return tc.btime/movestogo + tc.binc/2
 	}
 
 	return TimeInf
@@ -472,7 +480,8 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 	tc := timeControl{}
 
 	for i := range args {
-		if slices.Contains([]string{"wtime", "btime", "winc", "binc", "depth", "nodes", "movetime"}, args[i]) &&
+		if slices.Contains(
+			[]string{"wtime", "btime", "winc", "binc", "depth", "nodes", "movetime", "movestogo"}, args[i]) &&
 			len(args) <= i+1 {
 			fmt.Fprintln(d.err, "argument missing")
 			return false
@@ -497,6 +506,8 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 			opts = append(opts, search.WithNodes(nodes))
 		case "movetime":
 			tc.mtime = parseInt64(args[i+1])
+		case "movestogo":
+			tc.movestogo = parseInt64(args[i+1])
 		}
 	}
 
