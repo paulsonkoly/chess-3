@@ -18,8 +18,8 @@ import (
 )
 
 // Go is the main entry point into the engine. It kicks off the search on board
-// b, and returns the final score and best move.
-func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move) {
+// b, and returns the final score and best move, and potentially a ponder move.
+func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move, ponder move.Move) {
 	s.refresh()
 	defer func() {
 		s.gen++
@@ -39,14 +39,15 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move
 
 // iterativeDeepen performs an iterative-deepened alpha-beta with aspiration
 // window. depth is iterated between 0 and d inclusive.
-func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, move move.Move) {
+func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, move move.Move, ponder move.Move) {
 	// otherwise a checkmate score would always fail high
 	alpha := -Inf - 1
 	beta := Inf + 1
 
 	start := time.Now()
+	base := start
 
-	for idD := range opts.Depth + 1 {
+	for idD := Depth(0); idD < MaxPlies && (idD <= opts.Depth || opts.PonderHit != nil); idD++ {
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
 		var scoreSample Score
@@ -81,6 +82,9 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 					s.ms.Push()
 					defer s.ms.Pop()
 
+					// give up on ponder
+					ponder = 0
+
 					movegen.GenNoisy(s.ms, b)
 					movegen.GenNotNoisy(s.ms, b)
 					moves := s.ms.Frame()
@@ -99,20 +103,33 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 			}
 		}
 		score = scoreSample
-		if len(s.pv.active()) > 0 {
+		switch len(s.pv.active()) {
+		case 0:
+		case 1:
 			move = s.pv.active()[0]
+		default:
+			move = s.pv.active()[0]
+			ponder = s.pv.active()[1]
 		}
 
-		elapsed := time.Since(start)
-		miliSec := elapsed.Milliseconds()
+		if opts.PonderHit != nil {
+			select {
+			case base = <-opts.PonderHit:
+				opts.PonderHit = nil
+			default:
+			}
+		}
+
+		sinceStart := time.Since(start).Milliseconds()
+		sinceBase := time.Since(base).Milliseconds()
 		cnts := opts.Counters
-		cnts.Time = miliSec
+		cnts.Time = sinceStart
 		if opts.Info {
 			fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
-				idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
+				idD, score, cnts.Nodes, sinceStart, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 		}
 
-		if move != 0 && opts.softAbort(miliSec, opts.Counters.Nodes) {
+		if move != 0 && opts.softAbort(sinceBase, opts.Counters.Nodes) {
 			return
 		}
 
@@ -142,7 +159,7 @@ func (s *Search) abort(opts *Options) bool {
 func (s *Search) incrementNodes(opts *Options) {
 	if opts.Nodes == -1 || opts.Counters.Nodes < opts.Nodes {
 		opts.Counters.Nodes++
-	} else {
+	} else if opts.PonderHit == nil {
 		s.aborted = true
 	}
 }
