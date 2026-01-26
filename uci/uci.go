@@ -44,10 +44,11 @@ type Driver struct {
 	err        io.Writer
 	inputLines chan string
 	debug      bool
+	ponder     bool
 }
 
 type Search interface {
-	Go(*board.Board, ...search.Option) (Score, move.Move)
+	Go(*board.Board, ...search.Option) (Score, move.Move, move.Move)
 	Clear()
 	ResizeTT(int)
 }
@@ -147,6 +148,7 @@ func (d *Driver) handleCommand(command string) {
 		fmt.Fprintf(d.output, "option name Hash type spin default %d min %d max %d\n", defaultHash, minimalHash, maximalHash)
 		// these are here to conform ob. we don't actually support these options.
 		fmt.Fprintln(d.output, "option name Threads type spin default 1 min 1 max 1")
+		fmt.Fprintln(d.output, "option name Ponder type check default false")
 		// spsa options
 		fmt.Fprint(d.output, params.UCIOptions())
 		fmt.Fprintln(d.output, "uciok")
@@ -231,6 +233,17 @@ func (d *Driver) handleSetOption(args []string) {
 		}
 
 		d.search.ResizeTT(val * transp.MegaBytes)
+
+	case "Ponder":
+		switch args[3] {
+		case "true", "True": // TODO : is lower case needed?
+			d.ponder = true
+		case "false", "False":
+			d.ponder = false
+
+		default:
+			fmt.Fprintf(d.err, "wrong argument %s", args[3])
+		}
 
 	default:
 		val, err := strconv.Atoi(args[3])
@@ -391,6 +404,8 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 func (d *Driver) handleGo(args []string) (quit bool) {
 	opts := make([]search.Option, 0, 4)
 
+	ponder := false
+
 	tc := timeControl{}
 
 	for i := range args {
@@ -401,6 +416,8 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 		}
 
 		switch args[i] {
+		case "ponder":
+			ponder = d.ponder
 		case "wtime":
 			tc.wtime = parseInt64(args[i+1])
 		case "btime":
@@ -425,6 +442,13 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 		opts = append(opts, search.WithSoftTime(tc.softLimit(stm)))
 	}
 
+	var ponderHit chan time.Time
+	if ponder {
+		ponderHit = make(chan time.Time, 1)
+		opts = append(opts, search.WithPonderHit(ponderHit))
+		defer close(ponderHit)
+	}
+
 	if d.debug {
 		opts = append(opts, search.WithDebug(true))
 	}
@@ -443,7 +467,7 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 
 		var hardTimer *time.Timer
 		var hardC <-chan time.Time
-		if tc.timedMode(stm) {
+		if !ponder && tc.timedMode(stm) {
 			hardTimer = time.NewTimer(time.Duration(tc.hardLimit(stm)) * time.Millisecond)
 			hardC = hardTimer.C
 			defer hardTimer.Stop()
@@ -473,6 +497,17 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 
 				switch cmd {
 
+				case "ponderhit":
+					if ponderHit != nil {
+						ponderHit <- time.Now()
+						ponderHit = nil
+					}
+					if ponder && tc.timedMode(stm) {
+						hardTimer = time.NewTimer(time.Duration(tc.hardLimit(stm)) * time.Millisecond)
+						hardC = hardTimer.C
+						defer hardTimer.Stop()
+					}
+
 				case "stop":
 					return
 
@@ -487,7 +522,7 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 		}
 	})
 
-	_, bm := d.search.Go(d.board, opts...)
+	_, bm, pm := d.search.Go(d.board, opts...)
 	close(searchFin)
 
 	wg.Wait()
@@ -498,7 +533,11 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 	// Although UCI is not clear on what "search is running" means. For us it is
 	// defined as the duration starting with receiving a go command and ending
 	// with responding with "bestmove".
-	fmt.Fprintf(d.output, "bestmove %s\n", bm)
+	if pm != 0 && d.ponder {
+		fmt.Fprintf(d.output, "bestmove %s ponder %s\n", bm, pm)
+	} else {
+		fmt.Fprintf(d.output, "bestmove %s\n", bm)
+	}
 
 	return quit
 }
