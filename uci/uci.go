@@ -29,6 +29,8 @@ const (
 	maximalHash = 1024
 )
 
+var GitVersion = "dev"
+
 // Driver is an UCI (universal chess interface) driver for the underlying chess
 // engine logic. It is responsible to receive and interpret UCI protocol
 // commands and invoke relevant engine functions - such as search in turn. It
@@ -174,7 +176,7 @@ func (d *Driver) handleCommand(command string) {
 
 	switch parts[0] {
 	case "uci":
-		fmt.Fprintln(d.output, "id name chess-3")
+		fmt.Fprintf(d.output, "id name chess-3 %s\n", GitVersion)
 		fmt.Fprintln(d.output, "id author Paul Sonkoly")
 		fmt.Fprintf(d.output, "option name Hash type spin default %d min %d max %d\n", defaultHash, minimalHash, maximalHash)
 		// these are here to conform ob. we don't actually support these options.

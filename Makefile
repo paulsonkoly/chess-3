@@ -2,6 +2,10 @@ EXE=chess3
 # only enable SPSA for SPSA tuning.
 SPSA ?= 0
 
+GIT_VERSION := $(shell git describe --tags --always --dirty)
+
+LDFLAGS := -X github.com/paulsonkoly/chess-3/uci.GitVersion=$(GIT_VERSION)
+
 files := $(shell find . -name '*.go')
 
 # Optional build tags
@@ -12,10 +16,10 @@ else
 endif
 
 $(EXE): chess3.pprof $(files)
-	go build $(GO_TAGS) -pgo chess3.pprof -o $@ main.go
+	go build $(GO_TAGS) -ldflags "$(LDFLAGS)" -pgo chess3.pprof -o $@ main.go
 
 chess3.pprof: $(EXE).nopgo $(files)
 	./$(EXE).nopgo -cpuProf $@ bench
 
 $(EXE).nopgo: $(files)
-	go build $(GO_TAGS) -o $@ main.go
+	go build $(GO_TAGS) -ldflags "$(LDFLAGS)" -o $@ main.go
