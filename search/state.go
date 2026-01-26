@@ -56,7 +56,7 @@ func (s *Search) Clear() {
 // used directly.
 type Options struct {
 	Stop <-chan struct{} // Stop channel interrupts the search.
-	// Ponderhit channel signals a ponderhit. The sent time should be the time the ponderhit happend.
+	// Ponderhit channel signals a ponderhit. The sent time should be the time the ponderhit happened.
 	PonderHit <-chan time.Time
 	SoftTime  int64     // SoftTime sets the soft timeout.
 	Nodes     int       // Nodes sets the hard node count limit.
