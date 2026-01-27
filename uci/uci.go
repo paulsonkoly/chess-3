@@ -107,12 +107,18 @@ func (d *Driver) Run() {
 	d.inputLines = make(chan string)
 
 	wg := sync.WaitGroup{}
-	wg.Go(func() {
+	wg.Add(2)
+
+	go func() {
 		d.readInput()
 		close(d.inputLines)
-	})
+		wg.Done()
+	}()
 
-	wg.Go(d.handleInput)
+	go func() {
+		d.handleInput()
+		wg.Done()
+	}()
 
 	wg.Wait()
 }
@@ -436,10 +442,14 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 	opts = append(opts, search.WithStop(stop))
 
 	wg := sync.WaitGroup{}
+	wg.Add(2)
 
 	// interrupt search goroutine
-	wg.Go(func() {
-		defer close(stop)
+	go func() {
+		defer func() {
+			close(stop)
+			wg.Done()
+		}()
 
 		var hardTimer *time.Timer
 		var hardC <-chan time.Time
@@ -485,14 +495,15 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 				}
 			}
 		}
-	})
+	}()
 
 	var bm move.Move
 
-	wg.Go(func() {
+	go func() {
 		_, bm = d.search.Go(d.board, opts...)
 		close(searchFin)
-	})
+		wg.Done()
+	}()
 
 	wg.Wait()
 
