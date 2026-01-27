@@ -431,11 +431,9 @@ func (tc timeControl) softLimit(stm Color) int64 {
 		return tc.mtime
 	}
 
-	var movestogo int
+	movestogo := PredictedMoves
 	if tc.movestogo > 0 {
-		movestogo = min(tc.movestogo, PredictedMoves)
-	} else {
-		movestogo = PredictedMoves
+		movestogo = tc.movestogo
 	}
 
 	if stm == White && tc.wtime > 0 {
