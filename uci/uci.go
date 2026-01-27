@@ -43,7 +43,6 @@ type Driver struct {
 	output     io.Writer
 	err        io.Writer
 	inputLines chan string
-	stop       chan struct{}
 	debug      bool
 }
 
@@ -104,60 +103,27 @@ func NewDriver(opts ...DriverOpt) *Driver {
 // controlling the search. It supports search interrupts with time control or
 // stop command.
 func (d *Driver) Run() {
-	wg := sync.WaitGroup{}
 
 	d.inputLines = make(chan string)
-	d.stop = make(chan struct{})
 
-	wg.Add(2)
-
-	go func() {
+	wg := sync.WaitGroup{}
+	wg.Go(func() {
 		d.readInput()
 		close(d.inputLines)
-		wg.Done()
-	}()
+	})
 
-	go func() {
-		d.handleInput()
-		wg.Done()
-	}()
+	wg.Go(d.handleInput)
 
 	wg.Wait()
-
-	close(d.stop)
 }
 
 func (d *Driver) readInput() {
 	for d.input.Scan() {
 		line := d.input.Text()
-		args := strings.Fields(line)
+		d.inputLines <- line
 
-		if len(args) < 1 {
-			continue
-		}
-
-		switch args[0] {
-
-		case "stop":
-			select {
-			case d.stop <- struct{}{}:
-			default:
-				// no search is running. Ignore.
-			}
-
-		case "quit":
-			select {
-			case d.stop <- struct{}{}:
-			default:
-				// no search is running. Ignore.
-			}
+		if firstWord(line) == "quit" {
 			return
-
-		case "isready":
-			fmt.Fprintln(d.output, "readyok")
-
-		default:
-			d.inputLines <- line
 		}
 	}
 }
@@ -192,7 +158,9 @@ func (d *Driver) handleCommand(command string) {
 		d.handlePosition(parts[1:])
 
 	case "go":
-		d.handleGo(parts[1:])
+		if d.handleGo(parts[1:]) {
+			return
+		}
 
 	case "fen":
 		fmt.Fprintln(d.output, d.board.FEN())
@@ -228,13 +196,18 @@ func (d *Driver) handleCommand(command string) {
 		}
 
 		switch parts[1] {
-
 		case "on":
 			d.debug = true
 
 		case "off":
 			d.debug = false
 		}
+
+	case "quit":
+		return
+
+	case "isready":
+		fmt.Fprintln(d.output, "readyok")
 
 	case "spsa":
 		fmt.Fprint(d.output, params.OpenbenchInfo())
@@ -415,7 +388,7 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 	return Clamp(4*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
 }
 
-func (d *Driver) handleGo(args []string) {
+func (d *Driver) handleGo(args []string) (quit bool) {
 	opts := make([]search.Option, 0, 4)
 
 	tc := timeControl{}
@@ -424,7 +397,7 @@ func (d *Driver) handleGo(args []string) {
 		if slices.Contains([]string{"wtime", "btime", "winc", "binc", "depth", "nodes", "movetime"}, args[i]) &&
 			len(args) <= i+1 {
 			fmt.Fprintln(d.err, "argument missing")
-			return
+			return false
 		}
 
 		switch args[i] {
@@ -447,10 +420,6 @@ func (d *Driver) handleGo(args []string) {
 		}
 	}
 
-	// stop is always needed in order to support stop command, regardless of timeouts.
-	stop := make(chan struct{})
-	opts = append(opts, search.WithStop(stop))
-
 	stm := d.board.STM
 	if tc.timedMode(stm) {
 		opts = append(opts, search.WithSoftTime(tc.softLimit(stm)))
@@ -460,41 +429,78 @@ func (d *Driver) handleGo(args []string) {
 		opts = append(opts, search.WithDebug(true))
 	}
 
-	var bm move.Move
-
+	// stop is always needed in order to support stop command, regardless of timeouts.
+	stop := make(chan struct{})
 	searchFin := make(chan struct{})
 
-	go func() {
-		_, bm = d.search.Go(d.board, opts...)
-		close(searchFin)
-	}()
+	opts = append(opts, search.WithStop(stop))
 
-	stopped := false
-	for finished := false; !finished; {
-		select {
+	wg := sync.WaitGroup{}
 
-		case <-searchFin:
-			finished = true
+	// search interrupt goroutine
+	wg.Go(func() {
+		defer close(stop)
 
-		case <-time.After(time.Duration(tc.hardLimit(stm)) * time.Millisecond):
-			if !stopped {
-				stopped = true
-				close(stop)
-			}
+		var hardTimer *time.Timer
+		var hardC <-chan time.Time
+		if tc.timedMode(stm) {
+			hardTimer = time.NewTimer(time.Duration(tc.hardLimit(stm)) * time.Millisecond)
+			hardC = hardTimer.C
+			defer hardTimer.Stop()
+		}
 
-		case <-d.stop:
-			if !stopped {
-				stopped = true
-				close(stop)
+		for {
+			// there are a set of reasons why the search needs interrupting.
+			//  - stop command
+			//  - quit command
+			//  - hard timeout reached
+
+			select {
+
+			case <-searchFin:
+				return
+
+			case <-hardC:
+				return
+
+			case line, ok := <-d.inputLines:
+
+				if !ok {
+					return // d.readInput is finished.
+				}
+
+				cmd := firstWord(line)
+
+				switch cmd {
+
+				case "stop":
+					return
+
+				case "quit":
+					quit = true
+					return
+
+				case "isready":
+					fmt.Fprintln(d.output, "readyok")
+				}
 			}
 		}
-	}
+	})
 
-	if !stopped {
-		close(stop)
-	}
+	_, bm := d.search.Go(d.board, opts...)
+	close(searchFin)
 
+	wg.Wait()
+
+	// printing "bestmove" signals the end of the search to the GUI, thus it is
+	// delayed until the interrupt goroutine finished. This sets clear semantics
+	// on the UCI requirement to accept stop while the search is running.
+	// Although UCI is not clear on what "search is running" means. For us it is
+	// defined as the duration starting with receiving a go command and ending
+	// with responding with "bestmove".
 	fmt.Fprintf(d.output, "bestmove %s\n", bm)
+
+	return quit
 }
 
 func parseInt(value string) int {
@@ -511,4 +517,18 @@ func parseInt64(value string) int64 {
 		return 0
 	}
 	return result
+}
+
+func firstWord(s string) string {
+	i := 0
+	for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
+		i++
+	}
+
+	start := i
+	for i < len(s) && s[i] != ' ' && s[i] != '\t' {
+		i++
+	}
+
+	return s[start:i]
 }

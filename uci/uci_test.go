@@ -47,10 +47,7 @@ func (ms *MockSearch) MockMove(move move.Move) {
 }
 
 func TestUCI(t *testing.T) {
-	inputs := `uci
-
-quit
-`
+	inputs := "uci"
 
 	outputs := &bytes.Buffer{}
 	errors := &bytes.Buffer{}
@@ -71,11 +68,11 @@ func TestIsReady(t *testing.T) {
 		name   string
 		inputs string
 	}{
-		{"isready", "uci\nisready\nquit\n"},
-		{"whitespace at front", "uci\n  \tisready\nquit\n"},
-		{"whitespace at the back", "uci\nisready \t \nquit\n"},
-		{"whitespaces everywhere", "uci \n \t isready \n \t \n quit\n"},
-		{"extra token", "uci \n \t isready quit\n \t \n quit\n"},
+		{"isready", "uci\nisready\n"},
+		{"whitespace at front", "uci\n  \tisready\n"},
+		{"whitespace at the back", "uci\nisready \t \n"},
+		{"whitespaces everywhere", "uci \n \t isready \n \t \n"},
+		{"extra token", "uci \n \t isready quit\n \t \n"},
 	}
 
 	for _, tt := range tests {
@@ -103,7 +100,6 @@ func TestUCINewGame(t *testing.T) {
 	inputs := `uci
 
 ucinewgame
-quit
 `
 
 	outputs := &bytes.Buffer{}
@@ -148,9 +144,8 @@ func TestHashSettings(t *testing.T) {
 			search := &MockSearch{}
 
 			prelude := "uci\n"
-			prolog := "\nquit\n"
 
-			inputs := prelude + tt.inputs + prolog
+			inputs := prelude + tt.inputs
 
 			d := uci.NewDriver(
 				uci.WithInput(strings.NewReader(inputs)),
@@ -175,7 +170,6 @@ func TestInitialFen(t *testing.T) {
 	inputs := `uci
 
 fen
-quit
 `
 
 	outputs := &bytes.Buffer{}
@@ -197,7 +191,6 @@ func TestSettingFen(t *testing.T) {
 
 position fen 4k3/8/2K5/8/8/8/8/8 w - - 0 1 moves c6c5
 fen
-quit
 `
 
 	outputs := &bytes.Buffer{}
@@ -220,7 +213,6 @@ func TestStartPos(t *testing.T) {
 position fen 4k3/8/2K5/8/8/8/8/8 w - - 0 1 moves c6c5
 position startpos
 fen
-quit
 `
 
 	outputs := &bytes.Buffer{}
@@ -257,9 +249,8 @@ func TestGoTime(t *testing.T) {
 			search.MockScore(-123)
 
 			prelude := "uci\n"
-			prolog := "\nquit\n"
 
-			inputs := prelude + tt.inputs + prolog
+			inputs := prelude + tt.inputs
 
 			d := uci.NewDriver(
 				uci.WithInput(strings.NewReader(inputs)),
@@ -284,7 +275,6 @@ func TestGoTime(t *testing.T) {
 func TestGoDepth(t *testing.T) {
 	inputs := `uci
 go depth 5
-quit
 `
 
 	outputs := &bytes.Buffer{}
@@ -326,7 +316,7 @@ func TestDebug(t *testing.T) {
 			search := &MockSearch{}
 
 			prelude := "uci\n"
-			prolog := "\ngo\nquit\n"
+			prolog := "\ngo\n"
 
 			inputs := prelude + tt.inputs + prolog
 

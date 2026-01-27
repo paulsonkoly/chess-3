@@ -1,6 +1,6 @@
 module github.com/paulsonkoly/chess-3/tools/tuner
 
-go 1.25.0
+go 1.25.4
 
 require (
 	github.com/gdamore/tcell/v2 v2.9.0
