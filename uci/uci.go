@@ -40,10 +40,26 @@ type Driver struct {
 	board      *board.Board
 	search     Search
 	input      *bufio.Scanner
-	output     io.Writer
+	output     Output
 	err        io.Writer
 	inputLines chan string
 	debug      bool
+}
+
+// Output is an io.Writer that synchronizes writes through a write channel
+// passed in on creation.
+type Output struct {
+	w io.Writer
+	c chan []byte
+}
+
+func NewOutput(w io.Writer, c chan []byte) Output {
+	return Output{w: w, c: c}
+}
+
+func (o * Output)Write(buf []byte) (int, error) {
+	o.c <- buf
+	return len(buf), nil
 }
 
 type Search interface {
