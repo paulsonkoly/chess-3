@@ -140,10 +140,13 @@ func (d *Driver) Run() {
 	d.output.channel = make(chan *[]byte, OutputBufDepth)
 
 	wg := sync.WaitGroup{}
-	wg.Go(func() {
+	wg.Add(2)
+
+	go func() {
 		d.readInput()
 		close(d.inputLines)
-	})
+		wg.Done()
+	}()
 
 	wg.Go(func() {
 		d.handleInput()
@@ -492,6 +495,7 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 	opts = append(opts, search.WithStop(stop))
 
 	wg := sync.WaitGroup{}
+	wg.Add(2)
 
 	// search interrupt goroutine
 	wg.Go(func() {
@@ -541,7 +545,7 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 				}
 			}
 		}
-	})
+	}()
 
 	_, bm := d.search.Go(d.board, opts...)
 	close(searchFin)
