@@ -437,7 +437,7 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 
 	wg := sync.WaitGroup{}
 
-	// interrupt search goroutine
+	// search interrupt goroutine
 	wg.Go(func() {
 		defer close(stop)
 
@@ -487,12 +487,8 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 		}
 	})
 
-	var bm move.Move
-
-	wg.Go(func() {
-		_, bm = d.search.Go(d.board, opts...)
-		close(searchFin)
-	})
+	_, bm := d.search.Go(d.board, opts...)
+	close(searchFin)
 
 	wg.Wait()
 
