@@ -25,7 +25,7 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move
 		s.gen++
 	}()
 
-	options := Options{Depth: MaxPlies, Nodes: -1, SoftNodes: -1, Info: true}
+	options := Options{Depth: MaxPlies, Nodes: -1, SoftNodes: -1}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -70,8 +70,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 
 			if s.abort(opts) {
 				// have a final node count for debugging purposes
-				if opts.Info {
-					fmt.Printf("info depth %d nodes %d\n", idD, opts.Counters.Nodes)
+				if opts.Output != nil {
+					fmt.Fprintf(opts.Output, "info depth %d nodes %d\n", idD, opts.Counters.Nodes)
 				}
 
 				// we hit hard timeout/abort and we don't have a move. We try to return
@@ -107,8 +107,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 		miliSec := elapsed.Milliseconds()
 		cnts := opts.Counters
 		cnts.Time = miliSec
-		if opts.Info {
-			fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
+		if opts.Output != nil {
+			fmt.Fprintf(opts.Output, "info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
 				idD, score, cnts.Nodes, miliSec, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 		}
 
