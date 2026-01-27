@@ -492,6 +492,12 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 
 	wg.Wait()
 
+	// printing "bestmove" signals the end of the search to the GUI, thus it is
+	// delayed until the interrupt goroutine finished. This sets clear semantics
+	// on the UCI requirement to accept stop while the search is running.
+	// Although UCI is not clear on what "search is running" means. For us it is
+	// defined as the duration starting with receiving a go command and ending
+	// with responding with "bestmove".
 	fmt.Fprintf(d.output, "bestmove %s\n", bm)
 
 	return quit
