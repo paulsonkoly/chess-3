@@ -413,7 +413,7 @@ type timeControl struct {
 	winc      int64 // White increment per move in milliseconds
 	binc      int64 // Black increment per move in milliseconds
 	mtime     int64 // move time
-	movestogo int64 // uci movestogo option
+	movestogo int   // uci movestogo option
 }
 
 func (tc timeControl) timedMode(stm Color) bool {
@@ -431,7 +431,7 @@ func (tc timeControl) softLimit(stm Color) int64 {
 		return tc.mtime
 	}
 
-	var movestogo int64
+	var movestogo int
 	if tc.movestogo > 0 {
 		movestogo = min(tc.movestogo, PredictedMoves)
 	} else {
@@ -439,11 +439,11 @@ func (tc timeControl) softLimit(stm Color) int64 {
 	}
 
 	if stm == White && tc.wtime > 0 {
-		return tc.wtime/movestogo + tc.winc/2
+		return tc.wtime/int64(movestogo) + tc.winc/2
 	}
 
 	if stm == Black && tc.btime > 0 {
-		return tc.btime/movestogo + tc.binc/2
+		return tc.btime/int64(movestogo) + tc.binc/2
 	}
 
 	return TimeInf
@@ -507,7 +507,7 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 		case "movetime":
 			tc.mtime = parseInt64(args[i+1])
 		case "movestogo":
-			tc.movestogo = parseInt64(args[i+1])
+			tc.movestogo = parseInt(args[i+1])
 		}
 	}
 
