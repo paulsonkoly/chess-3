@@ -24,9 +24,10 @@ import (
 )
 
 const (
-	defaultHash = 1
-	minimalHash = 1
-	maximalHash = 1024
+	defaultHash    = 1
+	minimalHash    = 1
+	maximalHash    = 1024
+	OutputBufDepth = 4 // Depth of the output channel.
 )
 
 var GitVersion = "dev"
@@ -40,26 +41,43 @@ type Driver struct {
 	board      *board.Board
 	search     Search
 	input      *bufio.Scanner
-	output     Output
+	output     *output
 	err        io.Writer
 	inputLines chan string
 	debug      bool
 }
 
-// Output is an io.Writer that synchronizes writes through a write channel
-// passed in on creation.
-type Output struct {
-	w io.Writer
-	c chan []byte
+// output is an io.Writer that synchronizes writes through a write channel
+// passed in on creation. It serves as the output sink for all uci/search
+// goroutine.
+type output struct {
+	writer  io.Writer
+	channel chan *[]byte
+	pool    sync.Pool
 }
 
-func NewOutput(w io.Writer, c chan []byte) Output {
-	return Output{w: w, c: c}
+func newOutput(w io.Writer, c chan *[]byte) *output {
+	return &output{writer: w, channel: c}
 }
 
-func (o * Output)Write(buf []byte) (int, error) {
-	o.c <- buf
+// Write implements io.Writer for uci output sink. It is not meant for public
+// consumption.
+func (o *output) Write(buf []byte) (int, error) {
+	cpy, ok := o.pool.Get().(*[]byte)
+	if ok && cap(*cpy) >= len(buf) {
+		*cpy = (*cpy)[:len(buf)]
+		copy(*cpy, buf)
+	} else {
+		alloc := slices.Clone(buf)
+		cpy = &alloc
+	}
+	o.channel <- cpy
 	return len(buf), nil
+}
+
+func (o *output) close() {
+	buf := []byte("quit")
+	o.channel <- &buf
 }
 
 type Search interface {
@@ -110,7 +128,7 @@ func NewDriver(opts ...DriverOpt) *Driver {
 		board:  board.StartPos(),
 		search: actual.search,
 		input:  bufio.NewScanner(actual.input),
-		output: actual.output,
+		output: newOutput(actual.output, nil),
 		err:    actual.err,
 	}
 }
@@ -119,8 +137,8 @@ func NewDriver(opts ...DriverOpt) *Driver {
 // controlling the search. It supports search interrupts with time control or
 // stop command.
 func (d *Driver) Run() {
-
 	d.inputLines = make(chan string)
+	d.output.channel = make(chan *[]byte, OutputBufDepth)
 
 	wg := sync.WaitGroup{}
 	wg.Go(func() {
@@ -128,7 +146,15 @@ func (d *Driver) Run() {
 		close(d.inputLines)
 	})
 
-	wg.Go(d.handleInput)
+	wg.Go(func() {
+		d.handleInput()
+		d.output.close()
+	})
+
+	wg.Go(func() {
+		d.writeOutput()
+		close(d.output.channel)
+	})
 
 	wg.Wait()
 }
@@ -141,6 +167,23 @@ func (d *Driver) readInput() {
 		if firstWord(line) == "quit" {
 			return
 		}
+	}
+}
+
+func (d *Driver) writeOutput() {
+	for line := range d.output.channel {
+		if slices.Equal(*line, []byte("quit")) {
+			return
+		}
+
+		for cnt := 0; cnt < len(*line)-1; {
+			curr, err := d.output.writer.Write(*line)
+			if err != nil && err != io.EOF {
+				fmt.Fprintln(d.err, err)
+			}
+			cnt += curr
+		}
+		d.output.pool.Put(line)
 	}
 }
 
@@ -444,6 +487,8 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 	if d.debug {
 		opts = append(opts, search.WithDebug(true))
 	}
+
+	opts = append(opts, search.WithOutput(d.output))
 
 	// stop is always needed in order to support stop command, regardless of timeouts.
 	stop := make(chan struct{})
