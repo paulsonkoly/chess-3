@@ -176,8 +176,8 @@ func (d *Driver) writeOutput() {
 			return
 		}
 
-		for cnt := 0; cnt < len(*line)-1; {
-			curr, err := d.output.writer.Write(*line)
+		for cnt := 0; cnt < len(*line); {
+			curr, err := d.output.writer.Write((*line)[cnt:])
 			if err != nil && err != io.EOF {
 				fmt.Fprintln(d.err, err)
 			}
