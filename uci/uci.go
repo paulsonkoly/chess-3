@@ -75,11 +75,6 @@ func (o *output) Write(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
-func (o *output) close() {
-	buf := []byte("quit")
-	o.channel <- &buf
-}
-
 type Search interface {
 	Go(*board.Board, ...search.Option) (Score, move.Move)
 	Clear()
@@ -148,12 +143,11 @@ func (d *Driver) Run() {
 
 	wg.Go(func() {
 		d.handleInput()
-		d.output.close()
+		close(d.output.channel)
 	})
 
 	wg.Go(func() {
 		d.writeOutput()
-		close(d.output.channel)
 	})
 
 	wg.Wait()
@@ -178,7 +172,7 @@ func (d *Driver) writeOutput() {
 
 		for cnt := 0; cnt < len(*line); {
 			curr, err := d.output.writer.Write((*line)[cnt:])
-			if err != nil && err != io.EOF {
+			if err != nil {
 				fmt.Fprintln(d.err, err)
 			}
 			cnt += curr
