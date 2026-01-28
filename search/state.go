@@ -89,7 +89,7 @@ func WithDebug(debug bool) Option {
 	}
 }
 
-// WithOutput runs a search with outputs written to out.
+// WithOutput runs a search with outputs written to out. Replaces the default os.Stdout.
 func WithOutput(out io.Writer) Option {
 	return func(o *Options) {
 		o.Output = out

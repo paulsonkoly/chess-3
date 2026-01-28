@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ func (s *Search) Go(b *board.Board, opts ...Option) (score Score, move move.Move
 		s.gen++
 	}()
 
-	options := Options{Depth: MaxPlies, Nodes: -1, SoftNodes: -1}
+	options := Options{Depth: MaxPlies, Nodes: -1, SoftNodes: -1, Output: os.Stdout}
 	for _, opt := range opts {
 		opt(&options)
 	}
