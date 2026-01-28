@@ -62,6 +62,8 @@ func newOutput(w io.Writer, c chan *[]byte) *output {
 
 // Write implements io.Writer for uci output sink. It is not meant for public
 // consumption.
+// Note: this function assumes that it is called from Driver.Run(), which
+// inject the channel.
 func (o *output) Write(buf []byte) (int, error) {
 	cpy, ok := o.pool.Get().(*[]byte)
 	if ok && cap(*cpy) >= len(buf) {
@@ -166,14 +168,11 @@ func (d *Driver) readInput() {
 
 func (d *Driver) writeOutput() {
 	for line := range d.output.channel {
-		if slices.Equal(*line, []byte("quit")) {
-			return
-		}
-
 		for cnt := 0; cnt < len(*line); {
 			curr, err := d.output.writer.Write((*line)[cnt:])
 			if err != nil {
 				fmt.Fprintln(d.err, err)
+				break
 			}
 			cnt += curr
 		}
