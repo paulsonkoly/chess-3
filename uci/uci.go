@@ -67,6 +67,8 @@ func newOutput(w io.Writer, c chan *[]byte) *output {
 func (o *output) Write(buf []byte) (int, error) {
 	cpy, ok := o.pool.Get().(*[]byte)
 	if ok && cap(*cpy) >= len(buf) {
+		// if we don't have enough capacity not returning the cpy to pool results
+		// in better pool reuse.
 		*cpy = (*cpy)[:len(buf)]
 		copy(*cpy, buf)
 	} else {
