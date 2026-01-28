@@ -151,7 +151,7 @@ Retry:
 		score, _ := og.search.Go(b,
 			search.WithSoftNodes(serverConfig.softNodes),
 			search.WithNodes(serverConfig.hardNodes),
-			search.WithInfo(false))
+			search.WithOutput(nil))
 
 		if Range(serverConfig.openingMargin).Contains(score) {
 			return b
