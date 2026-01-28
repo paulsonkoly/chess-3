@@ -107,7 +107,7 @@ func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err er
 		score, bm = g.search.Go(b,
 			search.WithSoftNodes(config.SoftNodes),
 			search.WithNodes(config.HardNodes),
-			search.WithInfo(false))
+			search.WithOutput(nil))
 
 		positions = append(positions, shim.Position{FEN: b.FEN(), BM: bm, Score: score})
 
