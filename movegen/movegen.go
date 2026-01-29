@@ -194,13 +194,19 @@ func (g generator) enPassant(ms *move.Store, b *board.Board) {
 }
 
 func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
-	// castling short
-	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&attacks.CastleMask[b.STM][Short] == g.self&b.Pieces[King] {
+	var castleMask BitBoard
+	switch b.STM {
+	case White:
+		castleMask = BitBoardFromSquares(E1, F1, G1)
+	case Black:
+		castleMask = BitBoardFromSquares(E8, F8, G8)
+	}
+	if b.Castles&Castle(b.STM, Short) != 0 && g.occ&castleMask == g.self&b.Pieces[King] {
 		// this isn't quite the right condition, we would need to properly
 		// calculate if the rook gives check this condition is simple, and would
 		// suffice most of the time
-		if attacks.CastleMask[b.STM][Short]&rChkMsk != 0 {
-			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Short]) {
+		if castleMask&rChkMsk != 0 {
+			if !b.IsAttacked(b.STM.Flip(), g.occ, castleMask) {
 				from := (g.self & b.Pieces[King]).LowestSet()
 				ms.Alloc(move.From(from) | move.To(from+2))
 			}
@@ -209,10 +215,16 @@ func (g generator) shortCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard)
 }
 
 func (g generator) longCastle(ms *move.Store, b *board.Board, rChkMsk BitBoard) {
-	// castle long
-	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(attacks.CastleMask[b.STM][Long]>>1) == 0 {
-		if attacks.CastleMask[b.STM][Long]&rChkMsk != 0 {
-			if !b.IsAttacked(b.STM.Flip(), g.occ, attacks.CastleMask[b.STM][Long]) {
+	var castleMask BitBoard
+	switch b.STM {
+	case White:
+		castleMask = BitBoardFromSquares(E1, D1, C1)
+	case Black:
+		castleMask = BitBoardFromSquares(E8, D8, C8)
+	}
+	if b.Castles&Castle(b.STM, Long) != 0 && g.occ&(castleMask>>1) == 0 {
+		if castleMask&rChkMsk != 0 {
+			if !b.IsAttacked(b.STM.Flip(), g.occ, castleMask) {
 				from := (g.self & b.Pieces[King]).LowestSet()
 				ms.Alloc(move.From(from) | move.To(from-2))
 			}
