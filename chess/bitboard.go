@@ -33,14 +33,14 @@ func (bb BitBoard) IsPow2() bool {
 }
 
 const (
-	AFileBB= BitBoard(0x0101010101010101) // AFileBB is a BitBoard with bits set for the A file.
-	BFileBB= BitBoard(0x0202020202020202) // BFileBB is a BitBoard with bits set for the B file.
-	CFileBB= BitBoard(0x0404040404040404) // CFileBB is a BitBoard with bits set for the C file.
-	DFileBB= BitBoard(0x0808080808080808) // DFileBB is a BitBoard with bits set for the D file.
-	EFileBB= BitBoard(0x1010101010101010) // EFileBB is a BitBoard with bits set for the E file.
-	FFileBB= BitBoard(0x2020202020202020) // FFileBB is a BitBoard with bits set for the F file.
-	GFileBB= BitBoard(0x4040404040404040) // GFileBB is a BitBoard with bits set for the G file.
-	HFileBB= BitBoard(0x8080808080808080) // HFileBB is a BitBoard with bits set for the H file.
+	AFileBB = BitBoard(0x0101010101010101) // AFileBB is a BitBoard with bits set for the A file.
+	BFileBB = BitBoard(0x0202020202020202) // BFileBB is a BitBoard with bits set for the B file.
+	CFileBB = BitBoard(0x0404040404040404) // CFileBB is a BitBoard with bits set for the C file.
+	DFileBB = BitBoard(0x0808080808080808) // DFileBB is a BitBoard with bits set for the D file.
+	EFileBB = BitBoard(0x1010101010101010) // EFileBB is a BitBoard with bits set for the E file.
+	FFileBB = BitBoard(0x2020202020202020) // FFileBB is a BitBoard with bits set for the F file.
+	GFileBB = BitBoard(0x4040404040404040) // GFileBB is a BitBoard with bits set for the G file.
+	HFileBB = BitBoard(0x8080808080808080) // HFileBB is a BitBoard with bits set for the H file.
 
 	FirstRankBB   = BitBoard(0x00000000000000ff) // FirstRankBB is a BitBoard with bits set for the first rank.
 	SecondRankBB  = BitBoard(0x000000000000ff00) // SecondRankBB is a BitBoard with bits set for the second rank.
@@ -60,5 +60,5 @@ var ranks = [...]BitBoard{
 func RankBB(rank Coord) BitBoard { return ranks[rank] }
 
 const (
-	Full  = BitBoard(0xffffffffffffffff) // Full is a BitBoard with all 64 bits set.
+	Full = BitBoard(0xffffffffffffffff) // Full is a BitBoard with all 64 bits set.
 )
