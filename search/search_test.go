@@ -134,3 +134,13 @@ func TestGoNodes0(t *testing.T) {
 	assert.Zero(t, counters.Nodes)
 	assert.True(t, b.IsPseudoLegal(move), "not pseudo legal %s", move)
 }
+
+// TestGoMate tests go on a mate position.
+func TestGoMate(t *testing.T) {
+	b := Must(board.FromFEN("kbK5/pP6/p7/8/8/8/8/8 b - - 0 1"))
+	s := search.New(1 * transp.MegaBytes)
+
+	score, move := s.Go(b, search.WithInfo(false))
+	assert.Zero(t, move)
+	assert.Equal(t, -Inf, score)
+}
