@@ -114,7 +114,6 @@ func TestPicker(t *testing.T) {
 				assert.NotContains(t, yielded, *pck.Move(), "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
 				yielded = append(yielded, *pck.Move())
 
-
 				switch state {
 
 				case verifyHash:
