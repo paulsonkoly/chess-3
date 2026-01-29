@@ -153,7 +153,7 @@ func TestGoFinal(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			s := search.New(1 * transp.MegaBytes)
 
-			score, move := s.Go(b, search.WithInfo(false))
+			score, move := s.Go(b, search.WithOutput(nil))
 			assert.Equal(t, tt.wantMove, move, "fen %s want %s got %s", tt.fen, tt.wantMove, move)
 			assert.Equal(t, tt.wantScore, score, "fen %s", tt.fen)
 		})
