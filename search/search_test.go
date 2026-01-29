@@ -6,6 +6,7 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
+	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/transp"
 	"github.com/stretchr/testify/assert"
@@ -133,4 +134,28 @@ func TestGoNodes0(t *testing.T) {
 	_, move := s.Go(b, search.WithNodes(0), search.WithCounters(&counters), search.WithInfo(false))
 	assert.Zero(t, counters.Nodes)
 	assert.True(t, b.IsPseudoLegal(move), "not pseudo legal %s", move)
+}
+
+// TestGoFinal tests go on a final position.
+func TestGoFinal(t *testing.T) {
+	tests := []struct {
+		name      string
+		fen       string
+		wantMove  move.Move
+		wantScore Score
+	}{
+		{"checkmate", "kbK5/pP6/p7/8/8/8/8/8 b - - 0 1", 0, -Inf},
+		{"stalemate", "8/8/8/8/8/3q1k2/8/4K3 w - - 0 1", 0, 0},
+		{"50 move rule", "8/8/4k3/8/8/4K3/8/8 w - - 100 1", 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Must(board.FromFEN(tt.fen))
+			s := search.New(1 * transp.MegaBytes)
+
+			score, move := s.Go(b, search.WithInfo(false))
+			assert.Equal(t, tt.wantMove, move, "fen %s want %s got %s", tt.fen, tt.wantMove, move)
+			assert.Equal(t, tt.wantScore, score, "fen %s", tt.fen)
+		})
+	}
 }
