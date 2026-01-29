@@ -1,6 +1,8 @@
 package search
 
 import (
+	"io"
+
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/stack"
@@ -54,13 +56,13 @@ func (s *Search) Clear() {
 // used directly.
 type Options struct {
 	Stop      chan struct{} // Stop channel interrupts the search.
+	Output    io.Writer     // Info line output. nil for no output.
 	SoftTime  int64         // SoftTime sets the soft timeout.
 	Nodes     int           // Nodes sets the hard node count limit.
 	SoftNodes int           // SoftNodes sets the soft node count limit.
 	Counters  *Counters     // Counters sets the location where search has to gather statistics.
 	Depth     Depth         // Depth sets the search depth limit.
 	Debug     bool          // Debug turns extra debugging on.
-	Info      bool          // Info enables search info lines.
 }
 
 // softAbort determines if elapsed times or nodes count justify a soft abort;
@@ -87,10 +89,10 @@ func WithDebug(debug bool) Option {
 	}
 }
 
-// WithInfo runs the search with uci info line outputs.
-func WithInfo(info bool) Option {
+// WithOutput runs a search with outputs written to out. Replaces the default os.Stdout.
+func WithOutput(out io.Writer) Option {
 	return func(o *Options) {
-		o.Info = info
+		o.Output = out
 	}
 }
 
