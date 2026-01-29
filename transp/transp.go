@@ -90,8 +90,7 @@ func init() {
 	}
 }
 
-// New creates a new transposition table. size is the table size in bytes, and
-// only power of 2 sizes are supported.
+// New creates a new transposition table. size is the table size in bytes.
 func New(size int) *Table {
 	t := Table{}
 	t.Resize(size)
@@ -123,7 +122,7 @@ func (t *Table) Resize(size int) {
 }
 
 func validateSize(size int) {
-	if size < bucketSize || size&(size-1) != 0 {
+	if size < bucketSize || size%bucketSize != 0 {
 		panic(fmt.Sprintf("invalid transposition table size %d", size))
 	}
 }
