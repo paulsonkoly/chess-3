@@ -130,7 +130,7 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 
 		cnts.Time = sinceStart
 		if opts.Output != nil {
-			fmt.Printf("info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
+			fmt.Fprintf(opts.Output, "info depth %d score %s nodes %d time %d hashfull %d pv %s\n",
 				idD, score, cnts.Nodes, sinceStart, s.tt.HashFull(s.gen), pvInfo(s.pv.active()))
 		}
 
