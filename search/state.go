@@ -55,17 +55,22 @@ func (s *Search) Clear() {
 // Options structure contains all search options. The functional options
 // pattern can be used to invoke Go.Search, this struct does not have to be
 // used directly.
+//
+// Note: the search performance can be sensitive to the layout of this structure,
+// any layout changes must be sprt-ed. We are less concerned with the size of structure
+// than data locality.
 type Options struct {
-	Stop <-chan struct{} // Stop channel interrupts the search.
-	// Ponderhit channel signals a ponderhit. The sent time should be the time the ponderhit happened.
-	PonderHit <-chan time.Time
-	Output    io.Writer // Info line output. nil for no output.
-	SoftTime  int64     // SoftTime sets the soft timeout.
 	Nodes     int       // Nodes sets the hard node count limit.
-	SoftNodes int       // SoftNodes sets the soft node count limit.
 	Counters  *Counters // Counters sets the location where search has to gather statistics.
+	SoftTime  int64     // SoftTime sets the soft timeout.
+	SoftNodes int       // SoftNodes sets the soft node count limit.
 	Depth     Depth     // Depth sets the search depth limit.
 	Debug     bool      // Debug turns extra debugging on.
+
+	Stop   <-chan struct{} // Stop channel interrupts the search.
+	Output io.Writer       // Info line output. nil for no output.
+	// Ponderhit channel signals a ponderhit. The sent time should be the time the ponderhit happened.
+	PonderHit <-chan time.Time
 }
 
 // softAbort determines if elapsed times or nodes count justify a soft abort;
