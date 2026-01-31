@@ -104,7 +104,7 @@ func (g Generator) Game(config shim.Config, client shim.Client) (ok bool, err er
 
 	for moveCounter := 0; ; moveCounter++ {
 		var bm move.Move
-		score, bm = g.search.Go(b,
+		score, bm, _ = g.search.Go(b,
 			search.WithSoftNodes(config.SoftNodes),
 			search.WithNodes(config.HardNodes),
 			search.WithOutput(nil))

@@ -2,6 +2,7 @@ package search
 
 import (
 	"io"
+	"time"
 
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
@@ -54,21 +55,29 @@ func (s *Search) Clear() {
 // Options structure contains all search options. The functional options
 // pattern can be used to invoke Go.Search, this struct does not have to be
 // used directly.
+//
+// Note: the search performance can be sensitive to the layout of this structure,
+// any layout changes must be sprt-ed. We are less concerned with the size of structure
+// than data locality.
 type Options struct {
-	Stop      chan struct{} // Stop channel interrupts the search.
-	Output    io.Writer     // Info line output. nil for no output.
-	SoftTime  int64         // SoftTime sets the soft timeout.
-	Nodes     int           // Nodes sets the hard node count limit.
-	SoftNodes int           // SoftNodes sets the soft node count limit.
-	Counters  *Counters     // Counters sets the location where search has to gather statistics.
-	Depth     Depth         // Depth sets the search depth limit.
-	Debug     bool          // Debug turns extra debugging on.
+	Nodes     int       // Nodes sets the hard node count limit.
+	Counters  *Counters // Counters sets the location where search has to gather statistics.
+	SoftTime  int64     // SoftTime sets the soft timeout.
+	SoftNodes int       // SoftNodes sets the soft node count limit.
+	Depth     Depth     // Depth sets the search depth limit.
+	Debug     bool      // Debug turns extra debugging on.
+
+	Stop   <-chan struct{} // Stop channel interrupts the search.
+	Output io.Writer       // Info line output. nil for no output.
+	// Ponderhit channel signals a ponderhit. The sent time should be the time the ponderhit happened.
+	PonderHit <-chan time.Time
 }
 
 // softAbort determines if elapsed times or nodes count justify a soft abort;
-// that is aborting after a full completion of a given depth.
+// that is aborting after a full completion of a given depth. Limits are
+// ignored while pondering.
 func (o *Options) softAbort(elapsed int64, nodes int) bool {
-	return (o.SoftTime > 0 && elapsed > o.SoftTime) || (o.SoftNodes > 0 && nodes > o.SoftNodes)
+	return o.PonderHit == nil && ((o.SoftTime > 0 && elapsed > o.SoftTime) || (o.SoftNodes > 0 && nodes > o.SoftNodes))
 }
 
 // Option modifies how a search runs, this should be set per search.
@@ -76,9 +85,18 @@ type Option = func(*Options)
 
 // WithStop runs the search with a stop channel. When the channel is signalled
 // the search stops.
-func WithStop(stop chan struct{}) Option {
+func WithStop(stop <-chan struct{}) Option {
 	return func(o *Options) {
 		o.Stop = stop
+	}
+}
+
+// WithPonderHit runs the search with pondering. A signal on this channel
+// indicates that the search should transition to normal search from a ponder
+// search.
+func WithPonderHit(ponderhit <-chan time.Time) Option {
+	return func(o *Options) {
+		o.PonderHit = ponderhit
 	}
 }
 

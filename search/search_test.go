@@ -86,7 +86,7 @@ func TestSearchStability(t *testing.T) {
 			counters := search.Counters{}
 
 			// fill the internal stores/transposition table
-			score1, move1 := s.Go(b, search.WithCounters(&counters), search.WithSoftTime(10), search.WithOutput(nil))
+			score1, move1, _ := s.Go(b, search.WithCounters(&counters), search.WithSoftTime(10), search.WithOutput(nil))
 			nodes1 := counters.Nodes
 
 			assert.Positive(t, nodes1, "fen %s", tt.fen)
@@ -94,7 +94,7 @@ func TestSearchStability(t *testing.T) {
 			counters.Nodes = 0
 
 			// run again, this time with non-initial state
-			score2, move2 := s.Go(b, search.WithCounters(&counters), search.WithSoftTime(10), search.WithOutput(nil))
+			score2, move2, _ := s.Go(b, search.WithCounters(&counters), search.WithSoftTime(10), search.WithOutput(nil))
 			nodes2 := counters.Nodes
 
 			assert.Positive(t, nodes2, "fen %s", tt.fen)
@@ -105,7 +105,7 @@ func TestSearchStability(t *testing.T) {
 			s.Clear()
 
 			// recreate runs with hard node counts.
-			score, move := s.Go(b, search.WithCounters(&counters), search.WithNodes(nodes1), search.WithOutput(nil))
+			score, move, _ := s.Go(b, search.WithCounters(&counters), search.WithNodes(nodes1), search.WithOutput(nil))
 			nodes := counters.Nodes
 
 			assert.Equal(t, score1, score, "score mismatch first search fen %s", tt.fen)
@@ -114,7 +114,7 @@ func TestSearchStability(t *testing.T) {
 
 			counters.Nodes = 0
 
-			score, move = s.Go(b, search.WithCounters(&counters), search.WithNodes(nodes2), search.WithOutput(nil))
+			score, move, _ = s.Go(b, search.WithCounters(&counters), search.WithNodes(nodes2), search.WithOutput(nil))
 			nodes = counters.Nodes
 
 			assert.Equal(t, score2, score, "score mismatch second search fen %s", tt.fen)
@@ -131,7 +131,7 @@ func TestGoNodes0(t *testing.T) {
 	s := search.New(1 * transp.MegaBytes)
 
 	counters := search.Counters{}
-	_, move := s.Go(b, search.WithNodes(0), search.WithCounters(&counters), search.WithOutput(nil))
+	_, move, _ := s.Go(b, search.WithNodes(0), search.WithCounters(&counters), search.WithOutput(nil))
 	assert.Zero(t, counters.Nodes)
 	assert.True(t, b.IsPseudoLegal(move), "not pseudo legal %s", move)
 }
@@ -153,7 +153,7 @@ func TestGoFinal(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			s := search.New(1 * transp.MegaBytes)
 
-			score, move := s.Go(b, search.WithOutput(nil))
+			score, move, _ := s.Go(b, search.WithOutput(nil))
 			assert.Equal(t, tt.wantMove, move, "fen %s want %s got %s", tt.fen, tt.wantMove, move)
 			assert.Equal(t, tt.wantScore, score, "fen %s", tt.fen)
 		})

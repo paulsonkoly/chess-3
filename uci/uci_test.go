@@ -30,12 +30,12 @@ func (ms *MockSearch) ResizeTT(size int) {
 	ms.TTSize = size
 }
 
-func (ms *MockSearch) Go(_ *board.Board, opts ...search.Option) (Score, move.Move) {
+func (ms *MockSearch) Go(_ *board.Board, opts ...search.Option) (Score, move.Move, move.Move) {
 	for _, opt := range opts {
 		opt(&ms.Options)
 	}
 
-	return ms.score, ms.move
+	return ms.score, ms.move, 0
 }
 
 func (ms *MockSearch) MockScore(score Score) {
