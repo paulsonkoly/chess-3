@@ -104,7 +104,7 @@ Middle Game: 8 | End Game: 1
 ![KingShelter](kingshelter.png)
 
 
-Middle Game: 7 | End Game: -2
+Middle Game: 8 | End Game: -3
 
 
 ## MobilityKnight
@@ -142,7 +142,7 @@ Middle Game: 7 | End Game: -2
 ![ConnectedRooks](connectedrooks.png)
 
 
-Middle Game: 3 | End Game: 6
+Middle Game: 3 | End Game: 7
 
 
 ## BishopPair
@@ -151,15 +151,15 @@ Middle Game: 3 | End Game: 6
 
 
 
-## OpBishops : 154
+## OpBishops : 96
 
-![OpBishops : 154]()
+![OpBishops : 96]()
 
 
 
-## OpBishopsOutsidePassers : 113
+## OpBishopsOutsidePassers : 123
 
-![OpBishopsOutsidePassers : 113]()
+![OpBishopsOutsidePassers : 123]()
 
 
 
@@ -182,7 +182,7 @@ Middle Game: 37 | End Game: -13
 ![PasserKingDist](passerkingdist.png)
 
 
-Middle Game: 54 | End Game: -2
+Middle Game: 56 | End Game: -2
 
 
 ## PasserRank
@@ -196,7 +196,7 @@ Middle Game: 54 | End Game: -2
 ![DoubledPawns](doubledpawns.png)
 
 
-Middle Game: -8 | End Game: -28
+Middle Game: -9 | End Game: -28
 
 
 ## IsolatedPawns
