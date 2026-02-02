@@ -191,6 +191,10 @@ func KNBvK(b *board.Board) bool {
 			(blackN.IsPow2() && blackB.IsPow2() && (whiteN|whiteB) == 0))
 }
 
+// MaxPhase is the sum of pieces on the starting position each piece counted as
+// the corresponding Phase value.
+const MaxPhase = 24
+
 // Phase is game phase.
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
@@ -280,20 +284,20 @@ func (sp *scorePair[T]) taperedScore(b *board.Board) T {
 	mgScore := sp.mg[b.STM] - sp.mg[b.STM.Flip()]
 	egScore := sp.eg[b.STM] - sp.eg[b.STM.Flip()]
 
-	mgPhase := min(sp.phase, 24)
-	egPhase := 24 - mgPhase
+	mgPhase := min(sp.phase, MaxPhase)
+	egPhase := MaxPhase - mgPhase
 
 	if _, ok := (any(mgScore)).(Score); ok {
 		v := int(mgScore)*mgPhase + int(egScore)*egPhase
 		v *= int(100 - fifty)
 
-		return T(v / 2400)
+		return T(v / MaxPhase / 100)
 	}
 
 	v := mgScore*T(mgPhase) + egScore*T(egPhase)
 	v *= 100 - T(fifty)
 
-	return v / 2400
+	return v / MaxPhase / 100
 }
 
 func (sp *scorePair[T]) endgameScore(b *board.Board) T {

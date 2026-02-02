@@ -18,6 +18,10 @@ const (
 	Inv = Score(-11_000) // Inv is an invalid score. It is guaranteed to be less than any valid scores.
 )
 
+func (s Score) IsMate() bool {
+	return s <= -Inf+MaxPlies || s >= Inf-MaxPlies
+}
+
 func (s Score) String() string {
 	if s == Inv {
 		return "Inv"
