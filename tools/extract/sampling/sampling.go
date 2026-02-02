@@ -75,7 +75,12 @@ type Scale struct {
 }
 
 // NewScale creates a resized version of d to 0..size.
+//
+// Note: if size <= 0 this function panics.
 func NewScale(d Discretizer, size int) Scale {
+	if size <= 0 {
+		panic("invalid discretizer dimension")
+	}
 	return Scale{d, size}
 }
 
