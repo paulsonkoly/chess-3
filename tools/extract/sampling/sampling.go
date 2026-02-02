@@ -126,8 +126,8 @@ type Sampler struct {
 	keepProbs []float64
 }
 
-// NewSampler creates a sampler based on data collected in c.
-func NewSampler(c Counter) Sampler {
+// NewSampler creates a uniform sampler based on data collected in c.
+func NewUniformSampler(c Counter) Sampler {
 	k := math.MaxFloat64
 	for ix := range c.Dim() {
 		bucket := c.Count(ix)
@@ -149,6 +149,29 @@ func NewSampler(c Counter) Sampler {
 		dist := float64(bucket) / float64(c.Total())
 		keepProbs[ix] = k * (1.0 / float64(c.Dim())) / dist
 	}
+	return Sampler{keepProbs}
+}
+
+func NewSqrtSampler(c Counter) Sampler {
+	keepProbs := make([]float64, c.Dim())
+
+	maxW := 0.0
+	for ix := range c.Dim() {
+		n := c.Count(ix)
+		if n == 0 {
+			continue
+		}
+		w := 1.0 / math.Sqrt(float64(n))
+		keepProbs[ix] = w
+		if w > maxW {
+			maxW = w
+		}
+	}
+
+	for ix := range c.Dim() {
+		keepProbs[ix] /= maxW
+	}
+
 	return Sampler{keepProbs}
 }
 

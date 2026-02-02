@@ -119,7 +119,7 @@ func main() {
 	}
 	bar.Close()
 
-	sampler := sampling.NewSampler(counter)
+	sampler := sampling.NewSqrtSampler(counter)
 	if err := output(entries, downScaled, sampler); err != nil {
 		panic(err)
 	}
