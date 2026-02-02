@@ -231,14 +231,14 @@ func (sp *scorePair[T]) KNBvK(b *board.Board, c *CoeffSet[T]) {
 
 func (sp *scorePair[T]) addPieceValues(b *board.Board, c *CoeffSet[T]) {
 	for pType := Pawn; pType <= Queen; pType++ {
-		for color := White; color <= Black; color++ {
-			cnt := (b.Pieces[pType] & b.Colors[color]).Count()
+		wCnt := (b.Pieces[pType] & b.Colors[White]).Count()
+		bCnt := (b.Pieces[pType] & b.Colors[Black]).Count()
 
-			sp.phase += cnt * Phase[pType]
-
-			sp.mg[color] += T(cnt) * c.PieceValues[0][pType]
-			sp.eg[color] += T(cnt) * c.PieceValues[1][pType]
-		}
+		sp.phase += (wCnt + bCnt) * Phase[pType]
+		sp.mg[White] += T(wCnt) * c.PieceValues[0][pType]
+		sp.eg[White] += T(wCnt) * c.PieceValues[1][pType]
+		sp.mg[Black] += T(bCnt) * c.PieceValues[0][pType]
+		sp.eg[Black] += T(bCnt) * c.PieceValues[1][pType]
 	}
 }
 
@@ -264,18 +264,14 @@ func (sp *scorePair[T]) addBishopPair(b *board.Board, c *CoeffSet[T]) {
 }
 
 func (sp *scorePair[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet[T]) {
-	// add up PSqT
-
-	sqIx := sq
-
 	if color == White {
-		sqIx ^= 56 // upside down
+		sq ^= 56 // upside down
 	}
 
 	ix := pType - 1
 
-	sp.mg[color] += c.PSqT[2*ix][sqIx]
-	sp.eg[color] += c.PSqT[2*ix+1][sqIx]
+	sp.mg[color] += c.PSqT[2*ix][sq]
+	sp.eg[color] += c.PSqT[2*ix+1][sq]
 }
 
 func (sp *scorePair[T]) taperedScore(b *board.Board) T {
