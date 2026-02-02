@@ -99,7 +99,7 @@ func (s Scale) Value(d any) int {
 	return ret
 }
 
-// Counter counts the occurances of discrete values.
+// Counter counts the occurrences of discrete values.
 type Counter struct {
 	counts []int
 	total  int
@@ -117,7 +117,7 @@ func (c *Counter) Add(v int) {
 	c.total++
 }
 
-// Count is the total number of occurances of v.
+// Count is the total number of occurrences of v.
 func (c Counter) Count(v int) int { return c.counts[v] }
 
 // Total is the number of all data points.
@@ -131,7 +131,7 @@ type Sampler struct {
 	keepProbs []float64
 }
 
-// NewSampler creates a uniform sampler based on data collected in c.
+// NewUniformSampler creates a uniform sampler based on data collected in c.
 func NewUniformSampler(c Counter) Sampler {
 	k := math.MaxFloat64
 	for ix := range c.Dim() {
@@ -157,6 +157,9 @@ func NewUniformSampler(c Counter) Sampler {
 	return Sampler{keepProbs}
 }
 
+// NewSqrtSampler creates a new smoothed sampler with sqrt.
+//
+// Note: this function panics if the is no data present in c.
 func NewSqrtSampler(c Counter) Sampler {
 	keepProbs := make([]float64, c.Dim())
 
@@ -171,6 +174,10 @@ func NewSqrtSampler(c Counter) Sampler {
 		if w > maxW {
 			maxW = w
 		}
+	}
+
+	if maxW == 0 {
+		panic("samler on no data")
 	}
 
 	for ix := range c.Dim() {
