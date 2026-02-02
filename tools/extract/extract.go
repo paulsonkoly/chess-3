@@ -74,7 +74,7 @@ func main() {
 	discretizers := []sampling.Discretizer{}
 	if samplePhase {
 		discretizers = append(discretizers,
-			sampling.NewFeature(eval.MaxPhase+1, func(d any) int {
+			sampling.NewFeature(eval.MaxPhase/3+1, func(d any) int {
 				if epdE, ok := d.(EPDEntry); ok {
 					var b board.Board
 					if err := board.ParseFEN(&b, epdE.fen); err != nil {
@@ -85,7 +85,8 @@ func main() {
 					for pt := chess.Pawn; pt < chess.King; pt++ {
 						pieceCnt += b.Pieces[pt].Count() * eval.Phase[pt]
 					}
-					pieceCnt = min(pieceCnt, eval.MaxPhase)
+					pieceCnt /= 3
+					pieceCnt = min(pieceCnt, eval.MaxPhase/3)
 					return pieceCnt
 				}
 				panic("interface conversion")
@@ -119,7 +120,7 @@ func main() {
 	}
 	bar.Close()
 
-	sampler := sampling.NewSqrtSampler(counter)
+	sampler := sampling.NewUniformSampler(counter)
 	if err := output(entries, downScaled, sampler); err != nil {
 		panic(err)
 	}
