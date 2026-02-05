@@ -25,6 +25,7 @@ var (
 	filterNoisy   bool
 	filterMate    bool
 	filterOutlier bool
+	filterInCheck bool
 	samplePhase   bool
 	sampleOutcome bool
 	samplePerGame int
@@ -38,6 +39,7 @@ func main() {
 	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.BoolVar(&filterMate, "filterMate", true, "filter positions with mate scores")
 	flag.BoolVar(&filterOutlier, "filterOutlier", true, "filter positions with eval mismatching wdl by margin")
+	flag.BoolVar(&filterInCheck, "filterInCheck", true, "filter in check positions")
 	flag.BoolVar(&samplePhase, "samplePhase", true, "sample positions for game phase")
 	flag.BoolVar(&sampleOutcome, "sampleOutcome", true, "sample positions for outcome")
 	flag.IntVar(&samplePerGame, "samplePerGame", 40, "number of maximum positions from a game; (-1) to disable")
@@ -241,6 +243,10 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 			if b.SquaresToPiece[bm.To()] != chess.NoPiece {
 				continue
 			}
+		}
+
+		if filterInCheck && b.InCheck(b.STM) {
+			continue
 		}
 
 		fenCopy := make([]byte, len(fen))
