@@ -24,6 +24,7 @@ var (
 	outFn         string
 	filterNoisy   bool
 	filterMate    bool
+	filterOutlier bool
 	samplePhase   bool
 	sampleOutcome bool
 	samplePerGame int
@@ -36,6 +37,7 @@ func main() {
 	flag.StringVar(&outFn, "output", "extract.epd", "output epd file")
 	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.BoolVar(&filterMate, "filterMate", true, "filter positions with mate scores")
+	flag.BoolVar(&filterOutlier, "filterOutlier", true, "filter positions with eval mismatching wdl by margin")
 	flag.BoolVar(&samplePhase, "samplePhase", true, "sample positions for game phase")
 	flag.BoolVar(&sampleOutcome, "sampleOutcome", true, "sample positions for outcome")
 	flag.IntVar(&samplePerGame, "samplePerGame", 40, "number of maximum positions from a game; (-1) to disable")
@@ -212,6 +214,20 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 
 		bar.Add(1)
 
+		if err := board.ParseFEN(&b, fen); err != nil {
+			return nil, err
+		}
+
+		if filterOutlier {
+			if b.STM == chess.Black {
+				score = -score
+			}
+
+			if (score < -600 && wdl == WhiteWon) || (score > 600 && wdl == BlackWon) {
+				continue
+			}
+		}
+
 		if filterMate && score.IsMate() {
 			continue
 		}
@@ -220,10 +236,6 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 			// filter noisy best moves
 			if bm.Promo() != chess.NoPiece {
 				continue
-			}
-
-			if err := board.ParseFEN(&b, fen); err != nil {
-				return nil, err
 			}
 
 			if b.SquaresToPiece[bm.To()] != chess.NoPiece {
@@ -270,6 +282,12 @@ func output(entries []EPDEntry, disc sampling.Discretizer, sampler sampling.Samp
 	return nil
 }
 
+const (
+	Draw     = 0
+	WhiteWon = 1
+	BlackWon = 2
+)
+
 type EPDEntry struct {
 	fen []byte
 	wdl int
@@ -277,11 +295,11 @@ type EPDEntry struct {
 
 func wdlToEPD(n int) float64 {
 	switch n {
-	case 0:
+	case Draw:
 		return 0.5
-	case 1:
+	case WhiteWon:
 		return 1.0
-	case 2:
+	case BlackWon:
 		return 0.0
 	}
 	panic(fmt.Sprintf("unexpected wdl %d", n))
