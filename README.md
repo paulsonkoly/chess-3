@@ -16,7 +16,7 @@ chess-3 is occasionally online on Lichess using chess-2's [Lichess account](http
 | 2.0     | [2792][2.0] |
 | 1.0     | [2654][1.0] |
 
-[3.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%203.0%2064-bit#Chess-3_3_0_64-bit 
+[3.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%203.0%2064-bit#Chess-3_3_0_64-bit
 [2.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%202.0%2064-bit#Chess-3_2_0_64-bit
 [1.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%201.47%2064-bit#Chess-3_1_47_64-bit
 
