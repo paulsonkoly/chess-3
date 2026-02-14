@@ -169,14 +169,6 @@ const (
 	hi16  = 0x8000_8000_8000_8000
 )
 
-// hasMatch64 determines if any of the 16-bit lanes in w equals key.
-func hasMatch64(w uint64, key partialKey) bool {
-	r := uint64(key) * rep16
-	x := w ^ r
-	// the has-zero-16 trick
-	return ((x - rep16) & ^x & hi16) != 0
-}
-
 // match64 finds the index of matching 16 bit lane in the 64 bit word w,
 // comparing each 16 bit lanes with key. If there are no matches it returns ok
 // false.
