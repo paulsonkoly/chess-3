@@ -14,7 +14,7 @@ func TestMatch64(t *testing.T) {
 		wantIx int
 		wantOk bool
 	}{
-		{"not found", 0xabcd32112345678, 0xabcd, 0, false},
+		{"not found", 0xabcd432112345678, 0xabcd, 0, false},
 		{"ix1", 0xabcd432112345678, 0x5678, 0, true},
 		{"ix2", 0xabcd432112345678, 0x1234, 1, true},
 		{"ix3", 0xabcd432112345678, 0x4321, 2, true},
