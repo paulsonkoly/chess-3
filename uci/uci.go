@@ -275,7 +275,7 @@ func (d *Driver) handlePerft(args []string) {
 	result := debug.Perft(d.board, Depth(depth), true)
 	elapsed := time.Since(start)
 
-	nps := float64(result*1000) / float64(elapsed.Milliseconds())
+	nps := float64(result) / elapsed.Seconds()
 	fmt.Fprintf(d.output, "%.4f nps\n%d\n", nps, result)
 }
 
