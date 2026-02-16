@@ -228,22 +228,7 @@ func (d *Driver) handleCommand(command string) {
 		d.handleEval()
 
 	case "perft":
-		if len(parts) < 2 {
-			fmt.Fprintln(d.err, "depth missing")
-			break
-		}
-
-		depth, err := strconv.Atoi(parts[1])
-		if err != nil {
-			fmt.Fprintln(d.err, err)
-			break
-		}
-		if depth < 0 || depth > 30 {
-			fmt.Fprintln(d.err, "unsupported depth")
-			break
-		}
-
-		fmt.Fprintln(d.output, debug.Perft(d.board, Depth(depth), true))
+		d.handlePerft(parts[1:])
 
 	case "debug":
 		if len(parts) < 2 {
@@ -268,6 +253,30 @@ func (d *Driver) handleCommand(command string) {
 	case "spsa":
 		fmt.Fprint(d.output, params.OpenbenchInfo())
 	}
+}
+
+func (d *Driver) handlePerft(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(d.err, "depth missing")
+		return
+	}
+
+	depth, err := strconv.Atoi(args[0])
+	if err != nil {
+		fmt.Fprintln(d.err, err)
+		return
+	}
+	if depth < 0 || depth > 30 {
+		fmt.Fprintln(d.err, "unsupported depth")
+		return
+	}
+
+	start := time.Now()
+	result := debug.Perft(d.board, Depth(depth), true)
+	elapsed := time.Since(start)
+
+	nps := float64(result*1000) / float64(elapsed.Milliseconds())
+	fmt.Fprintf(d.output, "%.4f nps\n%d\n", nps, result)
 }
 
 func (d *Driver) handleSetOption(args []string) {
