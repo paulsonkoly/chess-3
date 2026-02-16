@@ -3,6 +3,7 @@ package transp
 
 import (
 	"fmt"
+	"math/bits"
 	"unsafe"
 
 	"github.com/paulsonkoly/chess-3/board"
@@ -168,12 +169,17 @@ const (
 	hi16  = 0x8000_8000_8000_8000
 )
 
-// hasMatch64 determines if any of the 16-bit lanes in w equals key.
-func hasMatch64(w uint64, key partialKey) bool {
+// match64 finds the index of matching 16 bit lane in the 64 bit word w,
+// comparing each 16 bit lanes with key. If there are no matches it returns ok
+// false.
+func match64(w uint64, key partialKey) (ix int, ok bool) {
 	r := uint64(key) * rep16
 	x := w ^ r
-	// the has-zero-16 trick
-	return ((x - rep16) & ^x & hi16) != 0
+	mask := (x - rep16) & ^x & hi16
+	if mask == 0 {
+		return
+	}
+	return bits.TrailingZeros64(mask) / 16, true
 }
 
 // LookUp looks up the entry for hash.
@@ -182,13 +188,8 @@ func (t *Table) LookUp(hash board.Hash) (*entry, bool) {
 	bucketKeys := bucket.pKeys
 	hashKey := partialKey(hash >> (64 - partialKeyBits))
 
-	if hasMatch64(bucketKeys, hashKey) {
-		for i := range bucketEntryCnt {
-			if hashKey == partialKey(bucketKeys) {
-				return &bucket.entries[i], true
-			}
-			bucketKeys >>= partialKeyBits
-		}
+	if ix, ok := match64(bucketKeys, hashKey); ok {
+		return &bucket.entries[ix], true
 	}
 
 	return nil, false
