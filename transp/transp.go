@@ -175,9 +175,9 @@ const (
 func match64(w uint64, key partialKey) (ix int, ok bool) {
 	r := uint64(key) * rep16
 	x := w ^ r
-	mask := ((x - rep16) & ^x & hi16)
+	mask := (x - rep16) & ^x & hi16
 	if mask == 0 {
-		return 0, false
+		return
 	}
 	return bits.TrailingZeros64(mask) / 16, true
 }
