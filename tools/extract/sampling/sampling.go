@@ -177,7 +177,7 @@ func NewSqrtSampler(c Counter) Sampler {
 	}
 
 	if maxW == 0 {
-		panic("samler on no data")
+		panic("sampler on no data")
 	}
 
 	for ix := range c.Dim() {
@@ -187,7 +187,7 @@ func NewSqrtSampler(c Counter) Sampler {
 	return Sampler{keepProbs}
 }
 
-// KeepProb is the probabilty of keeping a data point of value v.
+// KeepProb is the probability of keeping a data point of value v.
 func (s Sampler) KeepProb(v int) float64 {
 	return s.keepProbs[v]
 }
