@@ -39,6 +39,9 @@ func (b *Board) ResetHash() {
 	b.hashes = append(b.hashes, b.calculateHash())
 }
 
+// ResetFifty resets the fifty move counter.
+func (b *Board) ResetFifty() { b.FiftyCnt = 0 }
+
 // IsEnPassant determines if a move is an en-passant pawn capture according to the current board en-passant state.
 func (b *Board) IsEnPassant(sm move.Move) bool {
 	return b.EnPassant != 0 && b.EnPassant == sm.To() && b.SquaresToPiece[sm.From()] == Pawn
