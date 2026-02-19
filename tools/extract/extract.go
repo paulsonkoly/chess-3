@@ -15,20 +15,23 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval"
+	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/tools/extract/sampling"
 )
 
 var (
-	dbFn          string
-	outFn         string
-	filterNoisy   bool
-	filterMate    bool
-	filterOutlier bool
-	filterInCheck bool
-	samplePhase   bool
-	sampleOutcome bool
-	samplePerGame int
+	dbFn             string
+	outFn            string
+	filterNoisy      bool
+	filterMate       bool
+	filterOutlier    bool
+	filterInCheck    bool
+	filterMgDecisive bool
+	samplePhase      bool
+	sampleOutcome    bool
+	sampleImbalance  bool
+	samplePerGame    int
 )
 
 func main() {
@@ -36,13 +39,15 @@ func main() {
 
 	flag.StringVar(&dbFn, "database", "database.db", "input database file name")
 	flag.StringVar(&outFn, "output", "extract.epd", "output epd file")
-	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
+	flag.BoolVar(&filterNoisy, "filterNoisy", false, "filter positions with bestmove being noisy")
 	flag.BoolVar(&filterMate, "filterMate", true, "filter positions with mate scores")
 	flag.BoolVar(&filterOutlier, "filterOutlier", true, "filter positions with eval mismatching wdl by margin")
-	flag.BoolVar(&filterInCheck, "filterInCheck", true, "filter in check positions")
+	flag.BoolVar(&filterInCheck, "filterInCheck", false, "filter in check positions")
+	flag.BoolVar(&filterMgDecisive, "filterMgDecisive", false, "filter decisive middle games with absolute score under threshold")
 	flag.BoolVar(&samplePhase, "samplePhase", true, "sample positions for game phase")
 	flag.BoolVar(&sampleOutcome, "sampleOutcome", true, "sample positions for outcome")
-	flag.IntVar(&samplePerGame, "samplePerGame", 40, "number of maximum positions from a game; (-1) to disable")
+	flag.BoolVar(&sampleImbalance, "sampleImbalance", true, "sample positions for material imbalance")
+	flag.IntVar(&samplePerGame, "samplePerGame", 100, "number of maximum positions from a game; (-1) to disable")
 	flag.StringVar(&cpuProf, "cpuProf", "", "cpu profile (empty to disable)")
 
 	flag.Parse()
@@ -76,12 +81,38 @@ func main() {
 	}
 
 	discretizers := []sampling.Discretizer{}
+
+	if sampleImbalance {
+		discretizers = append(discretizers,
+			sampling.NewFeature(2, func(d any) int {
+				if epdE, ok := d.(EPDEntry); ok {
+					b, err := board.FromFEN(epdE.fen)
+					if err != nil {
+						panic(err)
+					}
+
+					whitePieces := 0
+					for pt := chess.Pawn; pt < chess.King; pt++ {
+						whitePieces += (b.Colors[chess.White] & b.Pieces[pt]).Count() * (int(heur.PieceValues[pt]) / 100)
+					}
+					blackPieces := 0
+					for pt := chess.Pawn; pt < chess.King; pt++ {
+						blackPieces += (b.Colors[chess.Black] & b.Pieces[pt]).Count() * (int(heur.PieceValues[pt]) / 100)
+					}
+					return chess.Clamp(chess.Abs(whitePieces-blackPieces), 0, 1)
+				}
+				panic("interface conversion")
+			}),
+		)
+
+	}
+
 	if samplePhase {
 		discretizers = append(discretizers,
 			sampling.NewFeature(eval.MaxPhase/3+1, func(d any) int {
 				if epdE, ok := d.(EPDEntry); ok {
-					var b board.Board
-					if err := board.ParseFEN(&b, epdE.fen); err != nil {
+					b, err := board.FromFEN(epdE.fen)
+					if err != nil {
 						panic(err)
 					}
 
@@ -100,13 +131,9 @@ func main() {
 
 	if sampleOutcome {
 		discretizers = append(discretizers,
-			sampling.NewFeature(2, func(d any) int {
+			sampling.NewFeature(3, func(d any) int {
 				if epdE, ok := d.(EPDEntry); ok {
-					if epdE.wdl == 0 {
-						return 0 // draw
-					} else { // decisive
-						return 1
-					}
+					return int(epdE.wdl)
 				}
 				panic("interface conversion")
 			}),
@@ -114,7 +141,8 @@ func main() {
 	}
 
 	combined := sampling.NewCombined(discretizers...)
-	downScaled := sampling.NewScale(combined, int(float64(combined.Dim())*0.6))
+	// downScaled := sampling.NewScale(combined, int(float64(combined.Dim())*0.6))
+	downScaled := combined
 
 	counter := sampling.NewCounter(downScaled.Dim())
 	bar := progress.NewOptions(len(entries), progress.OptionSetDescription("counting features"))
@@ -213,6 +241,7 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 		if err := positions.Scan(&fen, &bm, &score); err != nil {
 			return nil, err
 		}
+		b.ResetFifty()
 
 		bar.Add(1)
 
@@ -245,14 +274,23 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 			}
 		}
 
+		if filterMgDecisive && wdl != Draw {
+			pieceCnt := 0
+			for pt := chess.Pawn; pt < chess.King; pt++ {
+				pieceCnt += b.Pieces[pt].Count() * eval.Phase[pt]
+			}
+			pieceCnt /= 3
+
+			if pieceCnt > 4 && chess.Abs(score) < 200 {
+				continue
+			}
+		}
+
 		if filterInCheck && b.InCheck(b.STM) {
 			continue
 		}
 
-		fenCopy := make([]byte, len(fen))
-		copy(fenCopy, fen)
-
-		gameEntries = append(gameEntries, EPDEntry{fen: fenCopy, wdl: wdl})
+		gameEntries = append(gameEntries, EPDEntry{fen: b.FEN(), wdl: wdl})
 	}
 	if err := positions.Err(); err != nil {
 		return nil, err
@@ -295,7 +333,7 @@ const (
 )
 
 type EPDEntry struct {
-	fen []byte
+	fen string
 	wdl int
 }
 
