@@ -16,7 +16,6 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval"
-	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/tools/extract/sampling"
 )
@@ -40,15 +39,15 @@ func main() {
 
 	flag.StringVar(&dbFn, "database", "database.db", "input database file name")
 	flag.StringVar(&outFn, "output", "extract.epd", "output epd file")
-	flag.BoolVar(&filterNoisy, "filterNoisy", false, "filter positions with bestmove being noisy")
+	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.BoolVar(&filterMate, "filterMate", true, "filter positions with mate scores")
 	flag.BoolVar(&filterOutlier, "filterOutlier", true, "filter positions with eval mismatching wdl by margin")
-	flag.BoolVar(&filterInCheck, "filterInCheck", false, "filter in check positions")
+	flag.BoolVar(&filterInCheck, "filterInCheck", true, "filter in check positions")
 	flag.BoolVar(&filterMgDecisive, "filterMgDecisive", false, "filter decisive middle games with absolute score under threshold")
 	flag.BoolVar(&samplePhase, "samplePhase", true, "sample positions for game phase")
 	flag.BoolVar(&sampleOutcome, "sampleOutcome", true, "sample positions for outcome")
 	flag.BoolVar(&sampleImbalance, "sampleImbalance", true, "sample positions for material imbalance")
-	flag.IntVar(&samplePerGame, "samplePerGame", 100, "number of maximum positions from a game; (-1) to disable")
+	flag.IntVar(&samplePerGame, "samplePerGame", -1, "number of maximum positions from a game; (-1) to disable")
 	flag.StringVar(&cpuProf, "cpuProf", "", "cpu profile (empty to disable)")
 
 	flag.Parse()
@@ -82,6 +81,8 @@ func main() {
 		panic(err)
 	}
 
+	fmt.Println(counter)
+
 	sampler := sampling.NewUniformSampler(counter)
 	if err := output(db, ids, dp, sampler); err != nil {
 		panic(err)
@@ -92,6 +93,8 @@ type epd struct {
 	board *board.Board
 	wdl   int
 }
+
+var pieceValues = [...]int{0, 1, 3, 3, 5, 9}
 
 func discretizerPipe() sampling.Discretizer {
 	discretizers := []sampling.Discretizer{}
@@ -104,11 +107,11 @@ func discretizerPipe() sampling.Discretizer {
 
 					whitePieces := 0
 					for pt := chess.Pawn; pt < chess.King; pt++ {
-						whitePieces += (b.Colors[chess.White] & b.Pieces[pt]).Count() * (int(heur.PieceValues[pt]) / 100)
+						whitePieces += (b.Colors[chess.White] & b.Pieces[pt]).Count() * (pieceValues[pt])
 					}
 					blackPieces := 0
 					for pt := chess.Pawn; pt < chess.King; pt++ {
-						blackPieces += (b.Colors[chess.Black] & b.Pieces[pt]).Count() * (int(heur.PieceValues[pt]) / 100)
+						blackPieces += (b.Colors[chess.Black] & b.Pieces[pt]).Count() * (pieceValues[pt])
 					}
 					return chess.Clamp(chess.Abs(whitePieces-blackPieces), 0, 1)
 				}
@@ -119,16 +122,19 @@ func discretizerPipe() sampling.Discretizer {
 
 	if samplePhase {
 		discretizers = append(discretizers,
-			sampling.NewFeature(eval.MaxPhase/3+1, func(d any) int {
+			sampling.NewFeature(78/18, func(d any) int {
 				if epdE, ok := d.(epd); ok {
 					b := epdE.board
 
 					pieceCnt := 0
 					for pt := chess.Pawn; pt < chess.King; pt++ {
-						pieceCnt += b.Pieces[pt].Count() * eval.Phase[pt]
+						pieceCnt += b.Pieces[pt].Count() * (pieceValues[pt])
 					}
-					pieceCnt /= 3
-					pieceCnt = min(pieceCnt, eval.MaxPhase/3)
+					pieceCnt /= 18
+					// merge extreme top (partial) bucket into the previous because there
+					// are not enough samples there. Even with a divisor of 78 the top
+					// buckets are very sparse in the other features
+					pieceCnt = min(pieceCnt, 78/18-1)
 					return pieceCnt
 				}
 				panic("interface conversion")
