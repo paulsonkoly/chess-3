@@ -51,7 +51,7 @@ func Run(args []string) {
 	sFlags.StringVar(&host, "host", "localhost", "host to listen on")
 	sFlags.IntVar(&port, "port", 9001, "port to listen on")
 	sFlags.IntVar(&serverConfig.openingDepth, "openingDepth", 8, "number of random generated opening moves")
-	sFlags.IntVar(&serverConfig.openingMargin, "openingMargin", 300, "margin for what's considered to be balanced opening (cp)")
+	sFlags.IntVar(&serverConfig.openingMargin, "openingMargin", 300, "margin for what's considered to be balanced opening, -1 to disable (cp)")
 
 	sFlags.IntVar(&config.SoftNodes, "softNodes", 15_000, "soft node count for search")
 	sFlags.IntVar(&config.HardNodes, "hardNodes", 8_000_000, "hard node count for search")
@@ -153,7 +153,7 @@ Retry:
 			search.WithNodes(serverConfig.hardNodes),
 			search.WithOutput(nil))
 
-		if Range(serverConfig.openingMargin).Contains(score) {
+		if serverConfig.openingMargin == -1 || Range(serverConfig.openingMargin).Contains(score) {
 			return b
 		}
 	}
