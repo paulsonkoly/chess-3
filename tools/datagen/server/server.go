@@ -66,6 +66,11 @@ func Run(args []string) {
 
 	sFlags.Parse(args)
 
+	if serverConfig.openingMargin < -1 {
+		fmt.Fprintf(os.Stderr, "invalid opening margin %d\n", serverConfig.openingMargin)
+		os.Exit(1)
+	}
+
 	serverConfig.softNodes = config.SoftNodes
 	serverConfig.hardNodes = config.HardNodes
 
