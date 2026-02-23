@@ -158,7 +158,7 @@ func (u BatchTimeUpdate) Log() {}
 type MSEUpdate struct{ MSE float64 }
 
 func (u MSEUpdate) Draw(s tcell.Screen) {
-	drawText(s, mseLeft, mseTop, mseRight, mseBot, tcell.StyleDefault, fmt.Sprintf("%f", u.MSE))
+	drawText(s, mseLeft, mseTop, mseRight, mseBot, tcell.StyleDefault, fmt.Sprintf("%.16f", u.MSE))
 }
 
 func (u MSEUpdate) Log() { slog.Info("MSE updated", "MSE", u.MSE) }
