@@ -9,26 +9,26 @@ import (
 	"os"
 	"runtime/pprof"
 
-	progress "github.com/schollz/progressbar/v3"
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/schollz/progressbar/v3"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/chess"
-	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/tools/extract/sampling"
 )
 
 var (
-	dbFn          string
-	outFn         string
-	filterNoisy   bool
-	filterMate    bool
-	filterOutlier bool
-	filterInCheck bool
-	samplePhase   bool
-	sampleOutcome bool
-	samplePerGame int
+	dbFn            string
+	outFn           string
+	filterNoisy     bool
+	filterMate      bool
+	filterOutlier   bool
+	filterInCheck   bool
+	samplePhase     bool
+	sampleOutcome   bool
+	sampleImbalance bool
+	samplePerGame   int
 )
 
 func main() {
@@ -38,11 +38,12 @@ func main() {
 	flag.StringVar(&outFn, "output", "extract.epd", "output epd file")
 	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.BoolVar(&filterMate, "filterMate", true, "filter positions with mate scores")
-	flag.BoolVar(&filterOutlier, "filterOutlier", true, "filter positions with eval mismatching wdl by margin")
+	flag.BoolVar(&filterOutlier, "filterOutlier", false, "filter positions with eval mismatching wdl by margin")
 	flag.BoolVar(&filterInCheck, "filterInCheck", true, "filter in check positions")
 	flag.BoolVar(&samplePhase, "samplePhase", true, "sample positions for game phase")
 	flag.BoolVar(&sampleOutcome, "sampleOutcome", true, "sample positions for outcome")
-	flag.IntVar(&samplePerGame, "samplePerGame", 40, "number of maximum positions from a game; (-1) to disable")
+	flag.BoolVar(&sampleImbalance, "sampleImbalance", false, "sample positions for material imbalance")
+	flag.IntVar(&samplePerGame, "samplePerGame", 15, "number of maximum positions from a game; (-1) to disable")
 	flag.StringVar(&cpuProf, "cpuProf", "", "cpu profile (empty to disable)")
 
 	flag.Parse()
@@ -59,38 +60,81 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	db, err := sql.Open("sqlite", dbFn)
+	db, err := sql.Open("sqlite3", dbFn)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
-	entries, err := loadAndFilter(db)
+	if _, err := db.Exec("PRAGMA cache_size = 100000"); err != nil {
+		panic(err)
+	}
+	if _, err := db.Exec("PRAGMA temp_store = file"); err != nil {
+		panic(err)
+	}
+
+	dp := discretizerPipe()
+	counter := sampling.NewCounter(dp.Dim())
+
+	ids, err := load(db, dp, &counter)
 	if err != nil {
 		panic(err)
 	}
 
-	if len(entries) == 0 {
-		fmt.Fprintln(os.Stderr, "No positions loaded (database empty or all filtered)")
-		os.Exit(1)
+	fmt.Println(counter)
+
+	sampler := sampling.NewUniformSampler(counter)
+	if err := output(db, ids, dp, sampler); err != nil {
+		panic(err)
+	}
+}
+
+type epd struct {
+	board *board.Board
+	wdl   int
+}
+
+var pieceValues = [...]int{0, 1, 3, 3, 5, 9}
+
+func discretizerPipe() sampling.Discretizer {
+	discretizers := []sampling.Discretizer{}
+
+	if sampleImbalance {
+		discretizers = append(discretizers,
+			sampling.NewFeature(2, func(d any) int {
+				if epdE, ok := d.(epd); ok {
+					b := epdE.board
+
+					whitePieces := 0
+					for pt := chess.Pawn; pt < chess.King; pt++ {
+						whitePieces += (b.Colors[chess.White] & b.Pieces[pt]).Count() * (pieceValues[pt])
+					}
+					blackPieces := 0
+					for pt := chess.Pawn; pt < chess.King; pt++ {
+						blackPieces += (b.Colors[chess.Black] & b.Pieces[pt]).Count() * (pieceValues[pt])
+					}
+					return chess.Clamp(chess.Abs(whitePieces-blackPieces), 0, 1)
+				}
+				panic("interface conversion")
+			}),
+		)
 	}
 
-	discretizers := []sampling.Discretizer{}
 	if samplePhase {
 		discretizers = append(discretizers,
-			sampling.NewFeature(eval.MaxPhase/3+1, func(d any) int {
-				if epdE, ok := d.(EPDEntry); ok {
-					var b board.Board
-					if err := board.ParseFEN(&b, epdE.fen); err != nil {
-						panic(err)
-					}
+			sampling.NewFeature(78/18, func(d any) int {
+				if epdE, ok := d.(epd); ok {
+					b := epdE.board
 
 					pieceCnt := 0
 					for pt := chess.Pawn; pt < chess.King; pt++ {
-						pieceCnt += b.Pieces[pt].Count() * eval.Phase[pt]
+						pieceCnt += b.Pieces[pt].Count() * (pieceValues[pt])
 					}
-					pieceCnt /= 3
-					pieceCnt = min(pieceCnt, eval.MaxPhase/3)
+					pieceCnt /= 18
+					// merge extreme top (partial) bucket into the previous because there
+					// are not enough samples there. Even with a divisor of 78 the top
+					// buckets are very sparse in the other features
+					pieceCnt = min(pieceCnt, 78/18-1)
 					return pieceCnt
 				}
 				panic("interface conversion")
@@ -100,49 +144,28 @@ func main() {
 
 	if sampleOutcome {
 		discretizers = append(discretizers,
-			sampling.NewFeature(2, func(d any) int {
-				if epdE, ok := d.(EPDEntry); ok {
-					if epdE.wdl == 0 {
-						return 0 // draw
-					} else { // decisive
-						return 1
-					}
+			sampling.NewFeature(3, func(d any) int {
+				if epdE, ok := d.(epd); ok {
+					return int(epdE.wdl)
 				}
 				panic("interface conversion")
 			}),
 		)
 	}
 
-	combined := sampling.NewCombined(discretizers...)
-	downScaled := sampling.NewScale(combined, int(float64(combined.Dim())*0.6))
-
-	counter := sampling.NewCounter(downScaled.Dim())
-	bar := progress.NewOptions(len(entries), progress.OptionSetDescription("counting features"))
-	for _, entry := range entries {
-		counter.Add(downScaled.Value(entry))
-		bar.Add(1)
-	}
-	bar.Close()
-
-	sampler := sampling.NewUniformSampler(counter)
-	if err := output(entries, downScaled, sampler); err != nil {
-		panic(err)
-	}
+	return sampling.NewCombined(discretizers...)
 }
 
-func loadAndFilter(db *sql.DB) ([]EPDEntry, error) {
-
-	var entryCnt int
-	if err := db.QueryRow("select count(*) from positions").Scan(&entryCnt); err != nil {
+func load(db *sql.DB, dp sampling.Discretizer, cntr *sampling.Counter) ([]int, error) {
+	var posCnt int
+	if err := db.QueryRow("select count(*) from positions").Scan(&posCnt); err != nil {
 		return nil, err
 	}
 
-	bar := progress.NewOptions(entryCnt, progress.OptionSetDescription("loading"))
-	defer bar.Close()
+	result := make([]int, 0, posCnt)
 
-	// cut the entry count in half, speculating that that's how many positions we
-	// are going to filter.
-	entries := make([]EPDEntry, 0, entryCnt/2)
+	bar := progressbar.NewOptions(posCnt, progressbar.OptionSetDescription("counting features"))
+	defer bar.Close()
 
 	games, err := db.Query("select id, wdl from games")
 	if err != nil {
@@ -150,7 +173,7 @@ func loadAndFilter(db *sql.DB) ([]EPDEntry, error) {
 	}
 	defer games.Close()
 
-	posStm, err := db.Prepare("select fen, best_move, eval from positions where game_id=?")
+	posStm, err := db.Prepare("select id, fen, best_move, eval from positions where game_id=?")
 	if err != nil {
 		return nil, err
 	}
@@ -165,57 +188,59 @@ func loadAndFilter(db *sql.DB) ([]EPDEntry, error) {
 			return nil, err
 		}
 
-		gameEntries, err := loadGamePositions(posStm, gameId, wdl, bar)
+		startIx := len(result)
+		m, err := loadPositions(posStm, bar, gameId, wdl, &result)
 		if err != nil {
 			return nil, err
 		}
+		endIx := len(result)
 
-		if samplePerGame != -1 && samplePerGame < len(gameEntries) {
-			rand.Shuffle(len(gameEntries), func(i, j int) {
-				gameEntries[i], gameEntries[j] = gameEntries[j], gameEntries[i]
+		samplePerGame = max(samplePerGame, -1)
+		if samplePerGame != -1 && samplePerGame < endIx-startIx {
+			rand.Shuffle(endIx-startIx, func(i, j int) {
+				result[i+startIx], result[j+startIx] = result[j+startIx], result[i+startIx]
 			})
 
-			gameEntries = gameEntries[:samplePerGame]
+			endIx = startIx + samplePerGame
+			result = result[:endIx]
 		}
 
-		entries = append(entries, gameEntries...)
+		for _, id := range result[startIx:endIx] {
+			cntr.Add(dp.Value(m[id]))
+		}
 	}
 
-	if err := games.Err(); err != nil {
-		return nil, err
-	}
-
-	return entries, nil
+	return result, games.Err()
 }
 
-func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.ProgressBar) ([]EPDEntry, error) {
+func loadPositions(
+	posStm *sql.Stmt,
+	bar *progressbar.ProgressBar,
+	gameId int,
+	wdl int,
+	result *[]int,
+) (map[int]epd, error) {
 	positions, err := posStm.Query(gameId)
 	if err != nil {
 		return nil, err
 	}
 	defer positions.Close()
 
-	cap := samplePerGame
-	if cap < 0 {
-		cap = 64
-	}
-	gameEntries := make([]EPDEntry, 0, cap)
+	m := make(map[int]epd)
 
-	var b board.Board
-
-	for positions.Next() {
+	for ; positions.Next(); bar.Add(1) {
 		var (
+			id    int
 			fen   []byte
 			bm    move.Move
 			score chess.Score
 		)
 
-		if err := positions.Scan(&fen, &bm, &score); err != nil {
+		if err := positions.Scan(&id, &fen, &bm, &score); err != nil {
 			return nil, err
 		}
 
-		bar.Add(1)
-
+		b := board.Board{}
 		if err := board.ParseFEN(&b, fen); err != nil {
 			return nil, err
 		}
@@ -234,34 +259,22 @@ func loadGamePositions(posStm *sql.Stmt, gameId, wdl int, bar *progress.Progress
 			continue
 		}
 
-		if filterNoisy {
-			// filter noisy best moves
-			if bm.Promo() != chess.NoPiece {
-				continue
-			}
-
-			if b.SquaresToPiece[bm.To()] != chess.NoPiece {
-				continue
-			}
+		if filterNoisy && (bm.Promo() != chess.NoPiece || b.SquaresToPiece[bm.To()] != chess.NoPiece) {
+			continue
 		}
 
 		if filterInCheck && b.InCheck(b.STM) {
 			continue
 		}
 
-		fenCopy := make([]byte, len(fen))
-		copy(fenCopy, fen)
-
-		gameEntries = append(gameEntries, EPDEntry{fen: fenCopy, wdl: wdl})
-	}
-	if err := positions.Err(); err != nil {
-		return nil, err
+		*result = append(*result, id)
+		m[id] = epd{&b, wdl}
 	}
 
-	return gameEntries, nil
+	return m, positions.Err()
 }
 
-func output(entries []EPDEntry, disc sampling.Discretizer, sampler sampling.Sampler) error {
+func output(db *sql.DB, ids []int, disc sampling.Discretizer, sampler sampling.Sampler) error {
 	outF, err := os.Create(outFn)
 	if err != nil {
 		return err
@@ -269,14 +282,31 @@ func output(entries []EPDEntry, disc sampling.Discretizer, sampler sampling.Samp
 	defer outF.Close()
 	outB := bufio.NewWriter(outF)
 
-	bar := progress.NewOptions(len(entries), progress.OptionSetDescription("output"))
+	bar := progressbar.NewOptions(len(ids), progressbar.OptionSetDescription("output"))
 	defer bar.Close()
 
-	for _, entry := range entries {
+	for _, id := range ids {
+		var (
+			wdl int
+			fen []byte
+		)
+
+		if err := db.QueryRow(
+			"select wdl, fen from games inner join positions on positions.game_id=games.id where positions.id=?",
+			id).Scan(&wdl, &fen); err != nil {
+			return err
+		}
+
+		var b board.Board
+		if err := board.ParseFEN(&b, fen); err != nil {
+			return err
+		}
+		b.ResetFifty()
+
 		r := rand.Float64()
 
-		if r < sampler.KeepProb(disc.Value(entry)) {
-			fmt.Fprintf(outB, "%s; %.1f\n", entry.fen, wdlToEPD(entry.wdl))
+		if r < sampler.KeepProb(disc.Value(epd{&b, wdl})) {
+			fmt.Fprintf(outB, "%s; %.1f\n", b.FEN(), wdlToEPD(wdl))
 		}
 		bar.Add(1)
 	}
@@ -293,11 +323,6 @@ const (
 	WhiteWon = 1
 	BlackWon = 2
 )
-
-type EPDEntry struct {
-	fen []byte
-	wdl int
-}
 
 func wdlToEPD(n int) float64 {
 	switch n {
