@@ -11,7 +11,6 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/schollz/progressbar/v3"
-	progress "github.com/schollz/progressbar/v3"
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/chess"
@@ -20,16 +19,16 @@ import (
 )
 
 var (
-	dbFn             string
-	outFn            string
-	filterNoisy      bool
-	filterMate       bool
-	filterOutlier    bool
-	filterInCheck    bool
-	samplePhase      bool
-	sampleOutcome    bool
-	sampleImbalance  bool
-	samplePerGame    int
+	dbFn            string
+	outFn           string
+	filterNoisy     bool
+	filterMate      bool
+	filterOutlier   bool
+	filterInCheck   bool
+	samplePhase     bool
+	sampleOutcome   bool
+	sampleImbalance bool
+	samplePerGame   int
 )
 
 func main() {
@@ -67,8 +66,12 @@ func main() {
 	}
 	defer db.Close()
 
-	db.Exec("PRAGMA cache_size = 100000")
-	db.Exec("PRAGMA temp_store = file")
+	if _, err := db.Exec("PRAGMA cache_size = 100000"); err != nil {
+		panic(err)
+	}
+	if _, err := db.Exec("PRAGMA temp_store = file"); err != nil {
+		panic(err)
+	}
 
 	dp := discretizerPipe()
 	counter := sampling.NewCounter(dp.Dim())
@@ -161,7 +164,7 @@ func load(db *sql.DB, dp sampling.Discretizer, cntr *sampling.Counter) ([]int, e
 
 	result := make([]int, 0, posCnt)
 
-	bar := progress.NewOptions(posCnt, progress.OptionSetDescription("counting features"))
+	bar := progressbar.NewOptions(posCnt, progressbar.OptionSetDescription("counting features"))
 	defer bar.Close()
 
 	games, err := db.Query("select id, wdl from games")
@@ -278,7 +281,7 @@ func output(db *sql.DB, ids []int, disc sampling.Discretizer, sampler sampling.S
 	defer outF.Close()
 	outB := bufio.NewWriter(outF)
 
-	bar := progress.NewOptions(len(ids), progress.OptionSetDescription("output"))
+	bar := progressbar.NewOptions(len(ids), progressbar.OptionSetDescription("output"))
 	defer bar.Close()
 
 	for _, id := range ids {
