@@ -195,6 +195,7 @@ func load(db *sql.DB, dp sampling.Discretizer, cntr *sampling.Counter) ([]int, e
 		}
 		endIx := len(result)
 
+		samplePerGame = max(samplePerGame, -1)
 		if samplePerGame != -1 && samplePerGame < endIx-startIx {
 			rand.Shuffle(endIx-startIx, func(i, j int) {
 				result[i+startIx], result[j+startIx] = result[j+startIx], result[i+startIx]
