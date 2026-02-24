@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/paulsonkoly/chess-3/chess"
+	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLowestSet(t *testing.T) {
 	tests := []struct {
-		bb   chess.BitBoard
-		want chess.Square
+		bb   BitBoard
+		want Square
 	}{
 		{0x0000000000000000, 64},
 		{0x0000000000000001, 0},
@@ -31,28 +31,28 @@ func TestLowestSet(t *testing.T) {
 
 func TestBitBoardFromSquares(t *testing.T) {
 	tests := []struct {
-		sqrs []chess.Square
-		want chess.BitBoard
+		sqrs []Square
+		want BitBoard
 	}{
-		{[]chess.Square{}, 0x0000000000000000},
-		{[]chess.Square{chess.A1}, 0x0000000000000001},
-		{[]chess.Square{chess.H1}, 0x0000000000000080},
-		{[]chess.Square{chess.A8}, 0x0100000000000000},
-		{[]chess.Square{chess.H8}, 0x8000000000000000},
-		{[]chess.Square{chess.B2, chess.D5, chess.F2}, 0x800002200},
+		{[]Square{}, 0x0000000000000000},
+		{[]Square{A1}, 0x0000000000000001},
+		{[]Square{H1}, 0x0000000000000080},
+		{[]Square{A8}, 0x0100000000000000},
+		{[]Square{H8}, 0x8000000000000000},
+		{[]Square{B2, D5, F2}, 0x800002200},
 	}
 
 	for _, tt := range tests {
 		name := fmt.Sprintf("0x%016x", tt.want)
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tt.want, chess.BitBoardFromSquares(tt.sqrs...))
+			assert.Equal(t, tt.want, BitBoardFromSquares(tt.sqrs...))
 		})
 	}
 }
 
 func TestCount(t *testing.T) {
 	tests := []struct {
-		bb   chess.BitBoard
+		bb   BitBoard
 		want int
 	}{
 		{0x0000000000000000, 0},
@@ -74,7 +74,7 @@ func TestCount(t *testing.T) {
 
 func TestIsPow2(t *testing.T) {
 	tests := []struct {
-		bb   chess.BitBoard
+		bb   BitBoard
 		want bool
 	}{
 		{0x0000000000000000, false},
