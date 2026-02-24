@@ -15,7 +15,6 @@ import (
 
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/chess"
-	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/tools/extract/sampling"
 )
@@ -27,7 +26,6 @@ var (
 	filterMate       bool
 	filterOutlier    bool
 	filterInCheck    bool
-	filterMgDecisive bool
 	samplePhase      bool
 	sampleOutcome    bool
 	sampleImbalance  bool
@@ -41,13 +39,12 @@ func main() {
 	flag.StringVar(&outFn, "output", "extract.epd", "output epd file")
 	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.BoolVar(&filterMate, "filterMate", true, "filter positions with mate scores")
-	flag.BoolVar(&filterOutlier, "filterOutlier", true, "filter positions with eval mismatching wdl by margin")
+	flag.BoolVar(&filterOutlier, "filterOutlier", false, "filter positions with eval mismatching wdl by margin")
 	flag.BoolVar(&filterInCheck, "filterInCheck", true, "filter in check positions")
-	flag.BoolVar(&filterMgDecisive, "filterMgDecisive", false, "filter decisive middle games with absolute score under threshold")
 	flag.BoolVar(&samplePhase, "samplePhase", true, "sample positions for game phase")
 	flag.BoolVar(&sampleOutcome, "sampleOutcome", true, "sample positions for outcome")
-	flag.BoolVar(&sampleImbalance, "sampleImbalance", true, "sample positions for material imbalance")
-	flag.IntVar(&samplePerGame, "samplePerGame", -1, "number of maximum positions from a game; (-1) to disable")
+	flag.BoolVar(&sampleImbalance, "sampleImbalance", false, "sample positions for material imbalance")
+	flag.IntVar(&samplePerGame, "samplePerGame", 15, "number of maximum positions from a game; (-1) to disable")
 	flag.StringVar(&cpuProf, "cpuProf", "", "cpu profile (empty to disable)")
 
 	flag.Parse()
@@ -260,18 +257,6 @@ func loadPositions(
 
 		if filterNoisy && (bm.Promo() != chess.NoPiece || b.SquaresToPiece[bm.To()] != chess.NoPiece) {
 			continue
-		}
-
-		if filterMgDecisive && wdl != Draw {
-			pieceCnt := 0
-			for pt := chess.Pawn; pt < chess.King; pt++ {
-				pieceCnt += b.Pieces[pt].Count() * eval.Phase[pt]
-			}
-			pieceCnt /= 3
-
-			if pieceCnt > 4 && chess.Abs(score) < 200 {
-				continue
-			}
 		}
 
 		if filterInCheck && b.InCheck(b.STM) {
