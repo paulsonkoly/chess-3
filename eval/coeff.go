@@ -34,8 +34,6 @@ type CoeffSet[T ScoreType] struct {
 	// BishopPair is the bonus for bishop pair per friendly pawn count.
 	BishopPair [9]T
 
-	// OpBishopsOutsidePassers is the drawishness of opposite coloured bishop endgame when there are outside passers.
-	OpBishopsOutsidePassers [1]T
 	// OpBishopsPawnDelta is the drawishness of opposite coloured bishop endgame based on the pawn delta.
 	OpBishopsPawnDelta [4]T
 
