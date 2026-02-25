@@ -175,9 +175,8 @@ var Coefficients = CoeffSet[Score]{
 	},
 	ConnectedRooks:          [2]Score{2, 8},
 	BishopPair:              [9]Score{-34, 50, 65, 60, 50, 42, 38, 40, 35},
-	OpBishops:               [1]Score{94},
-	OpBishopsOutsidePassers: [1]Score{81},
-	OpBishopsPawnDelta:      [4]Score{-93, -103, -49, 54},
+	OpBishopsOutsidePassers: [1]Score{-81},
+	OpBishopsPawnDelta:      [4]Score{93, 103, 49, -54},
 	ProtectedPasser:         [2]Score{26, 0},
 	PasserKingDist:          [2]Score{22, 7},
 	PasserRank: [2][6]Score{

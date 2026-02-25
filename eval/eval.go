@@ -290,21 +290,15 @@ func (sp *scorePair[T]) addOpBishops(b *board.Board, pw pieceWise, c *CoeffSet[T
 	}
 
 	wpCnt, bpCnt := (b.Pieces[Pawn] & b.Colors[White]).Count(), (b.Pieces[Pawn] & b.Colors[Black]).Count()
+	sp.drawishness = c.OpBishopsPawnDelta[Clamp(Abs(wpCnt-bpCnt), 0, len(c.OpBishopsPawnDelta)-1)]
 
 	// outside passer pairs on both side
-	if wpCnt > bpCnt && pw.passers[White]&(AFileBB|BFileBB) != 0 && pw.passers[White]&(GFileBB|HFileBB) != 0 {
-		sp.drawishness -= c.OpBishopsOutsidePassers[0]
-	}
-	if wpCnt < bpCnt && pw.passers[Black]&(AFileBB|BFileBB) != 0 && pw.passers[Black]&(GFileBB|HFileBB) != 0 {
-		sp.drawishness -= c.OpBishopsOutsidePassers[0]
+	passers := pw.passers[White] | pw.passers[Black]
+	if passers&(AFileBB|BFileBB) != 0 && passers&(GFileBB|HFileBB) != 0 {
+		sp.drawishness += c.OpBishopsOutsidePassers[0]
 	}
 
-	sp.drawishness += c.OpBishops[0]
-	sp.drawishness -= c.OpBishopsPawnDelta[Clamp(Abs(wpCnt-bpCnt), 0, len(c.OpBishopsPawnDelta)-1)]
-
-	// unfortunately T does not fulfill the Clamp constraints
-	sp.drawishness = min(sp.drawishness, maxDrawishness)
-	sp.drawishness = max(sp.drawishness, 0)
+	sp.drawishness = Clamp(sp.drawishness, 0, maxDrawishness)
 }
 
 func (sp *scorePair[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet[T]) {
