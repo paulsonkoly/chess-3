@@ -42,6 +42,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addPassers(b, pw, c)
 	sp.addDoubledPawns(pw, c)
 	sp.addIsolatedPawns(pw, c)
+	sp.addBackwardPawns(b, pw, c)
 
 	ka := kingAttacks[T]{}
 
@@ -452,10 +453,21 @@ func (sp *scorePair[T]) addDoubledPawns(pw pieceWise, c *CoeffSet[T]) {
 }
 
 func (sp *scorePair[T]) addIsolatedPawns(pw pieceWise, c *CoeffSet[T]) {
-
 	for color := White; color <= Black; color++ {
 		sp.mg[color] += c.IsolatedPawns[0] * T(pw.isolatedPawns[color].Count())
 		sp.eg[color] += c.IsolatedPawns[1] * T(pw.isolatedPawns[color].Count())
+	}
+}
+
+func (sp *scorePair[T]) addBackwardPawns(b *board.Board, pw pieceWise, c *CoeffSet[T]) {
+	for color := White; color <= Black; color++ {
+		pwns := b.Pieces[Pawn] & b.Colors[color] & ^pw.cover[color]
+		opp := b.Pieces[Pawn] & b.Colors[color.Flip()]
+		block := opp
+		target := attacks.PawnCaptureMoves(opp, color.Flip())
+		stopped := attacks.PawnSinglePushMoves(block|target, color.Flip())
+		sp.mg[color] += c.BackwardPawns[0] * T((pwns & stopped).Count())
+		sp.eg[color] += c.BackwardPawns[1] * T((pwns & stopped).Count())
 	}
 }
 
