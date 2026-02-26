@@ -443,8 +443,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 }
 
 func Chebishev(a, b Square) int {
-	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
-	return max(Abs(ax-bx), Abs(ay-by))
+	return int(max(Abs(a.File()-b.File()), Abs(a.Rank()-b.Rank())))
 }
 
 func (sp *scorePair[T]) addDoubledPawns(pw pieceWise, c *CoeffSet[T]) {
