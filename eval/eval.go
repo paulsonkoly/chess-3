@@ -30,14 +30,16 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		return sp.endgameScore(b)
 	}
 
+	pw := pieceWise{}
+
+	pw.calcPawnStructure(b)
+
 	sp.addTempo(b, c)
 	sp.addBishopPair(b, c)
-
-	pw := pieceWise{}
+	sp.addOpBishops(b, pw, c)
 
 	pw.calcOccupancy(b)
 	pw.calcKingSquares(b)
-	pw.calcPawnStructure(b)
 
 	sp.addPassers(b, pw, c)
 	sp.addDoubledPawns(pw, c)
@@ -198,11 +200,14 @@ const MaxPhase = 24
 // Phase is game phase.
 var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
 
+const maxDrawishness = 256
+
 type scorePair[T ScoreType] struct {
 	mg [2]T
 	eg [2]T
 
-	phase int
+	drawishness T // drawishness factor out of 256
+	phase       int
 }
 
 // KBCorners are knight-bishop checkmate corners based on parity of square.
@@ -267,6 +272,29 @@ func (sp *scorePair[T]) addBishopPair(b *board.Board, c *CoeffSet[T]) {
 	}
 }
 
+func (sp *scorePair[T]) addOpBishops(b *board.Board, pw pieceWise, c *CoeffSet[T]) {
+	if b.Pieces[Knight]|b.Pieces[Rook]|b.Pieces[Queen] != 0 {
+		return
+	}
+
+	// one bishop each
+	wb, bb := b.Pieces[Bishop]&b.Colors[White], b.Pieces[Bishop]&b.Colors[Black]
+	if !wb.IsPow2() || !bb.IsPow2() {
+		return
+	}
+
+	// matching colour complex?
+	wbSq, bbSq := wb.LowestSet(), bb.LowestSet()
+	if (wbSq.File()^wbSq.Rank())&1 == (bbSq.File()^bbSq.Rank())&1 {
+		return
+	}
+
+	wpCnt, bpCnt := (b.Pieces[Pawn] & b.Colors[White]).Count(), (b.Pieces[Pawn] & b.Colors[Black]).Count()
+	sp.drawishness = c.OpBishopsPawnDelta[Clamp(Abs(wpCnt-bpCnt), 0, len(c.OpBishopsPawnDelta)-1)]
+
+	sp.drawishness = Clamp(sp.drawishness, 0, maxDrawishness)
+}
+
 func (sp *scorePair[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet[T]) {
 	if color == White {
 		sq ^= 56 // upside down
@@ -290,14 +318,16 @@ func (sp *scorePair[T]) taperedScore(b *board.Board) T {
 	if _, ok := (any(mgScore)).(Score); ok {
 		v := int(mgScore)*mgPhase + int(egScore)*egPhase
 		v *= int(100 - fifty)
+		v *= int(maxDrawishness - sp.drawishness)
 
-		return T(v / MaxPhase / 100)
+		return T(v / 2400 / maxDrawishness)
 	}
 
 	v := mgScore*T(mgPhase) + egScore*T(egPhase)
 	v *= 100 - T(fifty)
+	v *= maxDrawishness - sp.drawishness
 
-	return v / MaxPhase / 100
+	return v / 2400 / maxDrawishness
 }
 
 func (sp *scorePair[T]) endgameScore(b *board.Board) T {
