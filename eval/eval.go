@@ -42,6 +42,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addPassers(b, pw, c)
 	sp.addDoubledPawns(pw, c)
 	sp.addIsolatedPawns(pw, c)
+	sp.addDoubleIsolated(pw, c)
 
 	ka := kingAttacks[T]{}
 
@@ -172,7 +173,7 @@ func insufficientMat(b *board.Board) bool {
 		wScr := wN + 3*wB
 		bScr := bN + 3*bB
 
-		if max(wScr-bScr, bScr-wScr) <= 3 {
+		if Abs(wScr-bScr) <= 3 {
 			return true
 		}
 	}
@@ -315,6 +316,7 @@ type pieceWise struct {
 	doubledPawns  [2]BitBoard
 	isolatedPawns [2]BitBoard
 	cover         [2]BitBoard
+	blockaded     [2]BitBoard
 }
 
 func (pw *pieceWise) calcOccupancy(b *board.Board) {
@@ -375,6 +377,7 @@ func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 		pw.passers[color] = passers
 		pw.doubledPawns[color] = ps[color] &^ frontLine[color]
 		pw.isolatedPawns[color] = ps[color] &^ neighbourF[color]
+		pw.blockaded[color] = ps[color] & frontSpan[color.Flip()]
 	}
 }
 
@@ -400,7 +403,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 		passers := pw.passers[color]
 
 		// if there is a sole passer
-		if passers != 0 && passers&(passers-1) == 0 {
+		if passers.IsPow2() {
 			sq := passers.LowestSet()
 
 			// KPR, KPNB
@@ -452,10 +455,17 @@ func (sp *scorePair[T]) addDoubledPawns(pw pieceWise, c *CoeffSet[T]) {
 }
 
 func (sp *scorePair[T]) addIsolatedPawns(pw pieceWise, c *CoeffSet[T]) {
-
 	for color := White; color <= Black; color++ {
 		sp.mg[color] += c.IsolatedPawns[0] * T(pw.isolatedPawns[color].Count())
 		sp.eg[color] += c.IsolatedPawns[1] * T(pw.isolatedPawns[color].Count())
+	}
+}
+
+func (sp *scorePair[T]) addDoubleIsolated(pw pieceWise, c *CoeffSet[T]) {
+	for color := White; color <= Black; color++ {
+		pwns := pw.isolatedPawns[color] & pw.doubledPawns[color] & pw.blockaded[color]
+		sp.mg[color] += c.DoubleIsolatedPawns[0] * T(pwns.Count())
+		sp.eg[color] += c.DoubleIsolatedPawns[1] * T(pwns.Count())
 	}
 }
 
