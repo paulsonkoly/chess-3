@@ -42,6 +42,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addPassers(b, pw, c)
 	sp.addDoubledPawns(pw, c)
 	sp.addIsolatedPawns(pw, c)
+	sp.addBackwardPawns(b, pw, c)
 
 	ka := kingAttacks[T]{}
 
@@ -115,7 +116,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	}
 
 	pw.calcCover()
-	sp.addBackwardPawns(b, pw, c)
 
 	// safe checks
 	for color := White; color <= Black; color++ {
@@ -316,6 +316,7 @@ type pieceWise struct {
 	doubledPawns  [2]BitBoard
 	isolatedPawns [2]BitBoard
 	cover         [2]BitBoard
+	pawnCover     [2]BitBoard
 }
 
 func (pw *pieceWise) calcOccupancy(b *board.Board) {
@@ -373,6 +374,7 @@ func (pw *pieceWise) calcPawnStructure(b *board.Board) {
 	for color := White; color <= Black; color++ {
 		passers := frontLine[color] & ^(frontSpan[color.Flip()] | cover[color.Flip()])
 
+		pw.pawnCover[color] = cover[color]
 		pw.passers[color] = passers
 		pw.doubledPawns[color] = ps[color] &^ frontLine[color]
 		pw.isolatedPawns[color] = ps[color] &^ neighbourF[color]
@@ -460,7 +462,7 @@ func (sp *scorePair[T]) addIsolatedPawns(pw pieceWise, c *CoeffSet[T]) {
 
 func (sp *scorePair[T]) addBackwardPawns(b *board.Board, pw pieceWise, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
-		pwns := b.Pieces[Pawn] & b.Colors[color] & ^pw.cover[color]
+		pwns := b.Pieces[Pawn] & b.Colors[color] & ^pw.pawnCover[color]
 		opp := b.Pieces[Pawn] & b.Colors[color.Flip()]
 		block := opp
 		target := attacks.PawnCaptureMoves(opp, color.Flip())
