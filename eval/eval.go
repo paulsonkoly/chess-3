@@ -38,12 +38,10 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	pw.calcOccupancy(b)
 	pw.calcKingSquares(b)
 	pw.calcPawnStructure(b)
-	pw.calcCover()
 
 	sp.addPassers(b, pw, c)
 	sp.addDoubledPawns(pw, c)
 	sp.addIsolatedPawns(pw, c)
-	sp.addBackwardPawns(b, pw, c)
 
 	ka := kingAttacks[T]{}
 
@@ -115,6 +113,9 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		sp.addPSqT(color, King, sq, c)
 	}
+
+	pw.calcCover()
+	sp.addBackwardPawns(b, pw, c)
 
 	// safe checks
 	for color := White; color <= Black; color++ {
