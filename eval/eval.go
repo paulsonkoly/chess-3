@@ -173,7 +173,7 @@ func insufficientMat(b *board.Board) bool {
 		wScr := wN + 3*wB
 		bScr := bN + 3*bB
 
-		if max(wScr-bScr, bScr-wScr) <= 3 {
+		if Abs(wScr-bScr) <= 3 {
 			return true
 		}
 	}
@@ -401,7 +401,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 		passers := pw.passers[color]
 
 		// if there is a sole passer
-		if passers != 0 && passers&(passers-1) == 0 {
+		if passers.IsPow2() {
 			sq := passers.LowestSet()
 
 			// KPR, KPNB
@@ -441,8 +441,7 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T])
 }
 
 func Chebishev(a, b Square) int {
-	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
-	return max(Abs(ax-bx), Abs(ay-by))
+	return int(max(Abs(a.File()-b.File()), Abs(a.Rank()-b.Rank())))
 }
 
 func (sp *scorePair[T]) addDoubledPawns(pw pieceWise, c *CoeffSet[T]) {
