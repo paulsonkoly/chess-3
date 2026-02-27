@@ -38,6 +38,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	pw.calcOccupancy(b)
 	pw.calcKingSquares(b)
 	pw.calcPawnStructure(b)
+	pw.calcCover()
 
 	sp.addPassers(b, pw, c)
 	sp.addDoubledPawns(pw, c)
@@ -114,8 +115,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		sp.addPSqT(color, King, sq, c)
 	}
-
-	pw.calcCover()
 
 	// safe checks
 	for color := White; color <= Black; color++ {
