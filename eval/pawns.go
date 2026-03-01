@@ -44,7 +44,7 @@ func calcPawns(b *board.Board, pw *pieceWise) *pawns {
 	return &pawns
 }
 
-// holes are squares that cannot be protected by one of our pawns.
+// holes are squares that cannot be protected by one of our pawns on our side of the board.
 func (p *pawns) holes(c Color) BitBoard {
 	return sideOfBoard[c] &^ p.cover[c]
 }
