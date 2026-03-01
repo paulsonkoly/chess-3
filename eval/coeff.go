@@ -42,6 +42,8 @@ type CoeffSet[T ScoreType] struct {
 	PasserRank [2][6]T
 	// DoubledPawns is the penalty per doubled pawn (count of non-frontline pawns ie. the pawns in the pawn rearspan).
 	DoubledPawns [2]T
-	// IsolatedPawns is the penalty per isolated pawns.
+	// IsolatedPawns is the penalty per isolated pawn.
 	IsolatedPawns [2]T
+	// BackwardPawns is the penalty per backward pawn.
+	BackwardPawns [2]T
 }
