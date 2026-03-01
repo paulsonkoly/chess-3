@@ -49,14 +49,17 @@ func (p *pawns) holes(c Color) BitBoard {
 	return sideOfBoard[c] &^ p.cover[c]
 }
 
+// passers are pawns not stoppable by enemy pawns without them changing file.
 func (p *pawns) passers(c Color) BitBoard {
 	return p.frontLine[c] & ^(p.frontSpan[c.Flip()] | (p.cover[c.Flip()]))
 }
 
+// doubledPawns are pawns that have a friendly further advanced pawn on the same file.
 func (p *pawns) doubledPawns(c Color) BitBoard {
 	return (p.pawns[c]) &^ p.frontLine[c]
 }
 
+// isolatedPawns are pawns not having any friendly pawn on adjacent files.
 func (p *pawns) isolatedPawns(c Color) BitBoard {
 	return (p.pawns[c]) &^ p.neighbourF[c]
 }
