@@ -90,7 +90,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// knights
-
+		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0]
 		for pieces := b.Pieces[Knight] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -98,7 +98,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
-			sp.addKnightOutposts(color, sq, pawns.holes(color.Flip())&pw.attacks[color][0], c)
+			sp.addKnightOutposts(color, sq, outposts, c)
 			sp.addPSqT(color, Knight, sq, c)
 		}
 
@@ -386,16 +386,18 @@ func Chebishev(a, b Square) int {
 
 func (sp *scorePair[T]) addDoubledPawns(pawns *pawns, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
-		sp.mg[color] += c.DoubledPawns[0] * T(pawns.doubledPawns(color).Count())
-		sp.eg[color] += c.DoubledPawns[1] * T(pawns.doubledPawns(color).Count())
+		dblCnt := T(pawns.doubledPawns(color).Count())
+		sp.mg[color] += c.DoubledPawns[0] * dblCnt
+		sp.eg[color] += c.DoubledPawns[1] * dblCnt
 	}
 }
 
 func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
 
 	for color := White; color <= Black; color++ {
-		sp.mg[color] += c.IsolatedPawns[0] * T(pawns.isolatedPawns(color).Count())
-		sp.eg[color] += c.IsolatedPawns[1] * T(pawns.isolatedPawns(color).Count())
+		isoCnt := T(pawns.isolatedPawns(color).Count())
+		sp.mg[color] += c.IsolatedPawns[0] * isoCnt
+		sp.eg[color] += c.IsolatedPawns[1] * isoCnt
 	}
 }
 
