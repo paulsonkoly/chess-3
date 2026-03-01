@@ -35,13 +35,16 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 	pw := pieceWise{}
 
+	pw.calcPawnAttacks(b)
+
 	pw.calcOccupancy(b)
 	pw.calcKingSquares(b)
-	pw.calcPawnStructure(b)
 
-	sp.addPassers(b, pw, c)
-	sp.addDoubledPawns(pw, c)
-	sp.addIsolatedPawns(pw, c)
+	pawns := calcPawns(b, &pw)
+
+	sp.addPassers(b, pawns, &pw, c)
+	sp.addDoubledPawns(pawns, c)
+	sp.addIsolatedPawns(pawns, c)
 
 	ka := kingAttacks[T]{}
 
@@ -95,7 +98,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
-			sp.addKnightOutposts(color, sq, pw.holes[color.Flip()]&pw.attacks[color][0], c)
+			sp.addKnightOutposts(color, sq, pawns.holes(color.Flip())&pw.attacks[color][0], c)
 			sp.addPSqT(color, Knight, sq, c)
 		}
 
@@ -305,16 +308,12 @@ func (sp *scorePair[T]) endgameScore(b *board.Board) T {
 }
 
 type pieceWise struct {
-	occ           BitBoard
-	attacks       [2][6]BitBoard
-	kingRays      [2][2]BitBoard
-	kingSq        [2]Square
-	kingNb        [2]BitBoard
-	holes         [2]BitBoard
-	passers       [2]BitBoard
-	doubledPawns  [2]BitBoard
-	isolatedPawns [2]BitBoard
-	cover         [2]BitBoard
+	occ      BitBoard
+	attacks  [2][6]BitBoard
+	kingRays [2][2]BitBoard
+	kingSq   [2]Square
+	kingNb   [2]BitBoard
+	cover    [2]BitBoard
 }
 
 func (pw *pieceWise) calcOccupancy(b *board.Board) {
@@ -335,69 +334,10 @@ func (pw *pieceWise) calcKingSquares(b *board.Board) {
 	}
 }
 
-// the player's side of the board with the extra 2 central squares included at
-// enemy side.
-var sideOfBoard = [2]BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
-
-func (pw *pieceWise) calcPawnStructure(b *board.Board) {
-
-	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
-
-	pw.attacks[White][0] = attacks.PawnCaptureMoves(ps[White], White)
-	pw.attacks[Black][0] = attacks.PawnCaptureMoves(ps[Black], Black)
-
-	// various useful pawn bitboards
-	frontSpan := [...]BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
-	rearSpan := [...]BitBoard{frontFill(ps[White], Black) >> 8, frontFill(ps[Black], White) << 8}
-
-	// calculate holes in our position, squares that cannot be protected by one
-	// of our pawns.
-	cover := [...]BitBoard{
-		((frontSpan[White] & ^AFileBB) >> 1) | ((frontSpan[White] & ^HFileBB) << 1),
-		((frontSpan[Black] & ^HFileBB) << 1) | ((frontSpan[Black] & ^AFileBB) >> 1),
-	}
-	pw.holes[White] = sideOfBoard[White] & ^cover[White]
-	pw.holes[Black] = sideOfBoard[Black] & ^cover[Black]
-
-	// neighbour files, files adjacent to files with pawns
-	wFiles := ps[White] | frontSpan[White] | rearSpan[White]
-	bFiles := ps[Black] | frontSpan[Black] | rearSpan[Black]
-	neighbourF := [...]BitBoard{
-		((wFiles & ^AFileBB) >> 1) | ((wFiles & ^HFileBB) << 1),
-		((bFiles & ^HFileBB) << 1) | ((bFiles & ^AFileBB) >> 1),
-	}
-
-	frontLine := [...]BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
-
-	for color := White; color <= Black; color++ {
-		passers := frontLine[color] & ^(frontSpan[color.Flip()] | cover[color.Flip()])
-
-		pw.passers[color] = passers
-		pw.doubledPawns[color] = ps[color] &^ frontLine[color]
-		pw.isolatedPawns[color] = ps[color] &^ neighbourF[color]
-	}
-}
-
-func frontFill(b BitBoard, color Color) BitBoard {
-	switch color {
-	case White:
-		b |= b << 8
-		b |= b << 16
-		b |= b << 32
-
-	case Black:
-		b |= b >> 8
-		b |= b >> 16
-		b |= b >> 32
-	}
-
-	return b
-}
-
-func (sp *scorePair[T]) addPassers(b *board.Board, pw pieceWise, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addPassers(b *board.Board, pawns *pawns, pw *pieceWise, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
 
-		passers := pw.passers[color]
+		passers := pawns.passers(color)
 
 		// if there is a sole passer
 		if passers != 0 && passers&(passers-1) == 0 {
@@ -444,18 +384,18 @@ func Chebishev(a, b Square) int {
 	return max(Abs(ax-bx), Abs(ay-by))
 }
 
-func (sp *scorePair[T]) addDoubledPawns(pw pieceWise, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addDoubledPawns(pawns *pawns, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
-		sp.mg[color] += c.DoubledPawns[0] * T(pw.doubledPawns[color].Count())
-		sp.eg[color] += c.DoubledPawns[1] * T(pw.doubledPawns[color].Count())
+		sp.mg[color] += c.DoubledPawns[0] * T(pawns.doubledPawns(color).Count())
+		sp.eg[color] += c.DoubledPawns[1] * T(pawns.doubledPawns(color).Count())
 	}
 }
 
-func (sp *scorePair[T]) addIsolatedPawns(pw pieceWise, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
 
 	for color := White; color <= Black; color++ {
-		sp.mg[color] += c.IsolatedPawns[0] * T(pw.isolatedPawns[color].Count())
-		sp.eg[color] += c.IsolatedPawns[1] * T(pw.isolatedPawns[color].Count())
+		sp.mg[color] += c.IsolatedPawns[0] * T(pawns.isolatedPawns(color).Count())
+		sp.eg[color] += c.IsolatedPawns[1] * T(pawns.isolatedPawns(color).Count())
 	}
 }
 
@@ -516,6 +456,13 @@ func sigmoidal[T ScoreType](n T) T {
 		return T(sigm[Clamp(int(n), 0, len(sigm)-1)])
 	}
 	return T(600.0 / (1.0 + math.Exp(-0.2*(float64(n)-50.0))))
+}
+
+func (pw *pieceWise) calcPawnAttacks(b *board.Board) {
+	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
+
+	pw.attacks[White][0] = attacks.PawnCaptureMoves(ps[White], White)
+	pw.attacks[Black][0] = attacks.PawnCaptureMoves(ps[Black], Black)
 }
 
 func (pw *pieceWise) calcQueenAttacks(color Color, sq Square) BitBoard {
