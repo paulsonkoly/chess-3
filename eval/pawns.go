@@ -18,7 +18,7 @@ type pawns struct {
 	neighbourF [2]BitBoard // neighbourF is files adjacent to files with pawns
 }
 
-func calcPawns(b *board.Board, pw *pieceWise) *pawns {
+func calcPawns(b *board.Board) *pawns {
 	pawns := pawns{}
 
 	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}

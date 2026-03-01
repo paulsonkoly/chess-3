@@ -29,7 +29,7 @@ func TestHoles(t *testing.T) {
 			BitBoardFromSquares(A7, B7, C7, D7, E7, F7, G7, H7, A8, B8, C8, D8, E8, F8, G8, H8),
 		},
 		{
-			"complicated pawn structure",
+			"complicated pawn structure with white",
 			"7k/2ppp3/1p3p2/p5pP/2P3Pp/1P1P1P2/P3P3/4K3 w - - 0 1",
 			White,
 			BitBoardFromSquares(
@@ -40,7 +40,7 @@ func TestHoles(t *testing.T) {
 			),
 		},
 		{
-			"complicated pawn structure",
+			"complicated pawn structure with black",
 			"7k/2ppp3/1p3p2/p5pP/2P3Pp/1P1P1P2/P3P3/4K3 w - - 0 1",
 			Black,
 			BitBoardFromSquares(
@@ -57,7 +57,7 @@ func TestHoles(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			pw := pieceWise{}
 			pw.calcPawnAttacks(b)
-			pawns := calcPawns(b, &pw)
+			pawns := calcPawns(b)
 
 			assert.Equal(t, tt.want, pawns.holes(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -87,9 +87,7 @@ func TestPassers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			pw := pieceWise{}
-			pw.calcPawnAttacks(b)
-			pawns := calcPawns(b, &pw)
+			pawns := calcPawns(b)
 
 			assert.Equal(t, tt.want, pawns.passers(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -125,9 +123,7 @@ func TestDoubledPawns(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			pw := pieceWise{}
-			pw.calcPawnAttacks(b)
-			pawns := calcPawns(b, &pw)
+			pawns := calcPawns(b)
 
 			assert.Equal(t, tt.want, pawns.doubledPawns(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -155,9 +151,7 @@ func TestIsolatedPawns(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			pw := pieceWise{}
-			pw.calcPawnAttacks(b)
-			pawns := calcPawns(b, &pw)
+			pawns := calcPawns(b)
 
 			assert.Equal(t, tt.want, pawns.isolatedPawns(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
