@@ -12,9 +12,10 @@ var sideOfBoard = [2]BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
 
 type pawns struct {
 	pawns      [2]BitBoard
+	cover      [2]BitBoard
 	frontLine  [2]BitBoard
 	frontSpan  [2]BitBoard
-	neighbourF [2]BitBoard
+	neighbourF [2]BitBoard // neighbourF is files adjacent to files with pawns
 }
 
 func calcPawns(b *board.Board, pw *pieceWise) *pawns {
@@ -23,11 +24,9 @@ func calcPawns(b *board.Board, pw *pieceWise) *pawns {
 	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
 	pawns.pawns = ps
 
-	// various useful pawn bitboards
 	pawns.frontSpan = [...]BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
 	rearSpan := [...]BitBoard{frontFill(ps[White], Black) >> 8, frontFill(ps[Black], White) << 8}
 
-	// neighbour files, files adjacent to files with pawns
 	wFiles := ps[White] | pawns.frontSpan[White] | rearSpan[White]
 	bFiles := ps[Black] | pawns.frontSpan[Black] | rearSpan[Black]
 	pawns.neighbourF = [...]BitBoard{
@@ -37,22 +36,21 @@ func calcPawns(b *board.Board, pw *pieceWise) *pawns {
 
 	pawns.frontLine = [...]BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
 
+	pawns.cover = [...]BitBoard{
+		((pawns.frontSpan[White] & ^AFileBB) >> 1) | ((pawns.frontSpan[White] & ^HFileBB) << 1),
+		((pawns.frontSpan[Black] & ^HFileBB) << 1) | ((pawns.frontSpan[Black] & ^AFileBB) >> 1),
+	}
+
 	return &pawns
 }
 
+// holes are squares that cannot be protected by one of our pawns.
 func (p *pawns) holes(c Color) BitBoard {
-	// calculate holes in our position, squares that cannot be protected by one
-	// of our pawns.
-	cover := [...]BitBoard{
-		((p.frontSpan[White] & ^AFileBB) >> 1) | ((p.frontSpan[White] & ^HFileBB) << 1),
-		((p.frontSpan[Black] & ^HFileBB) << 1) | ((p.frontSpan[Black] & ^AFileBB) >> 1),
-	}
-
-	return sideOfBoard[c] &^ cover[c]
+	return sideOfBoard[c] &^ p.cover[c]
 }
 
 func (p *pawns) passers(c Color) BitBoard {
-	return p.frontLine[c] & ^(p.frontSpan[c.Flip()] | (p.pawns[c.Flip()]))
+	return p.frontLine[c] & ^(p.frontSpan[c.Flip()] | (p.cover[c.Flip()]))
 }
 
 func (p *pawns) doubledPawns(c Color) BitBoard {
