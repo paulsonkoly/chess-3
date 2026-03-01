@@ -403,8 +403,8 @@ func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
 func (sp *scorePair[T]) addBackwardPawns(pawns *pawns, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
 		bckwrdsCnt := T(pawns.backwardPawns(color).Count())
-		sp.mg[color] += c.IsolatedPawns[0] * bckwrdsCnt
-		sp.eg[color] += c.IsolatedPawns[1] * bckwrdsCnt
+		sp.mg[color] += c.BackwardPawns[0] * bckwrdsCnt
+		sp.eg[color] += c.BackwardPawns[1] * bckwrdsCnt
 	}
 }
 
