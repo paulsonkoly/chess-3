@@ -81,6 +81,7 @@ func TestPassers(t *testing.T) {
 		{"pawn on same file already passed", "4k3/8/8/4P3/4p3/8/8/4K3 w - - 0 1", White, BitBoardFromSquares(E5)},
 		{"pawn blocked by both enemy frontline & cover", "4k3/1p6/p7/8/P7/8/8/4K3 w - - 0 1", White, 0},
 		{"doubled pawns", "4k3/8/8/8/8/1P6/1P6/4K3 w - - 0 1", White, BitBoardFromSquares(B3)},
+		{"pawn one step from promotion", "4k3/2P5/8/8/8/8/8/4K3 w - - 0 1", White, BitBoardFromSquares(C7)},
 	}
 
 	for _, tt := range tests {
@@ -118,6 +119,7 @@ func TestDoubledPawns(t *testing.T) {
 		{"connected pawns", "4k3/8/8/8/8/2P5/1P6/4K3 w - - 0 1", White, 0},
 		{"doubled on a file", "4k3/8/8/8/P7/P7/8/4K3 w - - 0 1", White, BitBoardFromSquares(A3)},
 		{"doubled on h file", "4k3/8/7P/7P/8/8/8/4K3 w - - 0 1", White, BitBoardFromSquares(H5)},
+		{"two sets of doubled pawns", "4k3/8/8/P7/P7/1P6/1P6/4K3 w - - 0 1", White, BitBoardFromSquares(B2, A4)},
 	}
 
 	for _, tt := range tests {
@@ -147,6 +149,7 @@ func TestIsolatedPawns(t *testing.T) {
 		{"single isolated pawn on e-file", "4k3/8/8/8/8/4P3/8/4K3 w - - 0 1", White, BitBoardFromSquares(E3)},
 		{"connected pawns", "4k3/8/8/4P3/8/8/5P2/4K3 w - - 0 1", White, 0},
 		{"pawn connected to enemy pawn", "4k3/8/8/4Pp2/8/8/8/4K3 w - - 0 1", White, BitBoardFromSquares(E5)},
+		{"pawn on edge supported by chain", "4k3/8/8/8/P7/1P6/8/4K3 w - - 0 1", White, 0},
 	}
 
 	for _, tt := range tests {
