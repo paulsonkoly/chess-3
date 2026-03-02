@@ -43,8 +43,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	pawns := calcPawns(b)
 
 	sp.addPassers(b, pawns, &pw, c)
-	sp.addDoubledPawns(pawns, c)
-	sp.addIsolatedPawns(pawns, c)
+	sp.addPawnPenalties(pawns, c)
 
 	ka := kingAttacks[T]{}
 
@@ -384,20 +383,24 @@ func Chebishev(a, b Square) int {
 	return max(Abs(ax-bx), Abs(ay-by))
 }
 
-func (sp *scorePair[T]) addDoubledPawns(pawns *pawns, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addPawnPenalties(pawns *pawns, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
-		dblCnt := T(pawns.doubledPawns(color).Count())
+		doubled := pawns.doubledPawns(color)
+		isolated := pawns.isolatedPawns(color)
+		// TODO : add separate double isolated
+		backward := pawns.backwardPawns(color)
+
+		dblCnt := T(doubled.Count())
 		sp.mg[color] += c.DoubledPawns[0] * dblCnt
 		sp.eg[color] += c.DoubledPawns[1] * dblCnt
-	}
-}
 
-func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
-
-	for color := White; color <= Black; color++ {
-		isoCnt := T(pawns.isolatedPawns(color).Count())
+		isoCnt := T(isolated.Count())
 		sp.mg[color] += c.IsolatedPawns[0] * isoCnt
 		sp.eg[color] += c.IsolatedPawns[1] * isoCnt
+
+		bckwrdCnt := T((^isolated & backward).Count())
+		sp.mg[color] += c.BackwardPawns[0] * bckwrdCnt
+		sp.eg[color] += c.BackwardPawns[1] * bckwrdCnt
 	}
 }
 
