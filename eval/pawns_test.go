@@ -174,6 +174,15 @@ func TestBackwardPawns(t *testing.T) {
 		{"connected backward threatened", "4k3/8/8/3p4/1P6/2P5/8/4K3 w - - 0 1", White, BitBoardFromSquares(C3)},
 		{"V threatened", "4k3/8/8/3p4/1P1P4/2P5/8/4K3 w - - 0 1", White, BitBoardFromSquares(C3)},
 		{"V blocked", "4k3/8/8/8/1PpP4/2P5/8/4K3 w - - 0 1", White, BitBoardFromSquares(C3)},
+
+		{"black isolated pawn blocked", "4k3/8/8/8/1p6/1P6/8/4K3 w - - 0 1", Black, BitBoardFromSquares(B4)},
+		{"black isolated pawn not blocked", "4k3/8/1p6/8/8/8/8/4K3 w - - 0 1", Black, 0},
+		{"black isolated pawn push threatened", "4k3/8/8/2p5/8/1P6/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C5)},
+		{"black phalanx pawn threatened", "4k3/8/8/1pp5/8/2P5/8/4K3 w - - 0 1", Black, 0},
+		{"black connected backward blocked", "4k3/8/2p5/1pP5/8/8/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C6)},
+		{"black connected backward threatened", "4k3/8/8/3p4/4p3/2P5/8/4K3 w - - 0 1", Black, BitBoardFromSquares(D5)},
+		{"black V threatened", "4k3/8/2p5/1p1p4/3P4/8/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C6)},
+		{"black V blocked", "4k3/8/2p5/1pPp4/8/8/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C6)},
 	}
 
 	for _, tt := range tests {
