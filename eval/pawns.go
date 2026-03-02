@@ -65,7 +65,7 @@ func (p *pawns) isolatedPawns(c Color) BitBoard {
 }
 
 // blockadedPawns are pawns that have an enemy pawn in front of them but not necessarily adjacent.
-func (p * pawns) blockaded(c Color) BitBoard {
+func (p *pawns) blockaded(c Color) BitBoard {
 	return p.pawns[c] & p.frontSpan[c.Flip()]
 }
 
