@@ -181,6 +181,7 @@ var Coefficients = CoeffSet[Score]{
 		{-14, -29, -24, 2, 17, 53},
 		{16, 20, 47, 75, 137, 81},
 	},
-	DoubledPawns:  [2]Score{-13, -16},
-	IsolatedPawns: [2]Score{-15, -14},
+	DoubledPawns:        [2]Score{-13, -16},
+	IsolatedPawns:       [2]Score{-15, -14},
+	DoubleIsolatedPawns: [2]Score{-15, -14},
 }

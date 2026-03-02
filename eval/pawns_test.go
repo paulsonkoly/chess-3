@@ -155,3 +155,42 @@ func TestIsolatedPawns(t *testing.T) {
 		})
 	}
 }
+
+func TestBlockadedPawns(t *testing.T) {
+	tests := [...]struct {
+		name  string
+		fen   string
+		color Color
+		want  BitBoard
+	}{
+		{
+			"startpos white",
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			White,
+			BitBoardFromSquares(A2, B2, C2, D2, E2, F2, G2, H2),
+		},
+		{
+			"startpos black",
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			Black,
+			BitBoardFromSquares(A7, B7, C7, D7, E7, F7, G7, H7),
+		},
+		{"empty board", "4k3/8/8/8/8/8/8/4K3 w - - 0 1", White, 0},
+
+		{"not blockaded", "4k3/8/8/8/8/P7/8/4K3 w - - 0 1", White, 0},
+		{"white blockaded", "4k3/8/p7/8/8/P7/8/4K3 w - - 0 1", White, BitBoardFromSquares(A3)},
+		{"black blockaded", "4k3/8/p7/8/8/P7/8/4K3 w - - 0 1", Black, BitBoardFromSquares(A6)},
+		{"white doubled and blockaded", "4k3/8/p7/8/P7/P7/8/4K3 w - - 0 1", White, BitBoardFromSquares(A3, A4)},
+		{"white tripled and blockaded", "4k3/8/p7/8/P7/P7/P7/4K3 w - - 0 1", White, BitBoardFromSquares(A2, A3, A4)},
+		{"black blockaded by double", "4k3/8/p7/8/P7/P7/8/4K3 w - - 0 1", Black, BitBoardFromSquares(A6)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Must(board.FromFEN(tt.fen))
+			pawns := calcPawns(b)
+
+			assert.Equal(t, tt.want, pawns.blockaded(tt.color), "fen %s color %v", tt.fen, tt.color)
+		})
+	}
+}
