@@ -56,12 +56,17 @@ func (p *pawns) passers(c Color) BitBoard {
 
 // doubledPawns are pawns that have a friendly further advanced pawn on the same file.
 func (p *pawns) doubledPawns(c Color) BitBoard {
-	return (p.pawns[c]) &^ p.frontLine[c]
+	return p.pawns[c] &^ p.frontLine[c]
 }
 
 // isolatedPawns are pawns not having any friendly pawn on adjacent files.
 func (p *pawns) isolatedPawns(c Color) BitBoard {
-	return (p.pawns[c]) &^ p.neighbourF[c]
+	return p.pawns[c] &^ p.neighbourF[c]
+}
+
+// blockadedPawns are pawns that have an enemy pawn in front of them but not necessarily adjacent.
+func (p *pawns) blockaded(c Color) BitBoard {
+	return p.pawns[c] & p.frontSpan[c.Flip()]
 }
 
 func frontFill(b BitBoard, color Color) BitBoard {

@@ -44,4 +44,6 @@ type CoeffSet[T ScoreType] struct {
 	DoubledPawns [2]T
 	// IsolatedPawns is the penalty per isolated pawns.
 	IsolatedPawns [2]T
+	// DoubleIsolatedPawns is the penalty for doubled, isolated, blockaded pawns.
+	DoubleIsolatedPawns [2]T
 }
