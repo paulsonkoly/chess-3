@@ -22,7 +22,7 @@ func Signum[T constraints.Signed](x T) T {
 }
 
 // Clamp clamps the value x between a and b.
-func Clamp[T constraints.Signed](x, a, b T) T {
+func Clamp[T constraints.Ordered](x, a, b T) T {
 	return min(b, max(x, a))
 }
 
