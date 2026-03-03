@@ -42,7 +42,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 	pawns := calcPawns(b)
 
-	sp.addPassers(b, pawns, pw, c)
+	sp.addPassers(b, &pawns, &pw, c)
 	sp.addDoubledPawns(pawns, c)
 	sp.addIsolatedPawns(pawns, c)
 
@@ -334,7 +334,7 @@ func (pw *pieceWise) calcKingSquares(b *board.Board) {
 	}
 }
 
-func (sp *scorePair[T]) addPassers(b *board.Board, pawns pawns, pw pieceWise, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addPassers(b *board.Board, pawns *pawns, pw *pieceWise, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
 
 		passers := pawns.passers(color)
@@ -393,7 +393,6 @@ func (sp *scorePair[T]) addDoubledPawns(pawns pawns, c *CoeffSet[T]) {
 }
 
 func (sp *scorePair[T]) addIsolatedPawns(pawns pawns, c *CoeffSet[T]) {
-
 	for color := White; color <= Black; color++ {
 		isoCnt := T(pawns.isolatedPawns(color).Count())
 		sp.mg[color] += c.IsolatedPawns[0] * isoCnt
