@@ -24,8 +24,8 @@ type CoeffSet[T ScoreType] struct {
 	MobilityBishop [2][14]T
 	MobilityRook   [2][11]T
 
-	// KnightOutpost is a per square bonus for a knight being on an outpost.
-	KnightOutpost [2][24]T
+	// KnightOutpost is a bonus for a knight being on an outpost.
+	KnightOutpost [2]T
 
 	// ConnectedRooks is a bonus if rooks are connected.
 	ConnectedRooks [2]T

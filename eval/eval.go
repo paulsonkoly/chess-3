@@ -78,7 +78,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// bishops
-
 		for pieces := b.Pieces[Bishop] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -95,10 +94,11 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 			sq := pieces.LowestSet()
 
 			attacks := pw.calcKnightAttacks(color, sq)
+			moves := attacks & ^b.Colors[color]
 
 			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
-			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
-			sp.addKnightOutposts(color, sq, outposts, c)
+			sp.addKnightMobility(color, moves, pw.attacks[color.Flip()][0], c)
+			sp.addKnightOutposts(color, sq, moves, outposts, c)
 			sp.addPSqT(color, Knight, sq, c)
 		}
 
@@ -527,29 +527,19 @@ func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) BitBoard {
 	return attacks
 }
 
-func (sp *scorePair[T]) addKnightMobility(
-	b *board.Board,
-	color Color,
-	attacks BitBoard,
-	pawnCover BitBoard,
-	c *CoeffSet[T],
-) {
+func (sp *scorePair[T]) addKnightMobility(color Color, moves BitBoard, pawnCover BitBoard, c *CoeffSet[T]) {
 
-	mobCnt := (attacks & ^b.Colors[color] & ^pawnCover).Count()
+	mobCnt := (moves & ^pawnCover).Count()
 	sp.mg[color] += c.MobilityKnight[0][mobCnt]
 	sp.eg[color] += c.MobilityKnight[1][mobCnt]
 
 }
 
-func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, outposts BitBoard, c *CoeffSet[T]) {
-	// TODO add knight one move away.
-	if (BitBoard(1)<<sq)&outposts != 0 {
-		if color == Black {
-			sq ^= 56
-		}
-		sq -= 32
-		sp.mg[color] += c.KnightOutpost[0][sq]
-		sp.eg[color] += c.KnightOutpost[1][sq]
+func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, moves BitBoard, outposts BitBoard, c *CoeffSet[T]) {
+	// knight is on an outpost or knight can move to an outpost
+	if (BitBoard(1)<<sq)&outposts != 0 || moves&outposts != 0 {
+		sp.mg[color] += c.KnightOutpost[0]
+		sp.eg[color] += c.KnightOutpost[1]
 	}
 }
 
