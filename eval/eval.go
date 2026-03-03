@@ -90,7 +90,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// knights
-		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0]
+		outposts := pawns.outposts(color)
 		for pieces := b.Pieces[Knight] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -541,19 +541,13 @@ func (sp *scorePair[T]) addKnightMobility(
 
 }
 
-func (sp *scorePair[T]) addKnightOutposts(
-	color Color,
-	sq Square,
-	holes BitBoard,
-	c *CoeffSet[T],
-) {
-
-	// calculate knight outputs
-	if (BitBoard(1)<<sq)&holes != 0 {
-		// the hole square is from the enemy's perspective, white's in black's territory
-		if color == White {
+func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, outposts BitBoard, c *CoeffSet[T]) {
+	// TODO add knight one move away.
+	if (BitBoard(1)<<sq)&outposts != 0 {
+		if color == Black {
 			sq ^= 56
 		}
+		sq -= 32
 		sp.mg[color] += c.KnightOutpost[0][sq]
 		sp.eg[color] += c.KnightOutpost[1][sq]
 	}

@@ -1,13 +1,12 @@
 package eval
 
 import (
+	"github.com/paulsonkoly/chess-3/attacks"
 	"github.com/paulsonkoly/chess-3/board"
 
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-// the player's side of the board with the extra 2 central squares included at
-// enemy side.
 var sideOfBoard = [2]BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
 
 type pawns struct {
@@ -44,9 +43,17 @@ func calcPawns(b *board.Board) *pawns {
 	return &pawns
 }
 
-// holes are squares that cannot be protected by one of our pawns on our side of the board.
-func (p *pawns) holes(c Color) BitBoard {
-	return sideOfBoard[c] &^ p.cover[c]
+// outposts are squares in our 5the, 6th or 7th rank that cannot be defended by
+// any of the enemy's pawns and simultaneously attacked by one of our pawns.
+func (p *pawns) outposts(c Color) BitBoard {
+	var territory BitBoard
+	if c == White {
+		territory = FifthRankBB | SixthRankBB | SeventhRankBB
+	} else {
+		territory = SecondRankBB | ThirdRankBB | FourthRankBB
+	}
+	attacked := attacks.PawnCaptureMoves(p.pawns[c], c)
+	return territory & attacked & ^p.cover[c.Flip()]
 }
 
 // passers are pawns not stoppable by enemy pawns without them changing file.
