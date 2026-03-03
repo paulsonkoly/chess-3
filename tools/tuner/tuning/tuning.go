@@ -7,7 +7,7 @@ import (
 const (
 	// NumLinesInBatch determines how the epd file is split into batches. A batch
 	// completion implies the coefficients update.
-	NumLinesInBatch = 100_000
+	NumLinesInBatch = 200_000
 
 	// NumChunksInBatch determines how a batch is split into chunks. A chunk is a
 	// unique work item handed over to clients.
@@ -31,6 +31,6 @@ var DefaultTargets = []string{
 	"TempoBonus",
 	"MobilityKnight", "MobilityBishop", "MobilityRook",
 	"KingAttackPieces", "SafeChecks", "KingShelter",
-	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
+	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns", "PawnSafeThreats",
 	"KnightOutpost", "ConnectedRooks", "BishopPair",
 }
