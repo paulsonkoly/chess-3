@@ -537,7 +537,7 @@ func (sp *scorePair[T]) addKnightMobility(color Color, moves BitBoard, pawnCover
 
 func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, moves BitBoard, outposts BitBoard, c *CoeffSet[T]) {
 	// knight is on an outpost or knight can move to an outpost
-	if (BitBoard(1)<<sq)&outposts != 0 || moves&outposts != 0 {
+	if ((BitBoard(1)<<sq)|moves)&outposts != 0 {
 		sp.mg[color] += c.KnightOutpost[0]
 		sp.eg[color] += c.KnightOutpost[1]
 	}
