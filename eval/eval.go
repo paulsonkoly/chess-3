@@ -119,6 +119,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 	pw.calcCover()
 
+	sp.addPawnSafeThreats(b, &pw, c)
+
 	// safe checks
 	for color := White; color <= Black; color++ {
 		eCover := pw.cover[color.Flip()]
@@ -398,6 +400,19 @@ func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
 		isoCnt := T(pawns.isolatedPawns(color).Count())
 		sp.mg[color] += c.IsolatedPawns[0] * isoCnt
 		sp.eg[color] += c.IsolatedPawns[1] * isoCnt
+	}
+}
+
+func (sp *scorePair[T]) addPawnSafeThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]) {
+	for color := White; color <= Black; color++ {
+		safe := ^pw.cover[color.Flip()] | pw.cover[color]
+		pawns := b.Colors[color] & b.Pieces[Pawn] & safe
+		threatened := attacks.PawnCaptureMoves(pawns, color)
+		targets := b.Colors[color.Flip()] &^ b.Pieces[Pawn]
+		cnt := T((threatened & targets).Count())
+
+		sp.mg[color] += c.PawnSafeThreats[0] * cnt
+		sp.eg[color] += c.PawnSafeThreats[1] * cnt
 	}
 }
 
