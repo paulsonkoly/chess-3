@@ -60,7 +60,7 @@ var ranks = [...]BitBoard{
 func RankBB(rank Coord) BitBoard { return ranks[rank] }
 
 var fileCluster = [...]BitBoard{
-	AFileBB | BFileBB | CFileBB, AFileBB | BFileBB | CFileBB | EFileBB, AFileBB | BFileBB | CFileBB | EFileBB,
+	AFileBB | BFileBB | CFileBB, AFileBB | BFileBB | CFileBB | DFileBB, AFileBB | BFileBB | CFileBB | DFileBB,
 	CFileBB | DFileBB | EFileBB | FFileBB, CFileBB | DFileBB | EFileBB | FFileBB,
 	EFileBB | FFileBB | GFileBB | HFileBB, EFileBB | FFileBB | GFileBB | HFileBB, FFileBB | GFileBB | HFileBB,
 }

@@ -596,7 +596,7 @@ func (sp *scorePair[T]) addKingAttacks(ka kingAttacks[T]) {
 
 func (sp *scorePair[T]) addPawnlessFlank(color Color, sq Square, pawns BitBoard, c *CoeffSet[T]) {
 	if FileCluster(sq.File())&pawns == 0 {
-		sp.eg[color] += c.PawnlessFlank[0]
-		sp.mg[color] += c.PawnlessFlank[1]
+		sp.mg[color] += c.PawnlessFlank[0]
+		sp.eg[color] += c.PawnlessFlank[1]
 	}
 }
