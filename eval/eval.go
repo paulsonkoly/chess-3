@@ -115,6 +115,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		sq := piece.LowestSet()
 
 		sp.addPSqT(color, King, sq, c)
+		sp.addPawnlessFlank(color, sq, b.Pieces[Pawn], c)
 	}
 
 	pw.calcCover()
@@ -591,4 +592,11 @@ func (sp *scorePair[T]) addKingAttacks(ka kingAttacks[T]) {
 
 	sp.eg[White] += ka.sigmoidal(1, White)
 	sp.eg[Black] += ka.sigmoidal(1, Black)
+}
+
+func (sp *scorePair[T]) addPawnlessFlank(color Color, sq Square, pawns BitBoard, c *CoeffSet[T]) {
+	if FileCluster(sq.File())&pawns == 0 {
+		sp.mg[color] += c.PawnlessFlank[0]
+		sp.eg[color] += c.PawnlessFlank[1]
+	}
 }
