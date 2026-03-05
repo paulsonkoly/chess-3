@@ -16,6 +16,9 @@ type CoeffSet[T ScoreType] struct {
 	SafeChecks [2][4]T
 	// KingShelter is the bonus for damage on the opponent's king shelter.
 	KingShelter [2]T
+	KingAttackMagnitude [2]T
+	KingAttackSteepness [2]T
+
 	// PawnlessFlank is the penalty for a king being on a pawnless flank.
 	PawnlessFlank [2]T
 
