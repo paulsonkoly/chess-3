@@ -2,8 +2,6 @@
 package eval
 
 import (
-	"math"
-
 	"github.com/paulsonkoly/chess-3/attacks"
 	"github.com/paulsonkoly/chess-3/board"
 
@@ -46,33 +44,22 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addDoubledPawns(pawns, c)
 	sp.addIsolatedPawns(pawns, c)
 
-	ka := kingAttacks[T]{}
-
 	for color := White; color <= Black; color++ {
-
-		// enemy king neighbourhood
-		eKNb := pw.kingNb[color.Flip()]
-
 		// queens
-
 		for pieces := b.Pieces[Queen] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
-			attacks := pw.calcQueenAttacks(color, sq)
-
-			ka.addAttackPieces(color, Queen, attacks, eKNb, c)
+			pw.calcQueenAttacks(color, sq)
 
 			sp.addPSqT(color, Queen, sq, c)
 		}
 
 		// rooks
-
 		for pieces := b.Pieces[Rook] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
 			attacks := pw.calcRookAttacks(color, sq)
 
-			ka.addAttackPieces(color, Rook, attacks, eKNb, c)
 			sp.addRookMobility(b, color, sq, attacks, c)
 			sp.addPSqT(color, Rook, sq, c)
 		}
@@ -84,7 +71,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			attacks := pw.calcBishopAttacks(color, sq)
 
-			ka.addAttackPieces(color, Bishop, attacks, eKNb, c)
 			sp.addBishopMobility(b, color, attacks, c)
 			sp.addPSqT(color, Bishop, sq, c)
 		}
@@ -96,7 +82,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			attacks := pw.calcKnightAttacks(color, sq)
 
-			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
 			sp.addKnightOutposts(color, sq, outposts, c)
 			sp.addPSqT(color, Knight, sq, c)
@@ -121,45 +106,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	pw.calcCover()
 
 	sp.addPawnSafeThreats(b, &pw, c)
-
-	// safe checks
-	for color := White; color <= Black; color++ {
-		eCover := pw.cover[color.Flip()]
-
-		var safeChecks BitBoard
-
-		// Queen
-		eKAttack := pw.kingRays[color.Flip()][0] | pw.kingRays[color.Flip()][Rook-Bishop]
-		safeChecks = pw.attacks[color][Queen-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
-
-		ka.addSafeChecks(color, Queen, safeChecks, c)
-
-		// Rook
-		eKAttack = pw.kingRays[color.Flip()][Rook-Bishop]
-		safeChecks = pw.attacks[color][Rook-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
-
-		ka.addSafeChecks(color, Rook, safeChecks, c)
-
-		// Bishop
-		eKAttack = pw.kingRays[color.Flip()][0]
-		safeChecks = pw.attacks[color][Bishop-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
-
-		ka.addSafeChecks(color, Bishop, safeChecks, c)
-
-		// Knight
-		eKAttack = attacks.KnightMoves(pw.kingSq[color.Flip()])
-		safeChecks = pw.attacks[color][Knight-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
-
-		ka.addSafeChecks(color, Knight, safeChecks, c)
-
-		// shelter
-		pCnt := (pw.kingNb[color] & b.Colors[color] & b.Pieces[Pawn]).Count()
-		penalty := T(max(3-pCnt, 0))
-
-		ka.addShelter(color, penalty, c)
-	}
-
-	sp.addKingAttacks(ka)
 
 	return sp.taperedScore(b)
 }
@@ -396,7 +342,6 @@ func (sp *scorePair[T]) addDoubledPawns(pawns *pawns, c *CoeffSet[T]) {
 }
 
 func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
-
 	for color := White; color <= Black; color++ {
 		isoCnt := T(pawns.isolatedPawns(color).Count())
 		sp.mg[color] += c.IsolatedPawns[0] * isoCnt
@@ -415,65 +360,6 @@ func (sp *scorePair[T]) addPawnSafeThreats(b *board.Board, pw *pieceWise, c *Coe
 		sp.mg[color] += c.PawnSafeThreats[0] * cnt
 		sp.eg[color] += c.PawnSafeThreats[1] * cnt
 	}
-}
-
-type kingAttacks[T ScoreType] struct {
-	score [2][2]T
-}
-
-func (ka *kingAttacks[T]) addAttackPieces(
-	color Color,
-	pType Piece,
-	attacks BitBoard,
-	kingNB BitBoard,
-	c *CoeffSet[T],
-) {
-
-	if kingNB&attacks != 0 {
-		ka.score[0][color] += c.KingAttackPieces[0][pType-Knight]
-		ka.score[1][color] += c.KingAttackPieces[1][pType-Knight]
-	}
-}
-
-func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
-	ka.score[0][color] += c.SafeChecks[0][pType-Knight] * T(safeChecks.Count())
-	ka.score[1][color] += c.SafeChecks[1][pType-Knight] * T(safeChecks.Count())
-}
-
-func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
-	ka.score[0][color.Flip()] += c.KingShelter[0] * penalty
-	ka.score[1][color.Flip()] += c.KingShelter[1] * penalty
-}
-
-func (ka kingAttacks[T]) sigmoidal(phase int, color Color) T {
-	return sigmoidal(ka.score[phase][color])
-}
-
-// def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))
-//
-// 100.times.map { |x| f(x).round }.each_slice(10).to_a
-//
-// where 600 is the maximal bonus for attack, 0.2 is the steepness of the
-// sigmoid, and 50 is the inflection point, implying a 0-100 range for king
-// attack score.
-var sigm = [...]Score{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
-	1, 2, 2, 3, 3, 4, 5, 6, 7, 9,
-	11, 13, 16, 19, 23, 28, 34, 41, 50, 60,
-	72, 85, 101, 119, 139, 161, 186, 213, 241, 270,
-	300, 330, 359, 387, 414, 439, 461, 481, 499, 515,
-	528, 540, 550, 559, 566, 572, 577, 581, 584, 587,
-	589, 591, 593, 594, 595, 596, 597, 597, 598, 598,
-	599, 599, 599, 599, 599, 599, 600, 600, 600, 600,
-	600, 600, 600, 600, 600, 600, 600, 600, 600, 600,
-}
-
-func sigmoidal[T ScoreType](n T) T {
-	if _, ok := (any(n)).(Score); ok {
-		return T(sigm[Clamp(int(n), 0, len(sigm)-1)])
-	}
-	return T(600.0 / (1.0 + math.Exp(-0.2*(float64(n)-50.0))))
 }
 
 func (pw *pieceWise) calcPawnAttacks(b *board.Board) {
@@ -497,14 +383,7 @@ func (pw *pieceWise) calcRookAttacks(color Color, sq Square) BitBoard {
 	return attacks
 }
 
-func (sp *scorePair[T]) addRookMobility(
-	b *board.Board,
-	color Color,
-	sq Square,
-	attacks BitBoard,
-	c *CoeffSet[T],
-) {
-
+func (sp *scorePair[T]) addRookMobility(b *board.Board, color Color, sq Square, attacks BitBoard, c *CoeffSet[T]) {
 	rank := BitBoard(0xff) << (sq & 56)
 	hmob := (attacks & rank & ^b.Colors[color]).Count()
 	vmob := (attacks & ^rank & ^b.Colors[color]).Count()
@@ -550,20 +429,13 @@ func (sp *scorePair[T]) addKnightMobility(
 	pawnCover BitBoard,
 	c *CoeffSet[T],
 ) {
-
 	mobCnt := (attacks & ^b.Colors[color] & ^pawnCover).Count()
 	sp.mg[color] += c.MobilityKnight[0][mobCnt]
 	sp.eg[color] += c.MobilityKnight[1][mobCnt]
 
 }
 
-func (sp *scorePair[T]) addKnightOutposts(
-	color Color,
-	sq Square,
-	holes BitBoard,
-	c *CoeffSet[T],
-) {
-
+func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, holes BitBoard, c *CoeffSet[T]) {
 	// calculate knight outputs
 	if (BitBoard(1)<<sq)&holes != 0 {
 		// the hole square is from the enemy's perspective, white's in black's territory
@@ -584,14 +456,6 @@ func (pw *pieceWise) calcCover() {
 			pw.attacks[color][Queen-Pawn] |
 			pw.attacks[color][King-Pawn]
 	}
-}
-
-func (sp *scorePair[T]) addKingAttacks(ka kingAttacks[T]) {
-	sp.mg[White] += ka.sigmoidal(0, White)
-	sp.mg[Black] += ka.sigmoidal(0, Black)
-
-	sp.eg[White] += ka.sigmoidal(1, White)
-	sp.eg[Black] += ka.sigmoidal(1, Black)
 }
 
 func (sp *scorePair[T]) addPawnlessFlank(color Color, sq Square, pawns BitBoard, c *CoeffSet[T]) {

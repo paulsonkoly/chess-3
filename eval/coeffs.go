@@ -135,16 +135,7 @@ var Coefficients = CoeffSet[Score]{
 		{0, 83, 401, 410, 523, 1104, 0},
 		{0, 139, 353, 372, 688, 1356, 0},
 	},
-	TempoBonus: [2]Score{23, 18},
-	KingAttackPieces: [2][4]Score{
-		{7, 8, 9, 16},
-		{-62, 1, 2, -81},
-	},
-	SafeChecks: [2][4]Score{
-		{8, 8, 9, 5},
-		{21, 1, -33, 7},
-	},
-	KingShelter:   [2]Score{7, -3},
+	TempoBonus:    [2]Score{23, 18},
 	PawnlessFlank: [2]Score{-39, -70},
 	MobilityKnight: [2][9]Score{
 		{-54, -39, -30, -24, -16, -10, -2, 7, 16},
