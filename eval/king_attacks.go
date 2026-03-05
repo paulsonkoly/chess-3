@@ -1,9 +1,9 @@
 package eval
 
 import (
-	"github.com/paulsonkoly/chess-3/board"
 	"math"
 
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
@@ -33,6 +33,11 @@ func (ka *kingAttacks[T]) blend(color Color, phase phase[T], c *CoeffSet[T]) T {
 	kingAttack := phase.blend(ka.accum[0][color], ka.accum[1][color])
 	mag := phase.blend(c.KingAttackMagnitude[0], c.KingAttackMagnitude[1])
 	stp := phase.blend(c.KingAttackSteepness[0], c.KingAttackSteepness[1])
+
+	// this condition should stop the tuner going towards degenerate values.
+	if mag < 0 || stp < 0 {
+		return 0
+	}
 
 	// sigmoidal fixed inflection point at 200, steepness (transition rate) from
 	// stp, and magnitude (king attack importance) from mag.
