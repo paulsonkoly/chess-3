@@ -3,49 +3,54 @@ package eval
 import (
 	"math"
 
-	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 type kingAttacks[T ScoreType] struct {
-	accum [2][2]T
+	accum [2]T
 }
 
 func (ka *kingAttacks[T]) addAttackPieces(color Color, pType Piece, attacks BitBoard, kingNB BitBoard, c *CoeffSet[T]) {
 	if kingNB&attacks != 0 {
-		ka.accum[0][color] += c.KingAttackPieces[0][pType-Knight]
-		ka.accum[1][color] += c.KingAttackPieces[1][pType-Knight]
+		ka.accum[color] += c.KingAttackPieces[pType-Knight]
 	}
 }
 
 func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
-	ka.accum[0][color] += c.SafeChecks[0][pType-Knight] * T(safeChecks.Count())
-	ka.accum[1][color] += c.SafeChecks[1][pType-Knight] * T(safeChecks.Count())
+	ka.accum[color] += c.SafeChecks[pType-Knight] * T(safeChecks.Count())
 }
 
 func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
-	ka.accum[0][color.Flip()] += c.KingShelter[0] * penalty
-	ka.accum[1][color.Flip()] += c.KingShelter[1] * penalty
+	ka.accum[color.Flip()] += c.KingShelter[0] * penalty
 }
 
-func (ka *kingAttacks[T]) blend(color Color, phase phase[T], c *CoeffSet[T]) T {
-	// tapered eval blend mg & eg
-	kingAttack := phase.blend(ka.accum[0][color], ka.accum[1][color])
-	mag := phase.blend(c.KingAttackMagnitude[0], c.KingAttackMagnitude[1])
-	stp := phase.blend(c.KingAttackSteepness[0], c.KingAttackSteepness[1])
+func (ka *kingAttacks[T]) score(color Color, phase byte, c *CoeffSet[T]) T {
+	return sigmoidal(ka.accum[color]) * c.KingAttackMagnitude[phase] / 64
+}
 
-	// this condition should stop the tuner going towards degenerate values.
-	if mag < 0 || stp < 0 {
-		return 0
+// def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))
+//
+// 100.times.map { |x| f(x).round }.each_slice(10).to_a
+//
+// where 600 is the maximal bonus for attack, 0.2 is the steepness of the
+// sigmoid, and 50 is the inflection point, implying a 0-100 range for king
+// attack score.
+var sigm = [...]Score{
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+	1, 2, 2, 3, 3, 4, 5, 6, 7, 9,
+	11, 13, 16, 19, 23, 28, 34, 41, 50, 60,
+	72, 85, 101, 119, 139, 161, 186, 213, 241, 270,
+	300, 330, 359, 387, 414, 439, 461, 481, 499, 515,
+	528, 540, 550, 559, 566, 572, 577, 581, 584, 587,
+	589, 591, 593, 594, 595, 596, 597, 597, 598, 598,
+	599, 599, 599, 599, 599, 599, 600, 600, 600, 600,
+	600, 600, 600, 600, 600, 600, 600, 600, 600, 600,
+}
+
+func sigmoidal[T ScoreType](n T) T {
+	if _, ok := (any(n)).(Score); ok {
+		return T(sigm[Clamp(int(n), 0, len(sigm)-1)])
 	}
-
-	// sigmoidal steepness (transition rate) from stp, and magnitude (king attack
-	// importance) from mag.
-	return T(float64(mag) / (1 + math.Exp(-(float64(stp)/64)*(float64(kingAttack)-200))))
-}
-
-func (ka *kingAttacks[T]) score(b *board.Board, phase phase[T], c *CoeffSet[T]) T {
-	scores := [2]T{ka.blend(White, phase, c), ka.blend(Black, phase, c)}
-
-	return scores[b.STM] - scores[b.STM.Flip()]
+	return T(600.0 / (1.0 + math.Exp(-0.2*(float64(n)-50.0))))
 }

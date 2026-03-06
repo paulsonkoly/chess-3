@@ -165,9 +165,9 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		ka.addShelter(color, penalty, c)
 	}
 
-	score := sp.taperedScore(b, phase)
-	score += ka.score(b, phase, c)
+	sp.addKingAttacks(ka, c)
 
+	score := sp.taperedScore(b, phase)
 	// drawishness
 	fifty := int(b.FiftyCnt)
 	if _, ok := ((any)(score)).(Score); ok {
@@ -278,6 +278,13 @@ func (sp *scorePair[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet
 
 	sp.mg[color] += c.PSqT[2*ix][sq]
 	sp.eg[color] += c.PSqT[2*ix+1][sq]
+}
+
+func (sp *scorePair[T]) addKingAttacks(ka kingAttacks[T], c *CoeffSet[T]) {
+	sp.mg[White] += ka.score(White, 0, c)
+	sp.mg[Black] += ka.score(Black, 0, c)
+	sp.eg[White] += ka.score(White, 1, c)
+	sp.eg[Black] += ka.score(Black, 1, c)
 }
 
 func (sp *scorePair[T]) taperedScore(b *board.Board, phase phase[T]) T {
