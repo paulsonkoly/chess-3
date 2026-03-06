@@ -41,7 +41,7 @@ func (ka *kingAttacks[T]) blend(color Color, phase phase[T], c *CoeffSet[T]) T {
 
 	// sigmoidal steepness (transition rate) from stp, and magnitude (king attack
 	// importance) from mag.
-	return T(float64(mag) / (1 + math.Exp(-(float64(stp)/64)*(float64(kingAttack)))))
+	return T(float64(mag) / (1 + math.Exp(-(float64(stp)/64)*(float64(kingAttack)-200))))
 }
 
 func (ka *kingAttacks[T]) score(b *board.Board, phase phase[T], c *CoeffSet[T]) T {
