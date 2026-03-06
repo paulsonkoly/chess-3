@@ -24,8 +24,8 @@ func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
 	ka.accum[color.Flip()] += c.KingShelter[0] * penalty
 }
 
-func (ka *kingAttacks[T]) score(color Color, phase byte, c *CoeffSet[T]) T {
-	return sigmoidal(ka.accum[color]) * c.KingAttackMagnitude[phase] / 64
+func (ka *kingAttacks[T]) sigmoidal(color Color) T {
+	return sigmoidal(ka.accum[color])
 }
 
 // def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))
