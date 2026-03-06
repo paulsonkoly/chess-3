@@ -2,8 +2,6 @@
 package eval
 
 import (
-	"math"
-
 	"github.com/paulsonkoly/chess-3/attacks"
 	"github.com/paulsonkoly/chess-3/board"
 
@@ -20,8 +18,16 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	}
 
 	sp := scorePair[T]{}
+	phase := phase[T]{}
 
-	sp.addPieceValues(b, c)
+	for pType := Pawn; pType <= Queen; pType++ {
+		wCnt := (b.Pieces[pType] & b.Colors[White]).Count()
+		bCnt := (b.Pieces[pType] & b.Colors[Black]).Count()
+
+		phase.addPieces(pType, wCnt+bCnt)
+		sp.addPieceValues(White, pType, wCnt, c)
+		sp.addPieceValues(Black, pType, bCnt, c)
+	}
 
 	// special case checkmate patterns
 	if KNBvK(b) { // knight and bishop checkmate
@@ -159,9 +165,16 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		ka.addShelter(color, penalty, c)
 	}
 
-	sp.addKingAttacks(ka)
+	sp.addKingAttacks(ka, c)
 
-	return sp.taperedScore(b)
+	score := sp.taperedScore(b, phase)
+	// drawishness
+	fifty := int(b.FiftyCnt)
+	if _, ok := ((any)(score)).(Score); ok {
+		return T(int(score) * (100 - fifty) / 100)
+	}
+
+	return score * T(100-fifty) / 100
 }
 
 func insufficientMat(b *board.Board) bool {
@@ -197,18 +210,9 @@ func KNBvK(b *board.Board) bool {
 			(blackN.IsPow2() && blackB.IsPow2() && (whiteN|whiteB) == 0))
 }
 
-// MaxPhase is the sum of pieces on the starting position each piece counted as
-// the corresponding Phase value.
-const MaxPhase = 24
-
-// Phase is game phase.
-var Phase = [...]int{0, 0, 1, 1, 2, 4, 0}
-
 type scorePair[T ScoreType] struct {
 	mg [2]T
 	eg [2]T
-
-	phase int
 }
 
 // KBCorners are knight-bishop checkmate corners based on parity of square.
@@ -239,17 +243,9 @@ func (sp *scorePair[T]) KNBvK(b *board.Board, c *CoeffSet[T]) {
 	sp.eg[victim.Flip()] += T(cornerDist) * 30
 }
 
-func (sp *scorePair[T]) addPieceValues(b *board.Board, c *CoeffSet[T]) {
-	for pType := Pawn; pType <= Queen; pType++ {
-		wCnt := (b.Pieces[pType] & b.Colors[White]).Count()
-		bCnt := (b.Pieces[pType] & b.Colors[Black]).Count()
-
-		sp.phase += (wCnt + bCnt) * Phase[pType]
-		sp.mg[White] += T(wCnt) * c.PieceValues[0][pType]
-		sp.eg[White] += T(wCnt) * c.PieceValues[1][pType]
-		sp.mg[Black] += T(bCnt) * c.PieceValues[0][pType]
-		sp.eg[Black] += T(bCnt) * c.PieceValues[1][pType]
-	}
+func (sp *scorePair[T]) addPieceValues(color Color, pType Piece, cnt int, c *CoeffSet[T]) {
+	sp.mg[color] += T(cnt) * c.PieceValues[0][pType]
+	sp.eg[color] += T(cnt) * c.PieceValues[1][pType]
 }
 
 func (sp *scorePair[T]) addTempo(b *board.Board, c *CoeffSet[T]) {
@@ -284,26 +280,28 @@ func (sp *scorePair[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet
 	sp.eg[color] += c.PSqT[2*ix+1][sq]
 }
 
-func (sp *scorePair[T]) taperedScore(b *board.Board) T {
-	fifty := b.FiftyCnt
+func (sp *scorePair[T]) addKingAttacks(ka kingAttacks[T], c *CoeffSet[T]) {
+	whiteSgm := ka.sigmoidal(White)
+	blackSgm := ka.sigmoidal(Black)
+	var t T
+	if _, ok := ((any)(t).(Score)); ok {
+		sp.mg[White] += T(((int)(whiteSgm) * (int)(c.KingAttackMagnitude[0])) / 64)
+		sp.mg[Black] += T(((int)(blackSgm) * (int)(c.KingAttackMagnitude[0])) / 64)
+		sp.eg[White] += T(((int)(whiteSgm) * (int)(c.KingAttackMagnitude[1])) / 64)
+		sp.eg[Black] += T(((int)(blackSgm) * (int)(c.KingAttackMagnitude[1])) / 64)
+		return
+	}
+	sp.mg[White] += (whiteSgm * c.KingAttackMagnitude[0]) / 64
+	sp.mg[Black] += (blackSgm * c.KingAttackMagnitude[0]) / 64
+	sp.eg[White] += (whiteSgm * c.KingAttackMagnitude[1]) / 64
+	sp.eg[Black] += (blackSgm * c.KingAttackMagnitude[1]) / 64
+}
 
+func (sp *scorePair[T]) taperedScore(b *board.Board, phase phase[T]) T {
 	mgScore := sp.mg[b.STM] - sp.mg[b.STM.Flip()]
 	egScore := sp.eg[b.STM] - sp.eg[b.STM.Flip()]
 
-	mgPhase := min(sp.phase, MaxPhase)
-	egPhase := MaxPhase - mgPhase
-
-	if _, ok := (any(mgScore)).(Score); ok {
-		v := int(mgScore)*mgPhase + int(egScore)*egPhase
-		v *= int(100 - fifty)
-
-		return T(v / MaxPhase / 100)
-	}
-
-	v := mgScore*T(mgPhase) + egScore*T(egPhase)
-	v *= 100 - T(fifty)
-
-	return v / MaxPhase / 100
+	return phase.blend(mgScore, egScore)
 }
 
 func (sp *scorePair[T]) endgameScore(b *board.Board) T {
@@ -417,65 +415,6 @@ func (sp *scorePair[T]) addPawnSafeThreats(b *board.Board, pw *pieceWise, c *Coe
 	}
 }
 
-type kingAttacks[T ScoreType] struct {
-	score [2][2]T
-}
-
-func (ka *kingAttacks[T]) addAttackPieces(
-	color Color,
-	pType Piece,
-	attacks BitBoard,
-	kingNB BitBoard,
-	c *CoeffSet[T],
-) {
-
-	if kingNB&attacks != 0 {
-		ka.score[0][color] += c.KingAttackPieces[0][pType-Knight]
-		ka.score[1][color] += c.KingAttackPieces[1][pType-Knight]
-	}
-}
-
-func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
-	ka.score[0][color] += c.SafeChecks[0][pType-Knight] * T(safeChecks.Count())
-	ka.score[1][color] += c.SafeChecks[1][pType-Knight] * T(safeChecks.Count())
-}
-
-func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
-	ka.score[0][color.Flip()] += c.KingShelter[0] * penalty
-	ka.score[1][color.Flip()] += c.KingShelter[1] * penalty
-}
-
-func (ka kingAttacks[T]) sigmoidal(phase int, color Color) T {
-	return sigmoidal(ka.score[phase][color])
-}
-
-// def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))
-//
-// 100.times.map { |x| f(x).round }.each_slice(10).to_a
-//
-// where 600 is the maximal bonus for attack, 0.2 is the steepness of the
-// sigmoid, and 50 is the inflection point, implying a 0-100 range for king
-// attack score.
-var sigm = [...]Score{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
-	1, 2, 2, 3, 3, 4, 5, 6, 7, 9,
-	11, 13, 16, 19, 23, 28, 34, 41, 50, 60,
-	72, 85, 101, 119, 139, 161, 186, 213, 241, 270,
-	300, 330, 359, 387, 414, 439, 461, 481, 499, 515,
-	528, 540, 550, 559, 566, 572, 577, 581, 584, 587,
-	589, 591, 593, 594, 595, 596, 597, 597, 598, 598,
-	599, 599, 599, 599, 599, 599, 600, 600, 600, 600,
-	600, 600, 600, 600, 600, 600, 600, 600, 600, 600,
-}
-
-func sigmoidal[T ScoreType](n T) T {
-	if _, ok := (any(n)).(Score); ok {
-		return T(sigm[Clamp(int(n), 0, len(sigm)-1)])
-	}
-	return T(600.0 / (1.0 + math.Exp(-0.2*(float64(n)-50.0))))
-}
-
 func (pw *pieceWise) calcPawnAttacks(b *board.Board) {
 	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
 
@@ -497,14 +436,7 @@ func (pw *pieceWise) calcRookAttacks(color Color, sq Square) BitBoard {
 	return attacks
 }
 
-func (sp *scorePair[T]) addRookMobility(
-	b *board.Board,
-	color Color,
-	sq Square,
-	attacks BitBoard,
-	c *CoeffSet[T],
-) {
-
+func (sp *scorePair[T]) addRookMobility(b *board.Board, color Color, sq Square, attacks BitBoard, c *CoeffSet[T]) {
 	rank := BitBoard(0xff) << (sq & 56)
 	hmob := (attacks & rank & ^b.Colors[color]).Count()
 	vmob := (attacks & ^rank & ^b.Colors[color]).Count()
@@ -584,14 +516,6 @@ func (pw *pieceWise) calcCover() {
 			pw.attacks[color][Queen-Pawn] |
 			pw.attacks[color][King-Pawn]
 	}
-}
-
-func (sp *scorePair[T]) addKingAttacks(ka kingAttacks[T]) {
-	sp.mg[White] += ka.sigmoidal(0, White)
-	sp.mg[Black] += ka.sigmoidal(0, Black)
-
-	sp.eg[White] += ka.sigmoidal(1, White)
-	sp.eg[Black] += ka.sigmoidal(1, Black)
 }
 
 func (sp *scorePair[T]) addPawnlessFlank(color Color, sq Square, pawns BitBoard, c *CoeffSet[T]) {
