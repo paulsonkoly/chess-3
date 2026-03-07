@@ -127,7 +127,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	pw.calcCover()
 
 	sp.addThreats(b, &pw, c)
-	sp.addSafePawnThreats(b, &pw, c)
 
 	// safe checks
 	for color := White; color <= Black; color++ {
@@ -408,12 +407,23 @@ func (sp *scorePair[T]) addThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]
 		defended := pw.cover[color.Flip()]
 		undefendedAttacked := ^defended & pw.cover[color]
 
-		lesserAttackers := pw.attacks[color][0] // pawns to start with
+		// special case safe pawn threats
+		safe := ^pw.cover[color.Flip()] | pw.cover[color]
+		pawns := b.Colors[color] & b.Pieces[Pawn]
+		spThreatened := attacks.PawnCaptureMoves(safe&pawns, color)
+		targets := b.Colors[color.Flip()] &^ b.Pieces[Pawn]
+
+		cnt := T((spThreatened & targets).Count())
+
+		sp.mg[color] += c.SafePawnThreats[0] * cnt
+		sp.eg[color] += c.SafePawnThreats[1] * cnt
+
+		lesserAttackers := pw.attacks[color][0] & ^spThreatened // pawns to start with, but not double counting safe pawns.
 
 		// defended minors are threatened by pawns, undefended minors are theatened by anything
 		threatened := (defended & lesserAttackers) | undefendedAttacked
 		minors := (b.Pieces[Knight] | b.Pieces[Bishop]) & b.Colors[color.Flip()]
-		cnt := T((threatened & minors).Count())
+		cnt = T((threatened & minors).Count())
 
 		// defended rooks are threatened by anything but rooks and queens, undefended rooks threatened by anything
 		lesserAttackers |= pw.attacks[color][Knight-Pawn] | pw.attacks[color][Bishop-Pawn]
@@ -429,20 +439,6 @@ func (sp *scorePair[T]) addThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]
 
 		sp.mg[color] += c.Threats[0] * cnt
 		sp.eg[color] += c.Threats[1] * cnt
-	}
-}
-
-func (sp *scorePair[T]) addSafePawnThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]) {
-	for color := White; color <= Black; color++ {
-		// not attacked or defended pawns threatening something that's not a pawn.
-		safe := ^pw.cover[color.Flip()] | pw.cover[color]
-		pawns := b.Colors[color] & b.Pieces[Pawn] & safe
-		threatened := attacks.PawnCaptureMoves(pawns, color)
-		targets := b.Colors[color.Flip()] &^ b.Pieces[Pawn]
-		cnt := T((threatened & targets).Count())
-
-		sp.mg[color] += c.SafePawnThreats[0] * cnt
-		sp.eg[color] += c.SafePawnThreats[1] * cnt
 	}
 }
 
