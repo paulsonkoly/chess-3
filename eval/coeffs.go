@@ -179,5 +179,5 @@ var Coefficients = CoeffSet[Score]{
 	},
 	DoubledPawns:    [2]Score{-14, -15},
 	IsolatedPawns:   [2]Score{-14, -14},
-	PawnSafeThreats: [2]Score{60, 34},
+	SafePawnThreats: [2]Score{60, 34},
 }

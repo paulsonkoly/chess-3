@@ -126,7 +126,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 	pw.calcCover()
 
-	sp.addPawnSafeThreats(b, &pw, c)
+	sp.addThreats(b, &pw, c)
+	sp.addSafePawnThreats(b, &pw, c)
 
 	// safe checks
 	for color := White; color <= Black; color++ {
@@ -402,16 +403,29 @@ func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
 	}
 }
 
-func (sp *scorePair[T]) addPawnSafeThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]) {
+func (sp *scorePair[T]) addThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
+		// attacked and not defended pieces
+		threatened := pw.cover[color] & ^pw.cover[color.Flip()]
+		targets := b.Colors[color.Flip()] & ^b.Pieces[Pawn]
+		cnt := T((threatened & targets).Count())
+
+		sp.mg[color] += c.Threats[0] * cnt
+		sp.eg[color] += c.Threats[1] * cnt
+	}
+}
+
+func (sp *scorePair[T]) addSafePawnThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]) {
+	for color := White; color <= Black; color++ {
+		// not attacked or defended pawns threatening something that's not a pawn.
 		safe := ^pw.cover[color.Flip()] | pw.cover[color]
 		pawns := b.Colors[color] & b.Pieces[Pawn] & safe
 		threatened := attacks.PawnCaptureMoves(pawns, color)
 		targets := b.Colors[color.Flip()] &^ b.Pieces[Pawn]
 		cnt := T((threatened & targets).Count())
 
-		sp.mg[color] += c.PawnSafeThreats[0] * cnt
-		sp.eg[color] += c.PawnSafeThreats[1] * cnt
+		sp.mg[color] += c.SafePawnThreats[0] * cnt
+		sp.eg[color] += c.SafePawnThreats[1] * cnt
 	}
 }
 
