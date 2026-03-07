@@ -12,7 +12,7 @@ chess-3 is occasionally online on Lichess using chess-2's [Lichess account](http
 
 | version | ccrl elo    |
 |:-------:|------------:|
-| 3.0     | [2980][3.0] |
+| 3.0     | [2992][3.0] |
 | 2.0     | [2792][2.0] |
 | 1.0     | [2654][1.0] |
 
