@@ -50,6 +50,6 @@ type CoeffSet[T ScoreType] struct {
 
 	// SafePawnThreats is the bonus for a safe - either unattacked or defended pawn attacking an enemy (non-pawn) piece.
 	SafePawnThreats [2]T
-	//Threats is the bonus for threatening an unprotected enemy piece.
-	Threats[2]T
+	//Threats is the bonus for threatening an enemy piece.
+	Threats [2]T
 }
