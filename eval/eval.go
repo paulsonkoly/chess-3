@@ -405,10 +405,27 @@ func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
 
 func (sp *scorePair[T]) addThreats(b *board.Board, pw *pieceWise, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
-		// attacked and not defended pieces
-		threatened := pw.cover[color] & ^pw.cover[color.Flip()]
-		targets := b.Colors[color.Flip()] & ^b.Pieces[Pawn]
-		cnt := T((threatened & targets).Count())
+		defended := pw.cover[color.Flip()]
+		undefendedAttacked := ^defended & pw.cover[color]
+
+		lesserAttackers := pw.attacks[color][0] // pawns to start with
+
+		// defended minors are threatened by pawns, undefended minors are theatened by anything
+		threatened := (defended & lesserAttackers) | undefendedAttacked
+		minors := (b.Pieces[Knight] | b.Pieces[Bishop]) & b.Colors[color.Flip()]
+		cnt := T((threatened & minors).Count())
+
+		// defended rooks are threatened by anything but rooks and queens, undefended rooks threatened by anything
+		lesserAttackers |= pw.attacks[color][Knight-Pawn] | pw.attacks[color][Bishop-Pawn]
+		threatened = (defended & lesserAttackers) | undefendedAttacked
+		rooks := b.Pieces[Rook] & b.Colors[color.Flip()]
+		cnt += T((threatened & rooks).Count())
+
+		// defended queens are threatened by anything but queens, undefended queens threatened by anything
+		lesserAttackers |= pw.attacks[color][Rook-Pawn]
+		threatened = (defended & lesserAttackers) | undefendedAttacked
+		queens := b.Pieces[Queen] & b.Colors[color.Flip()]
+		cnt += T((threatened & queens).Count())
 
 		sp.mg[color] += c.Threats[0] * cnt
 		sp.eg[color] += c.Threats[1] * cnt
