@@ -25,17 +25,21 @@ type CoeffSet[T ScoreType] struct {
 	// Mobility* is per piece mobility bonus.
 	MobilityKnight [2][9]T
 	MobilityBishop [2][14]T
-	MobilityRook   [2][11]T
+	MobilityRook   [2][15]T
 
 	// KnightOutpost is a per square bonus for a knight being on an outpost, only
 	// counting the 5 ranks covering sideOfBoard.
 	KnightOutpost [2][40]T
 
-	// ConnectedRooks is a bonus if rooks are connected.
-	ConnectedRooks [2]T
-
 	// BishopPair is the bonus for bishop pair per friendly pawn count.
 	BishopPair [9]T
+
+	// ConnectedRooks is the bonus if rooks are connected.
+	ConnectedRooks [2]T
+	// RookOnOpen is the bonus for rook on open file.
+	RookOnOpen [2]T
+	// RookOnSemiOpen is the bonus for rook on semi-open file.
+	RookOnSemiOpen [2]T
 
 	// ProtectedPasser is the bonus for each protected passed pawn.
 	ProtectedPasser [2]T

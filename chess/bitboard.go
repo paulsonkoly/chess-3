@@ -59,6 +59,13 @@ var ranks = [...]BitBoard{
 // RankBB is the BitBoard with bits set for the rankth rank from White's perspective.
 func RankBB(rank Coord) BitBoard { return ranks[rank] }
 
+var files = [...]BitBoard{
+	AFileBB, BFileBB, CFileBB, DFileBB, EFileBB, FFileBB, GFileBB, HFileBB,
+}
+
+// FileBB is the BitBoard with bits set for the file.
+func FileBB(file Coord) BitBoard { return files[file] }
+
 var fileCluster = [...]BitBoard{
 	AFileBB | BFileBB | CFileBB, AFileBB | BFileBB | CFileBB | DFileBB, AFileBB | BFileBB | CFileBB | DFileBB,
 	CFileBB | DFileBB | EFileBB | FFileBB, CFileBB | DFileBB | EFileBB | FFileBB,
