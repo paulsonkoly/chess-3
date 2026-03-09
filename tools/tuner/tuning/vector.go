@@ -290,7 +290,7 @@ func writeField(b *strings.Builder, v reflect.Value, indent int) {
 		fmt.Fprintf(b, "%4d", r)
 
 	default:
-		panic("unexpected kind " + reflect.TypeFor[reflect.Value]().Kind().String())
+		panic("unexpected kind " + v.Kind().String())
 	}
 }
 
