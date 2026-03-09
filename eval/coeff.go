@@ -26,6 +26,7 @@ type CoeffSet[T ScoreType] struct {
 	MobilityKnight [2][9]T
 	MobilityBishop [2][14]T
 	MobilityRook   [2][15]T
+	MobilityQueen  [2][28]T
 
 	// KnightOutpost is a per square bonus for a knight being on an outpost, only
 	// counting the 5 ranks covering sideOfBoard.
