@@ -493,7 +493,7 @@ func (sp *scorePair[T]) addRooksOnSeventh(b *board.Board, pw *pieceWise, c *Coef
 	for color := White; color <= Black; color++ {
 		kingR := pw.kingSq[color.Flip()].Rank()
 		// king at home
-		if kingR.FromPerspectiveOf(color) < 5 {
+		if kingR.FromPerspectiveOf(color) < 6 {
 			continue
 		}
 		rooks := b.Pieces[Rook] & b.Colors[color]
