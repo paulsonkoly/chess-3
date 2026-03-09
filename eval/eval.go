@@ -60,7 +60,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		eKNb := pw.kingNb[color.Flip()]
 
 		// queens
-
 		for pieces := b.Pieces[Queen] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -72,19 +71,18 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// rooks
-
 		for pieces := b.Pieces[Rook] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
 			attacks := pw.calcRookAttacks(color, sq)
 
 			ka.addAttackPieces(color, Rook, attacks, eKNb, c)
-			sp.addRookMobility(b, color, sq, attacks, c)
+			sp.addRookMobility(b, color, attacks, c)
+			sp.addRookFiles(b, color, sq, c)
 			sp.addPSqT(color, Rook, sq, c)
 		}
 
 		// bishops
-
 		for pieces := b.Pieces[Bishop] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -109,7 +107,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		}
 
 		// pawns
-
 		for pieces := b.Pieces[Pawn] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -463,13 +460,8 @@ func (pw *pieceWise) calcRookAttacks(color Color, sq Square) BitBoard {
 	return attacks
 }
 
-func (sp *scorePair[T]) addRookMobility(b *board.Board, color Color, sq Square, attacks BitBoard, c *CoeffSet[T]) {
-	rank := BitBoard(0xff) << (sq & 56)
-	hmob := (attacks & rank & ^b.Colors[color]).Count()
-	vmob := (attacks & ^rank & ^b.Colors[color]).Count()
-
-	// count vertical mobility 2x compared to horizontal mobility
-	mobCnt := (2*vmob + hmob) / 2
+func (sp *scorePair[T]) addRookMobility(b *board.Board, color Color, attacks BitBoard, c *CoeffSet[T]) {
+	mobCnt := (attacks & ^b.Colors[color]).Count()
 
 	sp.mg[color] += c.MobilityRook[0][mobCnt]
 	sp.eg[color] += c.MobilityRook[1][mobCnt]
@@ -478,6 +470,18 @@ func (sp *scorePair[T]) addRookMobility(b *board.Board, color Color, sq Square, 
 	if attacks&b.Pieces[Rook]&b.Colors[color] != 0 {
 		sp.mg[color] += c.ConnectedRooks[0]
 		sp.eg[color] += c.ConnectedRooks[1]
+	}
+}
+
+func (sp *scorePair[T]) addRookFiles(b *board.Board, color Color, sq Square, c *CoeffSet[T]) {
+	file := FileBB(sq.File())
+
+	if file&b.Pieces[Pawn] == 0 {
+		sp.mg[color] += c.RookOnOpen[0]
+		sp.eg[color] += c.RookOnOpen[1]
+	} else if file&b.Pieces[Pawn]&b.Colors[color] == 0 {
+		sp.mg[color] += c.RookOnSemiOpen[0]
+		sp.eg[color] += c.RookOnSemiOpen[1]
 	}
 }
 
@@ -516,12 +520,7 @@ func (sp *scorePair[T]) addKnightMobility(
 
 }
 
-func (sp *scorePair[T]) addKnightOutposts(
-	color Color,
-	sq Square,
-	holes BitBoard,
-	c *CoeffSet[T],
-) {
+func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, holes BitBoard, c *CoeffSet[T]) {
 
 	// calculate knight outputs
 	if (BitBoard(1)<<sq)&holes != 0 {
