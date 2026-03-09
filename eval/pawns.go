@@ -18,30 +18,26 @@ type pawns struct {
 	neighbourF [2]BitBoard // neighbourF is files adjacent to files with pawns
 }
 
-func calcPawns(b *board.Board) *pawns {
-	pawns := pawns{}
-
+func (p *pawns) calcPawns(b *board.Board) {
 	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
-	pawns.pawns = ps
+	p.pawns = ps
 
-	pawns.frontSpan = [...]BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
+	p.frontSpan = [...]BitBoard{frontFill(ps[White], White) << 8, frontFill(ps[Black], Black) >> 8}
 	rearSpan := [...]BitBoard{frontFill(ps[White], Black) >> 8, frontFill(ps[Black], White) << 8}
 
-	wFiles := ps[White] | pawns.frontSpan[White] | rearSpan[White]
-	bFiles := ps[Black] | pawns.frontSpan[Black] | rearSpan[Black]
-	pawns.neighbourF = [...]BitBoard{
+	wFiles := ps[White] | p.frontSpan[White] | rearSpan[White]
+	bFiles := ps[Black] | p.frontSpan[Black] | rearSpan[Black]
+	p.neighbourF = [...]BitBoard{
 		((wFiles & ^AFileBB) >> 1) | ((wFiles & ^HFileBB) << 1),
 		((bFiles & ^HFileBB) << 1) | ((bFiles & ^AFileBB) >> 1),
 	}
 
-	pawns.frontLine = [...]BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
+	p.frontLine = [...]BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
 
-	pawns.cover = [...]BitBoard{
-		((pawns.frontSpan[White] & ^AFileBB) >> 1) | ((pawns.frontSpan[White] & ^HFileBB) << 1),
-		((pawns.frontSpan[Black] & ^HFileBB) << 1) | ((pawns.frontSpan[Black] & ^AFileBB) >> 1),
+	p.cover = [...]BitBoard{
+		((p.frontSpan[White] & ^AFileBB) >> 1) | ((p.frontSpan[White] & ^HFileBB) << 1),
+		((p.frontSpan[Black] & ^HFileBB) << 1) | ((p.frontSpan[Black] & ^AFileBB) >> 1),
 	}
-
-	return &pawns
 }
 
 // holes are squares that cannot be protected by one of our pawns on our side of the board.

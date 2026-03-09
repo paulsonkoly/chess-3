@@ -46,11 +46,12 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	pw.calcOccupancy(b)
 	pw.calcKingSquares(b)
 
-	pawns := calcPawns(b)
+	pawns := pawns{}
+	pawns.calcPawns(b)
 
-	sp.addPassers(b, pawns, &pw, c)
-	sp.addDoubledPawns(pawns, c)
-	sp.addIsolatedPawns(pawns, c)
+	sp.addPassers(b, &pawns, &pw, c)
+	sp.addDoubledPawns(&pawns, c)
+	sp.addIsolatedPawns(&pawns, c)
 
 	ka := kingAttacks[T]{}
 

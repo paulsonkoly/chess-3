@@ -55,7 +55,8 @@ func TestHoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			pawns := calcPawns(b)
+			pawns := pawns{}
+			pawns.calcPawns(b)
 
 			assert.Equal(t, tt.want, pawns.holes(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -85,7 +86,8 @@ func TestPassers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			pawns := calcPawns(b)
+			pawns := pawns{}
+			pawns.calcPawns(b)
 
 			assert.Equal(t, tt.want, pawns.passers(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -121,7 +123,8 @@ func TestDoubledPawns(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			pawns := calcPawns(b)
+			pawns := pawns{}
+			pawns.calcPawns(b)
 
 			assert.Equal(t, tt.want, pawns.doubledPawns(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -149,8 +152,8 @@ func TestIsolatedPawns(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			pawns := calcPawns(b)
-
+			pawns := pawns{}
+			pawns.calcPawns(b)
 			assert.Equal(t, tt.want, pawns.isolatedPawns(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
 	}
