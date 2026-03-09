@@ -42,6 +42,8 @@ type CoeffSet[T ScoreType] struct {
 	RookOnOpen [2]T
 	// RookOnSemiOpen is the bonus for rook on semi-open file.
 	RookOnSemiOpen [2]T
+	// RooksOnSeventh is the bonus for rooks being on the seventh rank, indexed by rook count.
+	RooksOnSeventh [2][2]T
 
 	// ProtectedPasser is the bonus for each protected passed pawn.
 	ProtectedPasser [2]T
