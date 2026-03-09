@@ -33,6 +33,8 @@ type CoeffSet[T ScoreType] struct {
 
 	// BishopPair is the bonus for bishop pair per friendly pawn count.
 	BishopPair [9]T
+	//Bishop outpost is the bonus for a bishop being on an outpost square.
+	BishopOutpost [2]T
 
 	// ConnectedRooks is the bonus if rooks are connected.
 	ConnectedRooks [2]T
