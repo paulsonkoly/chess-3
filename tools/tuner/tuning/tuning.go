@@ -34,6 +34,7 @@ var DefaultTargets = []string{
 	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
 	"Threats", "SafePawnThreats",
 	"KnightOutpost", "KnightBehindPawn",
-	"ConnectedRooks", "RookOnOpen", "RookOnSemiOpen", "BishopPair",
+	"BishopPair",
+	"ConnectedRooks", "RookOnOpen", "RookOnSemiOpen", "RooksOnSeventh",
 	"PawnlessFlank",
 }
