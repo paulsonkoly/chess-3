@@ -7,13 +7,30 @@ import (
 )
 
 type kingAttacks[T ScoreType] struct {
-	accum [2]T
+	attacks  [2][9]T
+	defences [2][9]T
+	accum    [2]T
 }
 
-func (ka *kingAttacks[T]) addAttackPieces(color Color, pType Piece, attacks BitBoard, kingNB BitBoard, c *CoeffSet[T]) {
-	if kingNB&attacks != 0 {
-		ka.accum[color] += c.KingAttackPieces[pType-Knight]
+func (ka *kingAttacks[T]) addAttackingPiece(color Color, pType Piece, sqrs BitBoard, kingSq Square, c *CoeffSet[T]) {
+	for ; sqrs != 0; sqrs &= sqrs - 1 {
+		sq := sqrs.LowestSet()
+		ka.attacks[color][residenceIx(kingSq, sq)] += c.KingAttackPieces[pType-Pawn]
 	}
+}
+
+func (ka *kingAttacks[T]) addDefendingPiece(color Color, pType Piece, sqrs BitBoard, kingSq Square, c *CoeffSet[T]) {
+	for ; sqrs != 0; sqrs &= sqrs - 1 {
+		sq := sqrs.LowestSet()
+		ka.defences[color.Flip()][residenceIx(kingSq, sq)] += c.KingDefendingPieces[pType-Pawn]
+	}
+}
+
+// maps sq to a 0 to 8 index around the ring of kingSq. The order is not
+// significant as long as it is consistent. The middle square where
+// the king resides is never used.
+func residenceIx(kingSq, sq Square) int {
+	return int((sq.Rank()-kingSq.Rank()+1)*3 + (sq.File() - kingSq.File() + 1))
 }
 
 func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
@@ -25,7 +42,11 @@ func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
 }
 
 func (ka *kingAttacks[T]) sigmoidal(color Color) T {
-	return sigmoidal(ka.accum[color])
+	sum := T(0)
+	for i := range ka.attacks[color] {
+		sum += max(0, ka.attacks[color][i]-ka.defences[color][i])
+	}
+	return sigmoidal(ka.accum[color] + sum)
 }
 
 // def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))

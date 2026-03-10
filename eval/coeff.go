@@ -11,7 +11,9 @@ type CoeffSet[T ScoreType] struct {
 	TempoBonus [2]T
 
 	// KingAttackPieces is the bonus per piece type if piece is attacking a square in the enemy king's neighborhood.
-	KingAttackPieces [4]T
+	KingAttackPieces [5]T
+	// KingDefendingPieces is the bonus per piece type if piece is defending a square in the friendly king's neighborhood.
+	KingDefendingPieces [5]T
 	// SafeChecks is the bonus per piece type for being able to give a safe check.
 	SafeChecks [4]T
 	// KingShelter is the bonus for damage on the opponent's king shelter.

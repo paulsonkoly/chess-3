@@ -136,7 +136,6 @@ var Coefficients = CoeffSet[Score]{
 		{0, 143, 359, 377, 715, 1392, 0},
 	},
 	TempoBonus:          [2]Score{29, 22},
-	KingAttackPieces:    [4]Score{10, 11, 12, 15},
 	SafeChecks:          [4]Score{18, 8, 17, 10},
 	KingShelter:         [1]Score{8},
 	KingAttackMagnitude: [2]Score{34, -6},
