@@ -44,7 +44,9 @@ func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
 func (ka *kingAttacks[T]) sigmoidal(color Color) T {
 	sum := T(0)
 	for i := range ka.attacks[color] {
-		sum += max(0, ka.attacks[color][i]-ka.defences[color][i])
+		attacks := ka.attacks[color][i]
+		defences := ka.defences[color][i]
+		sum += attacks * attacks / max(1, (attacks+defences))
 	}
 	return sigmoidal(ka.accum[color] + sum)
 }
