@@ -1,8 +1,8 @@
 package eval
 
 import (
-	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/attacks"
+	"github.com/paulsonkoly/chess-3/board"
 
 	. "github.com/paulsonkoly/chess-3/chess"
 )
