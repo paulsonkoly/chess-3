@@ -56,7 +56,7 @@ func TestHoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			pawns := pawns{}
-			pawns.calcPawns(b)
+			pawns.fromBoard(b)
 
 			assert.Equal(t, tt.want, pawns.holes(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -87,7 +87,7 @@ func TestPassers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			pawns := pawns{}
-			pawns.calcPawns(b)
+			pawns.fromBoard(b)
 
 			assert.Equal(t, tt.want, pawns.passers(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -124,7 +124,7 @@ func TestDoubledPawns(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			pawns := pawns{}
-			pawns.calcPawns(b)
+			pawns.fromBoard(b)
 
 			assert.Equal(t, tt.want, pawns.doubledPawns(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -153,8 +153,49 @@ func TestIsolatedPawns(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			pawns := pawns{}
-			pawns.calcPawns(b)
+			pawns.fromBoard(b)
 			assert.Equal(t, tt.want, pawns.isolatedPawns(tt.color), "fen %s color %v", tt.fen, tt.color)
+		})
+	}
+}
+
+func TestBackwardPawns(t *testing.T) {
+	tests := [...]struct {
+		name  string
+		fen   string
+		color Color
+		want  BitBoard
+	}{
+		{"startpos white", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", White, 0},
+		{"startpos black", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Black, 0},
+		{"empty board", "4k3/8/8/8/8/8/8/4K3 w - - 0 1", White, 0},
+
+		{"white isolated pawn blocked", "4k3/8/8/8/1p6/1P6/8/4K3 w - - 0 1", White, BitBoardFromSquares(B3)},
+		{"white isolated pawn not blocked", "4k3/8/8/8/8/1P6/8/4K3 w - - 0 1", White, 0},
+		{"white isolated pawn push threatened", "4k3/8/8/2p5/8/1P6/8/4K3 w - - 0 1", White, BitBoardFromSquares(B3)},
+		{"white phalanx pawn threatened", "4k3/8/8/2p5/8/1PP5/8/4K3 w - - 0 1", White, 0},
+		{"white connected backward blocked", "4k3/8/8/8/1Pp5/2P5/8/4K3 w - - 0 1", White, BitBoardFromSquares(C3)},
+		{"white connected backward threatened", "4k3/8/8/3p4/1P6/2P5/8/4K3 w - - 0 1", White, BitBoardFromSquares(C3)},
+		{"white V threatened", "4k3/8/8/3p4/1P1P4/2P5/8/4K3 w - - 0 1", White, BitBoardFromSquares(C3)},
+		{"white V blocked", "4k3/8/8/8/1PpP4/2P5/8/4K3 w - - 0 1", White, BitBoardFromSquares(C3)},
+
+		{"black isolated pawn blocked", "4k3/8/8/8/1p6/1P6/8/4K3 w - - 0 1", Black, BitBoardFromSquares(B4)},
+		{"black isolated pawn not blocked", "4k3/8/1p6/8/8/8/8/4K3 w - - 0 1", Black, 0},
+		{"black isolated pawn push threatened", "4k3/8/8/2p5/8/1P6/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C5)},
+		{"black phalanx pawn threatened", "4k3/8/8/1pp5/8/2P5/8/4K3 w - - 0 1", Black, 0},
+		{"black connected backward blocked", "4k3/8/2p5/1pP5/8/8/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C6)},
+		{"black connected backward threatened", "4k3/8/8/3p4/4p3/2P5/8/4K3 w - - 0 1", Black, BitBoardFromSquares(D5)},
+		{"black V threatened", "4k3/8/2p5/1p1p4/3P4/8/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C6)},
+		{"black V blocked", "4k3/8/2p5/1pPp4/8/8/8/4K3 w - - 0 1", Black, BitBoardFromSquares(C6)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Must(board.FromFEN(tt.fen))
+			pawns := pawns{}
+			pawns.fromBoard(b)
+
+			assert.Equal(t, tt.want, pawns.backwardPawns(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
 	}
 }

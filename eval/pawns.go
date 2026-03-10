@@ -1,6 +1,7 @@
 package eval
 
 import (
+	"github.com/paulsonkoly/chess-3/attacks"
 	"github.com/paulsonkoly/chess-3/board"
 
 	. "github.com/paulsonkoly/chess-3/chess"
@@ -18,7 +19,7 @@ type pawns struct {
 	neighbourF [2]BitBoard // neighbourF is files adjacent to files with pawns
 }
 
-func (p *pawns) calcPawns(b *board.Board) {
+func (p *pawns) fromBoard(b *board.Board) {
 	ps := [...]BitBoard{b.Pieces[Pawn] & b.Colors[White], b.Pieces[Pawn] & b.Colors[Black]}
 	p.pawns = ps
 
@@ -58,6 +59,14 @@ func (p *pawns) doubledPawns(c Color) BitBoard {
 // isolatedPawns are pawns not having any friendly pawn on adjacent files.
 func (p *pawns) isolatedPawns(c Color) BitBoard {
 	return (p.pawns[c]) &^ p.neighbourF[c]
+}
+
+// backwardsPawns are pawns not supported by any friendly pawns, while their
+// push is prevented by either enemy pawn capture or blockade.
+func (p *pawns) backwardPawns(c Color) BitBoard {
+	threatened := attacks.PawnCaptureMoves(p.pawns[c.Flip()], c.Flip()) & ^p.cover[c]
+	stopped := attacks.PawnSinglePushMoves(p.pawns[c.Flip()]|threatened, c.Flip())
+	return p.pawns[c] & ^p.cover[c] & stopped
 }
 
 func frontFill(b BitBoard, color Color) BitBoard {
