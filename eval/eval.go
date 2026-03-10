@@ -491,14 +491,18 @@ func (sp *scorePair[T]) addRookFiles(b *board.Board, color Color, sq Square, c *
 
 func (sp *scorePair[T]) addRooksOnSeventh(b *board.Board, pw *pieceWise, c *CoeffSet[T]) {
 	for color := White; color <= Black; color++ {
-		kingR := pw.kingSq[color.Flip()].Rank()
+		kingRank := pw.kingSq[color.Flip()].Rank()
 		// king at home
-		if kingR.FromPerspectiveOf(color) < 6 {
+		if kingRank.FromPerspectiveOf(color) < SeventhRank {
 			continue
 		}
 		rooks := b.Pieces[Rook] & b.Colors[color]
-		seventh := RankBB(Coord(6).FromPerspectiveOf(color)) // 6 because 0 indexed.
-		cnt := Clamp(0, len(c.RooksOnSeventh[0])-1, (rooks & seventh).Count())
+		seventh := RankBB(SeventhRank.FromPerspectiveOf(color))
+		cnt := (rooks & seventh).Count()
+		if cnt == 0 {
+			continue
+		}
+		cnt = min(len(c.RooksOnSeventh[0])-1, cnt-1)
 
 		sp.mg[color] += c.RooksOnSeventh[0][cnt]
 		sp.eg[color] += c.RooksOnSeventh[1][cnt]
