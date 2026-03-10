@@ -341,38 +341,28 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pawns *pawns, pw *pieceWise, 
 		passers := pawns.passers(color)
 
 		// if there is a sole passer
-		if passers != 0 && passers&(passers-1) == 0 {
+		if passers.IsPow2() {
 			sq := passers.LowestSet()
 
 			// KPR, KPNB
 			if b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Queen] == 0 || b.Pieces[Rook]|b.Pieces[Queen] == 0 {
-				qSq := sq % 8
-				if color == White {
-					qSq += 56
-				}
+				queeningSq := Square(EighthRank.FromPerspectiveOf(color)*8 + sq.File())
 
-				kingDist := Chebishev(qSq, pw.kingSq[color.Flip()]) - Chebishev(qSq, pw.kingSq[color])
+				kingDist := Chebishev(queeningSq, pw.kingSq[color.Flip()]) - Chebishev(queeningSq, pw.kingSq[color])
 
 				sp.mg[color] += c.PasserKingDist[0] * T(kingDist)
 				sp.eg[color] += c.PasserKingDist[1] * T(kingDist)
 			}
 		}
 
+		protectedCnt := T((passers & pw.attacks[color][0]).Count())
+		sp.mg[color] += c.ProtectedPasser[0] * protectedCnt
+		sp.eg[color] += c.ProtectedPasser[1] * protectedCnt
+
 		for ; passers != 0; passers &= passers - 1 {
 			sq := passers.LowestSet()
 
-			rank := sq / 8
-			if color == Black {
-				rank ^= 7
-			}
-
-			passer := passers & -passers
-
-			// if protected passers add protection bonus
-			if passer&pw.attacks[color][0] != 0 { // Pawn - Pawn
-				sp.mg[color] += c.ProtectedPasser[0]
-				sp.eg[color] += c.ProtectedPasser[1]
-			}
+			rank := sq.Rank().FromPerspectiveOf(color)
 
 			sp.mg[color] += c.PasserRank[0][rank-1]
 			sp.eg[color] += c.PasserRank[1][rank-1]
