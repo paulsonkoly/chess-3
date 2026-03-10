@@ -15,21 +15,21 @@ type kingAttacks[T ScoreType] struct {
 func (ka *kingAttacks[T]) addAttackingPiece(color Color, pType Piece, sqrs BitBoard, kingSq Square, c *CoeffSet[T]) {
 	for ; sqrs != 0; sqrs &= sqrs - 1 {
 		sq := sqrs.LowestSet()
-		ka.attacks[color][residenceIx(kingSq, sq)] += c.KingAttackPieces[pType-Pawn]
+		ka.attacks[color][ringIx(kingSq, sq)] += c.KingAttackPieces[pType-Pawn]
 	}
 }
 
 func (ka *kingAttacks[T]) addDefendingPiece(color Color, pType Piece, sqrs BitBoard, kingSq Square, c *CoeffSet[T]) {
 	for ; sqrs != 0; sqrs &= sqrs - 1 {
 		sq := sqrs.LowestSet()
-		ka.defences[color.Flip()][residenceIx(kingSq, sq)] += c.KingDefendingPieces[pType-Pawn]
+		ka.defences[color.Flip()][ringIx(kingSq, sq)] += c.KingDefendingPieces[pType-Pawn]
 	}
 }
 
 // maps sq to a 0 to 8 index around the ring of kingSq. The order is not
 // significant as long as it is consistent. The middle square where
-// the king resides is never used.
-func residenceIx(kingSq, sq Square) int {
+// the king resides is never used, but is mapped to the middle index.
+func ringIx(kingSq, sq Square) int {
 	return int((sq.Rank()-kingSq.Rank()+1)*3 + (sq.File() - kingSq.File() + 1))
 }
 
