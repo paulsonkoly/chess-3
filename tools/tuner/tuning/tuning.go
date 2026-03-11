@@ -29,7 +29,7 @@ var DefaultTargets = []string{
 	"PSqT",
 	"PieceValues",
 	"TempoBonus",
-	"MobilityKnight", "MobilityBishop", "MobilityRook",
+	"MobilityKnight", "MobilityBishop", "MobilityRook", "MobilityQueen",
 	"KingAttackPieces", "SafeChecks", "KingShelter", "KingAttackMagnitude",
 	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
 	"Threats", "SafePawnThreats",

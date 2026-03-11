@@ -67,7 +67,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 			attacks := pw.calcQueenAttacks(color, sq)
 
 			ka.addAttackPieces(color, Queen, attacks, eKNb, c)
-
+			sp.addQueenMobility(b, color, attacks, c)
 			sp.addPSqT(color, Queen, sq, c)
 		}
 
@@ -452,6 +452,13 @@ func (pw *pieceWise) calcQueenAttacks(color Color, sq Square) BitBoard {
 
 	pw.attacks[color][Queen-Pawn] |= attacks
 	return attacks
+}
+
+func (sp *scorePair[T]) addQueenMobility(b *board.Board, color Color, attacks BitBoard, c *CoeffSet[T]) {
+	mobCnt := (attacks & ^b.Colors[color]).Count()
+
+	sp.mg[color] += c.MobilityQueen[0][mobCnt]
+	sp.eg[color] += c.MobilityQueen[1][mobCnt]
 }
 
 func (pw *pieceWise) calcRookAttacks(color Color, sq Square) BitBoard {
