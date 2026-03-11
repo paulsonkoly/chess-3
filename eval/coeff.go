@@ -30,6 +30,8 @@ type CoeffSet[T ScoreType] struct {
 	// KnightOutpost is a per square bonus for a knight being on an outpost, only
 	// counting the 5 ranks covering sideOfBoard.
 	KnightOutpost [2][40]T
+	// Knight is behind an either enemy, or friendly pawn.
+	KnightBehindPawn [2]T
 
 	// BishopPair is the bonus for bishop pair per friendly pawn count.
 	BishopPair [9]T

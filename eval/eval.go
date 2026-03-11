@@ -96,6 +96,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// knights
 		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0]
+		sp.addKnightBehindPawn(b, color, c)
 		for pieces := b.Pieces[Knight] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -522,7 +523,6 @@ func (sp *scorePair[T]) addKnightMobility(
 }
 
 func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, holes BitBoard, c *CoeffSet[T]) {
-
 	// calculate knight outputs
 	if (BitBoard(1)<<sq)&holes != 0 {
 		// the hole square is from the enemy's perspective, white's in black's territory
@@ -532,6 +532,15 @@ func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, holes BitBoard
 		sp.mg[color] += c.KnightOutpost[0][sq]
 		sp.eg[color] += c.KnightOutpost[1][sq]
 	}
+}
+
+func (sp *scorePair[T]) addKnightBehindPawn(b *board.Board, color Color, c *CoeffSet[T]) {
+	pawnMask := attacks.PawnSinglePushMoves(b.Pieces[Pawn], color.Flip())
+	knights := b.Pieces[Knight] & b.Colors[color]
+	cnt := T((pawnMask & knights).Count())
+
+	sp.mg[color] += c.KnightBehindPawn[0] * cnt
+	sp.eg[color] += c.KnightBehindPawn[1] * cnt
 }
 
 func (pw *pieceWise) calcCover() {
