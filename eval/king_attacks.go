@@ -50,18 +50,18 @@ func (ka *kingAttacks[T]) overall(b *board.Board, color Color, phase byte, c *Co
 		sum += max(0, attacks-defences)
 	}
 	sgm := sigmoidal(ka.accum[color] + sum)
-	hasQueen := b.Pieces[Queen]&b.Colors[color] != 0
+	missingQueen := b.Pieces[Queen]&b.Colors[color] == 0
 	if _, ok := (any)(sgm).(Score); ok {
 		sgmInt := (int)(sgm)
 		sgmInt = sgmInt * int(c.KingAttackMagnitude[phase]) / 64
-		if hasQueen {
-			sgmInt = sgmInt * int(c.KingAttackHavingQueen[phase]) / 64
+		if missingQueen {
+			sgmInt = sgmInt * int(c.KingAttackMissingQueen[phase]) / 64
 		}
 		return T(sgmInt)
 	}
 	sgm = sgm * c.KingAttackMagnitude[phase] / 64
-	if hasQueen {
-		sgm = sgm * c.KingAttackHavingQueen[phase] / 64
+	if missingQueen {
+		sgm = sgm * c.KingAttackMissingQueen[phase] / 64
 	}
 
 	return sgm

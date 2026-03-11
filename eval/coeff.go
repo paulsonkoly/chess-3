@@ -20,8 +20,8 @@ type CoeffSet[T ScoreType] struct {
 	KingShelter [1]T
 	// KingAttackMagnitude encodes the importance of attacking the enemy king.
 	KingAttackMagnitude [2]T
-	// KingAttackHavingQueen encodes the importance of having a queen while attacking the enemy king.
-	KingAttackHavingQueen [2]T
+	// KingAttackMissingQueen encodes the importance of having a queen while attacking the enemy king.
+	KingAttackMissingQueen [2]T
 
 	// PawnlessFlank is the penalty for a king being on a pawnless flank.
 	PawnlessFlank [2]T
