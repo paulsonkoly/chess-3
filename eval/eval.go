@@ -506,7 +506,7 @@ func (sp *scorePair[T]) addBishopMobility(b *board.Board, color Color, attacks B
 
 func (sp *scorePair[T]) addBishopOutposts(color Color, sq Square, outposts BitBoard, c *CoeffSet[T]) {
 	rank := sq.Rank().FromPerspectiveOf(color)
-	if BitBoard(1)<<sq&outposts != 0 && 4 <= rank && rank <= 6 {
+	if BitBoard(1)<<sq&outposts != 0 && FifthRank <= rank && rank <= SeventhRank {
 		sp.mg[color] += c.BishopOutpost[0]
 		sp.eg[color] += c.BishopOutpost[1]
 	}
