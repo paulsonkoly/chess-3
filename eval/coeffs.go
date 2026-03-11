@@ -8,7 +8,7 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-//nolint:gofmt,lll
+//nolint:gofmt,goimports,lll
 var Coefficients = CoeffSet[Score]{
 PSqT: [12][64]Score{
 	{
@@ -141,7 +141,7 @@ KingAttackPieces: [5]Score{    5,   10,   12,    9,   10},
 KingDefendingPieces: [5]Score{   25,   16,   28,    8,    3},
 SafeChecks: [4]Score{   19,    8,   18,   10},
 KingShelter: [1]Score{    9},
-KingAttackMagnitude: [2]Score{   34,   -7},
+KingAttackMagnitude: [2][2]Score{{   34,   -7}, {0, 0}},
 PawnlessFlank: [2]Score{  -72,  -69},
 MobilityKnight: [2][9]Score{
 	{  -56,  -40,  -31,  -25,  -18,  -12,   -5,    3,   10},

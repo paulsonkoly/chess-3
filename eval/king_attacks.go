@@ -8,23 +8,15 @@ import (
 )
 
 type kingAttacks[T ScoreType] struct {
-	attacks  [2][9]T
-	defences [2][9]T
-	accum    [2]T
+	accum [2]T
 }
 
-func (ka *kingAttacks[T]) addAttackingPiece(color Color, pType Piece, sqrs BitBoard, kingSq Square, c *CoeffSet[T]) {
-	for ; sqrs != 0; sqrs &= sqrs - 1 {
-		sq := sqrs.LowestSet()
-		ka.attacks[color][ringIx(kingSq, sq)] += c.KingAttackPieces[pType-Pawn]
-	}
+func (ka *kingAttacks[T]) addAttackingPiece(color Color, pType Piece, sqrs BitBoard, c *CoeffSet[T]) {
+	ka.accum[color] += T(sqrs.Count()) * c.KingAttackPieces[pType-Pawn]
 }
 
-func (ka *kingAttacks[T]) addDefendingPiece(color Color, pType Piece, sqrs BitBoard, kingSq Square, c *CoeffSet[T]) {
-	for ; sqrs != 0; sqrs &= sqrs - 1 {
-		sq := sqrs.LowestSet()
-		ka.defences[color.Flip()][ringIx(kingSq, sq)] += c.KingDefendingPieces[pType-Pawn]
-	}
+func (ka *kingAttacks[T]) addDefendingPiece(color Color, pType Piece, sqrs BitBoard, c *CoeffSet[T]) {
+	ka.accum[color.Flip()] -= T(sqrs.Count()) * c.KingDefendingPieces[pType-Pawn]
 }
 
 // maps sq to a 0 to 8 index around the ring of kingSq. The order is not
@@ -43,28 +35,15 @@ func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
 }
 
 func (ka *kingAttacks[T]) overall(b *board.Board, color Color, phase byte, c *CoeffSet[T]) T {
-	sum := T(0)
-	for i := range ka.attacks[color] {
-		attacks := ka.attacks[color][i]
-		defences := ka.defences[color][i]
-		sum += max(0, attacks-defences)
+	queenIx := 0
+	if b.Pieces[Queen]&b.Colors[color] == 0 {
+		queenIx = 1
 	}
-	sgm := sigmoidal(ka.accum[color] + sum)
-	missingQueen := b.Pieces[Queen]&b.Colors[color] == 0
+	sgm := sigmoidal(ka.accum[color])
 	if _, ok := (any)(sgm).(Score); ok {
-		sgmInt := (int)(sgm)
-		sgmInt = sgmInt * int(c.KingAttackMagnitude[phase]) / 64
-		if missingQueen {
-			sgmInt = sgmInt * int(c.KingAttackMissingQueen[phase]) / 64
-		}
-		return T(sgmInt)
+		return T((int)(sgm) * int(c.KingAttackMagnitude[phase][queenIx]) / 64)
 	}
-	sgm = sgm * c.KingAttackMagnitude[phase] / 64
-	if missingQueen {
-		sgm = sgm * c.KingAttackMissingQueen[phase] / 64
-	}
-
-	return sgm
+	return sgm * c.KingAttackMagnitude[phase][queenIx] / 64
 }
 
 // def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))
