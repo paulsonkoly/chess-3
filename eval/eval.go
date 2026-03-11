@@ -168,7 +168,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		ka.addShelter(color, penalty, c)
 	}
 
-	sp.addKingAttacks(ka, c)
+	sp.addKingAttacks(b, ka, c)
 
 	score := sp.taperedScore(b, phase)
 	// drawishness
@@ -283,21 +283,11 @@ func (sp *scorePair[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet
 	sp.eg[color] += c.PSqT[2*ix+1][sq]
 }
 
-func (sp *scorePair[T]) addKingAttacks(ka kingAttacks[T], c *CoeffSet[T]) {
-	whiteSgm := ka.sigmoidal(White)
-	blackSgm := ka.sigmoidal(Black)
-	var t T
-	if _, ok := ((any)(t).(Score)); ok {
-		sp.mg[White] += T(((int)(whiteSgm) * (int)(c.KingAttackMagnitude[0])) / 64)
-		sp.mg[Black] += T(((int)(blackSgm) * (int)(c.KingAttackMagnitude[0])) / 64)
-		sp.eg[White] += T(((int)(whiteSgm) * (int)(c.KingAttackMagnitude[1])) / 64)
-		sp.eg[Black] += T(((int)(blackSgm) * (int)(c.KingAttackMagnitude[1])) / 64)
-		return
-	}
-	sp.mg[White] += (whiteSgm * c.KingAttackMagnitude[0]) / 64
-	sp.mg[Black] += (blackSgm * c.KingAttackMagnitude[0]) / 64
-	sp.eg[White] += (whiteSgm * c.KingAttackMagnitude[1]) / 64
-	sp.eg[Black] += (blackSgm * c.KingAttackMagnitude[1]) / 64
+func (sp *scorePair[T]) addKingAttacks(b *board.Board, ka kingAttacks[T], c *CoeffSet[T]) {
+	sp.mg[White] += ka.overall(b, White, 0, c)
+	sp.eg[White] += ka.overall(b, White, 1, c)
+	sp.mg[Black] += ka.overall(b, Black, 0, c)
+	sp.eg[Black] += ka.overall(b, Black, 1, c)
 }
 
 func (sp *scorePair[T]) taperedScore(b *board.Board, phase phase[T]) T {

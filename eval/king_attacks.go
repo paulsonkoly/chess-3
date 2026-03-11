@@ -3,6 +3,7 @@ package eval
 import (
 	"math"
 
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
@@ -41,14 +42,29 @@ func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
 	ka.accum[color.Flip()] += c.KingShelter[0] * penalty
 }
 
-func (ka *kingAttacks[T]) sigmoidal(color Color) T {
+func (ka *kingAttacks[T]) overall(b *board.Board, color Color, phase byte, c *CoeffSet[T]) T {
 	sum := T(0)
 	for i := range ka.attacks[color] {
 		attacks := ka.attacks[color][i]
 		defences := ka.defences[color][i]
-		sum += attacks * attacks / max(1, (attacks+defences))
+		sum += max(0, attacks-defences)
 	}
-	return sigmoidal(ka.accum[color] + sum)
+	sgm := sigmoidal(ka.accum[color] + sum)
+	hasQueen := b.Pieces[Queen]&b.Colors[color] != 0
+	if _, ok := (any)(sgm).(Score); ok {
+		sgmInt := (int)(sgm)
+		sgmInt = sgmInt * int(c.KingAttackMagnitude[phase]) / 64
+		if hasQueen {
+			sgmInt = sgmInt * int(c.KingAttackHavingQueen[phase]) / 64
+		}
+		return T(sgmInt)
+	}
+	sgm = sgm * c.KingAttackMagnitude[phase] / 64
+	if hasQueen {
+		sgm = sgm * c.KingAttackHavingQueen[phase] / 64
+	}
+
+	return sgm
 }
 
 // def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))
