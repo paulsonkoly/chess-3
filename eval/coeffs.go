@@ -8,7 +8,7 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-//nolint:goimports,lll
+//nolint:gofmt,goimports,lll
 var Coefficients = CoeffSet[Score]{
 PSqT: [12][64]Score{
 	{
