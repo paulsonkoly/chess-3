@@ -12,7 +12,9 @@ type kingAttacks[T ScoreType] struct {
 }
 
 func (ka *kingAttacks[T]) addAttackingPiece(color Color, pType Piece, sqrs BitBoard, c *CoeffSet[T]) {
-	ka.accum[color] += T(sqrs.Count()) * c.KingAttackPieces[pType-Knight]
+	if sqrs != 0 {
+		ka.accum[color] += c.KingAttackPieces[pType-Knight]
+	}
 }
 
 func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
