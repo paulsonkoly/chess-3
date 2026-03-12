@@ -110,7 +110,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		// pawns
 		attacks := attacks.PawnCaptureMoves(b.Pieces[Pawn]&b.Colors[color], color)
 		ka.addAttackingPiece(color, Pawn, attacks&pw.kingNb[color.Flip()], c)
-		ka.addDefendingPiece(color, Pawn, attacks&pw.kingNb[color], c)
+		// ka.addDefendingPiece(color, Pawn, attacks&pw.kingNb[color], c)
 		for pieces := b.Pieces[Pawn] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 

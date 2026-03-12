@@ -19,7 +19,7 @@ func (ka *kingAttacks[T]) addAttackingPiece(color Color, pType Piece, sqrs BitBo
 
 func (ka *kingAttacks[T]) addDefendingPiece(color Color, pType Piece, sqrs BitBoard, c *CoeffSet[T]) {
 	if sqrs != 0 {
-		ka.accum[color.Flip()] -= c.KingDefendingPieces[pType-Pawn]
+		ka.accum[color.Flip()] -= c.KingDefendingPieces[pType-Knight]
 	}
 }
 
