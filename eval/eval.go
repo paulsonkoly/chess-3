@@ -55,8 +55,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 	ka := kingAttacks[T]{}
 
-	rings := [2]BitBoard{attacks.KingMoves(pw.kingSq[White]), attacks.KingMoves(pw.kingSq[Black])}
-
 	for color := White; color <= Black; color++ {
 		// queens
 		for pieces := b.Pieces[Queen] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
@@ -64,8 +62,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			attacks := pw.calcQueenAttacks(color, sq)
 
-			ka.addAttackingPiece(color, Queen, attacks&rings[color.Flip()], c)
-			ka.addDefendingPiece(color, Queen, attacks&rings[color], c)
+			ka.addAttackingPiece(color, Queen, attacks&pw.kingNb[color.Flip()], c)
+			ka.addDefendingPiece(color, Queen, attacks&pw.kingNb[color], c)
 
 			sp.addPSqT(color, Queen, sq, c)
 		}
@@ -76,8 +74,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			attacks := pw.calcRookAttacks(color, sq)
 
-			ka.addAttackingPiece(color, Rook, attacks&rings[color.Flip()], c)
-			ka.addDefendingPiece(color, Rook, attacks&rings[color], c)
+			ka.addAttackingPiece(color, Rook, attacks&pw.kingNb[color.Flip()], c)
+			ka.addDefendingPiece(color, Rook, attacks&pw.kingNb[color], c)
 			sp.addRookMobility(b, color, attacks, c)
 			sp.addRookFiles(b, color, sq, c)
 			sp.addPSqT(color, Rook, sq, c)
@@ -89,8 +87,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			attacks := pw.calcBishopAttacks(color, sq)
 
-			ka.addAttackingPiece(color, Bishop, attacks&rings[color.Flip()], c)
-			ka.addDefendingPiece(color, Bishop, attacks&rings[color], c)
+			ka.addAttackingPiece(color, Bishop, attacks&pw.kingNb[color.Flip()], c)
+			ka.addDefendingPiece(color, Bishop, attacks&pw.kingNb[color], c)
 			sp.addBishopMobility(b, color, attacks, c)
 			sp.addPSqT(color, Bishop, sq, c)
 		}
@@ -102,8 +100,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			attacks := pw.calcKnightAttacks(color, sq)
 
-			ka.addAttackingPiece(color, Knight, attacks&rings[color.Flip()], c)
-			ka.addDefendingPiece(color, Knight, attacks&rings[color], c)
+			ka.addAttackingPiece(color, Knight, attacks&pw.kingNb[color.Flip()], c)
+			ka.addDefendingPiece(color, Knight, attacks&pw.kingNb[color], c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
 			sp.addKnightOutposts(color, sq, outposts, c)
 			sp.addPSqT(color, Knight, sq, c)
@@ -111,8 +109,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		// pawns
 		attacks := attacks.PawnCaptureMoves(b.Pieces[Pawn]&b.Colors[color], color)
-		ka.addAttackingPiece(color, Pawn, attacks&rings[color.Flip()], c)
-		ka.addDefendingPiece(color, Pawn, attacks&rings[color], c)
+		ka.addAttackingPiece(color, Pawn, attacks&pw.kingNb[color.Flip()], c)
+		ka.addDefendingPiece(color, Pawn, attacks&pw.kingNb[color], c)
 		for pieces := b.Pieces[Pawn] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 

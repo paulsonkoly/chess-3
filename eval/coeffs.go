@@ -137,7 +137,7 @@ PieceValues: [2][7]Score{
 	{    0,  142,  360,  377,  715, 1393,    0},
 },
 TempoBonus: [2]Score{   28,   21},
-KingAttackPieces: [5]Score{    5,   10,   12,    9,   10},
+KingAttackingPieces: [5]Score{    5,   10,   12,    9,   10},
 KingDefendingPieces: [5]Score{   25,   16,   28,    8,    3},
 SafeChecks: [4]Score{   19,    8,   18,   10},
 KingShelter: [1]Score{    9},
