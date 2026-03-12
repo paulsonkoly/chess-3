@@ -10,14 +10,18 @@ type CoeffSet[T ScoreType] struct {
 	// TempoBonus is the advantage of the side to move.
 	TempoBonus [2]T
 
-	// KingAttackPieces is the bonus per piece type if piece is attacking a square in the enemy king's neighborhood.
-	KingAttackPieces [4]T
+	// KingAttackingPieces is the bonus per piece type if piece is attacking a square in the enemy king's neighborhood.
+	KingAttackingPieces [5]T
+	// KingDefendingPieces is the bonus per piece type if piece is defending a square in the friendly king's neighborhood.
+	KingDefendingPieces [2]T
 	// SafeChecks is the bonus per piece type for being able to give a safe check.
 	SafeChecks [4]T
 	// KingShelter is the bonus for damage on the opponent's king shelter.
 	KingShelter [1]T
-	// KingAttackMagnitude encodes the importance of attacking the enemy king.
-	KingAttackMagnitude [2]T
+	// KingAttackMagnitude encodes the importance of attacking the enemy king,
+	// within phase subarray index 0 is used when attacking side has a queen,
+	// index 1 no queen.
+	KingAttackMagnitude [2][2]T
 
 	// PawnlessFlank is the penalty for a king being on a pawnless flank.
 	PawnlessFlank [2]T
