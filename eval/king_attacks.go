@@ -3,6 +3,7 @@ package eval
 import (
 	"math"
 
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
@@ -10,10 +11,8 @@ type kingAttacks[T ScoreType] struct {
 	accum [2]T
 }
 
-func (ka *kingAttacks[T]) addAttackPieces(color Color, pType Piece, attacks BitBoard, kingNB BitBoard, c *CoeffSet[T]) {
-	if kingNB&attacks != 0 {
-		ka.accum[color] += c.KingAttackPieces[pType-Knight]
-	}
+func (ka *kingAttacks[T]) addAttackingPiece(color Color, pType Piece, sqrs BitBoard, c *CoeffSet[T]) {
+	ka.accum[color] += T(sqrs.Count()) * c.KingAttackPieces[pType-Knight]
 }
 
 func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
@@ -24,8 +23,16 @@ func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
 	ka.accum[color.Flip()] += c.KingShelter[0] * penalty
 }
 
-func (ka *kingAttacks[T]) sigmoidal(color Color) T {
-	return sigmoidal(ka.accum[color])
+func (ka *kingAttacks[T]) overall(b *board.Board, color Color, phase byte, c *CoeffSet[T]) T {
+	queenIx := 0
+	if b.Pieces[Queen]&b.Colors[color] == 0 {
+		queenIx = 1
+	}
+	sgm := sigmoidal(ka.accum[color])
+	if _, ok := (any)(sgm).(Score); ok {
+		return T((int)(sgm) * int(c.KingAttackMagnitude[phase][queenIx]) / 64)
+	}
+	return sgm * c.KingAttackMagnitude[phase][queenIx] / 64
 }
 
 // def f(x) = 600.fdiv(1+Math.exp(-0.2*(x-50)))

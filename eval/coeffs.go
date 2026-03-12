@@ -139,7 +139,7 @@ var Coefficients = CoeffSet[Score]{
 	KingAttackPieces:    [4]Score{10, 11, 12, 15},
 	SafeChecks:          [4]Score{18, 8, 17, 10},
 	KingShelter:         [1]Score{8},
-	KingAttackMagnitude: [2]Score{34, -6},
+	KingAttackMagnitude: [2][2]Score{{34, -6}},
 	PawnlessFlank:       [2]Score{-62, -70},
 	MobilityKnight: [2][9]Score{
 		{-56, -39, -30, -24, -16, -10, -2, 6, 14},
