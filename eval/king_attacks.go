@@ -19,13 +19,6 @@ func (ka *kingAttacks[T]) addDefendingPiece(color Color, pType Piece, sqrs BitBo
 	ka.accum[color.Flip()] -= T(sqrs.Count()) * c.KingDefendingPieces[pType-Pawn]
 }
 
-// maps sq to a 0 to 8 index around the ring of kingSq. The order is not
-// significant as long as it is consistent. The middle square where
-// the king resides is never used, but is mapped to the middle index.
-func ringIx(kingSq, sq Square) int {
-	return int((sq.Rank()-kingSq.Rank()+1)*3 + (sq.File() - kingSq.File() + 1))
-}
-
 func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
 	ka.accum[color] += c.SafeChecks[pType-Knight] * T(safeChecks.Count())
 }
