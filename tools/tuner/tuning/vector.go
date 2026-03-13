@@ -217,7 +217,7 @@ func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	b.WriteString("	. \"github.com/paulsonkoly/chess-3/chess\"\n")
 	b.WriteString(")\n\n")
 
-	b.WriteString("//nolint:gofmt,goimports,lll\n")
+	b.WriteString("//nolint:goimports,gofmt,lll\n")
 
 	b.WriteString("var Coefficients = CoeffSet[Score]{\n")
 	unWrap := eval.CoeffSet[float64](*c)
