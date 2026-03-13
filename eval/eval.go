@@ -168,12 +168,13 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 	score := sp.taperedScore(b, phase)
 	// drawishness
-	fifty := int(b.FiftyCnt)
+	fifty := int(100 - b.FiftyCnt)
+	fifty *= fifty
 	if _, ok := ((any)(score)).(Score); ok {
-		return T(int(score) * (100 - fifty) / 100)
+		return T(int(score) * fifty / 10000)
 	}
 
-	return score * T(100-fifty) / 100
+	return score * T(fifty) / 10000
 }
 
 func insufficientMat(b *board.Board) bool {
