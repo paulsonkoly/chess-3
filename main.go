@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"math"
@@ -112,6 +113,8 @@ var OBBenchSet = [...]string{
 }
 
 func runOBBench() {
+	bout := bufio.NewWriter(os.Stdout)
+	defer bout.Flush()
 	allNodes := 0
 	allABNodes := 0
 	allTime := int64(0)
@@ -121,7 +124,7 @@ func runOBBench() {
 	for _, fen := range OBBenchSet {
 		b := Must(board.FromFEN(fen))
 		counters := search.Counters{}
-		s.Go(b, search.WithDepth(15), search.WithCounters(&counters), search.WithDebug(true))
+		s.Go(b, search.WithDepth(15), search.WithCounters(&counters), search.WithDebug(true), search.WithOutput(bout))
 
 		nodes := counters.Nodes
 		abNodes := counters.ABNodes
@@ -134,7 +137,7 @@ func runOBBench() {
 			bf = float64(moves) / float64(abNodes)
 			firstCutP = strconv.Itoa(firstCuts*100/abNodes) + "%"
 		}
-		fmt.Printf("nodes %d time %d bf %.4f first cut %s\n", nodes, time, bf, firstCutP)
+		fmt.Fprintf(bout, "nodes %d time %d bf %.4f first cut %s\n", nodes, time, bf, firstCutP)
 
 		allNodes += nodes
 		allABNodes += abNodes
@@ -150,10 +153,10 @@ func runOBBench() {
 		bf = float64(allMoves) / float64(allABNodes)
 		firstCutP = strconv.Itoa(allFirstCuts*100/allABNodes) + "%"
 	}
-	fmt.Printf("nodes %d time %d bf %.4f first cut %s\n", allNodes, allTime, bf, firstCutP)
+	fmt.Fprintf(bout, "nodes %d time %d bf %.4f first cut %s\n", allNodes, allTime, bf, firstCutP)
 	if allTime == 0 {
-		fmt.Printf("nps Inf\n")
+		fmt.Fprintf(bout, "nps Inf\n")
 	} else {
-		fmt.Printf("nps %d\n", 1000*allNodes/int(allTime))
+		fmt.Fprintf(bout, "nps %d\n", 1000*allNodes/int(allTime))
 	}
 }
