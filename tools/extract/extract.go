@@ -23,7 +23,7 @@ var (
 	outFn           string
 	filterNoisy     bool
 	filterMate      bool
-	filterOutlier   bool
+	filterOutlier   int
 	filterInCheck   bool
 	samplePhase     bool
 	sampleOutcome   bool
@@ -38,7 +38,7 @@ func main() {
 	flag.StringVar(&outFn, "output", "extract.epd", "output epd file")
 	flag.BoolVar(&filterNoisy, "filterNoisy", true, "filter positions with bestmove being noisy")
 	flag.BoolVar(&filterMate, "filterMate", true, "filter positions with mate scores")
-	flag.BoolVar(&filterOutlier, "filterOutlier", false, "filter positions with eval mismatching wdl by margin")
+	flag.IntVar(&filterOutlier, "filterOutlier", -1, "filter positions with eval mismatching wdl by margin; (-1) to disable")
 	flag.BoolVar(&filterInCheck, "filterInCheck", true, "filter in check positions")
 	flag.BoolVar(&samplePhase, "samplePhase", true, "sample positions for game phase")
 	flag.BoolVar(&sampleOutcome, "sampleOutcome", true, "sample positions for outcome")
@@ -245,12 +245,14 @@ func loadPositions(
 			return nil, err
 		}
 
-		if filterOutlier {
+		if filterOutlier != -1 {
 			if b.STM == chess.Black {
 				score = -score
 			}
 
-			if (score < -600 && wdl == WhiteWon) || (score > 600 && wdl == BlackWon) {
+			margin := chess.Score(filterOutlier)
+
+			if (score < -margin && wdl == WhiteWon) || (score > margin && wdl == BlackWon) {
 				continue
 			}
 		}
