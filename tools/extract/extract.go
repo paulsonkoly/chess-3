@@ -48,6 +48,11 @@ func main() {
 
 	flag.Parse()
 
+	if filterOutlier < -1 {
+		fmt.Fprintf(os.Stderr, "filterOutlier invalid %d\n", filterOutlier)
+		os.Exit(1)
+	}
+
 	if cpuProf != "" {
 		cpu, err := os.Create(cpuProf)
 		if err != nil {
