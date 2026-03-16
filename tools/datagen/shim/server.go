@@ -33,7 +33,7 @@ func (s *Server) Serve(lis net.Listener) error {
 }
 
 func (s *Server) Stop() {
-	s.grpc.GracefulStop()
+	s.grpc.Stop()
 }
 
 type datagenServer struct {

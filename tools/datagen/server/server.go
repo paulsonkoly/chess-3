@@ -106,7 +106,7 @@ func Run(args []string) {
 	srv.Stop()
 
 	// if we are here, the writer has written all the games it wanted to write,
-	// there might be games int the channel, but we don't need them.
+	// there might be games in the channel, but we don't need them.
 	close(games)
 }
 
@@ -121,8 +121,7 @@ func generateOpenings(openings chan<- *board.Board, finished <-chan struct{}) {
 		select {
 		case <-finished:
 			return
-		default:
-			openings <- generate.Opening()
+		case openings <- generate.Opening():
 		}
 	}
 }
