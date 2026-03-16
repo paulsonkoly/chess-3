@@ -53,6 +53,8 @@ type CoeffSet[T ScoreType] struct {
 	DoubledPawns [2]T
 	// IsolatedPawns is the penalty per isolated pawns.
 	IsolatedPawns [2]T
+	// BackwardPawns is the penalty per backward pawn.
+	BackwardPawns [2]T
 
 	// SafePawnThreats is the bonus for a safe - either unattacked or defended pawn attacking an enemy (non-pawn) piece.
 	SafePawnThreats [2]T
