@@ -76,17 +76,17 @@ func Run(args []string) {
 
 	openings := make(chan *board.Board, OpeningQueueDepth)
 	games := make(chan shim.Game, GameQueueDepth)
+	finished := make(chan struct{})
 
 	wg := sync.WaitGroup{}
 
 	wg.Go(func() {
 		defer close(openings)
-		generateOpenings(openings)
+		generateOpenings(openings, finished)
 	})
 
 	wg.Go(func() {
-		defer close(games)
-		writer(games)
+		writer(games, finished)
 	})
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
@@ -104,18 +104,25 @@ func Run(args []string) {
 	wg.Wait()
 
 	srv.Stop()
+
+	// if we are here, the writer has written all the games it wanted to write,
+	// there might be games in the channel, but we don't need them.
+	close(games)
 }
 
-func generateOpenings(openings chan<- *board.Board) {
-
+func generateOpenings(openings chan<- *board.Board, finished <-chan struct{}) {
 	generate := OpeningGenerator{
 		ms:     move.NewStore(),
 		search: search.New(1 * transp.MegaBytes),
 		rnd:    rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0x82a1_73b1_69cc_df15)),
 	}
 
-	for range serverConfig.gameCount {
-		openings <- generate.Opening()
+	for {
+		select {
+		case <-finished:
+			return
+		case openings <- generate.Opening():
+		}
 	}
 }
 
@@ -170,7 +177,7 @@ func (r Range) Contains(s chess.Score) bool {
 	return chess.Score(-r) <= s && s <= chess.Score(r)
 }
 
-func writer(games <-chan shim.Game) {
+func writer(games <-chan shim.Game, finished chan<- struct{}) {
 	pb := progress.NewOptions(serverConfig.gameCount,
 		progress.OptionSetPredictTime(true),
 		progress.OptionSetItsString("games"),
@@ -250,4 +257,6 @@ func writer(games <-chan shim.Game) {
 
 		pb.Add(1)
 	}
+
+	close(finished)
 }
