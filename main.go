@@ -124,7 +124,7 @@ func runOBBench() {
 	for _, fen := range OBBenchSet {
 		b := Must(board.FromFEN(fen))
 		counters := search.Counters{}
-		s.Go(b, search.WithDepth(15), search.WithCounters(&counters), search.WithDebug(true), search.WithOutput(bout))
+		s.Go(b, search.WithDepth(16), search.WithCounters(&counters), search.WithDebug(true), search.WithOutput(bout))
 
 		nodes := counters.Nodes
 		abNodes := counters.ABNodes
