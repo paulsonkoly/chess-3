@@ -43,7 +43,7 @@ func init() {
 type MoveRanker struct {
 	history       *History
 	captHist      *CaptHist
-	continuations [2]*Continuation
+	continuations *Continuation
 }
 
 // NewMoveRanker creates a new move ranker.
@@ -51,7 +51,7 @@ func NewMoveRanker() MoveRanker {
 	return MoveRanker{
 		history:       NewHistory(),
 		captHist:      NewCaptHist(),
-		continuations: [2]*Continuation{NewContinuation(), NewContinuation()},
+		continuations: NewContinuation(),
 	}
 }
 
@@ -59,8 +59,7 @@ func NewMoveRanker() MoveRanker {
 func (mr *MoveRanker) Clear() {
 	mr.history.Clear()
 	mr.captHist.Clear()
-	mr.continuations[0].Clear()
-	mr.continuations[1].Clear()
+	mr.continuations.Clear()
 }
 
 // StackMove represents an already played move, identified by moving piece type
@@ -114,12 +113,10 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	score := mr.history.LookUp(b.STM, m.From(), m.To())
 	moved := b.SquaresToPiece[m.From()]
 
-	if hist, ok := stack.Top(0); ok {
-		score += mr.continuations[0].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
-	}
-
-	if hist, ok := stack.Top(1); ok {
-		score += mr.continuations[1].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
+	for i := range 2 {
+		if hist, ok := stack.Top(i); ok {
+			score += mr.continuations.LookUp(b.STM^Color(i), hist.Piece, hist.To, moved, m.To())
+		}
 	}
 
 	return score
@@ -169,7 +166,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 
 			for i := range 3 {
 				if hist, ok := stack.Top(i); ok {
-					mr.continuations[i%2].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value/Score(i+1))
+					mr.continuations.Add(b.STM^Color(i%2), hist.Piece, hist.To, moved, m.To(), value/Score(i+1))
 				}
 			}
 		}
