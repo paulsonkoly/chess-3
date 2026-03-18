@@ -113,12 +113,10 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	score := mr.history.LookUp(b.STM, m.From(), m.To())
 	moved := b.SquaresToPiece[m.From()]
 
-	if hist, ok := stack.Top(0); ok {
-		score += mr.continuations.LookUp(b.STM.Flip(), hist.Piece, hist.To, b.STM, moved, m.To())
-	}
-
-	if hist, ok := stack.Top(1); ok {
-		score += mr.continuations.LookUp(b.STM, hist.Piece, hist.To, b.STM, moved, m.To())
+	for i := range params.ContLookBehind {
+		if hist, ok := stack.Top(i); ok {
+			score += mr.continuations.LookUp(b.STM^Color(i%2)^1, hist.Piece, hist.To, b.STM, moved, m.To())
+		}
 	}
 
 	return score
