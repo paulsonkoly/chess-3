@@ -166,7 +166,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 
 			for i := range params.ContLookBehind {
 				if hist, ok := stack.Top(i); ok {
-					mr.continuations.Add(b.STM^Color(i%2)^1, hist.Piece, hist.To, b.STM, moved, m.To(), value/Score(i+1))
+					mr.continuations.Add(b.STM^Color(i%2)^1, hist.Piece, hist.To, b.STM, moved, m.To(), value/Score(i/2+1))
 				}
 			}
 		}
