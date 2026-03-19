@@ -42,7 +42,7 @@ func (p *pawns) calcPawns(b *board.Board) {
 
 // holes are squares that cannot be protected by one of our pawns on our side of the board.
 func (p *pawns) holes(c Color) BitBoard {
-	return sideOfBoard[c] &^ p.cover[c]
+	return ^ p.cover[c]
 }
 
 // passers are pawns not stoppable by enemy pawns without them changing file.

@@ -106,7 +106,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
-			sp.addKnightOutposts(color, sq, outposts, c)
+			sp.addKnightOutposts(color, sq, outposts&sideOfBoard[color.Flip()], c)
 			sp.addPSqT(color, Knight, sq, c)
 		}
 
@@ -506,7 +506,7 @@ func (sp *scorePair[T]) addBishopMobility(b *board.Board, color Color, attacks B
 
 func (sp *scorePair[T]) addBishopOutposts(color Color, sq Square, outposts BitBoard, c *CoeffSet[T]) {
 	rank := sq.Rank().FromPerspectiveOf(color)
-	if BitBoard(1)<<sq&outposts != 0 && FifthRank <= rank && rank <= SeventhRank {
+	if BitBoard(1)<<sq&outposts != 0 && FourthRank <= rank && rank <= SixthRank {
 		sp.mg[color] += c.BishopOutpost[0]
 		sp.eg[color] += c.BishopOutpost[1]
 	}
