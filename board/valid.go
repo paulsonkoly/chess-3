@@ -11,6 +11,7 @@ import (
 var (
 	ErrWrongPieceCount = errors.New("wrong piece count")
 	ErrWrongCastle     = errors.New("wrong castle")
+	ErrWrongEnPassant  = errors.New("wrong en-passant")
 )
 
 // Valid determines if the position is legal (reachable from startpos) in chess.
@@ -55,6 +56,34 @@ func (b Board) Valid() error {
 				b.Pieces[King]&b.Colors[color]&BitBoardFromSquares(kingSq) == 0 {
 				return ErrWrongCastle
 			}
+		}
+	}
+
+	if b.EnPassant != 0 {
+		if b.EnPassant.Rank() != SixthRank.FromPerspectiveOf(b.STM) {
+			return ErrWrongEnPassant
+		}
+
+		occ := b.Colors[White] | b.Colors[Black]
+		epBB := BitBoardFromSquares(b.EnPassant)
+		capturingBB := attacks.PawnCaptureMoves(epBB, b.STM.Flip()) & b.Pieces[Pawn] & b.Colors[b.STM]
+		capturedBB := attacks.PawnSinglePushMoves(epBB, b.STM.Flip()) & b.Pieces[Pawn] & b.Colors[b.STM.Flip()]
+		if capturingBB == 0 || capturedBB == 0 || epBB&occ != 0 {
+			return ErrWrongEnPassant
+		}
+
+		hasUnpinned := false
+		for capturers := capturingBB; capturers != 0; capturers &= capturers - 1 {
+			capturer := capturers & -capturers
+			occMod := occ & ^(capturer|capturedBB) | epBB
+
+			if !b.IsAttacked(b.STM.Flip(), occMod, b.Pieces[King]&b.Colors[b.STM]) {
+				hasUnpinned = true
+				break
+			}
+		}
+		if !hasUnpinned {
+			return ErrWrongEnPassant
 		}
 	}
 	return nil
