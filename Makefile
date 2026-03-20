@@ -18,6 +18,9 @@ endif
 $(EXE): chess3.pprof $(files)
 	go build $(GO_TAGS) -ldflags "$(LDFLAGS)" -pgo chess3.pprof -o $@ main.go
 
+$(EXE).exe: chess3.pprof $(files)
+	env GOOS=windows GOARCH=amd64 go build $(GO_TAGS) -ldflags "$(LDFLAGS)" -pgo chess3.pprof -o $@ main.go
+
 chess3.pprof: $(EXE).nopgo $(files)
 	./$(EXE).nopgo -cpuProf $@ bench
 
