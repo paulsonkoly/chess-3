@@ -344,8 +344,8 @@ func (d *Driver) handlePosition(args []string) {
 			fmt.Fprintf(d.err, "invalid fen %v\n", err)
 			return
 		}
-		if b.InvalidPieceCount() {
-			fmt.Fprintln(d.err, "invalid piece counts")
+		if err := b.Valid(); err != nil {
+			fmt.Fprintln(d.err, err)
 			return
 		}
 		d.board = b
