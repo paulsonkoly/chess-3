@@ -340,13 +340,17 @@ func (sp *scorePair[T]) addPassers(b *board.Board, pawns *pawns, pw *pieceWise, 
 
 		passers := pawns.passers(color)
 
+		if passers == 0 {
+			continue
+		}
+
 		// if there is a sole passer
 		if passers.IsPow2() {
 			sq := passers.LowestSet()
 
 			// KPR, KPNB
 			if b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Queen] == 0 || b.Pieces[Rook]|b.Pieces[Queen] == 0 {
-				queeningSq := Square(EighthRank.FromPerspectiveOf(color)*8 + sq.File())
+				queeningSq := SquareAt(sq.File(), EighthRank.FromPerspectiveOf(color))
 
 				kingDist := Chebishev(queeningSq, pw.kingSq[color.Flip()]) - Chebishev(queeningSq, pw.kingSq[color])
 
