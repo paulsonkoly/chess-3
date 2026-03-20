@@ -66,6 +66,46 @@ func TestValid(t *testing.T) {
 			fen:  "r2k4/8/8/8/8/8/8/3K4 w q - 0 1",
 			want: board.ErrWrongCastle,
 		},
+		{
+			name: "valid en passant white to move",
+			fen:  "4k3/8/8/1pP5/8/8/8/4K3 w - b6 0 1",
+			want: nil,
+		},
+		{
+			name: "valid en passant black to move",
+			fen:  "4k3/8/8/8/1Pp5/8/8/4K3 b - b3 0 1",
+			want: nil,
+		},
+		{
+			name: "wrong rank for white",
+			fen:  "4k3/8/8/8/1Pp5/8/8/4K3 w - b4 0 1",
+			want: board.ErrWrongEnPassant,
+		},
+		{
+			name: "wrong rank for black",
+			fen:  "4k3/8/8/1pP5/8/8/8/4K3 b - b5 0 1",
+			want: board.ErrWrongEnPassant,
+		},
+		{
+			name: "missing capturing pawn",
+			fen:  "4k3/8/8/8/1P6/8/8/4K3 b - b3 0 1",
+			want: board.ErrWrongEnPassant,
+		},
+		{
+			name: "missing captured pawn",
+			fen:  "4k3/8/8/8/2p5/8/8/4K3 b - b3 0 1",
+			want: board.ErrWrongEnPassant,
+		},
+		{
+			name: "en passant square occupied",
+			fen:  "4k3/8/8/8/1Pp5/1P6/8/4K3 b - b3 0 1",
+			want: board.ErrWrongEnPassant,
+		},
+		{
+			name: "king in check after capture",
+			fen:  "8/8/8/8/RPp2k2/8/8/4K3 b - b3 0 1",
+			want: board.ErrWrongEnPassant,
+		},
 	}
 
 	for _, tt := range tests {

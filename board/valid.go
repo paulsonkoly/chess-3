@@ -64,7 +64,7 @@ func (b Board) Valid() error {
 			return ErrWrongEnPassant
 		}
 
-		occ := b.Colors[White] & b.Colors[Black]
+		occ := b.Colors[White] | b.Colors[Black]
 		epBB := BitBoardFromSquares(b.EnPassant)
 		capturingBB := attacks.PawnCaptureMoves(epBB, b.STM.Flip()) & b.Pieces[Pawn] & b.Colors[b.STM]
 		capturedBB := attacks.PawnSinglePushMoves(epBB, b.STM.Flip()) & b.Pieces[Pawn] & b.Colors[b.STM.Flip()]
