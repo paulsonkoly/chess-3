@@ -72,13 +72,18 @@ func (b Board) Valid() error {
 			return ErrWrongEnPassant
 		}
 
+		hasUnpinned := false
 		for capturers := capturingBB; capturers != 0; capturers &= capturers - 1 {
 			capturer := capturers & -capturers
 			occMod := occ & ^(capturer|capturedBB) | epBB
 
-			if b.IsAttacked(b.STM.Flip(), occMod, b.Pieces[King]&b.Colors[b.STM]) {
-				return ErrWrongEnPassant
+			if !b.IsAttacked(b.STM.Flip(), occMod, b.Pieces[King]&b.Colors[b.STM]) {
+				hasUnpinned = true
+				break
 			}
+		}
+		if !hasUnpinned {
+			return ErrWrongEnPassant
 		}
 	}
 	return nil

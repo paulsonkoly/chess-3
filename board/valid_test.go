@@ -106,6 +106,11 @@ func TestValid(t *testing.T) {
 			fen:  "8/8/8/8/RPp2k2/8/8/4K3 b - b3 0 1",
 			want: board.ErrWrongEnPassant,
 		},
+		{
+			name: "king is not in check from 1 possible capture but in check from other",
+			fen:  "2k5/8/8/8/pPp5/8/8/2R1K3 b - b3 0 1",
+			want: nil,
+		},
 	}
 
 	for _, tt := range tests {
