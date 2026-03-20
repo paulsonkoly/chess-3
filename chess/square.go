@@ -87,9 +87,24 @@ const (
 )
 
 const (
+	AFile Coord = iota
+	BFile
+	CFile
+	DFile
+	EFile
+	FFile
+	GFile
+	HFile
+)
+
+const (
 	FileMask = Square(7)
 	RankMask = Square(7 << 3)
 )
+
+func SquareAt(file Coord, rank Coord) Square {
+	return Square(rank*8)&RankMask + Square(file)&FileMask
+}
 
 func (s Square) String() string {
 	return fmt.Sprintf("%c%c", s%8+'a', s/8+'1')
