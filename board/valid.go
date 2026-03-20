@@ -13,7 +13,7 @@ var (
 	ErrWrongCastle     = errors.New("wrong castle")
 )
 
-// Valid determines if the position is leagl (reachable from startpos) in chess.
+// Valid determines if the position is legal (reachable from startpos) in chess.
 // Useful for validating a syntactically correct fen which might yield an invalid position.
 // Returns error nil if the position is valid.
 func (b Board) Valid() error {
