@@ -29,7 +29,7 @@ var (
 	HistAdjRange     = 8
 	HistAdjReduction = 7
 	IIRDepthLimit    = 5
-	ContLookBehind   = 3
+	ContLookBehind   = 2
 )
 
 var tunables = [...]struct {
