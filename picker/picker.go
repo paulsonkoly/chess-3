@@ -15,6 +15,8 @@ import (
 type Picker struct {
 	board    *board.Board
 	ms       *move.Store
+	d        Depth
+	killers  []move.Move
 	ranker   *heur.MoveRanker
 	hstack   *stack.Stack[heur.StackMove]
 	ix       int
@@ -28,6 +30,7 @@ const (
 	pickHash state = iota
 	genNoisy
 	yieldGoodNoisy
+	pickKiller
 	genQuiet
 	yieldRest
 )
@@ -39,10 +42,19 @@ func New(
 	b *board.Board,
 	hashMove move.Move,
 	ms *move.Store,
+	d Depth,
 	ranker *heur.MoveRanker,
 	hstack *stack.Stack[heur.StackMove],
 ) Picker {
-	return Picker{board: b, hashMove: hashMove, ms: ms, hstack: hstack, ranker: ranker}
+	return Picker{
+		board:    b,
+		hashMove: hashMove,
+		d:        d,
+		ms:       ms,
+		hstack:   hstack,
+		ranker:   ranker,
+		killers:  make([]move.Move, 0, heur.KillerStride),
+	}
 }
 
 func (p *Picker) Next() bool {
@@ -94,6 +106,28 @@ func (p *Picker) Next() bool {
 			return true
 		}
 
+		p.state = pickKiller
+		fallthrough
+
+	case pickKiller:
+		for sel := len(p.killers); sel < heur.KillerStride; sel++ {
+			killer := p.ranker.Killer(p.d, sel)
+			if killer == 0 {
+				break
+			}
+
+			if p.board.IsPseudoLegal(killer) && killer != p.hashMove {
+				m := p.ms.Alloc(killer)
+				moves := p.ms.Frame()
+				endIx := len(moves) - 1
+				m.Weight = heur.Killers + heur.KillerRange - Score(sel)
+				p.killers = append(p.killers, killer)
+				moves[p.ix], moves[endIx] = moves[endIx], moves[p.ix]
+				p.ix++
+				return true
+			}
+		}
+
 		p.state = genQuiet
 		fallthrough
 
@@ -105,10 +139,12 @@ func (p *Picker) Next() bool {
 		moves := p.ms.Frame()
 
 		for i := quietStart; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
-				// hash move was already yielded
+			switch {
+			case p.hashMove == moves[i].Move:
 				moves[i].Weight = -heur.HashMove
-			} else {
+			case p.isKiller(moves[i].Move):
+				moves[i].Weight = -heur.HashMove
+			default:
 				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
 			}
 		}
@@ -145,4 +181,13 @@ func (p *Picker) Move() *move.Weighted {
 // YieldedMoves returns a slice of yielded moves so far.
 func (p *Picker) YieldedMoves() []move.Weighted {
 	return p.ms.Frame()[:p.ix]
+}
+
+func (p *Picker) isKiller(m move.Move) bool {
+	for _, v := range p.killers {
+		if v == m {
+			return true
+		}
+	}
+	return false
 }

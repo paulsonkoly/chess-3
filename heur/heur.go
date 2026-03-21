@@ -28,6 +28,8 @@ const (
 	// Captures is the minimal score for captures, actual score is this plus SEE.
 	Captures     = 7 * k
 	CaptureRange = 1 * k
+	Killers      = 4 * k
+	KillerRange  = KillerStride
 	// MaxHistory is the maximal absolute value in either the history or the continuation stores.
 	MaxHistory = k
 )
@@ -37,6 +39,7 @@ type MoveRanker struct {
 	history       *History
 	captHist      *CaptHist
 	continuations *Continuation
+	killer        *Killer
 }
 
 // NewMoveRanker creates a new move ranker.
@@ -45,6 +48,7 @@ func NewMoveRanker() MoveRanker {
 		history:       NewHistory(),
 		captHist:      NewCaptHist(),
 		continuations: NewContinuation(),
+		killer:        NewKiller(),
 	}
 }
 
@@ -53,7 +57,10 @@ func (mr *MoveRanker) Clear() {
 	mr.history.Clear()
 	mr.captHist.Clear()
 	mr.continuations.Clear()
+	mr.killer.Clear()
 }
+
+func (mr *MoveRanker) Killer(d Depth, sel int) move.Move { return mr.killer.LookUp(d, sel) }
 
 // StackMove represents an already played move, identified by moving piece type
 // and to squares. It is coupled with static evaluation of the position.
@@ -140,6 +147,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 		switch {
 
 		case quiet && last:
+			mr.killer.Add(d, m.Move)
 			value = bonus
 
 		case quiet && !last:

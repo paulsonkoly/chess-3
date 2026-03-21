@@ -80,6 +80,7 @@ func TestPicker(t *testing.T) {
 
 		t.Run(fmt.Sprintf("picker test %d", tix), func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
+			d := Depth(3)
 
 			ranker := heur.NewMoveRanker()
 			hStack.Reset()
@@ -90,19 +91,25 @@ func TestPicker(t *testing.T) {
 			allMoves := slices.Clone(ms.Frame())
 			numMoves := len(allMoves)
 
-			rand.Shuffle(len(allMoves), func(i, j int) {
+			rng.Shuffle(len(allMoves), func(i, j int) {
 				allMoves[i], allMoves[j] = allMoves[j], allMoves[i]
 			})
 
 			failHighIx := rng.IntN(numMoves)
-			ranker.FailHigh(3, b, allMoves[:failHighIx], hStack)
+			ranker.FailHigh(d, b, allMoves[:failHighIx], hStack)
 
 			hashMoveIx := rng.IntN(numMoves)
-			hashMove := ms.Frame()[hashMoveIx].Move
+			hashMove := allMoves[hashMoveIx].Move
+
+			killer := move.Move(0)
+			if hashMoveIx != failHighIx-1 && failHighIx > 0 && allMoves[failHighIx-1].Promo() == 0 &&
+				(b.Colors[White]|b.Colors[Black])&(BitBoard(1)<<allMoves[failHighIx-1].To()) == 0 {
+				killer = allMoves[failHighIx-1].Move
+			}
 
 			ms.Clear()
 
-			pck := picker.New(b, hashMove, ms, &ranker, hStack)
+			pck := picker.New(b, hashMove, ms, d, &ranker, hStack)
 
 			state := verifyHash
 
@@ -111,7 +118,16 @@ func TestPicker(t *testing.T) {
 			for pck.Next() {
 				m := pck.Move().Move
 
-				assert.NotContains(t, yielded, *pck.Move(), "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
+				assert.NotContains(
+					t,
+					yielded,
+					*pck.Move(),
+					"fen %s hashMove %s killer %s double yield %s",
+					tt.fen,
+					hashMove,
+					killer,
+					m,
+				)
 				yielded = append(yielded, *pck.Move())
 
 				switch state {
@@ -126,13 +142,30 @@ func TestPicker(t *testing.T) {
 						continue
 					}
 
+					fallthrough
+
+				case verifyKiller:
 					state = verifyQuiets
+
+					if killer != 0 {
+						assert.Equal(t, pck.Move().Move, killer, "fen %s killer expected %s %s", tt.fen, pck.Move().Move, killer)
+						assert.Greater(t, pck.Move().Weight, heur.Killers, "fen %s killer weight is too low %s", tt.fen, m)
+						assert.LessOrEqual(
+							t,
+							pck.Move().Weight,
+							heur.Killers+heur.KillerRange,
+							"fen %s killer weight is too high %s",
+							tt.fen,
+							m,
+						)
+						continue
+					}
 					fallthrough
 
 				case verifyQuiets:
 					if m.Promo() == NoPiece && b.SquaresToPiece[b.CaptureSq(m)] == NoPiece {
-						assert.Greater(t, pck.Move().Weight, -heur.Captures, "fen %s quiet weight too low %s", tt.fen, m)
-						assert.Less(t, pck.Move().Weight, heur.Captures, "fen %s quiet weight too high %s", tt.fen, m)
+						assert.Greater(t, pck.Move().Weight, -heur.Killers, "fen %s quiet weight too low %s", tt.fen, m)
+						assert.Less(t, pck.Move().Weight, heur.Killers, "fen %s quiet weight too high %s", tt.fen, m)
 						continue
 					}
 					state = verifyBadCaptures
@@ -173,6 +206,7 @@ type state byte
 const (
 	verifyHash = state(iota)
 	verifyGoodCaptures
+	verifyKiller
 	verifyQuiets
 	verifyBadCaptures
 )
