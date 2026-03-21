@@ -13,15 +13,16 @@ import (
 
 // Picker is the move iterator for a given position.
 type Picker struct {
-	board    *board.Board
-	ms       *move.Store
-	d        Depth
-	killers  []move.Move
-	ranker   *heur.MoveRanker
-	hstack   *stack.Stack[heur.StackMove]
-	ix       int
-	hashMove move.Move
-	state    state
+	board     *board.Board
+	ms        *move.Store
+	d         Depth
+	killers   [heur.KillerStride]move.Move
+	killerCnt int
+	ranker    *heur.MoveRanker
+	hstack    *stack.Stack[heur.StackMove]
+	ix        int
+	hashMove  move.Move
+	state     state
 }
 
 type state byte
@@ -53,7 +54,6 @@ func New(
 		ms:       ms,
 		hstack:   hstack,
 		ranker:   ranker,
-		killers:  make([]move.Move, 0, heur.KillerStride),
 	}
 }
 
@@ -110,7 +110,7 @@ func (p *Picker) Next() bool {
 		fallthrough
 
 	case pickKiller:
-		for sel := len(p.killers); sel < heur.KillerStride; sel++ {
+		for sel := p.killerCnt; sel < len(p.killers); sel++ {
 			killer := p.ranker.Killer(p.d, sel)
 			if killer == 0 {
 				break
@@ -121,7 +121,8 @@ func (p *Picker) Next() bool {
 				moves := p.ms.Frame()
 				endIx := len(moves) - 1
 				m.Weight = heur.Killers + heur.KillerRange - Score(sel)
-				p.killers = append(p.killers, killer)
+				p.killers[p.killerCnt] = killer
+				p.killerCnt++
 				moves[p.ix], moves[endIx] = moves[endIx], moves[p.ix]
 				p.ix++
 				return true
