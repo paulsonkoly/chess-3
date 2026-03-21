@@ -18,6 +18,7 @@ type Picker struct {
 	d         Depth
 	killers   [heur.KillerStride]move.Move
 	killerCnt int
+	killerIx  int
 	ranker    *heur.MoveRanker
 	hstack    *stack.Stack[heur.StackMove]
 	ix        int
@@ -110,17 +111,18 @@ func (p *Picker) Next() bool {
 		fallthrough
 
 	case pickKiller:
-		for sel := p.killerCnt; sel < len(p.killers); sel++ {
-			killer := p.ranker.Killer(p.d, sel)
+		for p.killerIx < heur.KillerStride {
+			killer := p.ranker.Killer(p.d, p.killerIx)
 			if killer == 0 {
 				break
 			}
+			p.killerIx++
 
 			if p.board.IsPseudoLegal(killer) && killer != p.hashMove {
 				m := p.ms.Alloc(killer)
 				moves := p.ms.Frame()
 				endIx := len(moves) - 1
-				m.Weight = heur.Killers + heur.KillerRange - Score(sel)
+				m.Weight = heur.Killers + heur.KillerRange + 1 - Score(p.killerIx)
 				p.killers[p.killerCnt] = killer
 				p.killerCnt++
 				moves[p.ix], moves[endIx] = moves[endIx], moves[p.ix]
