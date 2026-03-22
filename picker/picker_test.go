@@ -83,7 +83,7 @@ func TestPicker(t *testing.T) {
 		{"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"},
 	}
 
-	verif := NewPickerVerifier()
+	verif := NewState()
 
 	for _, tt := range tests {
 
@@ -167,7 +167,7 @@ func TestPicker(t *testing.T) {
 	}
 }
 
-type PickerVerifier struct {
+type State struct {
 	d        Depth
 	ply      Depth
 	rng      *rand.Rand
@@ -180,8 +180,8 @@ type PickerVerifier struct {
 	killer2  move.Move
 }
 
-func NewPickerVerifier() PickerVerifier {
-	return PickerVerifier{
+func NewState() State {
+	return State{
 		d:      3, // any value
 		ply:    2, // <= d
 		rng:    rand.New(rand.NewPCG(832473287, 23292478578)),
@@ -191,13 +191,13 @@ func NewPickerVerifier() PickerVerifier {
 	}
 }
 
-func (pv *PickerVerifier) Reset() {
+func (pv *State) Reset() {
 	pv.ms.Clear()
 	pv.hStack.Reset()
 	pv.ranker.Clear()
 }
 
-func (pv *PickerVerifier) GenerateMoves(b *board.Board) {
+func (pv *State) GenerateMoves(b *board.Board) {
 	pv.ms.Push()
 	defer pv.ms.Pop()
 
