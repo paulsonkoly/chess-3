@@ -4,7 +4,7 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-// Continuation is the heuristics table.
+// Continuation is the continuation history heuristics table.
 //
 // Indexed by oldSTM, oldPiece, oldTo, currSTM, currPiece, currTo where old
 // refers to a move that happened some plies ago, curr refers to the current
