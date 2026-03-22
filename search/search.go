@@ -285,7 +285,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
-	pck := picker.New(b, hashMove, s.ms, d, &s.ranker, s.hstack)
+	pck := picker.New(b, hashMove, s.ms, ply, &s.ranker, s.hstack)
 	s.ms.Push()
 	defer s.ms.Pop()
 
@@ -379,7 +379,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 			if value >= beta {
 				// store node as fail high (cut-node)
 				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
-				s.ranker.FailHigh(d, b, pck.YieldedMoves(), s.hstack)
+				s.ranker.FailHigh(d, ply, b, pck.YieldedMoves(), s.hstack)
 				if opts.Debug {
 					opts.Counters.Moves += moveCnt
 					if moveCnt == 1 {

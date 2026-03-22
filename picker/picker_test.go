@@ -96,7 +96,7 @@ func TestPicker(t *testing.T) {
 
 			v.ms.Push()
 			defer v.ms.Pop()
-			pck := picker.New(b, v.hashMove, v.ms, v.d, &v.ranker, v.hStack)
+			pck := picker.New(b, v.hashMove, v.ms, v.ply, &v.ranker, v.hStack)
 
 			state := verifyHash
 
@@ -183,6 +183,7 @@ func TestPicker(t *testing.T) {
 
 type PickerVerifier struct {
 	d        Depth
+	ply      Depth
 	rng      *rand.Rand
 	ms       *move.Store
 	hStack   *stack.Stack[heur.StackMove]
@@ -196,6 +197,7 @@ type PickerVerifier struct {
 func NewPickerVerifier() PickerVerifier {
 	return PickerVerifier{
 		d:      3, // any value
+		ply:    2,
 		rng:    rand.New(rand.NewPCG(832473287, 23292478578)),
 		ms:     move.NewStore(),
 		hStack: stack.New[heur.StackMove](),
@@ -218,11 +220,11 @@ func (pv *PickerVerifier) GenerateMoves(b *board.Board) {
 
 	// the order is important here as killer1 has to be the one that failed high *after* killer2
 	failHighIx := pv.rng.IntN(len(moves) - 1)
-	pv.ranker.FailHigh(pv.d, b, moves[:failHighIx+1], pv.hStack)
+	pv.ranker.FailHigh(pv.d, pv.ply, b, moves[:failHighIx+1], pv.hStack)
 	pv.killer2 = moves[failHighIx].Move
 
 	failHighIx = pv.rng.IntN(len(moves) - 1)
-	pv.ranker.FailHigh(pv.d, b, moves[:failHighIx+1], pv.hStack)
+	pv.ranker.FailHigh(pv.d, pv.ply, b, moves[:failHighIx+1], pv.hStack)
 	pv.killer1 = moves[failHighIx].Move
 
 	movegen.GenNoisy(pv.ms, b)

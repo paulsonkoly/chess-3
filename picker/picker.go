@@ -15,7 +15,7 @@ import (
 type Picker struct {
 	board     *board.Board
 	ms        *move.Store
-	d         Depth
+	ply       Depth
 	killers   [heur.KillerStride]move.Move
 	killerCnt int
 	killerIx  int
@@ -44,14 +44,14 @@ func New(
 	b *board.Board,
 	hashMove move.Move,
 	ms *move.Store,
-	d Depth,
+	ply Depth,
 	ranker *heur.MoveRanker,
 	hstack *stack.Stack[heur.StackMove],
 ) Picker {
 	return Picker{
 		board:    b,
 		hashMove: hashMove,
-		d:        d,
+		ply:      ply,
 		ms:       ms,
 		hstack:   hstack,
 		ranker:   ranker,
@@ -112,7 +112,7 @@ func (p *Picker) Next() bool {
 
 	case pickKiller:
 		for p.killerIx < heur.KillerStride {
-			killer := p.ranker.Killer(p.d, p.killerIx)
+			killer := p.ranker.Killer(p.ply, p.killerIx)
 			if killer == 0 {
 				break
 			}

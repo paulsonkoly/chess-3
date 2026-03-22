@@ -60,7 +60,7 @@ func (mr *MoveRanker) Clear() {
 	mr.killer.Clear()
 }
 
-func (mr *MoveRanker) Killer(d Depth, sel int) move.Move { return mr.killer.LookUp(d, sel) }
+func (mr *MoveRanker) Killer(ply Depth, sel int) move.Move { return mr.killer.LookUp(ply, sel) }
 
 // StackMove represents an already played move, identified by moving piece type
 // and to squares. It is coupled with static evaluation of the position.
@@ -131,7 +131,7 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 // FailHigh updates the history / continuation stores based on the move buffer
 // moves. We assume all moves preceding the last are bad, and the last one is
 // good. Naturally this would be true in a move loop.
-func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
+func (mr *MoveRanker) FailHigh(d, ply Depth, b *board.Board, moves []move.Weighted, stack *stack.Stack[StackMove]) {
 	bonus := Score(d)*Score(params.HistBonusMul) - Score(params.HistBonusLin)
 
 	rng := Score(1) << params.HistAdjRange
@@ -147,7 +147,7 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 		switch {
 
 		case quiet && last:
-			mr.killer.Add(d, m.Move)
+			mr.killer.Add(ply, m.Move)
 			value = bonus
 
 		case quiet && !last:

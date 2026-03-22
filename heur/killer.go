@@ -23,22 +23,22 @@ func (k *Killer) Clear() {
 	k.data = [MaxPlies][KillerStride]move.Move{}
 }
 
-// Add inserts m to depth d.
-func (k *Killer) Add(d Depth, m move.Move) {
+// Add inserts m to ply.
+func (k *Killer) Add(ply Depth, m move.Move) {
 	ix := 0
-	for i, v := range k.data[d] {
+	for i, v := range k.data[ply] {
 		if v == m || v == 0 {
 			ix = i
 			break
 		}
 	}
-	k.data[d][0], k.data[d][ix] = k.data[d][ix], k.data[d][0]
-	k.data[d][0] = m
+	k.data[ply][0], k.data[ply][ix] = k.data[ply][ix], k.data[ply][0]
+	k.data[ply][0] = m
 }
 
-// LookUp returns the killer move - potentially 0, from depth d. sel
+// LookUp returns the killer move - potentially 0, from ply. sel
 // selects the killer move priority, 0: most recent. sel has to be in
 // 0..KillerStride.
-func (k *Killer) LookUp(d Depth, sel int) move.Move {
-	return k.data[d][sel]
+func (k *Killer) LookUp(ply Depth, sel int) move.Move {
+	return k.data[ply][sel]
 }
