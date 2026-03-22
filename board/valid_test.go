@@ -111,6 +111,11 @@ func TestValid(t *testing.T) {
 			fen:  "2k5/8/8/8/pPp5/8/8/2R1K3 b - b3 0 1",
 			want: nil,
 		},
+		{
+			name: "side to move in check",
+			fen:  "4kb1r/B2pqBpp/3P1n2/Q7/PP2PPP1/1K4RP/8/8 w - - 0 1",
+			want: board.ErrNSTMInCheck,
+		},
 	}
 
 	for _, tt := range tests {

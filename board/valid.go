@@ -12,6 +12,7 @@ var (
 	ErrWrongPieceCount = errors.New("wrong piece count")
 	ErrWrongCastle     = errors.New("wrong castle")
 	ErrWrongEnPassant  = errors.New("wrong en-passant")
+	ErrNSTMInCheck     = errors.New("non side to move in check")
 )
 
 // Valid determines if the position is legal (reachable from startpos) in chess.
@@ -57,6 +58,10 @@ func (b Board) Valid() error {
 				return ErrWrongCastle
 			}
 		}
+	}
+
+	if b.InCheck(b.STM.Flip()) {
+		return ErrNSTMInCheck
 	}
 
 	if b.EnPassant != 0 {
