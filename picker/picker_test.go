@@ -83,20 +83,20 @@ func TestPicker(t *testing.T) {
 		{"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"},
 	}
 
-	v := NewPickerVerifier()
+	verif := NewPickerVerifier()
 
 	for _, tt := range tests {
 
 		t.Run("picker test "+tt.fen, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 
-			v.Reset()
+			verif.Reset()
 
-			v.GenerateMoves(b)
+			verif.GenerateMoves(b)
 
-			v.ms.Push()
-			defer v.ms.Pop()
-			pck := picker.New(b, v.hashMove, v.ms, v.ply, &v.ranker, v.hStack)
+			verif.ms.Push()
+			defer verif.ms.Pop()
+			pck := picker.New(b, verif.hashMove, verif.ms, verif.ply, &verif.ranker, verif.hStack)
 
 			state := verifyHash
 
@@ -110,11 +110,11 @@ func TestPicker(t *testing.T) {
 
 				case verifyHash:
 					state = verifyGoodCaptures
-					assertMovesEqual(t, v.hashMove, pck.Move().Move, "hashmove")
+					assertMovesEqual(t, verif.hashMove, pck.Move().Move, "hashmove")
 
 				case verifyGoodCaptures:
 					if (m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m)] != NoPiece) && heur.SEE(b, m, 0) {
-						assert.GreaterOrEqual(t, pck.Move().Weight, heur.Captures, "fen %s capture weight too low %s", tt.fen, m)
+						assertMoveWeight(t, assert.GreaterOrEqual, pck.Move(), heur.Captures, "capture weight too low")
 						continue
 					}
 
@@ -122,17 +122,10 @@ func TestPicker(t *testing.T) {
 
 				case verifyKiller1:
 					state = verifyKiller2
-					if v.killer1 != 0 {
-						assertMovesEqual(t, pck.Move().Move, v.killer1, "killer1")
-						assert.Greater(t, pck.Move().Weight, heur.Killers, "fen %s killer weight is too low %s", tt.fen, m)
-						assert.LessOrEqual(
-							t,
-							pck.Move().Weight,
-							heur.Killers+heur.KillerRange,
-							"fen %s killer weight is too high %s",
-							tt.fen,
-							m,
-						)
+					if verif.killer1 != 0 {
+						assertMovesEqual(t, pck.Move().Move, verif.killer1, "killer1")
+						assertMoveWeight(t, assert.Greater, pck.Move(), heur.Killers, "killer weight too low")
+						assertMoveWeight(t, assert.LessOrEqual, pck.Move(), heur.Killers+heur.KillerRange, "killer weight too high")
 						continue
 					}
 
@@ -141,17 +134,10 @@ func TestPicker(t *testing.T) {
 				case verifyKiller2:
 					state = verifyQuiets
 
-					if v.killer2 != 0 {
-						assertMovesEqual(t, pck.Move().Move, v.killer2, "killer2")
-						assert.Greater(t, pck.Move().Weight, heur.Killers, "fen %s killer weight is too low %s", tt.fen, m)
-						assert.LessOrEqual(
-							t,
-							pck.Move().Weight,
-							heur.Killers+heur.KillerRange,
-							"fen %s killer weight is too high %s",
-							tt.fen,
-							m,
-						)
+					if verif.killer2 != 0 {
+						assertMovesEqual(t, pck.Move().Move, verif.killer2, "killer2")
+						assertMoveWeight(t, assert.Greater, pck.Move(), heur.Killers, "killer weight too low")
+						assertMoveWeight(t, assert.LessOrEqual, pck.Move(), heur.Killers+heur.KillerRange, "killer weight too high")
 						continue
 					}
 
@@ -159,15 +145,15 @@ func TestPicker(t *testing.T) {
 
 				case verifyQuiets:
 					if m.Promo() == NoPiece && b.SquaresToPiece[b.CaptureSq(m)] == NoPiece {
-						assert.Greater(t, pck.Move().Weight, -heur.Killers, "fen %s quiet weight too low %s", tt.fen, m)
-						assert.Less(t, pck.Move().Weight, heur.Killers, "fen %s quiet weight too high %s", tt.fen, m)
+						assertMoveWeight(t, assert.Greater, pck.Move(), -heur.Captures, "quiet weight too low")
+						assertMoveWeight(t, assert.Less, pck.Move(), heur.Killers, "quiet weight too high")
 						continue
 					}
 					state = verifyBadCaptures
 					fallthrough
 
 				case verifyBadCaptures:
-					assert.Less(t, pck.Move().Weight, -heur.Captures, "fen %s capture weight too high %s", tt.fen, m)
+					assertMoveWeight(t, assert.Less, pck.Move(), -heur.Captures, "capture weight too high")
 				}
 			}
 
@@ -175,8 +161,8 @@ func TestPicker(t *testing.T) {
 			assert.Equal(t, ym, yielded, "fen %s", tt.fen)
 
 			assertUnique(t, yielded)
-			assertMovesSameSet(t, ym, v.allMoves, "yielded moves mismatches all moves")
-			assertDecendingWeights(t, ym)
+			assertMovesSameSet(t, ym, verif.allMoves, "yielded moves mismatches all moves")
+			assertDescendingWeights(t, ym)
 		})
 	}
 }
@@ -197,7 +183,7 @@ type PickerVerifier struct {
 func NewPickerVerifier() PickerVerifier {
 	return PickerVerifier{
 		d:      3, // any value
-		ply:    2,
+		ply:    2, // <= d
 		rng:    rand.New(rand.NewPCG(832473287, 23292478578)),
 		ms:     move.NewStore(),
 		hStack: stack.New[heur.StackMove](),
@@ -268,7 +254,7 @@ func removeWeights(weighted []move.Weighted) []string {
 	return result
 }
 
-func assertDecendingWeights(t *testing.T, moves []move.Weighted) {
+func assertDescendingWeights(t *testing.T, moves []move.Weighted) {
 	for i, m := range moves {
 		if i > 0 {
 			assert.LessOrEqual(t, int(m.Weight), int(moves[i-1].Weight), "non-decreasing weights %s !>= %s", moves[i-1], m)
@@ -292,4 +278,16 @@ func assertUnique(t *testing.T, moves []move.Weighted) {
 			assert.NotEqual(t, a, b, "move repeating %s", a)
 		}
 	}
+}
+
+type CmpFunc func(assert.TestingT, any, any, ...any) bool
+
+func assertMoveWeight(t *testing.T, cmp CmpFunc, m *move.Weighted, weight Score, args ...any) {
+	tail := ""
+	if len(args) > 0 {
+		if str, ok := args[0].(string); ok {
+			tail = fmt.Sprintf(" "+str, args[1:]...)
+		}
+	}
+	cmp(t, m.Weight, weight, "%s%s", m.Move, tail)
 }
