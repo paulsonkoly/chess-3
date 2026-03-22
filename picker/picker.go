@@ -13,17 +13,16 @@ import (
 
 // Picker is the move iterator for a given position.
 type Picker struct {
-	board     *board.Board
-	ms        *move.Store
-	ply       Depth
-	killers   [heur.KillerStride]move.Move
-	killerCnt int
-	killerIx  int
-	ranker    *heur.MoveRanker
-	hstack    *stack.Stack[heur.StackMove]
-	ix        int
-	hashMove  move.Move
-	state     state
+	board    *board.Board
+	ms       *move.Store
+	ply      Depth
+	trck     tracker
+	killerIx int
+	ranker   *heur.MoveRanker
+	hstack   *stack.Stack[heur.StackMove]
+	ix       int
+	hashMove move.Move
+	state    state
 }
 
 type state byte
@@ -68,6 +67,7 @@ func (p *Picker) Next() bool {
 			// to update histories on fail high
 			m := p.ms.Alloc(p.hashMove)
 			m.Weight = heur.HashMove
+			p.trck.Add(p.hashMove)
 			p.ix++
 			return true
 		}
@@ -79,7 +79,7 @@ func (p *Picker) Next() bool {
 		moves := p.ms.Frame()
 
 		for i := p.ix; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
+			if p.trck.Has(moves[i].Move) {
 				// hash move was already yielded
 				moves[i].Weight = -heur.HashMove
 			} else {
@@ -118,14 +118,9 @@ func (p *Picker) Next() bool {
 			}
 			p.killerIx++
 
-			if p.board.IsPseudoLegal(killer) && killer != p.hashMove {
-				m := p.ms.Alloc(killer)
-				moves := p.ms.Frame()
-				endIx := len(moves) - 1
-				m.Weight = heur.Killers + heur.KillerRange + 1 - Score(p.killerIx)
-				p.killers[p.killerCnt] = killer
-				p.killerCnt++
-				moves[p.ix], moves[endIx] = moves[endIx], moves[p.ix]
+			if p.board.IsPseudoLegal(killer) && !p.trck.Has(killer) {
+				p.trck.Add(killer)
+				p.allocAt(killer, heur.Killers+heur.KillerRange+1-Score(p.killerIx), p.ix)
 				p.ix++
 				return true
 			}
@@ -142,12 +137,9 @@ func (p *Picker) Next() bool {
 		moves := p.ms.Frame()
 
 		for i := quietStart; i < len(moves); i++ {
-			switch {
-			case p.hashMove == moves[i].Move:
+			if p.trck.Has(moves[i].Move) {
 				moves[i].Weight = -heur.HashMove
-			case p.isKiller(moves[i].Move):
-				moves[i].Weight = -heur.HashMove
-			default:
+			} else {
 				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
 			}
 		}
@@ -186,11 +178,10 @@ func (p *Picker) YieldedMoves() []move.Weighted {
 	return p.ms.Frame()[:p.ix]
 }
 
-func (p *Picker) isKiller(m move.Move) bool {
-	for _, v := range p.killers {
-		if v == m {
-			return true
-		}
-	}
-	return false
+func (p *Picker) allocAt(m move.Move, w Score, ix int) {
+	weighted := p.ms.Alloc(m)
+	moves := p.ms.Frame()
+	endIx := len(moves) - 1
+	weighted.Weight = w
+	moves[ix], moves[endIx] = moves[endIx], moves[ix]
 }

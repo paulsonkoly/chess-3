@@ -6,7 +6,7 @@ import (
 )
 
 // KillerStride is the number of killer moves per ply.
-const KillerStride = 2
+const KillerStride = 3
 
 // Killer stores the killer moves per ply.
 type Killer struct {

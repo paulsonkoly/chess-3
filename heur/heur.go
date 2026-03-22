@@ -28,7 +28,7 @@ const (
 	// Captures is the minimal score for captures, actual score is this plus SEE.
 	Captures     = 7 * k
 	CaptureRange = 1 * k
-	Killers      = 4 * k
+	Killers      = 5 * k
 	KillerRange  = KillerStride
 	// MaxHistory is the maximal absolute value in either the history or the continuation stores.
 	MaxHistory = k
