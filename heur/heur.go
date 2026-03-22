@@ -5,7 +5,7 @@
 //   - hash: [HashMove]
 //   - good captures: [Captures] ... [HashMove]
 //   - quiets: -3*[MaxHistory]..3*[MaxHistory]
-//     (cont[0] + cont[1] + hist) each <= [MaxHistory]
+//     (2 * cont + hist) each <= [MaxHistory]
 //   - bad captures: -Inf..-[Captures]
 package heur
 
