@@ -22,7 +22,6 @@ const (
 	HistAdjRange     = 8
 	HistAdjReduction = 7
 	IIRDepthLimit    = 5
-	ContLookBehind   = 2
 )
 
 // UCIOptions returns the uci options string for tunable parameters in an spsa

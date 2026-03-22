@@ -113,10 +113,12 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	score := mr.history.LookUp(b.STM, m.From(), m.To())
 	moved := b.SquaresToPiece[m.From()]
 
-	for i := range params.ContLookBehind {
-		if hist, ok := stack.Top(i); ok {
-			score += mr.continuations.LookUp(b.STM^Color(i%2)^1, hist.Piece, hist.To, b.STM, moved, m.To())
-		}
+	if hist, ok := stack.Top(0); ok {
+		score += mr.continuations.LookUp(b.STM.Flip(), hist.Piece, hist.To, b.STM, moved, m.To())
+	}
+
+	if hist, ok := stack.Top(1); ok {
+		score += mr.continuations.LookUp(b.STM, hist.Piece, hist.To, b.STM, moved, m.To())
 	}
 
 	return score
@@ -164,10 +166,12 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 		case quiet:
 			mr.history.Add(b.STM, m.From(), m.To(), value)
 
-			for i := range params.ContLookBehind {
-				if hist, ok := stack.Top(i); ok {
-					mr.continuations.Add(b.STM^Color(i%2)^1, hist.Piece, hist.To, b.STM, moved, m.To(), value/Score(i+1))
-				}
+			if hist, ok := stack.Top(0); ok {
+				mr.continuations.Add(b.STM.Flip(), hist.Piece, hist.To, b.STM, moved, m.To(), value)
+			}
+
+			if hist, ok := stack.Top(1); ok {
+				mr.continuations.Add(b.STM, hist.Piece, hist.To, b.STM, moved, m.To(), value/2)
 			}
 		}
 	}
