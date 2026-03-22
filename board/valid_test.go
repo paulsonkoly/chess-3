@@ -112,7 +112,7 @@ func TestValid(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "side to move in check",
+			name: "non side to move in check",
 			fen:  "4kb1r/B2pqBpp/3P1n2/Q7/PP2PPP1/1K4RP/8/8 w - - 0 1",
 			want: board.ErrNSTMInCheck,
 		},
