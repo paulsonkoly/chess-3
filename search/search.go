@@ -318,14 +318,20 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		hasLegal = true
 		moveCnt++
 
-		s.hstack.Push(heur.StackMove{Piece: moved, To: m.To(), Score: staticEval})
-
-		var value Score
-
 		quiet := captured == NoPiece && m.Promo() == NoPiece
 		if quiet {
 			quietCnt++
+
+			// history based pruning
+			if !inCheck && d < 4 && ply != 0 && w.Weight < Score(d)*-300 {
+				b.UndoMove(m, r)
+				continue
+			}
 		}
+
+		s.hstack.Push(heur.StackMove{Piece: moved, To: m.To(), Score: staticEval})
+
+		var value Score
 
 		next := nextNodeType(nType, moveCnt)
 
