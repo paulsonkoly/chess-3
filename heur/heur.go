@@ -4,8 +4,8 @@
 //
 //   - hash: [HashMove]
 //   - good captures: [Captures] ... [HashMove]
-//   - quiets: -3*[MaxHistory]..3*[MaxHistory]
-//     (cont[0] + cont[1] + hist) each <= [MaxHistory]
+//   - quiets: -4*[MaxHistory]..4*[MaxHistory]
+//     (3 * cont + hist) each <= [MaxHistory]
 //   - bad captures: -Inf..-[Captures]
 package heur
 
@@ -32,18 +32,11 @@ const (
 	MaxHistory = k
 )
 
-func init() {
-	// 1 * history + continuation[1] + 1 * continuation[0]
-	if Captures < 3*MaxHistory {
-		panic("gap is not big enough in move weight layout for history scores")
-	}
-}
-
 // MoveRanker is a composition of heuristic stores that can rank a move.
 type MoveRanker struct {
 	history       *History
 	captHist      *CaptHist
-	continuations [2]*Continuation
+	continuations *Continuation
 }
 
 // NewMoveRanker creates a new move ranker.
@@ -51,7 +44,7 @@ func NewMoveRanker() MoveRanker {
 	return MoveRanker{
 		history:       NewHistory(),
 		captHist:      NewCaptHist(),
-		continuations: [2]*Continuation{NewContinuation(), NewContinuation()},
+		continuations: NewContinuation(),
 	}
 }
 
@@ -59,8 +52,7 @@ func NewMoveRanker() MoveRanker {
 func (mr *MoveRanker) Clear() {
 	mr.history.Clear()
 	mr.captHist.Clear()
-	mr.continuations[0].Clear()
-	mr.continuations[1].Clear()
+	mr.continuations.Clear()
 }
 
 // StackMove represents an already played move, identified by moving piece type
@@ -115,11 +107,15 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	moved := b.SquaresToPiece[m.From()]
 
 	if hist, ok := stack.Top(0); ok {
-		score += mr.continuations[0].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
+		score += mr.continuations.LookUp(b.STM.Flip(), hist.Piece, hist.To, b.STM, moved, m.To())
 	}
 
 	if hist, ok := stack.Top(1); ok {
-		score += mr.continuations[1].LookUp(b.STM, hist.Piece, hist.To, moved, m.To())
+		score += mr.continuations.LookUp(b.STM, hist.Piece, hist.To, b.STM, moved, m.To())
+	}
+
+	if hist, ok := stack.Top(3); ok {
+		score += mr.continuations.LookUp(b.STM, hist.Piece, hist.To, b.STM, moved, m.To())
 	}
 
 	return score
@@ -168,11 +164,15 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 			mr.history.Add(b.STM, m.From(), m.To(), value)
 
 			if hist, ok := stack.Top(0); ok {
-				mr.continuations[0].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value)
+				mr.continuations.Add(b.STM.Flip(), hist.Piece, hist.To, b.STM, moved, m.To(), value)
 			}
 
 			if hist, ok := stack.Top(1); ok {
-				mr.continuations[1].Add(b.STM, hist.Piece, hist.To, moved, m.To(), value/2)
+				mr.continuations.Add(b.STM, hist.Piece, hist.To, b.STM, moved, m.To(), value)
+			}
+
+			if hist, ok := stack.Top(3); ok {
+				mr.continuations.Add(b.STM, hist.Piece, hist.To, b.STM, moved, m.To(), value)
 			}
 		}
 	}
