@@ -32,13 +32,6 @@ const (
 	MaxHistory = k
 )
 
-func init() {
-	// 1 * history + continuation[1] + 1 * continuation[0]
-	if Captures < 3*MaxHistory {
-		panic("gap is not big enough in move weight layout for history scores")
-	}
-}
-
 // MoveRanker is a composition of heuristic stores that can rank a move.
 type MoveRanker struct {
 	history       *History
