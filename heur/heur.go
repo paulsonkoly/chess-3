@@ -121,6 +121,10 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 		score += mr.continuations.LookUp(b.STM, hist.Piece, hist.To, b.STM, moved, m.To())
 	}
 
+	if hist, ok := stack.Top(3); ok {
+		score += mr.continuations.LookUp(b.STM, hist.Piece, hist.To, b.STM, moved, m.To())
+	}
+
 	return score
 }
 
@@ -171,7 +175,11 @@ func (mr *MoveRanker) FailHigh(d Depth, b *board.Board, moves []move.Weighted, s
 			}
 
 			if hist, ok := stack.Top(1); ok {
-				mr.continuations.Add(b.STM, hist.Piece, hist.To, b.STM, moved, m.To(), value/2)
+				mr.continuations.Add(b.STM, hist.Piece, hist.To, b.STM, moved, m.To(), value)
+			}
+
+			if hist, ok := stack.Top(3); ok {
+				mr.continuations.Add(b.STM, hist.Piece, hist.To, b.STM, moved, m.To(), value)
 			}
 		}
 	}
