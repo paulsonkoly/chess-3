@@ -13,16 +13,16 @@ import (
 
 // Picker is the move iterator for a given position.
 type Picker struct {
-	board    *board.Board
-	ms       *move.Store
-	ply      Depth
-	trck     tracker
-	killerIx int
-	ranker   *heur.MoveRanker
-	hstack   *stack.Stack[heur.StackMove]
-	ix       int
-	hashMove move.Move
-	state    state
+	board      *board.Board
+	ms         *move.Store
+	ply        Depth
+	killerIx   int
+	ranker     *heur.MoveRanker
+	hstack     *stack.Stack[heur.StackMove]
+	ix         int
+	killerMove move.Move
+	hashMove   move.Move
+	state      state
 }
 
 type state byte
@@ -67,7 +67,6 @@ func (p *Picker) Next() bool {
 			// to update histories on fail high
 			m := p.ms.Alloc(p.hashMove)
 			m.Weight = heur.HashMove
-			p.trck.Add(p.hashMove)
 			p.ix++
 			return true
 		}
@@ -79,7 +78,7 @@ func (p *Picker) Next() bool {
 		moves := p.ms.Frame()
 
 		for i := p.ix; i < len(moves); i++ {
-			if p.trck.Has(moves[i].Move) {
+			if moves[i].Move == p.hashMove {
 				// hash move was already yielded
 				moves[i].Weight = -heur.HashMove
 			} else {
@@ -111,22 +110,16 @@ func (p *Picker) Next() bool {
 		fallthrough
 
 	case pickKiller:
-		for p.killerIx < heur.KillerStride {
-			killer := p.ranker.Killer(p.ply, p.killerIx)
-			if killer == 0 {
-				break
-			}
-			p.killerIx++
+		p.state = genQuiet
+		killer := p.ranker.Killer(p.ply)
 
-			if p.board.IsPseudoLegal(killer) && !p.trck.Has(killer) {
-				p.trck.Add(killer)
-				p.allocAt(killer, heur.Killers+heur.KillerRange+1-Score(p.killerIx), p.ix)
-				p.ix++
-				return true
-			}
+		if killer != 0 && p.board.IsPseudoLegal(killer) && killer != p.hashMove {
+			p.killerMove = killer
+			p.allocAt(killer, heur.KillerMove, p.ix)
+			p.ix++
+			return true
 		}
 
-		p.state = genQuiet
 		fallthrough
 
 	case genQuiet:
@@ -137,7 +130,7 @@ func (p *Picker) Next() bool {
 		moves := p.ms.Frame()
 
 		for i := quietStart; i < len(moves); i++ {
-			if p.trck.Has(moves[i].Move) {
+			if moves[i].Move == p.hashMove || moves[i].Move == p.killerMove {
 				moves[i].Weight = -heur.HashMove
 			} else {
 				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)

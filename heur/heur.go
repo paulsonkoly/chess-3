@@ -28,8 +28,7 @@ const (
 	// Captures is the minimal score for captures, actual score is this plus SEE.
 	Captures     = 7 * k
 	CaptureRange = 1 * k
-	Killers      = 5 * k
-	KillerRange  = KillerStride
+	KillerMove   = 5 * k
 	// MaxHistory is the maximal absolute value in either the history or the continuation stores.
 	MaxHistory = k
 )
@@ -60,7 +59,7 @@ func (mr *MoveRanker) Clear() {
 	mr.killer.Clear()
 }
 
-func (mr *MoveRanker) Killer(ply Depth, sel int) move.Move { return mr.killer.LookUp(ply, sel) }
+func (mr *MoveRanker) Killer(ply Depth) move.Move { return mr.killer.LookUp(ply) }
 
 // StackMove represents an already played move, identified by moving piece type
 // and to squares. It is coupled with static evaluation of the position.

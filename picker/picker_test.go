@@ -21,8 +21,7 @@ type state byte
 const (
 	verifyHash = state(iota)
 	verifyGoodCaptures
-	verifyKiller1
-	verifyKiller2
+	verifyKiller
 	verifyQuiets
 	verifyBadCaptures
 )
@@ -120,24 +119,11 @@ func TestPicker(t *testing.T) {
 
 					fallthrough
 
-				case verifyKiller1:
-					state = verifyKiller2
-					if verif.killer1 != 0 {
-						assertMovesEqual(t, pck.Move().Move, verif.killer1, "killer1")
-						assertMoveWeight(t, assert.Greater, pck.Move(), heur.Killers, "killer weight too low")
-						assertMoveWeight(t, assert.LessOrEqual, pck.Move(), heur.Killers+heur.KillerRange, "killer weight too high")
-						continue
-					}
-
-					fallthrough
-
-				case verifyKiller2:
+				case verifyKiller:
 					state = verifyQuiets
-
-					if verif.killer2 != 0 {
-						assertMovesEqual(t, pck.Move().Move, verif.killer2, "killer2")
-						assertMoveWeight(t, assert.Greater, pck.Move(), heur.Killers, "killer weight too low")
-						assertMoveWeight(t, assert.LessOrEqual, pck.Move(), heur.Killers+heur.KillerRange, "killer weight too high")
+					if verif.killer != 0 {
+						assertMovesEqual(t, pck.Move().Move, verif.killer, "killer1")
+						assertMoveWeight(t, assert.Equal, pck.Move(), heur.KillerMove, "killer weight")
 						continue
 					}
 
@@ -146,7 +132,7 @@ func TestPicker(t *testing.T) {
 				case verifyQuiets:
 					if m.Promo() == NoPiece && b.SquaresToPiece[b.CaptureSq(m)] == NoPiece {
 						assertMoveWeight(t, assert.Greater, pck.Move(), -heur.Captures, "quiet weight too low")
-						assertMoveWeight(t, assert.Less, pck.Move(), heur.Killers, "quiet weight too high")
+						assertMoveWeight(t, assert.Less, pck.Move(), heur.KillerMove, "quiet weight too high")
 						continue
 					}
 					state = verifyBadCaptures
@@ -176,8 +162,7 @@ type State struct {
 	ranker   heur.MoveRanker
 	allMoves []move.Weighted
 	hashMove move.Move
-	killer1  move.Move
-	killer2  move.Move
+	killer   move.Move
 }
 
 func NewState() State {
@@ -207,11 +192,7 @@ func (pv *State) GenerateMoves(b *board.Board) {
 	// the order is important here as killer1 has to be the one that failed high *after* killer2
 	failHighIx := pv.rng.IntN(len(moves) - 1)
 	pv.ranker.FailHigh(pv.d, pv.ply, b, moves[:failHighIx+1], pv.hStack)
-	pv.killer2 = moves[failHighIx].Move
-
-	failHighIx = pv.rng.IntN(len(moves) - 1)
-	pv.ranker.FailHigh(pv.d, pv.ply, b, moves[:failHighIx+1], pv.hStack)
-	pv.killer1 = moves[failHighIx].Move
+	pv.killer = moves[failHighIx].Move
 
 	movegen.GenNoisy(pv.ms, b)
 	moves = slices.Clone(pv.ms.Frame())
@@ -224,17 +205,8 @@ func (pv *State) GenerateMoves(b *board.Board) {
 	pv.hashMove = moves[hashMoveIx].Move
 
 	// remove collisions
-	if pv.hashMove == pv.killer1 || pv.killer1 == pv.killer2 {
-		pv.killer1 = pv.killer2
-		pv.killer2 = 0
-	}
-
-	if pv.hashMove == pv.killer1 {
-		pv.killer1 = 0
-	}
-
-	if pv.hashMove == pv.killer2 {
-		pv.killer2 = 0
+	if pv.hashMove == pv.killer {
+		pv.killer = 0
 	}
 
 	pv.allMoves = moves
