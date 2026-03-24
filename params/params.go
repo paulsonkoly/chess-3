@@ -9,19 +9,22 @@ package params
 // between the two files must be maintained.
 
 const (
-	NMPDiffFactor    = 51
-	NMPDepthLimit    = 1
-	NMPInit          = 4
-	RFPDepthLimit    = 8
-	RFPScoreFactor   = 102
-	WindowSize       = 44
-	LMRStart         = 2
-	StandPatDelta    = 113
-	HistBonusMul     = 20
-	HistBonusLin     = 15
-	HistAdjRange     = 8
-	HistAdjReduction = 7
-	IIRDepthLimit    = 5
+	NMPDiffFactor         = 51
+	NMPDepthLimit         = 1
+	NMPInit               = 4
+	RFPDepthLimit         = 8
+	RFPScoreFactor        = 102
+	WindowSize            = 44
+	LMRStart              = 2
+	StandPatDelta         = 113
+	HistBonusMul          = 20
+	HistBonusLin          = 15
+	HistAdjRange          = 8
+	HistAdjReduction      = 7
+	IIRDepthLimit         = 5
+	SEEPruningDepthLimit  = 7
+	SEEPruningQuietMargin = -84
+	SEEPruningNoisyMargin = -35
 )
 
 // UCIOptions returns the uci options string for tunable parameters in an spsa
