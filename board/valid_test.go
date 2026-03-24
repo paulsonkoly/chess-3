@@ -22,6 +22,11 @@ func TestValid(t *testing.T) {
 			want: nil,
 		},
 		{
+			name: "empty",
+			fen:  "8/8/8/8/8/8/8/8 w KQkq - 0 1",
+			want: board.ErrWrongPieceCount,
+		},
+		{
 			name: "8 queens",
 			fen:  "3k4/8/8/8/8/3K4/QQQQQQQQ/8 w - - 0 1",
 			want: nil,
@@ -236,27 +241,51 @@ func TestIsPseudoLegal(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "castle not pseudo legal due to check",
+			name: "white castle not pseudo legal due to check",
 			fen:  "4k3/8/8/b7/8/8/8/4K2R w K - 0 1",
 			move: move.From(E1) | move.To(G1),
 			want: false,
 		},
 		{
-			name: "castle not pseudo legal due to checking in between",
+			name: "white castle not pseudo legal due to checking in between",
 			fen:  "4k3/8/8/1b6/8/8/8/4K2R w K - 0 1",
 			move: move.From(E1) | move.To(G1),
 			want: false,
 		},
 		{
-			name: "castle not pseudo legal due to no right",
+			name: "white castle not pseudo legal due to no right",
 			fen:  "4k3/8/8/8/8/8/8/4K2R w k - 0 1",
 			move: move.From(E1) | move.To(G1),
 			want: false,
 		},
 		{
-			name: "castle not pseudo legal due castling through occupied square",
+			name: "white castle not pseudo legal due castling through occupied square",
 			fen:  "4k3/8/8/8/8/8/8/RN2K3 w Q - 0 1",
 			move: move.From(E1) | move.To(C1),
+			want: false,
+		},
+		{
+			name: "black castle not pseudo legal due to check",
+			fen:  "4k2r/8/8/8/B7/8/8/4K3 b k - 0 1",
+			move: move.From(E8) | move.To(G8),
+			want: false,
+		},
+		{
+			name: "black castle not pseudo legal due to checking in between",
+			fen:  "4k2r/8/8/8/1B6/8/8/4K3 b k - 0 1",
+			move: move.From(E8) | move.To(G8),
+			want: false,
+		},
+		{
+			name: "black castle not pseudo legal due to no right",
+			fen:  "4k2r/8/8/8/8/8/8/4K3 b - - 0 1",
+			move: move.From(E8) | move.To(G8),
+			want: false,
+		},
+		{
+			name: "black castle not pseudo legal due castling through occupied square",
+			fen:  "rn2k3/8/8/8/8/8/8/4K3 b q - 0 1",
+			move: move.From(E8) | move.To(C8),
 			want: false,
 		},
 		{
