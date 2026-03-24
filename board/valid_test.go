@@ -22,6 +22,11 @@ func TestValid(t *testing.T) {
 			want: nil,
 		},
 		{
+			name: "empty",
+			fen:  "8/8/8/8/8/8/8/8 w KQkq - 0 1",
+			want: board.ErrWrongPieceCount,
+		},
+		{
 			name: "8 queens",
 			fen:  "3k4/8/8/8/8/3K4/QQQQQQQQ/8 w - - 0 1",
 			want: nil,
@@ -221,6 +226,18 @@ func TestIsPseudoLegal(t *testing.T) {
 			name: "white long castle pseudo legal",
 			fen:  "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",
 			move: move.From(E1) | move.To(C1),
+			want: true,
+		},
+		{
+			name: "black short castle pseudo legal",
+			fen:  "4k2r/8/8/8/8/8/8/4K3 b k - 0 1",
+			move: move.From(E8) | move.To(G8),
+			want: true,
+		},
+		{
+			name: "black long castle pseudo legal",
+			fen:  "r3k3/8/8/8/8/8/8/4K3 b q - 0 1",
+			move: move.From(E8) | move.To(C8),
 			want: true,
 		},
 		{
