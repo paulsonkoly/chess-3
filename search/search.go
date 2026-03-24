@@ -310,10 +310,10 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		quiet := captured == NoPiece && m.Promo() == NoPiece
 
 		// SEE pruning
-		if ply != 0 && maxim > -Inf+MaxPlies && hasLegal && d < 7 {
-			margin := Score(-84)
+		if ply != 0 && maxim > -Inf+MaxPlies && hasLegal && d < Depth(params.SEEPruningDepthLimit) {
+			margin := Score(params.SEEPruningQuietMargin)
 			if !quiet {
-				margin = (Score(d) * -35)
+				margin = (Score(d) * Score(params.SEEPruningNoisyMargin))
 			}
 
 			if !heur.SEE(b, m, Score(d)*margin) {
