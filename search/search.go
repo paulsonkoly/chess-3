@@ -307,9 +307,21 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 		moved := b.SquaresToPiece[m.From()]
 		captured := b.SquaresToPiece[b.CaptureSq(m)]
+		quiet := captured == NoPiece && m.Promo() == NoPiece
+
+		// SEE pruning
+		if ply != 0 && maxim > -Inf+MaxPlies && hasLegal && d < 7 {
+			margin := Score(-84)
+			if !quiet {
+				margin = (Score(d) * -35)
+			}
+
+			if !heur.SEE(b, m, Score(d)*margin) {
+				continue
+			}
+		}
 
 		r := b.MakeMove(m)
-
 		if b.InCheck(b.STM.Flip()) {
 			b.UndoMove(m, r)
 			continue
@@ -322,7 +334,6 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 		var value Score
 
-		quiet := captured == NoPiece && m.Promo() == NoPiece
 		if quiet {
 			quietCnt++
 		}
