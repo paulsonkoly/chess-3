@@ -26,6 +26,10 @@ func TestStack(t *testing.T) {
 	assert.Equal(t, 7, v, "top of stack <3, 7>")
 	assert.True(t, ok, "top of stack <3, 7>")
 
+	v, ok = s.Top(1)
+	assert.Equal(t, 3, v, "top of stack <3, 7>")
+	assert.True(t, ok, "top of stack <3, 7>")
+
 	s.Pop()
 	v, ok = s.Top(0)
 	assert.Equal(t, 3, v, "top of stack <3>")
