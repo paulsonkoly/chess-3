@@ -17,7 +17,7 @@ func New[T any]() *Stack[T] {
 	return &Stack[T]{}
 }
 
-// Reset clear out the stack.
+// Reset clears out the stack.
 func (s *Stack[T]) Reset() {
 	s.sp = 0
 }
