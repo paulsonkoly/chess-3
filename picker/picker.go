@@ -13,13 +13,16 @@ import (
 
 // Picker is the move iterator for a given position.
 type Picker struct {
-	board    *board.Board
-	ms       *move.Store
-	ranker   *heur.MoveRanker
-	hstack   *stack.Stack[heur.StackMove]
-	ix       int
-	hashMove move.Move
-	state    state
+	board      *board.Board
+	ms         *move.Store
+	ply        Depth
+	killerIx   int
+	ranker     *heur.MoveRanker
+	hstack     *stack.Stack[heur.StackMove]
+	ix         int
+	killerMove move.Move
+	hashMove   move.Move
+	state      state
 }
 
 type state byte
@@ -28,6 +31,7 @@ const (
 	pickHash state = iota
 	genNoisy
 	yieldGoodNoisy
+	pickKiller
 	genQuiet
 	yieldRest
 )
@@ -39,10 +43,18 @@ func New(
 	b *board.Board,
 	hashMove move.Move,
 	ms *move.Store,
+	ply Depth,
 	ranker *heur.MoveRanker,
 	hstack *stack.Stack[heur.StackMove],
 ) Picker {
-	return Picker{board: b, hashMove: hashMove, ms: ms, hstack: hstack, ranker: ranker}
+	return Picker{
+		board:    b,
+		hashMove: hashMove,
+		ply:      ply,
+		ms:       ms,
+		hstack:   hstack,
+		ranker:   ranker,
+	}
 }
 
 func (p *Picker) Next() bool {
@@ -66,7 +78,7 @@ func (p *Picker) Next() bool {
 		moves := p.ms.Frame()
 
 		for i := p.ix; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
+			if moves[i].Move == p.hashMove {
 				// hash move was already yielded
 				moves[i].Weight = -heur.HashMove
 			} else {
@@ -94,7 +106,20 @@ func (p *Picker) Next() bool {
 			return true
 		}
 
+		p.state = pickKiller
+		fallthrough
+
+	case pickKiller:
 		p.state = genQuiet
+		killer := p.ranker.Killer(p.ply)
+
+		if killer != 0 && p.board.IsPseudoLegal(killer) && killer != p.hashMove {
+			p.killerMove = killer
+			p.allocAt(killer, heur.KillerMove, p.ix)
+			p.ix++
+			return true
+		}
+
 		fallthrough
 
 	case genQuiet:
@@ -105,8 +130,7 @@ func (p *Picker) Next() bool {
 		moves := p.ms.Frame()
 
 		for i := quietStart; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
-				// hash move was already yielded
+			if moves[i].Move == p.hashMove || moves[i].Move == p.killerMove {
 				moves[i].Weight = -heur.HashMove
 			} else {
 				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
@@ -145,4 +169,12 @@ func (p *Picker) Move() *move.Weighted {
 // YieldedMoves returns a slice of yielded moves so far.
 func (p *Picker) YieldedMoves() []move.Weighted {
 	return p.ms.Frame()[:p.ix]
+}
+
+func (p *Picker) allocAt(m move.Move, w Score, ix int) {
+	weighted := p.ms.Alloc(m)
+	moves := p.ms.Frame()
+	endIx := len(moves) - 1
+	weighted.Weight = w
+	moves[ix], moves[endIx] = moves[endIx], moves[ix]
 }
