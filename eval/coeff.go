@@ -29,8 +29,8 @@ type CoeffSet[T ScoreType] struct {
 	MobilityBishop [2][14]T
 	MobilityRook   [2][15]T
 
-	// KnightOutpost is a per square bonus for a knight being on an outpost, indexed by queenside, central, kingside.
-	// counting the 5 ranks covering sideOfBoard.
+	// KnightOutpost is a bonus for a knight being on an outpost, indexed by queenside, central, kingside.
+	// outposts considered on 4th, 5th, and 6th ranks from the knight's color perspective.
 	KnightOutpost [2][3]T
 	// Knight is behind an either enemy, or friendly pawn.
 	KnightBehindPawn [2]T
