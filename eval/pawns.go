@@ -6,10 +6,6 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-// the player's side of the board with the extra 2 central squares included at
-// enemy side.
-var sideOfBoard = [2]BitBoard{0x00000018_ffffffff, 0xffffffff_18000000}
-
 type pawns struct {
 	pawns      [2]BitBoard
 	cover      [2]BitBoard
