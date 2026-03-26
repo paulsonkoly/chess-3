@@ -414,7 +414,7 @@ func (sp *scorePair[T]) addOutposts(b *board.Board, pw *pieceWise, pawns *pawns,
 
 		knights := b.Pieces[Knight] & b.Colors[color] & outposts
 		for ; knights != 0; knights &= knights - 1 {
-			// the square table ix 0 is A6 ix 23 ix H4
+			// the square table ix0 is A6 ix23 is H4
 			sq := knights.LowestSet().FromPerspectiveOf(color.Flip()) - 16
 
 			sp.mg[color] += c.KnightOutpost[0][sq]
