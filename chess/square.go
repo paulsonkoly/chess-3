@@ -102,6 +102,11 @@ const (
 	RankMask = Square(7 << 3)
 )
 
+// FromPerspectiveOf for White returns s unchanged, for Black vertically flipped.
+func (s Square) FromPerspectiveOf(c Color) Square {
+	return ((64 - Square(c)) & 56) ^ s
+}
+
 func SquareAt(file Coord, rank Coord) Square {
 	return Square(rank*8)&RankMask + Square(file)&FileMask
 }

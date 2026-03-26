@@ -408,21 +408,18 @@ func (sp *scorePair[T]) addOutposts(b *board.Board, pw *pieceWise, pawns *pawns,
 		ranks := FourthRankBB | FifthRankBB | RankBB(SixthRank.FromPerspectiveOf(color))
 		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0] & ranks
 
-		knights := b.Pieces[Knight] & b.Colors[color] & outposts
-		queenSideCnt := T((knights & (AFileBB | BFileBB)).Count())
-		centralCnt := T((knights & (CFileBB | DFileBB | EFileBB | FFileBB)).Count())
-		kingSideCnt := T((knights & (GFileBB | HFileBB)).Count())
-
-		sp.mg[color] += c.KnightOutpost[0][0] * queenSideCnt
-		sp.eg[color] += c.KnightOutpost[1][0] * queenSideCnt
-		sp.mg[color] += c.KnightOutpost[0][1] * centralCnt
-		sp.eg[color] += c.KnightOutpost[1][1] * centralCnt
-		sp.mg[color] += c.KnightOutpost[0][2] * kingSideCnt
-		sp.eg[color] += c.KnightOutpost[1][2] * kingSideCnt
-
 		bishopCnt := T((b.Pieces[Bishop] & b.Colors[color] & outposts).Count())
 		sp.mg[color] += c.BishopOutpost[0] * bishopCnt
 		sp.eg[color] += c.BishopOutpost[1] * bishopCnt
+
+		knights := b.Pieces[Knight] & b.Colors[color] & outposts
+		for ; knights != 0; knights &= knights - 1 {
+			// the square table ix 0 is A6 ix 23 ix H4
+			sq := knights.LowestSet().FromPerspectiveOf(color.Flip()) - 16
+
+			sp.mg[color] += c.KnightOutpost[0][sq]
+			sp.eg[color] += c.KnightOutpost[1][sq]
+		}
 	}
 }
 
