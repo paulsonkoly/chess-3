@@ -14,6 +14,8 @@ type CoeffSet[T ScoreType] struct {
 	KingAttackPieces [4]T
 	// SafeChecks is the bonus per piece type for being able to give a safe check.
 	SafeChecks [4]T
+	// UnsafeChecks is the bonus per piece type for being able to give an unsafe check.
+	UnsafeChecks [4]T
 	// KingShelter is the bonus for damage on the opponent's king shelter.
 	KingShelter [1]T
 	// KingAttackMagnitude encodes the importance of attacking the enemy king.
