@@ -16,8 +16,12 @@ func (ka *kingAttacks[T]) addAttackPieces(color Color, pType Piece, attacks BitB
 	}
 }
 
-func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, safeChecks BitBoard, c *CoeffSet[T]) {
-	ka.accum[color] += c.SafeChecks[pType-Knight] * T(safeChecks.Count())
+func (ka *kingAttacks[T]) addSafeChecks(color Color, pType Piece, checks BitBoard, c *CoeffSet[T]) {
+	ka.accum[color] += c.SafeChecks[pType-Knight] * T(checks.Count())
+}
+
+func (ka *kingAttacks[T]) addUnsafeChecks(color Color, pType Piece, checks BitBoard, c *CoeffSet[T]) {
+	ka.accum[color] += c.UnsafeChecks[pType-Knight] * T(checks.Count())
 }
 
 func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {

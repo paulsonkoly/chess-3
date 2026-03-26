@@ -30,7 +30,7 @@ var DefaultTargets = []string{
 	"PieceValues",
 	"TempoBonus",
 	"MobilityKnight", "MobilityBishop", "MobilityRook",
-	"KingAttackPieces", "SafeChecks", "KingShelter", "KingAttackMagnitude",
+	"KingAttackPieces", "SafeChecks", "UnsafeChecks", "KingShelter", "KingAttackMagnitude",
 	"ProtectedPasser", "PasserKingDist", "PasserRank", "DoubledPawns", "IsolatedPawns",
 	"Threats", "SafePawnThreats",
 	"KnightOutpost", "KnightBehindPawn",

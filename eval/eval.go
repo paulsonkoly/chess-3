@@ -133,31 +133,33 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	for color := White; color <= Black; color++ {
 		eCover := pw.cover[color.Flip()]
 
-		var safeChecks BitBoard
-
 		// Queen
 		eKAttack := pw.kingRays[color.Flip()][0] | pw.kingRays[color.Flip()][Rook-Bishop]
-		safeChecks = pw.attacks[color][Queen-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
+		checks := pw.attacks[color][Queen-Pawn] & eKAttack & ^b.Colors[color]
 
-		ka.addSafeChecks(color, Queen, safeChecks, c)
+		ka.addSafeChecks(color, Queen, checks&^eCover, c)
+		ka.addUnsafeChecks(color, Queen, checks&eCover, c)
 
 		// Rook
 		eKAttack = pw.kingRays[color.Flip()][Rook-Bishop]
-		safeChecks = pw.attacks[color][Rook-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
+		checks = pw.attacks[color][Rook-Pawn] & eKAttack & ^b.Colors[color]
 
-		ka.addSafeChecks(color, Rook, safeChecks, c)
+		ka.addSafeChecks(color, Rook, checks&^eCover, c)
+		ka.addUnsafeChecks(color, Rook, checks&eCover, c)
 
 		// Bishop
 		eKAttack = pw.kingRays[color.Flip()][0]
-		safeChecks = pw.attacks[color][Bishop-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
+		checks = pw.attacks[color][Bishop-Pawn] & eKAttack & ^b.Colors[color]
 
-		ka.addSafeChecks(color, Bishop, safeChecks, c)
+		ka.addSafeChecks(color, Bishop, checks&^eCover, c)
+		ka.addUnsafeChecks(color, Bishop, checks&eCover, c)
 
 		// Knight
 		eKAttack = attacks.KnightMoves(pw.kingSq[color.Flip()])
-		safeChecks = pw.attacks[color][Knight-Pawn] & eKAttack & ^eCover & ^b.Colors[color]
+		checks = pw.attacks[color][Knight-Pawn] & eKAttack & ^b.Colors[color]
 
-		ka.addSafeChecks(color, Knight, safeChecks, c)
+		ka.addSafeChecks(color, Knight, checks&^eCover, c)
+		ka.addUnsafeChecks(color, Knight, checks&eCover, c)
 
 		// shelter
 		pCnt := (pw.kingNb[color] & b.Colors[color] & b.Pieces[Pawn]).Count()
