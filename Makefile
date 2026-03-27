@@ -1,6 +1,6 @@
 EXE=chess3
 # only enable SPSA for SPSA tuning.
-SPSA ?= 0
+SPSA ?= 1
 
 GIT_VERSION := $(shell git describe --tags --always --dirty)
 
