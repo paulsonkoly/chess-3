@@ -115,24 +115,15 @@ func (p *Picker) Next() bool {
 			}
 		}
 
-		p.split = partialSort(moves[p.ix:], -300)
+		p.split = partialSort(moves[p.ix:], -100) + p.ix
 
 		fallthrough
 
 	case yieldGtSplit:
 		moves := p.ms.Frame()
 
-		maxim := -heur.HashMove + 1
-		best := -1
-		for i := p.ix; i < p.split; i++ {
-			if maxim < moves[i].Weight {
-				maxim = moves[i].Weight
-				best = i
-			}
-		}
-
-		if best != -1 {
-			moves[p.ix], moves[best] = moves[best], moves[p.ix]
+		if best, ok := findMax(moves[p.ix:p.split], -heur.HashMove); ok {
+			moves[p.ix], moves[best+p.ix] = moves[best+p.ix], moves[p.ix]
 			p.ix++
 			return true
 		}
@@ -143,17 +134,8 @@ func (p *Picker) Next() bool {
 	case yieldLeSplit:
 		moves := p.ms.Frame()
 
-		maxim := -heur.HashMove + 1
-		best := -1
-		for i := p.ix; i < len(moves); i++ {
-			if maxim < moves[i].Weight {
-				maxim = moves[i].Weight
-				best = i
-			}
-		}
-
-		if best != -1 {
-			moves[p.ix], moves[best] = moves[best], moves[p.ix]
+		if best, ok := findMax(moves[p.ix:], -heur.HashMove); ok {
+			moves[p.ix], moves[best+p.ix] = moves[best+p.ix], moves[p.ix]
 			p.ix++
 			return true
 		}
@@ -173,6 +155,18 @@ func (p *Picker) Move() *move.Weighted {
 // YieldedMoves returns a slice of yielded moves so far.
 func (p *Picker) YieldedMoves() []move.Weighted {
 	return p.ms.Frame()[:p.ix]
+}
+
+func findMax(moves []move.Weighted, threshold Score) (ix int, ok bool) {
+	maxim := threshold
+	for i := range moves {
+		if maxim < moves[i].Weight {
+			maxim = moves[i].Weight
+			ix = i
+			ok = true
+		}
+	}
+	return
 }
 
 func partialSort(moves []move.Weighted, threshold Score) int {
