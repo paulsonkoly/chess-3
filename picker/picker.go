@@ -132,8 +132,6 @@ func (p *Picker) Next() bool {
 			p.ix++
 			return true
 		}
-
-		p.state = yieldLeSplit
 	}
 
 	return false

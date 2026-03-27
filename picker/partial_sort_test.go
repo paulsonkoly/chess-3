@@ -82,11 +82,11 @@ func FuzzPartialSort(f *testing.F) {
 		idx := partialSort(moves, threshold)
 
 		for _, m := range moves[:idx] {
-			assert.Greater(t, m.Weight, thr)
+			assert.Greater(t, m.Weight, threshold)
 		}
 
 		for _, m := range moves[idx:] {
-			assert.LessOrEqual(t, m.Weight, thr)
+			assert.LessOrEqual(t, m.Weight, threshold)
 		}
 	})
 }
