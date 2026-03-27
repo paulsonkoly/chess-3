@@ -146,3 +146,21 @@ func (p *Picker) Move() *move.Weighted {
 func (p *Picker) YieldedMoves() []move.Weighted {
 	return p.ms.Frame()[:p.ix]
 }
+
+func partialSort(moves []move.Weighted, threshold Score) int {
+	i := 0
+	j := len(moves) - 1
+	for i <= j {
+		for i < len(moves) && moves[i].Weight > threshold {
+			i++
+		}
+		for j >= 0 && moves[j].Weight <= threshold {
+			j--
+		}
+		if i >= j {
+			return i
+		}
+		moves[i], moves[j] = moves[j], moves[i]
+	}
+	return i
+}
