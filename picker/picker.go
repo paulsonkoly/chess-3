@@ -34,6 +34,8 @@ const (
 	yieldLeSplit
 )
 
+const splitScore = Score(-100)
+
 // New creates a new move iterator for the position represented by b.
 // hashMove will be yielded first. ms points to the move store. ranker points
 // to heur.Ranker. hstack points to the history stack.
@@ -81,17 +83,8 @@ func (p *Picker) Next() bool {
 	case yieldGoodNoisy:
 		moves := p.ms.Frame()
 
-		maxim := Score(0) // start at 0 to filter out bad noisy
-		best := -1
-		for i := p.ix; i < len(moves); i++ {
-			if maxim < moves[i].Weight {
-				maxim = moves[i].Weight
-				best = i
-			}
-		}
-
-		if best != -1 {
-			moves[p.ix], moves[best] = moves[best], moves[p.ix]
+		if best, ok := findMax(moves[p.ix:], 0); ok {
+			moves[p.ix], moves[best+p.ix] = moves[best+p.ix], moves[p.ix]
 			p.ix++
 			return true
 		}
@@ -115,7 +108,7 @@ func (p *Picker) Next() bool {
 			}
 		}
 
-		p.split = partialSort(moves[p.ix:], -100) + p.ix
+		p.split = partialSort(moves[p.ix:], splitScore) + p.ix
 
 		fallthrough
 
