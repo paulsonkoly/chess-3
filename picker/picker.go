@@ -18,6 +18,7 @@ type Picker struct {
 	ranker   *heur.MoveRanker
 	hstack   *stack.Stack[heur.StackMove]
 	ix       int
+	split    int
 	hashMove move.Move
 	state    state
 }
@@ -29,7 +30,8 @@ const (
 	genNoisy
 	yieldGoodNoisy
 	genQuiet
-	yieldRest
+	yieldGtSplit
+	yieldLeSplit
 )
 
 // New creates a new move iterator for the position represented by b.
@@ -98,7 +100,7 @@ func (p *Picker) Next() bool {
 		fallthrough
 
 	case genQuiet:
-		p.state = yieldRest
+		p.state = yieldGtSplit
 
 		quietStart := len(p.ms.Frame())
 		movegen.GenNotNoisy(p.ms, p.board)
@@ -112,9 +114,33 @@ func (p *Picker) Next() bool {
 				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
 			}
 		}
+
+		p.split = partialSort(moves[p.ix:], -300)
+
 		fallthrough
 
-	case yieldRest:
+	case yieldGtSplit:
+		moves := p.ms.Frame()
+
+		maxim := -heur.HashMove + 1
+		best := -1
+		for i := p.ix; i < p.split; i++ {
+			if maxim < moves[i].Weight {
+				maxim = moves[i].Weight
+				best = i
+			}
+		}
+
+		if best != -1 {
+			moves[p.ix], moves[best] = moves[best], moves[p.ix]
+			p.ix++
+			return true
+		}
+
+		p.state = yieldLeSplit
+		fallthrough
+
+	case yieldLeSplit:
 		moves := p.ms.Frame()
 
 		maxim := -heur.HashMove + 1
@@ -131,6 +157,8 @@ func (p *Picker) Next() bool {
 			p.ix++
 			return true
 		}
+
+		p.state = yieldLeSplit
 	}
 
 	return false

@@ -64,14 +64,17 @@ func TestPartialSort(t *testing.T) {
 }
 
 func FuzzPartialSort(f *testing.F) {
-	f.Fuzz(func(t *testing.T, data []byte, thr byte) {
+	f.Fuzz(func(t *testing.T, data []byte, thr int16) {
 		if len(data) == 0 {
 			return
 		}
 
 		moves := make([]move.Weighted, len(data))
 		for i, d := range data {
-			moves[i] = move.Weighted{Weight: Score(d)}
+			x := uint32(d) * 0x45d9f3b
+			x ^= (x >> 16)
+			w := Score(x) - (1 << 14)
+			moves[i] = move.Weighted{Weight: w}
 		}
 
 		threshold := Score(thr)
