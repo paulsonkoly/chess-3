@@ -21,7 +21,7 @@ func BishopMoves(from Square, occ BitBoard) BitBoard {
 	magic := bishopMagics[from]
 	shift := bishopShifts[from]
 
-	return bishopAttacks[from][((occ&mask)*magic)>>(64-shift)]
+	return bishopAttacks[from][((occ&mask)*magic)>>shift]
 }
 
 // RookMoves is the bitbord set where a rook can move to from from. It does not
@@ -32,7 +32,7 @@ func RookMoves(from Square, occ BitBoard) BitBoard {
 	magic := rookMagics[from]
 	shift := rookShifts[from]
 
-	return rookAttacks[from][((occ&mask)*magic)>>(64-shift)]
+	return rookAttacks[from][((occ&mask)*magic)>>shift]
 }
 
 // PawnCaptureMoves is the bitboard set where the pawns of color color can
