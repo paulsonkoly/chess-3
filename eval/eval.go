@@ -406,15 +406,14 @@ func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
 func (sp *scorePair[T]) addOutposts(b *board.Board, pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
 	for color := range Colors {
 		ranks := FourthRankBB | FifthRankBB | RankBB(SixthRank.FromPerspectiveOf(color))
-		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0]
+		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0] & b.Colors[color]
 
-		bishopCnt := T((b.Pieces[Bishop] & b.Colors[color] & outposts & ranks).Count())
+		bishopCnt := T((b.Pieces[Bishop] & outposts & ranks).Count())
 		sp.mg[color] += c.BishopOutpost[0] * bishopCnt
 		sp.eg[color] += c.BishopOutpost[1] * bishopCnt
 
 		ranks |= RankBB(SeventhRank.FromPerspectiveOf(color))
-
-		knights := b.Pieces[Knight] & b.Colors[color] & outposts & ranks
+		knights := b.Pieces[Knight] & outposts & ranks
 		for ; knights != 0; knights &= knights - 1 {
 			// the square table ix0 is A7 ix32 is H4
 			sq := knights.LowestSet().FromPerspectiveOf(color.Flip()) - 8
