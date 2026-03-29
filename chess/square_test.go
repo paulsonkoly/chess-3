@@ -31,7 +31,7 @@ func TestSquareString(t *testing.T) {
 	}
 }
 
-func TestFromPerspectiveOf(t *testing.T) {
+func TestRankFromPerspectiveOf(t *testing.T) {
 	tests := [...]struct {
 		rank Coord
 		side Color
@@ -44,6 +44,23 @@ func TestFromPerspectiveOf(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("rank %d side %d", tt.rank+1, tt.side), func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.rank.FromPerspectiveOf(tt.side))
+		})
+	}
+}
+
+func TestSquareFromPerspectiveOf(t *testing.T) {
+	tests := [...]struct {
+		square Square
+		side   Color
+		want   Square
+	}{
+		{E2, White, E2},
+		{D6, Black, D3},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("sq %s side %d", tt.square, tt.side), func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.square.FromPerspectiveOf(tt.side))
 		})
 	}
 }

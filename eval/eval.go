@@ -53,6 +53,8 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addDoubledPawns(&pawns, c)
 	sp.addIsolatedPawns(&pawns, c)
 
+	sp.addOutposts(b, &pw, &pawns, c)
+
 	ka := kingAttacks[T]{}
 
 	for color := White; color <= Black; color++ {
@@ -83,8 +85,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 			sp.addPSqT(color, Rook, sq, c)
 		}
 
-		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0]
-
 		// bishops
 		for pieces := b.Pieces[Bishop] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
@@ -93,7 +93,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			ka.addAttackPieces(color, Bishop, attacks, eKNb, c)
 			sp.addBishopMobility(b, color, attacks, c)
-			sp.addBishopOutposts(color, sq, outposts, c)
 			sp.addPSqT(color, Bishop, sq, c)
 		}
 
@@ -106,7 +105,6 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 			ka.addAttackPieces(color, Knight, attacks, eKNb, c)
 			sp.addKnightMobility(b, color, attacks, pw.attacks[color.Flip()][0], c)
-			sp.addKnightOutposts(color, sq, outposts&sideOfBoard[color.Flip()], c)
 			sp.addPSqT(color, Knight, sq, c)
 		}
 
@@ -398,11 +396,31 @@ func (sp *scorePair[T]) addDoubledPawns(pawns *pawns, c *CoeffSet[T]) {
 }
 
 func (sp *scorePair[T]) addIsolatedPawns(pawns *pawns, c *CoeffSet[T]) {
-
 	for color := White; color <= Black; color++ {
 		isoCnt := T(pawns.isolatedPawns(color).Count())
 		sp.mg[color] += c.IsolatedPawns[0] * isoCnt
 		sp.eg[color] += c.IsolatedPawns[1] * isoCnt
+	}
+}
+
+func (sp *scorePair[T]) addOutposts(b *board.Board, pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
+	for color := range Colors {
+		ranks := FourthRankBB | FifthRankBB | RankBB(SixthRank.FromPerspectiveOf(color))
+		outposts := pawns.holes(color.Flip()) & pw.attacks[color][0] & b.Colors[color]
+
+		bishopCnt := T((b.Pieces[Bishop] & outposts & ranks).Count())
+		sp.mg[color] += c.BishopOutpost[0] * bishopCnt
+		sp.eg[color] += c.BishopOutpost[1] * bishopCnt
+
+		ranks |= RankBB(SeventhRank.FromPerspectiveOf(color))
+		knights := b.Pieces[Knight] & outposts & ranks
+		for ; knights != 0; knights &= knights - 1 {
+			// the square table ix0 is A7 ix32 is H4
+			sq := knights.LowestSet().FromPerspectiveOf(color.Flip()) - 8
+
+			sp.mg[color] += c.KnightOutpost[0][sq]
+			sp.eg[color] += c.KnightOutpost[1][sq]
+		}
 	}
 }
 
@@ -500,18 +518,9 @@ func (pw *pieceWise) calcBishopAttacks(color Color, sq Square) BitBoard {
 }
 
 func (sp *scorePair[T]) addBishopMobility(b *board.Board, color Color, attacks BitBoard, c *CoeffSet[T]) {
-
 	mobCnt := (attacks & ^b.Colors[color]).Count()
 	sp.mg[color] += c.MobilityBishop[0][mobCnt]
 	sp.eg[color] += c.MobilityBishop[1][mobCnt]
-}
-
-func (sp *scorePair[T]) addBishopOutposts(color Color, sq Square, outposts BitBoard, c *CoeffSet[T]) {
-	rank := sq.Rank().FromPerspectiveOf(color)
-	if BitBoard(1)<<sq&outposts != 0 && FourthRank <= rank && rank <= SixthRank {
-		sp.mg[color] += c.BishopOutpost[0]
-		sp.eg[color] += c.BishopOutpost[1]
-	}
 }
 
 func (pw *pieceWise) calcKnightAttacks(color Color, sq Square) BitBoard {
@@ -533,18 +542,6 @@ func (sp *scorePair[T]) addKnightMobility(
 	sp.mg[color] += c.MobilityKnight[0][mobCnt]
 	sp.eg[color] += c.MobilityKnight[1][mobCnt]
 
-}
-
-func (sp *scorePair[T]) addKnightOutposts(color Color, sq Square, holes BitBoard, c *CoeffSet[T]) {
-	// calculate knight outputs
-	if (BitBoard(1)<<sq)&holes != 0 {
-		// the hole square is from the enemy's perspective, white's in black's territory
-		if color == White {
-			sq ^= 56
-		}
-		sp.mg[color] += c.KnightOutpost[0][sq]
-		sp.eg[color] += c.KnightOutpost[1][sq]
-	}
 }
 
 func (sp *scorePair[T]) addKnightBehindPawn(b *board.Board, color Color, c *CoeffSet[T]) {
