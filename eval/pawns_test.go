@@ -198,10 +198,16 @@ func TestBackMost(t *testing.T) {
 		{"startpos black", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Black, SeventhRankBB},
 		{"empty board", "4k3/8/8/8/8/8/8/4K3 w - - 0 1", White, 0},
 		{
-			"complex example",
+			"white complex example",
 			"4k3/8/6p1/3P2P1/P5P1/P1P1P1P1/4P3/4K3 w - - 0 1",
 			White,
 			BitBoardFromSquares(A3, C3, D5, E2, G3),
+		},
+		{
+			"white complex example",
+			"4k3/8/p2p2p1/p1pp4/3p4/8/P7/K7 w - - 0 1",
+			Black,
+			BitBoardFromSquares(A6, C5, D6, G6),
 		},
 	}
 
