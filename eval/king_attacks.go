@@ -44,13 +44,13 @@ func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) 
 		{
 			fileBB := FileBB(central & 7)
 
-			storm := frontLine & fileBB
-			if dist := Abs(kRank - storm.LowestSet().Rank()); 0 <= dist && dist <= 6 {
+			if storm := frontLine & fileBB; storm != 0 {
+				dist := Abs(kRank - storm.LowestSet().Rank())
 				ka.accum[color] += c.KingStorm[0][dist]
 			}
 
-			shelter := backMost & fileBB
-			if dist := Abs(kRank - shelter.LowestSet().Rank()); 0 <= dist && dist <= 6 {
+			if shelter := backMost & fileBB; shelter != 0 {
+				dist := Abs(kRank - shelter.LowestSet().Rank())
 				ka.accum[color] -= c.KingShelter[0][dist]
 			} else {
 				ka.accum[color] += c.KingOpenFile[0]
@@ -61,13 +61,13 @@ func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) 
 		{
 			fileBB := FileBB(front & 7)
 
-			storm := frontLine & fileBB
-			if dist := Abs(kRank - storm.LowestSet().Rank()); 0 <= dist && dist <= 6 {
+			if storm := frontLine & fileBB; storm != 0 {
+				dist := Abs(kRank - storm.LowestSet().Rank())
 				ka.accum[color] += c.KingStorm[1][dist]
 			}
 
-			shelter := backMost & fileBB
-			if dist := Abs(kRank - shelter.LowestSet().Rank()); 0 <= dist && dist <= 6 {
+			if shelter := backMost & fileBB; shelter != 0 {
+				dist := Abs(kRank - shelter.LowestSet().Rank())
 				ka.accum[color] -= c.KingShelter[1][dist]
 			} else {
 				ka.accum[color] += c.KingOpenFile[1]
@@ -81,13 +81,13 @@ func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) 
 			}
 			fileBB := FileBB(side & 7)
 
-			storm := frontLine & fileBB
-			if dist := Abs(kRank - storm.LowestSet().Rank()); 0 <= dist && dist <= 6 {
+			if storm := frontLine & fileBB; storm != 0 {
+				dist := Abs(kRank - storm.LowestSet().Rank())
 				ka.accum[color] += c.KingStorm[2][dist]
 			}
 
-			shelter := backMost & fileBB
-			if dist := Abs(kRank - shelter.LowestSet().Rank()); 0 <= dist && dist <= 6 {
+			if shelter := backMost & fileBB; shelter != 0 {
+				dist := Abs(kRank - shelter.LowestSet().Rank())
 				ka.accum[color] -= c.KingShelter[2][dist]
 			} else {
 				ka.accum[color] += c.KingOpenFile[2]
