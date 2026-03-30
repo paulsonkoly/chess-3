@@ -140,7 +140,6 @@ TempoBonus: [2]Score{   26,   18},
 KingAttackPieces: [4]Score{    7,    7,    6,    6},
 SafeChecks: [4]Score{   12,    6,   13,    7},
 UnsafeChecks: [4]Score{    3,    3,    6,    3},
-KingShelter: [1]Score{    6},
 KingAttackMagnitude: [2]Score{   72,  -16},
 PawnlessFlank: [2]Score{  -40,  -72},
 MobilityKnight: [2][9]Score{

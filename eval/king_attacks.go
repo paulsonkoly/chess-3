@@ -24,8 +24,41 @@ func (ka *kingAttacks[T]) addUnsafeChecks(color Color, pType Piece, checks BitBo
 	ka.accum[color] += c.UnsafeChecks[pType-Knight] * T(checks.Count())
 }
 
-func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
-	ka.accum[color.Flip()] += c.KingShelter[0] * penalty
+func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
+	for color := range Colors {
+		eKing := pw.kingSq[color]
+		kFile := int(eKing.File())
+
+		front := pawns.frontLine[color]
+		back := pawns.backMost[color.Flip()]
+
+		for ix := range 3 {
+			var file int
+			if kFile >= int(EFile) {
+				file = kFile + ix - 1
+			} else {
+				file = kFile + 1 - ix
+			}
+			if file < 0 || file >= 8 {
+				continue
+			}
+			fileBB := FileBB(Coord(file))
+
+			storm := front & fileBB
+			if storm != 0 {
+				dist := Abs(eKing.Rank()-storm.LowestSet().Rank()) & 7 // help compiler with bounds checks.
+				ka.accum[color] += c.KingStorm[ix][dist]
+			}
+
+			shelter := back & fileBB
+			if shelter == 0 {
+				ka.accum[color] += c.KingOpenFile[ix]
+			} else {
+				dist := Abs(eKing.Rank()-shelter.LowestSet().Rank()) & 7
+				ka.accum[color] -= c.KingShelter[ix][dist]
+			}
+		}
+	}
 }
 
 func (ka *kingAttacks[T]) sigmoidal(color Color) T {
