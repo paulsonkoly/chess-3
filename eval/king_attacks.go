@@ -3,6 +3,7 @@ package eval
 import (
 	"math"
 
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
@@ -24,38 +25,83 @@ func (ka *kingAttacks[T]) addUnsafeChecks(color Color, pType Piece, checks BitBo
 	ka.accum[color] += c.UnsafeChecks[pType-Knight] * T(checks.Count())
 }
 
-func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
+func (ka *kingAttacks[T]) addPawns(b *board.Board, pawns *pawns, c *CoeffSet[T]) {
 	for color := range Colors {
-		eKing := pw.kingSq[color]
-		kFile := int(eKing.File())
+		eKingBB := b.Pieces[King] & b.Colors[color.Flip()]
+		kFile := eKingBB.LowestSet().File()
+		// vertical dist is calculated with bit masks, this eliminates the branching logic of
+		// the equivalent Abs(kingSq.Rank() - pawnSq.Rank()). Assuming king is on G1 and pawn
+		// is on G2, the -1 masks contain A1..F1, A1..F2 respectively. The Xor gives H1..F2,
+		// with pop count of 7, thus dist is (7 + 1) / 8 == 1.
+		kMask := eKingBB - 1
 
-		front := pawns.frontLine[color]
-		back := pawns.backMost[color.Flip()]
+		frontLine := pawns.frontLine[color]
+		backMost := pawns.backMost[color.Flip()]
 
-		for ix := range 3 {
-			var file int
-			if kFile >= int(EFile) {
-				file = kFile + ix - 1
-			} else {
-				file = kFile + 1 - ix
+		var central, front, side Coord
+		if kFile >= EFile {
+			central, front, side = kFile-1, kFile, kFile+1
+		} else {
+			central, front, side = kFile+1, kFile, kFile-1
+		}
+
+		// central
+		{
+			fileBB := FileBB(central)
+
+			storm := frontLine & fileBB
+			dist := uint(((kMask ^ (storm - 1)).Count() + 1) / 8)
+			if dist <= 6 {
+				ka.accum[color] += c.KingStorm[0][dist]
 			}
-			if file < 0 || file >= 8 {
+
+			shelter := backMost & fileBB
+			dist = uint(((kMask ^ (shelter - 1)).Count() + 1) / 8)
+			if dist <= 6 {
+				ka.accum[color] -= c.KingShelter[0][dist]
+			} else {
+				ka.accum[color] += c.KingOpenFile[0]
+			}
+		}
+
+		// front
+		{
+			fileBB := FileBB(front)
+
+			storm := frontLine & fileBB
+			dist := uint(((kMask ^ (storm - 1)).Count() + 1) / 8)
+			if dist <= 6 {
+				ka.accum[color] += c.KingStorm[1][dist]
+			}
+
+			shelter := backMost & fileBB
+			dist = uint(((kMask ^ (shelter - 1)).Count() + 1) / 8)
+			if dist <= 6 {
+				ka.accum[color] -= c.KingShelter[1][dist]
+			} else {
+				ka.accum[color] += c.KingOpenFile[1]
+			}
+		}
+
+		// side
+		{
+			if side < 0 || side >= 8 {
 				continue
 			}
-			fileBB := FileBB(Coord(file))
+			fileBB := FileBB(side)
 
-			storm := front & fileBB
-			if storm != 0 {
-				dist := Abs(eKing.Rank()-storm.LowestSet().Rank()) & 7 // help compiler with bounds checks.
-				ka.accum[color] += c.KingStorm[ix][dist]
+			storm := frontLine & fileBB
+			dist := uint(((kMask ^ (storm - 1)).Count() + 1) / 8)
+			if dist <= 6 {
+				ka.accum[color] += c.KingStorm[2][dist]
 			}
 
-			shelter := back & fileBB
-			if shelter == 0 {
-				ka.accum[color] += c.KingOpenFile[ix]
+			shelter := backMost & fileBB
+			dist = uint(((kMask ^ (shelter - 1)).Count() + 1) / 8)
+			if dist <= 6 {
+				ka.accum[color] -= c.KingShelter[2][dist]
 			} else {
-				dist := Abs(eKing.Rank()-shelter.LowestSet().Rank()) & 7
-				ka.accum[color] -= c.KingShelter[ix][dist]
+				ka.accum[color] += c.KingOpenFile[2]
 			}
 		}
 	}

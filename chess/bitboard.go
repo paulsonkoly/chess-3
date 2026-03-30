@@ -64,7 +64,7 @@ var files = [...]BitBoard{
 }
 
 // FileBB is the BitBoard with bits set for the file.
-func FileBB(file Coord) BitBoard { return files[file] }
+func FileBB(file Coord) BitBoard { return files[file&7] }
 
 var fileCluster = [...]BitBoard{
 	AFileBB | BFileBB | CFileBB, AFileBB | BFileBB | CFileBB | DFileBB, AFileBB | BFileBB | CFileBB | DFileBB,

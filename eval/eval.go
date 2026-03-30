@@ -162,7 +162,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 		ka.addUnsafeChecks(color, Knight, checks&eCover, c)
 	}
 
-	ka.addPawns(&pw, &pawns, c)
+	ka.addPawns(b, &pawns, c)
 
 	sp.addKingAttacks(ka, c)
 
