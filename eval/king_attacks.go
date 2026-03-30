@@ -3,7 +3,6 @@ package eval
 import (
 	"math"
 
-	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
@@ -25,15 +24,11 @@ func (ka *kingAttacks[T]) addUnsafeChecks(color Color, pType Piece, checks BitBo
 	ka.accum[color] += c.UnsafeChecks[pType-Knight] * T(checks.Count())
 }
 
-func (ka *kingAttacks[T]) addPawns(b *board.Board, pawns *pawns, c *CoeffSet[T]) {
+func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
 	for color := range Colors {
-		eKingBB := b.Pieces[King] & b.Colors[color.Flip()]
-		kFile := eKingBB.LowestSet().File()
-		// vertical dist is calculated with bit masks, this eliminates the branching logic of
-		// the equivalent Abs(kingSq.Rank() - pawnSq.Rank()). Assuming king is on G1 and pawn
-		// is on G2, the -1 masks contain A1..F1, A1..F2 respectively. The Xor gives H1..F2,
-		// with pop count of 7, thus dist is (7 + 1) / 8 == 1.
-		kMask := eKingBB - 1
+		eKing := pw.kingSq[color.Flip()]
+		kFile := eKing.File()
+		kRank := eKing.Rank()
 
 		frontLine := pawns.frontLine[color]
 		backMost := pawns.backMost[color.Flip()]
@@ -47,17 +42,15 @@ func (ka *kingAttacks[T]) addPawns(b *board.Board, pawns *pawns, c *CoeffSet[T])
 
 		// central
 		{
-			fileBB := FileBB(central)
+			fileBB := FileBB(central & 7)
 
 			storm := frontLine & fileBB
-			dist := uint(((kMask ^ (storm - 1)).Count() + 1) / 8)
-			if dist <= 6 {
+			if dist := Abs(kRank - storm.LowestSet().Rank()); 0 <= dist && dist <= 6 {
 				ka.accum[color] += c.KingStorm[0][dist]
 			}
 
 			shelter := backMost & fileBB
-			dist = uint(((kMask ^ (shelter - 1)).Count() + 1) / 8)
-			if dist <= 6 {
+			if dist := Abs(kRank - shelter.LowestSet().Rank()); 0 <= dist && dist <= 6 {
 				ka.accum[color] -= c.KingShelter[0][dist]
 			} else {
 				ka.accum[color] += c.KingOpenFile[0]
@@ -66,17 +59,15 @@ func (ka *kingAttacks[T]) addPawns(b *board.Board, pawns *pawns, c *CoeffSet[T])
 
 		// front
 		{
-			fileBB := FileBB(front)
+			fileBB := FileBB(front & 7)
 
 			storm := frontLine & fileBB
-			dist := uint(((kMask ^ (storm - 1)).Count() + 1) / 8)
-			if dist <= 6 {
+			if dist := Abs(kRank - storm.LowestSet().Rank()); 0 <= dist && dist <= 6 {
 				ka.accum[color] += c.KingStorm[1][dist]
 			}
 
 			shelter := backMost & fileBB
-			dist = uint(((kMask ^ (shelter - 1)).Count() + 1) / 8)
-			if dist <= 6 {
+			if dist := Abs(kRank - shelter.LowestSet().Rank()); 0 <= dist && dist <= 6 {
 				ka.accum[color] -= c.KingShelter[1][dist]
 			} else {
 				ka.accum[color] += c.KingOpenFile[1]
@@ -88,17 +79,15 @@ func (ka *kingAttacks[T]) addPawns(b *board.Board, pawns *pawns, c *CoeffSet[T])
 			if side < 0 || side >= 8 {
 				continue
 			}
-			fileBB := FileBB(side)
+			fileBB := FileBB(side & 7)
 
 			storm := frontLine & fileBB
-			dist := uint(((kMask ^ (storm - 1)).Count() + 1) / 8)
-			if dist <= 6 {
+			if dist := Abs(kRank - storm.LowestSet().Rank()); 0 <= dist && dist <= 6 {
 				ka.accum[color] += c.KingStorm[2][dist]
 			}
 
 			shelter := backMost & fileBB
-			dist = uint(((kMask ^ (shelter - 1)).Count() + 1) / 8)
-			if dist <= 6 {
+			if dist := Abs(kRank - shelter.LowestSet().Rank()); 0 <= dist && dist <= 6 {
 				ka.accum[color] -= c.KingShelter[2][dist]
 			} else {
 				ka.accum[color] += c.KingOpenFile[2]
