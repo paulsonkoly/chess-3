@@ -122,7 +122,7 @@ var sigm = [...]Score{
 
 func sigmoidal[T ScoreType](n T) T {
 	if _, ok := (any(n)).(Score); ok {
-		return T(sigm[Clamp(int(n), 0, len(sigm)-1)])
+		return T(sigm[Clamp(int(n-20), 0, len(sigm)-1)])
 	}
-	return T(600.0 / (1.0 + math.Exp(-0.1*(float64(n)-50.0))))
+	return T(600.0 / (1.0 + math.Exp(-0.1*(float64(n)-70.0))))
 }
