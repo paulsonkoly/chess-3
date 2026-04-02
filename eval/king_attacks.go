@@ -24,8 +24,76 @@ func (ka *kingAttacks[T]) addUnsafeChecks(color Color, pType Piece, checks BitBo
 	ka.accum[color] += c.UnsafeChecks[pType-Knight] * T(checks.Count())
 }
 
-func (ka *kingAttacks[T]) addShelter(color Color, penalty T, c *CoeffSet[T]) {
-	ka.accum[color.Flip()] += c.KingShelter[0] * penalty
+func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
+	for color := range Colors {
+		eKing := pw.kingSq[color.Flip()]
+		kFile := eKing.File()
+		kRank := eKing.Rank()
+
+		frontLine := pawns.frontLine[color]
+		backMost := pawns.backMost[color.Flip()]
+
+		var central, front, side Coord
+		if kFile >= EFile {
+			central, front, side = kFile-1, kFile, kFile+1
+		} else {
+			central, front, side = kFile+1, kFile, kFile-1
+		}
+
+		// central
+		{
+			fileBB := FileBB(central & 7)
+
+			if storm := frontLine & fileBB; storm != 0 {
+				dist := Abs(kRank - storm.LowestSet().Rank())
+				ka.accum[color] += c.KingStorm[0][dist]
+			}
+
+			if shelter := backMost & fileBB; shelter != 0 {
+				dist := Abs(kRank - shelter.LowestSet().Rank())
+				ka.accum[color] -= c.KingShelter[0][dist]
+			} else {
+				ka.accum[color] += c.KingOpenFile[0]
+			}
+		}
+
+		// front
+		{
+			fileBB := FileBB(front & 7)
+
+			if storm := frontLine & fileBB; storm != 0 {
+				dist := Abs(kRank - storm.LowestSet().Rank())
+				ka.accum[color] += c.KingStorm[1][dist]
+			}
+
+			if shelter := backMost & fileBB; shelter != 0 {
+				dist := Abs(kRank - shelter.LowestSet().Rank())
+				ka.accum[color] -= c.KingShelter[1][dist]
+			} else {
+				ka.accum[color] += c.KingOpenFile[1]
+			}
+		}
+
+		// side
+		{
+			if side < 0 || side >= 8 {
+				continue
+			}
+			fileBB := FileBB(side & 7)
+
+			if storm := frontLine & fileBB; storm != 0 {
+				dist := Abs(kRank - storm.LowestSet().Rank())
+				ka.accum[color] += c.KingStorm[2][dist]
+			}
+
+			if shelter := backMost & fileBB; shelter != 0 {
+				dist := Abs(kRank - shelter.LowestSet().Rank())
+				ka.accum[color] -= c.KingShelter[2][dist]
+			} else {
+				ka.accum[color] += c.KingOpenFile[2]
+			}
+		}
+	}
 }
 
 func (ka *kingAttacks[T]) sigmoidal(color Color) T {

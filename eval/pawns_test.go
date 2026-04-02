@@ -158,3 +158,71 @@ func TestIsolatedPawns(t *testing.T) {
 		})
 	}
 }
+
+func TestFrontLine(t *testing.T) {
+	tests := [...]struct {
+		name  string
+		fen   string
+		color Color
+		want  BitBoard
+	}{
+		{"startpos white", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", White, SecondRankBB},
+		{"startpos black", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Black, SeventhRankBB},
+		{"empty board", "4k3/8/8/8/8/8/8/4K3 w - - 0 1", White, 0},
+		{
+			"white complex example",
+			"4k3/8/6p1/3P2P1/P5P1/P1P1P1P1/4P3/4K3 w - - 0 1",
+			White,
+			BitBoardFromSquares(A4, C3, D5, E3, G5),
+		},
+		{
+			"black complex example",
+			"4k3/8/2p3p1/p1p3p1/2P1p1p1/p7/8/4K3 b - - 0 1",
+			Black,
+			BitBoardFromSquares(A3, C5, E4, G4),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Must(board.FromFEN(tt.fen))
+			pawns := pawns{}
+			pawns.calcPawns(b)
+			assert.Equal(t, tt.want, pawns.frontLine[tt.color], "fen %s color %v", tt.fen, tt.color)
+		})
+	}
+}
+
+func TestBackMost(t *testing.T) {
+	tests := [...]struct {
+		name  string
+		fen   string
+		color Color
+		want  BitBoard
+	}{
+		{"startpos white", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", White, SecondRankBB},
+		{"startpos black", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Black, SeventhRankBB},
+		{"empty board", "4k3/8/8/8/8/8/8/4K3 w - - 0 1", White, 0},
+		{
+			"white complex example",
+			"4k3/8/6p1/3P2P1/P5P1/P1P1P1P1/4P3/4K3 w - - 0 1",
+			White,
+			BitBoardFromSquares(A3, C3, D5, E2, G3),
+		},
+		{
+			"black complex example",
+			"4k3/8/p2p2p1/p1pp4/3p4/8/P7/K7 w - - 0 1",
+			Black,
+			BitBoardFromSquares(A6, C5, D6, G6),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Must(board.FromFEN(tt.fen))
+			pawns := pawns{}
+			pawns.calcPawns(b)
+			assert.Equal(t, tt.want, pawns.backMost[tt.color], "fen %s color %v", tt.fen, tt.color)
+		})
+	}
+}

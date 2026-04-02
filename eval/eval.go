@@ -130,7 +130,7 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 	sp.addThreats(b, &pw, c)
 
 	// safe checks
-	for color := White; color <= Black; color++ {
+	for color := range Colors {
 		eCover := pw.cover[color.Flip()]
 
 		// Queen
@@ -160,13 +160,9 @@ func Eval[T ScoreType](b *board.Board, c *CoeffSet[T]) T {
 
 		ka.addSafeChecks(color, Knight, checks&^eCover, c)
 		ka.addUnsafeChecks(color, Knight, checks&eCover, c)
-
-		// shelter
-		pCnt := (pw.kingNb[color] & b.Colors[color] & b.Pieces[Pawn]).Count()
-		penalty := T(max(3-pCnt, 0))
-
-		ka.addShelter(color, penalty, c)
 	}
+
+	ka.addPawns(&pw, &pawns, c)
 
 	sp.addKingAttacks(ka, c)
 

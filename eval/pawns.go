@@ -14,6 +14,7 @@ type pawns struct {
 	pawns      [2]BitBoard
 	cover      [2]BitBoard
 	frontLine  [2]BitBoard
+	backMost   [2]BitBoard
 	frontSpan  [2]BitBoard
 	neighbourF [2]BitBoard // neighbourF is files adjacent to files with pawns
 }
@@ -33,6 +34,7 @@ func (p *pawns) calcPawns(b *board.Board) {
 	}
 
 	p.frontLine = [...]BitBoard{^rearSpan[White] & ps[White], ^rearSpan[Black] & ps[Black]}
+	p.backMost = [...]BitBoard{^p.frontSpan[White] & ps[White], ^p.frontSpan[Black] & ps[Black]}
 
 	p.cover = [...]BitBoard{
 		((p.frontSpan[White] & ^AFileBB) >> 1) | ((p.frontSpan[White] & ^HFileBB) << 1),
