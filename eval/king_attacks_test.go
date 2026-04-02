@@ -9,10 +9,9 @@ import (
 
 func TestSigmoidal(t *testing.T) {
 	const (
-		rangeStart = Score(-50)
-		rangeEnd   = Score(49)
+		rangeEnd = Score(100)
 	)
-	for i := rangeStart; i < rangeEnd; i++ {
+	for i := range rangeEnd {
 		iVal := sigmoidal(i)
 		fVal := sigmoidal(float64(i))
 

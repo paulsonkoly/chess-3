@@ -100,12 +100,12 @@ func (ka *kingAttacks[T]) sigmoidal(color Color) T {
 	return sigmoidal(ka.accum[color])
 }
 
-// def f(x) = 600.fdiv(1+Math.exp(-0.1*(x)))
+// def f(x) = 600.fdiv(1+Math.exp(-0.1*(x-50)))
 //
 // 100.times.map { |x| f(x).round }.each_slice(10).to_a
 //
 // where 600 is the maximal bonus for attack, 0.1 is the steepness of the
-// sigmoid, and 0 is the inflection point, implying a -50..50 range for king
+// sigmoid, and 50 is the inflection point, implying a 0-100 range for king
 // attack score.
 var sigm = [...]Score{
 	4, 4, 5, 5, 6, 7, 7, 8, 9, 10,
@@ -122,7 +122,7 @@ var sigm = [...]Score{
 
 func sigmoidal[T ScoreType](n T) T {
 	if _, ok := (any(n)).(Score); ok {
-		return T(sigm[Clamp(int(n+50), 0, len(sigm)-1)])
+		return T(sigm[Clamp(int(n), 0, len(sigm)-1)])
 	}
-	return T(600.0 / (1.0 + math.Exp(-0.1*(float64(n)))))
+	return T(600.0 / (1.0 + math.Exp(-0.1*(float64(n)-50.0))))
 }
