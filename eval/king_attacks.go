@@ -3,6 +3,7 @@ package eval
 import (
 	"math"
 
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
@@ -24,7 +25,34 @@ func (ka *kingAttacks[T]) addUnsafeChecks(color Color, pType Piece, checks BitBo
 	ka.accum[color] += c.UnsafeChecks[pType-Knight] * T(checks.Count())
 }
 
-func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
+type pawnCacheEntry struct {
+	hash   board.Hash
+	scores [Colors]Score
+}
+
+const pawnCacheSize = 256
+
+var pawnCache [pawnCacheSize]pawnCacheEntry
+
+func (ka *kingAttacks[T]) addPawns(b *board.Board, pw *pieceWise, pawns *pawns, c *CoeffSet[T]) {
+	var (
+		t     T
+		hash  board.Hash
+		accum [2]T
+	)
+
+	if _, ok := any(t).(Score); ok {
+		wKHash := board.PiecesRand[White][King][pw.kingSq[White]]
+		bKHash := board.PiecesRand[Black][King][pw.kingSq[Black]]
+		hash = b.Hashes().Pawn ^ wKHash ^ bKHash
+
+		if pawnCache[hash%pawnCacheSize].hash == hash {
+			ka.accum[White] += T(pawnCache[hash%pawnCacheSize].scores[White])
+			ka.accum[Black] += T(pawnCache[hash%pawnCacheSize].scores[Black])
+			return
+		}
+	}
+
 	for color := range Colors {
 		eKing := pw.kingSq[color.Flip()]
 		kFile := eKing.File()
@@ -46,14 +74,14 @@ func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) 
 
 			if storm := frontLine & fileBB; storm != 0 {
 				dist := Abs(kRank - storm.LowestSet().Rank())
-				ka.accum[color] += c.KingStorm[0][dist]
+				accum[color] += c.KingStorm[0][dist]
 			}
 
 			if shelter := backMost & fileBB; shelter != 0 {
 				dist := Abs(kRank - shelter.LowestSet().Rank())
-				ka.accum[color] -= c.KingShelter[0][dist]
+				accum[color] -= c.KingShelter[0][dist]
 			} else {
-				ka.accum[color] += c.KingOpenFile[0]
+				accum[color] += c.KingOpenFile[0]
 			}
 		}
 
@@ -63,14 +91,14 @@ func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) 
 
 			if storm := frontLine & fileBB; storm != 0 {
 				dist := Abs(kRank - storm.LowestSet().Rank())
-				ka.accum[color] += c.KingStorm[1][dist]
+				accum[color] += c.KingStorm[1][dist]
 			}
 
 			if shelter := backMost & fileBB; shelter != 0 {
 				dist := Abs(kRank - shelter.LowestSet().Rank())
-				ka.accum[color] -= c.KingShelter[1][dist]
+				accum[color] -= c.KingShelter[1][dist]
 			} else {
-				ka.accum[color] += c.KingOpenFile[1]
+				accum[color] += c.KingOpenFile[1]
 			}
 		}
 
@@ -83,16 +111,25 @@ func (ka *kingAttacks[T]) addPawns(pw *pieceWise, pawns *pawns, c *CoeffSet[T]) 
 
 			if storm := frontLine & fileBB; storm != 0 {
 				dist := Abs(kRank - storm.LowestSet().Rank())
-				ka.accum[color] += c.KingStorm[2][dist]
+				accum[color] += c.KingStorm[2][dist]
 			}
 
 			if shelter := backMost & fileBB; shelter != 0 {
 				dist := Abs(kRank - shelter.LowestSet().Rank())
-				ka.accum[color] -= c.KingShelter[2][dist]
+				accum[color] -= c.KingShelter[2][dist]
 			} else {
-				ka.accum[color] += c.KingOpenFile[2]
+				accum[color] += c.KingOpenFile[2]
 			}
 		}
+	}
+
+	ka.accum[White] += accum[White]
+	ka.accum[Black] += accum[Black]
+
+	if _, ok := any(t).(Score); ok {
+		pawnCache[hash%pawnCacheSize].hash = hash
+		pawnCache[hash%pawnCacheSize].scores[White] = Score(accum[White])
+		pawnCache[hash%pawnCacheSize].scores[Black] = Score(accum[Black])
 	}
 }
 

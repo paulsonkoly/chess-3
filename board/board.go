@@ -10,7 +10,7 @@ type Board struct {
 	SquaresToPiece [64]Piece
 	Pieces         [7]BitBoard
 	Colors         [2]BitBoard
-	hashes         []Hash
+	hashes         []Hashes
 	fullMoves      int
 	STM            Color
 	EnPassant      Square
@@ -22,16 +22,16 @@ func StartPos() *Board {
 	return Must(FromFEN(StartPosFEN))
 }
 
-// Hash is the last Zobrist hash in the move history of b.
-func (b *Board) Hash() Hash {
+// Hashes is the last set of Zobrist hashes in the move history of b.
+func (b *Board) Hashes() Hashes {
 	return b.hashes[len(b.hashes)-1]
 }
 
-// ResetHash removes all previous hash history and sets it to contain the
+// ResetHashes removes all previous hash history and sets it to contain the
 // current position hash.
-func (b *Board) ResetHash() {
+func (b *Board) ResetHashes() {
 	if cap(b.hashes) == 0 {
-		b.hashes = make([]Hash, 0, 128)
+		b.hashes = make([]Hashes, 0, 128)
 	} else {
 		b.hashes = b.hashes[:0]
 	}
@@ -95,7 +95,7 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 
 	b.fullMoves += int(b.STM)
 
-	hash := b.Hash()
+	hashes := b.Hashes()
 
 	piece := b.SquaresToPiece[m.From()]
 	canEnPassant := piece == Pawn && Abs(m.From()-m.To()) == 16 && b.CanEnPassant(m.To())
@@ -111,10 +111,10 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 		b.FiftyCnt++
 	}
 
-	hash ^= castlingRand[0] & hashEnable[(castlingChange>>0)&1]
-	hash ^= castlingRand[1] & hashEnable[(castlingChange>>1)&1]
-	hash ^= castlingRand[2] & hashEnable[(castlingChange>>2)&1]
-	hash ^= castlingRand[3] & hashEnable[(castlingChange>>3)&1]
+	hashes.Xor(NoPiece, castlingRand[0]&hashEnable[(castlingChange>>0)&1])
+	hashes.Xor(NoPiece, castlingRand[1]&hashEnable[(castlingChange>>1)&1])
+	hashes.Xor(NoPiece, castlingRand[2]&hashEnable[(castlingChange>>2)&1])
+	hashes.Xor(NoPiece, castlingRand[3]&hashEnable[(castlingChange>>3)&1])
 
 	b.Castles ^= castlingChange
 	r.setCastlingChange(castlingChange)
@@ -125,18 +125,18 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 		putPiece = m.Promo()
 	}
 
-	hash ^= b.removePiece(b.STM.Flip(), capture, captureSq)
-	hash ^= b.removePiece(b.STM, piece, m.From())
-	hash ^= b.addPiece(b.STM, putPiece, m.To())
+	hashes.Xor(capture, b.removePiece(b.STM.Flip(), capture, captureSq))
+	hashes.Xor(piece, b.removePiece(b.STM, piece, m.From()))
+	hashes.Xor(putPiece, b.addPiece(b.STM, putPiece, m.To()))
 
 	if b.EnPassant != 0 {
-		hash ^= epFileRand[b.EnPassant.File()] // remove old enPassant
+		hashes.NonPawn ^= epFileRand[b.EnPassant.File()] // remove old enPassant
 	}
 
 	newEnPassant := Square(0)
 	if canEnPassant {
 		newEnPassant = (m.From() + m.To()) / 2
-		hash ^= epFileRand[newEnPassant.File()]
+		hashes.NonPawn ^= epFileRand[newEnPassant.File()]
 	}
 
 	r.setEnPassantChange(b.EnPassant ^ newEnPassant)
@@ -146,27 +146,27 @@ func (b *Board) MakeMove(m move.Move) Reverse {
 		switch {
 
 		case m.From() == E1 && m.To() == G1:
-			hash ^= b.removePiece(b.STM, Rook, H1)
-			hash ^= b.addPiece(b.STM, Rook, F1)
+			hashes.Xor(NoPiece, b.removePiece(b.STM, Rook, H1))
+			hashes.Xor(NoPiece, b.addPiece(b.STM, Rook, F1))
 
 		case m.From() == E1 && m.To() == C1:
-			hash ^= b.removePiece(b.STM, Rook, A1)
-			hash ^= b.addPiece(b.STM, Rook, D1)
+			hashes.Xor(NoPiece, b.removePiece(b.STM, Rook, A1))
+			hashes.Xor(NoPiece, b.addPiece(b.STM, Rook, D1))
 
 		case m.From() == E8 && m.To() == G8:
-			hash ^= b.removePiece(b.STM, Rook, H8)
-			hash ^= b.addPiece(b.STM, Rook, F8)
+			hashes.Xor(NoPiece, b.removePiece(b.STM, Rook, H8))
+			hashes.Xor(NoPiece, b.addPiece(b.STM, Rook, F8))
 
 		case m.From() == E8 && m.To() == C8:
-			hash ^= b.removePiece(b.STM, Rook, A8)
-			hash ^= b.addPiece(b.STM, Rook, D8)
+			hashes.Xor(NoPiece, b.removePiece(b.STM, Rook, A8))
+			hashes.Xor(NoPiece, b.addPiece(b.STM, Rook, D8))
 		}
 	}
 
 	b.STM = b.STM.Flip()
-	hash ^= stmRand
+	hashes.NonPawn ^= stmRand
 
-	b.hashes = append(b.hashes, hash)
+	b.hashes = append(b.hashes, hashes)
 
 	// b.consistencyCheck()
 
@@ -256,7 +256,7 @@ func (b *Board) addPiece(c Color, p Piece, sq Square) Hash {
 	b.Pieces[p] |= BitBoard(1) << sq
 	b.SquaresToPiece[sq] = p
 
-	return piecesRand[c][p][sq]
+	return PiecesRand[c][p][sq]
 }
 
 func (b *Board) removePiece(c Color, p Piece, sq Square) Hash {
@@ -267,25 +267,25 @@ func (b *Board) removePiece(c Color, p Piece, sq Square) Hash {
 	b.Pieces[p] &= ^(BitBoard(1) << sq)
 	b.SquaresToPiece[sq] = NoPiece
 
-	return piecesRand[c][p][sq]
+	return PiecesRand[c][p][sq]
 }
 
 // MakeNullMove makes a null move on b. Passes to the opponent. It returns enP
 // which needs to be passed to UndoNullMove unchanged.
 func (b *Board) MakeNullMove() Reverse {
 	var r Reverse
-	hash := b.hashes[len(b.hashes)-1]
+	hashes := b.hashes[len(b.hashes)-1]
 
 	if b.EnPassant != 0 {
 		r.setEnPassantChange(b.EnPassant)
-		hash ^= epFileRand[b.EnPassant.File()]
+		hashes.Xor(NoPiece, epFileRand[b.EnPassant.File()])
 		b.EnPassant = 0
 	}
 
 	b.STM = b.STM.Flip()
-	hash ^= stmRand
+	hashes.Xor(NoPiece, stmRand)
 
-	b.hashes = append(b.hashes, hash)
+	b.hashes = append(b.hashes, hashes)
 	// b.consistencyCheck()
 	return r
 }

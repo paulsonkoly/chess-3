@@ -215,7 +215,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 	}
 
 	var hashMove move.Move
-	if transpE, ok := s.tt.LookUp(b.Hash()); ok {
+	if transpE, ok := s.tt.LookUp(b.Hashes().Full()); ok {
 		hashMove = transpE.Move
 
 		if nType != PVNode && transpE.Depth() >= d {
@@ -389,7 +389,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		if value > alpha {
 			if value >= beta {
 				// store node as fail high (cut-node)
-				s.tt.Insert(b.Hash(), s.gen, d, ply, m, value, transp.LowerBound)
+				s.tt.Insert(b.Hashes().Full(), s.gen, d, ply, m, value, transp.LowerBound)
 				s.ranker.FailHigh(d, b, pck.YieldedMoves(), s.hstack)
 				if opts.Debug {
 					opts.Counters.Moves += moveCnt
@@ -438,9 +438,9 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	if failLow {
 		// store node as fail low (All-node)
-		s.tt.Insert(b.Hash(), s.gen, d, ply, 0, maxim, transp.UpperBound)
+		s.tt.Insert(b.Hashes().Full(), s.gen, d, ply, 0, maxim, transp.UpperBound)
 	} else {
-		s.tt.Insert(b.Hash(), s.gen, d, ply, bestMove, maxim, transp.Exact)
+		s.tt.Insert(b.Hashes().Full(), s.gen, d, ply, bestMove, maxim, transp.Exact)
 	}
 
 	return maxim
@@ -522,7 +522,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	}
 
 	transpT := s.tt
-	if transpE, ok := transpT.LookUp(b.Hash()); ok {
+	if transpE, ok := transpT.LookUp(b.Hashes().Full()); ok {
 		tpVal := transpE.Value(ply)
 
 		switch transpE.Type() {
@@ -604,7 +604,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		b.UndoMove(m.Move, r)
 
 		if curr >= beta {
-			transpT.Insert(b.Hash(), s.gen, 0, ply, m.Move, curr, transp.LowerBound)
+			transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, m.Move, curr, transp.LowerBound)
 			return curr
 		}
 		maxim = max(maxim, curr)
@@ -615,7 +615,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		}
 	}
 
-	transpT.Insert(b.Hash(), s.gen, 0, ply, 0, maxim, transp.UpperBound)
+	transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, 0, maxim, transp.UpperBound)
 
 	return maxim
 }

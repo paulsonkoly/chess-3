@@ -17,7 +17,7 @@ func FromFEN(fen string) (*Board, error) {
 		return nil, err
 	}
 
-	b.ResetHash()
+	b.ResetHashes()
 
 	return &b, nil
 }
