@@ -18,7 +18,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.4'
+        go-version: '1.26.0'
 
     - name: Test
       run: go test -v ./...
@@ -32,7 +32,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.4'
+        go-version: '1.26.0'
 
     - name: Build
       run: go build -tags spsa -o chess3.spsa
@@ -46,7 +46,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26.0'
 
     - name: Build
       working-directory: tools/tuner
@@ -61,7 +61,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26.0'
 
     - name: Build
       working-directory: tools/datagen
@@ -76,7 +76,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26.0'
 
     - name: Build
       working-directory: tools/extract

@@ -1,6 +1,6 @@
 module github.com/paulsonkoly/chess-3/tools/datagen
 
-go 1.25.4
+go 1.26.0
 
 require (
 	github.com/paulsonkoly/chess-3 v0.0.0-20251130153033-5218374a5199
