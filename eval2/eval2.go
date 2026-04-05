@@ -150,6 +150,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 	e.addTempo(b, c)
 	e.addBishopPair(c)
 	e.addPawns(b, c)
+	e.addPawnlessFlank(b, c)
 	e.addThreats(b, c)
 	e.addChecks(b, c)
 	e.addStormShelter(c)

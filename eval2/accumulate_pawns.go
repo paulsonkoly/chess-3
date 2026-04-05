@@ -11,7 +11,6 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 		e.addPassers(b, color, c)
 		e.addDoubledPawns(pawns, color, c)
 		e.addIsolatedPawns(pawns, color, c)
-		e.addPawnlessFlank(pawns, color, c)
 	}
 }
 
@@ -89,10 +88,13 @@ func (e *Eval[T]) isolatedPawns(pawns BitBoard, color Color) BitBoard {
 	return pawns &^ e.pawns[color].neighbourF
 }
 
-func (e *Eval[T]) addPawnlessFlank(pawns BitBoard, color Color, c *CoeffSet[T]) {
-	if FileCluster(e.kings[color].sq.File())&pawns == 0 {
-		e.sp[color][MG] += c.PawnlessFlank[MG]
-		e.sp[color][EG] += c.PawnlessFlank[EG]
+func (e *Eval[T]) addPawnlessFlank(b *board.Board, c *CoeffSet[T]) {
+	pawns := b.Pieces[Pawn]
+	for color := range Colors {
+		if FileCluster(e.kings[color].sq.File())&pawns == 0 {
+			e.sp[color][MG] += c.PawnlessFlank[MG]
+			e.sp[color][EG] += c.PawnlessFlank[EG]
+		}
 	}
 }
 

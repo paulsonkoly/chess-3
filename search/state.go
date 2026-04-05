@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/paulsonkoly/chess-3/eval2"
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/stack"
@@ -20,6 +21,7 @@ type Search struct {
 	ms      *move.Store
 	hstack  *stack.Stack[heur.StackMove]
 	pv      *pv
+	eval    *eval2.Eval[Score]
 	gen     transp.Gen
 	aborted bool
 }
@@ -31,6 +33,7 @@ func New(size int) *Search {
 		ms:     move.NewStore(),
 		ranker: heur.NewMoveRanker(),
 		hstack: stack.New[heur.StackMove](),
+		eval:   eval2.New[Score](),
 		pv:     newPV(),
 	}
 }

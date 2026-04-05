@@ -10,7 +10,6 @@ func (p *Pawns) calc(b *board.Board, color Color) {
 	pawns := b.Colors[color] & b.Pieces[Pawn]
 
 	p.frontspan = attacks.PawnSinglePushMoves(frontFill(pawns, color), color)
-
 	rearSpan := attacks.PawnSinglePushMoves(frontFill(pawns, color.Flip()), color.Flip())
 
 	files := pawns | p.frontspan | rearSpan
