@@ -9,7 +9,8 @@ import (
 func (p *Pawns) calc(b *board.Board, color Color) {
 	pawns := b.Colors[color] & b.Pieces[Pawn]
 
-	p.frontspan = attacks.PawnSinglePushMoves(frontFill(pawns, color), color)
+	frontfill := frontFill(pawns, color)
+	p.frontspan = attacks.PawnSinglePushMoves(frontfill, color)
 	rearSpan := attacks.PawnSinglePushMoves(frontFill(pawns, color.Flip()), color.Flip())
 
 	files := pawns | p.frontspan | rearSpan
@@ -17,7 +18,7 @@ func (p *Pawns) calc(b *board.Board, color Color) {
 
 	p.frontline = ^rearSpan & pawns
 	p.backmost = ^p.frontspan & pawns
-	p.cover = attacks.PawnCaptureMoves(p.frontspan, color)
+	p.cover = attacks.PawnCaptureMoves(frontfill, color)
 }
 
 func frontFill(b BitBoard, color Color) BitBoard {
