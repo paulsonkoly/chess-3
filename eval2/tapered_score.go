@@ -32,3 +32,7 @@ func (e *Eval[T]) taperedScore(b *board.Board) T {
 	v := mgScore*T(mgPhase) + egScore*T(egPhase)
 	return v / MaxBlend
 }
+
+func (e *Eval[T]) endgameScore(b *board.Board) T {
+	return e.sp[b.STM][EG] - e.sp[b.STM.Flip()][EG]
+}

@@ -47,20 +47,27 @@ func New[T ScoreType]() *Eval[T] {
 }
 
 func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
+	e.sp = [Colors][Phases]T{}
+	e.kingAttacks = [Colors]T{}
+	e.attacks = [Colors][Pieces]BitBoard{}
+
 	e.calcCounts(b)
 
 	if e.insufficient(b) {
 		return 0
 	}
 
+	// special case checkmate patterns
+	if e.isKNBvK(b) { // knight and bishop checkmate
+		e.KNBvK(b, c)
+
+		return e.endgameScore(b)
+	}
+
 	for color := range Colors {
 		e.pawns[color].calc(b, color)
 		e.kings[color].calc(b, color)
 	}
-
-	e.sp = [Colors][Phases]T{}
-	e.kingAttacks = [Colors]T{}
-	e.attacks = [Colors][Pieces]BitBoard{}
 
 	for color := range Colors {
 		pawns := b.Colors[color] & b.Pieces[Pawn]

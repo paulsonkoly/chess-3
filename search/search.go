@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/eval"
+	// "github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/eval2"
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
@@ -246,9 +246,9 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 
 	if !inCheck {
 		staticEval = s.eval.Score(b, &eval2.Coefficients)
-		if staticEval != eval.Eval(b, &eval.Coefficients) {
-			panic(b.FEN())
-		}
+		// if staticEval != eval.Eval(b, &eval.Coefficients) {
+		// 	panic(b.FEN())
+		// }
 
 		oldScore := Inv
 		if old, ok := s.hstack.Top(1); ok && old.Score != Inv {
@@ -559,9 +559,9 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	}
 
 	standPat := s.eval.Score(b, &eval2.Coefficients)
-	if standPat != eval.Eval(b, &eval.Coefficients) {
-		panic(b.FEN())
-	}
+	// if standPat != eval.Eval(b, &eval.Coefficients) {
+	// 	panic(b.FEN())
+	// }
 
 	if !inCheck && standPat >= beta {
 		return standPat
