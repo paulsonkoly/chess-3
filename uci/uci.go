@@ -15,7 +15,6 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/debug"
 	"github.com/paulsonkoly/chess-3/eval"
-	"github.com/paulsonkoly/chess-3/eval2"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/params"
 	"github.com/paulsonkoly/chess-3/search"
@@ -228,9 +227,6 @@ func (d *Driver) handleCommand(command string) {
 	case "eval":
 		d.handleEval()
 
-	case "eval2":
-		d.handleEval2()
-
 	case "perft":
 		d.handlePerft(parts[1:])
 
@@ -408,12 +404,7 @@ func parseUCIMove(b *board.Board, uciM string) (move.Move, error) {
 }
 
 func (d *Driver) handleEval() {
-	fmt.Fprintln(d.output, eval.Eval(d.board, &eval.Coefficients))
-}
-
-func (d *Driver) handleEval2() {
-	eval := eval2.New[Score]()
-	fmt.Fprintln(d.output, eval.Score(d.board, &eval2.Coefficients))
+	fmt.Fprintln(d.output, eval.New[Score]().Score(d.board, &eval.Coefficients))
 }
 
 type timeControl struct {

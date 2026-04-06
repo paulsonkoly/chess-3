@@ -1,4 +1,4 @@
-package eval2
+package eval
 
 import (
 	"github.com/paulsonkoly/chess-3/attacks"

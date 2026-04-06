@@ -13,8 +13,6 @@ import (
 	"slices"
 
 	"github.com/paulsonkoly/chess-3/board"
-	"github.com/paulsonkoly/chess-3/eval"
-	"github.com/paulsonkoly/chess-3/eval2"
 	"github.com/paulsonkoly/chess-3/search"
 	"github.com/paulsonkoly/chess-3/transp"
 	"github.com/paulsonkoly/chess-3/uci"
@@ -44,8 +42,6 @@ func main() {
 	// openbench compatibility bench
 	if slices.Contains(os.Args, "bench") {
 		runOBBench()
-	} else if slices.Contains(os.Args, "evalreg") {
-		runEvalReg()
 	} else {
 		uci.NewDriver().Run()
 	}
@@ -114,9 +110,6 @@ var OBBenchSet = [...]string{
 	"2rr2k1/1p4bp/p1q1p1p1/4Pp1n/2PB4/1PN3P1/P3Q2P/2RR2K1 w - f6 0 20",
 	"3br1k1/p1pn3p/1p3n2/5pNq/2P1p3/1PN3PP/P2Q1PB1/4R1K1 w - - 0 23",
 	"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
-	// "r3k2r/2pb1ppp/2p2q2/p2p4/1nP1B3/PP2P3/3N1PPP/R2Q1RK1 b kq - 0 15",
-	// "k7/8/8/8/8/8/5N2/K3B3 b - - 0 1",
-	// "r4r2/2pb1p1k/2pp1p2/p7/1nP5/1P2P2P/P4PP1/R2Q1RK1 w - - 0 19",
 }
 
 func runOBBench() {
@@ -166,22 +159,4 @@ func runOBBench() {
 	} else {
 		fmt.Fprintf(bout, "nps %d\n", 1000*allNodes/int(allTime))
 	}
-}
-
-func runEvalReg() {
-	e2 := eval2.New[Score]()
-	var good, bad int
-	for _, fen := range OBBenchSet {
-		b := Must(board.FromFEN(fen))
-		o := eval.Eval(b, &eval.Coefficients)
-		n := e2.Score(b, &eval2.Coefficients)
-		if o != n {
-			fmt.Printf("%d != %d %s\n", o, n, fen)
-			bad++
-		} else {
-			good++
-		}
-	}
-	total := good + bad
-	fmt.Printf("good: %d/%d bad %d/%d\n", good, total, bad, total)
 }
