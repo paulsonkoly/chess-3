@@ -65,7 +65,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 	e.kingAttacks = [Colors]T{}
 	e.attacks = [Colors][Pieces]BitBoard{}
 
-	if e.insufficient(b) {
+	if insufficient(b) {
 		return 0
 	}
 
