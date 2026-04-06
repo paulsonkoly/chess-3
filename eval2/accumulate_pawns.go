@@ -20,9 +20,7 @@ type PawnKingCache struct {
 }
 
 func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
-	for color := range Colors {
-		e.addPassers(b, color, c)
-	}
+	e.addPassers(b, c)
 
 	var (
 		t     T
@@ -54,6 +52,26 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 		accum[color][MG] += c.IsolatedPawns[MG] * isoCnt
 		accum[color][EG] += c.IsolatedPawns[EG] * isoCnt
 
+		for passers := e.passers(color); passers != 0; passers &= passers - 1 {
+			sq := passers.LowestSet()
+
+			rank := sq / 8
+			if color == Black {
+				rank ^= 7
+			}
+
+			passer := passers & -passers
+
+			// if protected passers add protection bonus
+			if passer&e.attacks[color][Pawn] != 0 {
+				accum[color][MG] += c.ProtectedPasser[MG]
+				accum[color][EG] += c.ProtectedPasser[EG]
+			}
+
+			accum[color][MG] += c.PasserRank[0][rank-1]
+			accum[color][EG] += c.PasserRank[1][rank-1]
+		}
+
 		for pieces := pawns; pieces != 0; pieces &= pieces - 1 {
 			sq := pieces.LowestSet()
 
@@ -83,45 +101,28 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 	}
 }
 
-func (e *Eval[T]) addPassers(b *board.Board, color Color, c *CoeffSet[T]) {
-	passers := e.passers(color)
+func (e *Eval[T]) addPassers(b *board.Board, c *CoeffSet[T]) {
+	// KPR, KPNB
+	if b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Queen] == 0 || b.Pieces[Rook]|b.Pieces[Queen] == 0 {
 
-	// if there is a sole passer
-	if passers != 0 && passers&(passers-1) == 0 {
-		sq := passers.LowestSet()
+		for color := range Colors {
 
-		// KPR, KPNB
-		if b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Queen] == 0 || b.Pieces[Rook]|b.Pieces[Queen] == 0 {
-			qSq := sq % 8
-			if color == White {
-				qSq += 56
+			// if there is a sole passer
+			passers := e.passers(color)
+			if passers != 0 && passers&(passers-1) == 0 {
+				sq := passers.LowestSet()
+
+				qSq := sq % 8
+				if color == White {
+					qSq += 56
+				}
+
+				kingDist := Chebishev(qSq, e.kings[color.Flip()].sq) - Chebishev(qSq, e.kings[color].sq)
+
+				e.sp[color][MG] += c.PasserKingDist[MG] * T(kingDist)
+				e.sp[color][EG] += c.PasserKingDist[EG] * T(kingDist)
 			}
-
-			kingDist := Chebishev(qSq, e.kings[color.Flip()].sq) - Chebishev(qSq, e.kings[color].sq)
-
-			e.sp[color][MG] += c.PasserKingDist[MG] * T(kingDist)
-			e.sp[color][EG] += c.PasserKingDist[EG] * T(kingDist)
 		}
-	}
-
-	for ; passers != 0; passers &= passers - 1 {
-		sq := passers.LowestSet()
-
-		rank := sq / 8
-		if color == Black {
-			rank ^= 7
-		}
-
-		passer := passers & -passers
-
-		// if protected passers add protection bonus
-		if passer&e.attacks[color][Pawn] != 0 {
-			e.sp[color][MG] += c.ProtectedPasser[MG]
-			e.sp[color][EG] += c.ProtectedPasser[EG]
-		}
-
-		e.sp[color][MG] += c.PasserRank[0][rank-1]
-		e.sp[color][EG] += c.PasserRank[1][rank-1]
 	}
 }
 
