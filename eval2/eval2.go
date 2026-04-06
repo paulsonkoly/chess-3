@@ -20,13 +20,15 @@ const (
 )
 
 type Eval[T ScoreType] struct {
-	pieceCounts [Colors][Pieces]int
-	sp          [Colors][Phases]T
-	kingAttacks [Colors]T
-	attacks     [Colors][Pieces]BitBoard
-	cover       [Colors]BitBoard
-	pawns       [Colors]Pawns
-	kings       [Colors]Kings
+	pieceCounts   [Colors][Pieces]int
+	sp            [Colors][Phases]T
+	kingAttacks   [Colors]T
+	attacks       [Colors][Pieces]BitBoard
+	cover         [Colors]BitBoard
+	pawns         [Colors]Pawns
+	kings         [Colors]Kings
+	pawnCache     []PawnCache
+	pawnKingCache []PawnKingCache
 }
 
 type Pawns struct {
@@ -43,7 +45,10 @@ type Kings struct {
 }
 
 func New[T ScoreType]() *Eval[T] {
-	return &Eval[T]{}
+	return &Eval[T]{
+		pawnCache:     make([]PawnCache, PawnCacheSize),
+		pawnKingCache: make([]PawnKingCache, PawnKingCacheSize),
+	}
 }
 
 func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
@@ -142,13 +147,6 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 			e.addPSqT(color, Knight, sq, c)
 		}
 
-		// pawns
-		for pieces := b.Pieces[Pawn] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {
-			sq := pieces.LowestSet()
-
-			e.addPSqT(color, Pawn, sq, c)
-		}
-
 		// king
 		e.addPSqT(color, King, e.kings[color].sq, c)
 	}
@@ -160,7 +158,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 	e.addPawnlessFlank(b, c)
 	e.addThreats(b, c)
 	e.addChecks(b, c)
-	e.addStormShelter(c)
+	e.addStormShelter(b, c)
 
 	e.addKingAttacks(c)
 
