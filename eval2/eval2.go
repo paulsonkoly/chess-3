@@ -20,7 +20,6 @@ const (
 )
 
 type Eval[T ScoreType] struct {
-	pieceCounts   [Colors][Pieces]int
 	sp            [Colors][Phases]T
 	kingAttacks   [Colors]T
 	attacks       [Colors][Pieces]BitBoard
@@ -66,14 +65,12 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 	e.kingAttacks = [Colors]T{}
 	e.attacks = [Colors][Pieces]BitBoard{}
 
-	e.calcCounts(b)
-
 	if e.insufficient(b) {
 		return 0
 	}
 
 	// special case checkmate patterns
-	if e.isKNBvK(b) { // knight and bishop checkmate
+	if isKNBvK(b) { // knight and bishop checkmate
 		e.KNBvK(b, c)
 
 		return e.endgameScore(b)
@@ -110,6 +107,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 
 			e.addKingNBAttack(color, Queen, attacks, eKNb, c)
 			e.addPSqT(color, Queen, sq, c)
+			e.addPieceValue(color, Queen, c)
 		}
 
 		// rooks
@@ -124,6 +122,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 			e.addRookMobility(b, color, attacks, c)
 			e.addRookFiles(b, color, sq, c)
 			e.addPSqT(color, Rook, sq, c)
+			e.addPieceValue(color, Rook, c)
 		}
 
 		outposts := ^e.pawns[color.Flip()].cover & e.attacks[color][Pawn]
@@ -140,6 +139,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 			e.addBishopMobility(b, color, attacks, c)
 			e.addBishopOutposts(color, sq, outposts, c)
 			e.addPSqT(color, Bishop, sq, c)
+			e.addPieceValue(color, Bishop, c)
 		}
 
 		// knights
@@ -155,15 +155,15 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 			e.addKnightMobility(b, color, attacks, c)
 			e.addKnightOutposts(color, sq, outposts, c)
 			e.addPSqT(color, Knight, sq, c)
+			e.addPieceValue(color, Knight, c)
 		}
 
 		// king
 		e.addPSqT(color, King, e.kings[color].sq, c)
 	}
 
-	e.addPieceValues(c)
 	e.addTempo(b, c)
-	e.addBishopPair(c)
+	e.addBishopPair(b, c)
 	e.addPawns(b, c)
 	e.addPawnlessFlank(b, c)
 	e.addThreats(b, c)

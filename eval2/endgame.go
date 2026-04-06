@@ -5,14 +5,16 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-func (e *Eval[T]) isKNBvK(b *board.Board) bool {
-	if b.Pieces[Pawn]|b.Pieces[Rook]|b.Pieces[Queen] != 0 {
-		return false
-	}
-	return (e.pieceCounts[White][Bishop] == 1 && e.pieceCounts[White][Knight] == 1 &&
-		e.pieceCounts[Black][Bishop] == 0 && e.pieceCounts[Black][Knight] == 0) ||
-		(e.pieceCounts[White][Bishop] == 0 && e.pieceCounts[White][Knight] == 0 &&
-			e.pieceCounts[Black][Bishop] == 1 && e.pieceCounts[Black][Knight] == 1)
+func isKNBvK(b *board.Board) bool {
+
+	whiteN := b.Pieces[Knight] & b.Colors[White]
+	blackN := b.Pieces[Knight] & b.Colors[Black]
+	whiteB := b.Pieces[Bishop] & b.Colors[White]
+	blackB := b.Pieces[Bishop] & b.Colors[Black]
+
+	return b.Pieces[Pawn]|b.Pieces[Rook]|b.Pieces[Queen] == 0 &&
+		((whiteN.IsPow2() && whiteB.IsPow2() && (blackN|blackB) == 0) ||
+			(blackN.IsPow2() && blackB.IsPow2() && (whiteN|whiteB) == 0))
 }
 
 // KBCorners are knight-bishop checkmate corners based on parity of square.

@@ -63,6 +63,9 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 
 			accum[color][MG] += c.PSqT[0][sq]
 			accum[color][EG] += c.PSqT[1][sq]
+
+			accum[color][MG] += c.PieceValues[MG][Pawn]
+			accum[color][EG] += c.PieceValues[EG][Pawn]
 		}
 	}
 

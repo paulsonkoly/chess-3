@@ -6,13 +6,9 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-func (e *Eval[T]) addPieceValues(c *CoeffSet[T]) {
-	for color := range Colors {
-		for pType := Pawn; pType <= Queen; pType++ {
-			e.sp[color][MG] += c.PieceValues[MG][pType] * T(e.pieceCounts[color][pType])
-			e.sp[color][EG] += c.PieceValues[EG][pType] * T(e.pieceCounts[color][pType])
-		}
-	}
+func (e *Eval[T]) addPieceValue(color Color, pType Piece, c *CoeffSet[T]) {
+	e.sp[color][MG] += c.PieceValues[MG][pType]
+	e.sp[color][EG] += c.PieceValues[EG][pType]
 }
 
 func (e *Eval[T]) addTempo(b *board.Board, c *CoeffSet[T]) {
@@ -20,10 +16,10 @@ func (e *Eval[T]) addTempo(b *board.Board, c *CoeffSet[T]) {
 	e.sp[b.STM][EG] += c.TempoBonus[EG]
 }
 
-func (e *Eval[T]) addBishopPair(c *CoeffSet[T]) {
+func (e *Eval[T]) addBishopPair(b *board.Board, c *CoeffSet[T]) {
 	for color := range Colors {
-		bishops := e.pieceCounts[color][Bishop]
-		pawns := e.pieceCounts[color][Pawn]
+		bishops := (b.Colors[color] & b.Pieces[Bishop]).Count()
+		pawns := (b.Colors[color] & b.Pieces[Pawn]).Count()
 
 		// technically FEN allows more than 8 pawns
 		pawns = min(pawns, len(c.BishopPair)-1)

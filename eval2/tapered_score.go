@@ -18,7 +18,7 @@ func (e *Eval[T]) taperedScore(b *board.Board) T {
 
 	var phase int
 	for pType := Pawn; pType <= Queen; pType++ {
-		phase += (e.pieceCounts[White][pType] + e.pieceCounts[Black][pType]) * Blend[pType]
+		phase += b.Pieces[pType].Count() * Blend[pType]
 	}
 
 	mgPhase := min(phase, MaxBlend)
