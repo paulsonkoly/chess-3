@@ -1,8 +1,9 @@
 package eval
 
 import (
-	. "github.com/paulsonkoly/chess-3/chess"
 	"math"
+
+	. "github.com/paulsonkoly/chess-3/chess"
 )
 
 // def f(x) = 600.fdiv(1+Math.exp(-0.1*(x-50)))

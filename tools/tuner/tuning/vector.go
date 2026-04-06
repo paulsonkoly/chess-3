@@ -66,11 +66,14 @@ func (v *Vector) Combine(other Vector, comb func(float64, float64) float64) {
 
 // EngineRep is the engine eval structure representation of all known
 // coefficients (including the ones that are not tuned).
-type EngineRep eval.CoeffSet[float64]
+type EngineRep struct {
+	evaluator eval.Eval[float64]
+	coeffs eval.CoeffSet[float64]
+}
 
 // Eval returns the evaluation function result.
 func (e *EngineRep) Eval(b *board.Board) float64 {
-	score := eval.Eval(b, (*eval.CoeffSet[float64])(e))
+	score := e.evaluator.Score(b, &e.coeffs)
 
 	if b.STM == Black {
 		score = -score // convert to side relative
@@ -122,7 +125,7 @@ func convert(dst, src reflect.Value) {
 func (e EngineRep) ToVector(targets []string) Vector {
 	result := Vector{data: make([]float64, 0)}
 
-	unWrap := eval.CoeffSet[float64](e)
+	unWrap := e.coeffs
 	structV := reflect.ValueOf(unWrap)
 	structT := reflect.TypeOf(unWrap)
 
@@ -160,7 +163,7 @@ func getFieldFloats(v reflect.Value) []float64 {
 // SetVector injects the values from v into e based on the tuned coefficients
 // pointed by targets.
 func (e *EngineRep) SetVector(v Vector, targets []string) {
-	unWrap := (*eval.CoeffSet[float64])(e)
+	unWrap := &e.coeffs
 	structV := reflect.ValueOf(unWrap).Elem()
 	structT := reflect.TypeOf(unWrap).Elem()
 	floats := v.data
@@ -205,7 +208,7 @@ func setFieldFloats(dst reflect.Value, floats []float64) int {
 
 // Save saves e in the output stream out, with the header information
 // containing fn, epoch and mse.
-func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error {
+func (e *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error {
 	b := strings.Builder{}
 
 	b.WriteString("package eval\n\n")
@@ -220,7 +223,7 @@ func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	b.WriteString("//nolint:goimports,gofmt,lll\n")
 
 	b.WriteString("var Coefficients = CoeffSet[Score]{\n")
-	unWrap := eval.CoeffSet[float64](*c)
+	unWrap := e.coeffs
 	structV := reflect.ValueOf(unWrap)
 	structT := reflect.TypeOf(unWrap)
 
@@ -301,7 +304,7 @@ func align(indent int) string {
 // TunedParams yields a sequential index and a pointer to each tuned parameter
 // in e. Tuned params are selected by targets.
 func (e *EngineRep) TunedParams(targets []string) iter.Seq2[int, *float64] {
-	unWrap := (*eval.CoeffSet[float64])(e)
+	unWrap := &e.coeffs
 	structV := reflect.ValueOf(unWrap).Elem()
 	structT := reflect.TypeOf(unWrap).Elem()
 	cnt := 0

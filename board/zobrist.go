@@ -9,7 +9,7 @@ import (
 // Hash is a chess position Zobrist hash.
 type Hash uint64
 
-// Hashes is a pair of separate pawns and non-paw Zobrist hashes.
+// Hashes are a pair of separate pawns and non-panw Zobrist hashes.
 type Hashes struct {
 	Pawn    Hash // Pawn is unique per pawn placement
 	NonPawn Hash // NonPawn is unique per non-pawn piece placement + other board states.

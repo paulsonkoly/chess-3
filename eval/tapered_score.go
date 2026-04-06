@@ -1,9 +1,9 @@
 package eval
 
 import (
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
-import "github.com/paulsonkoly/chess-3/board"
 
 // MaxBlend is the sum of pieces on the starting position each piece counted as
 // the corresponding Phase value.
