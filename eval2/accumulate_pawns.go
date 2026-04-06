@@ -5,14 +5,14 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-const PawnCacheSize = 4096
+const PawnCacheSize = 16 * 1024
 
 type PawnCache struct {
 	hash  board.Hash
 	accum [Colors][Phases]Score
 }
 
-const PawnKingCacheSize = 4096
+const PawnKingCacheSize = 16 * 1024
 
 type PawnKingCache struct {
 	hash  board.Hash
