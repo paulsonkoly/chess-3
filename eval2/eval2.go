@@ -51,6 +51,16 @@ func New[T ScoreType]() *Eval[T] {
 	}
 }
 
+func (e *Eval[T]) Clear() {
+	for i := range e.pawnCache {
+		e.pawnCache[i] = PawnCache{}
+	}
+
+	for i := range e.pawnKingCache {
+		e.pawnKingCache[i] = PawnKingCache{}
+	}
+}
+
 func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 	e.sp = [Colors][Phases]T{}
 	e.kingAttacks = [Colors]T{}

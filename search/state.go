@@ -53,6 +53,7 @@ func (s *Search) Clear() {
 	s.gen = 0
 	s.tt.Clear()
 	s.ranker.Clear()
+	s.eval.Clear()
 }
 
 // Options structure contains all search options. The functional options
