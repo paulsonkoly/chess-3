@@ -59,7 +59,7 @@ func evalForFloat64(scores [Colors][Phases]Score) *Eval[float64] {
 	return e
 }
 
-func TestEngameScore(t *testing.T) {
+func TestEndgameScore(t *testing.T) {
 	tests := [...]struct {
 		name   string
 		fen    string

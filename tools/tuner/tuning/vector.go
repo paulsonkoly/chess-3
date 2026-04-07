@@ -66,14 +66,12 @@ func (v *Vector) Combine(other Vector, comb func(float64, float64) float64) {
 
 // EngineRep is the engine eval structure representation of all known
 // coefficients (including the ones that are not tuned).
-type EngineRep struct {
-	evaluator eval.Eval[float64]
-	coeffs eval.CoeffSet[float64]
-}
+type EngineRep eval.CoeffSet[float64]
 
 // Eval returns the evaluation function result.
 func (e *EngineRep) Eval(b *board.Board) float64 {
-	score := e.evaluator.Score(b, &e.coeffs)
+	ev := eval.New[float64]()
+	score := ev.Score(b, (*eval.CoeffSet[float64])(e))
 
 	if b.STM == Black {
 		score = -score // convert to side relative
@@ -125,7 +123,7 @@ func convert(dst, src reflect.Value) {
 func (e EngineRep) ToVector(targets []string) Vector {
 	result := Vector{data: make([]float64, 0)}
 
-	unWrap := e.coeffs
+	unWrap := eval.CoeffSet[float64](e)
 	structV := reflect.ValueOf(unWrap)
 	structT := reflect.TypeOf(unWrap)
 
@@ -163,7 +161,7 @@ func getFieldFloats(v reflect.Value) []float64 {
 // SetVector injects the values from v into e based on the tuned coefficients
 // pointed by targets.
 func (e *EngineRep) SetVector(v Vector, targets []string) {
-	unWrap := &e.coeffs
+	unWrap := (*eval.CoeffSet[float64])(e)
 	structV := reflect.ValueOf(unWrap).Elem()
 	structT := reflect.TypeOf(unWrap).Elem()
 	floats := v.data
@@ -223,7 +221,7 @@ func (e *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	b.WriteString("//nolint:goimports,gofmt,lll\n")
 
 	b.WriteString("var Coefficients = CoeffSet[Score]{\n")
-	unWrap := e.coeffs
+	unWrap := eval.CoeffSet[float64](*e)
 	structV := reflect.ValueOf(unWrap)
 	structT := reflect.TypeOf(unWrap)
 
@@ -304,7 +302,7 @@ func align(indent int) string {
 // TunedParams yields a sequential index and a pointer to each tuned parameter
 // in e. Tuned params are selected by targets.
 func (e *EngineRep) TunedParams(targets []string) iter.Seq2[int, *float64] {
-	unWrap := &e.coeffs
+	unWrap := (*eval.CoeffSet[float64])(e)
 	structV := reflect.ValueOf(unWrap).Elem()
 	structT := reflect.TypeOf(unWrap).Elem()
 	cnt := 0
