@@ -16,6 +16,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type state byte
+
+const (
+	verifyHash = state(iota)
+	verifyGoodCaptures
+	verifyKiller
+	verifyQuiets
+	verifyBadCaptures
+)
+
 func TestPicker(t *testing.T) {
 	tests := []struct {
 		fen string
@@ -72,37 +82,20 @@ func TestPicker(t *testing.T) {
 		{"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"},
 	}
 
-	rng := rand.New(rand.NewPCG(832473287, 23292478578))
+	verif := NewState()
 
-	for tix, tt := range tests {
-		ms := move.NewStore()
-		hStack := stack.New[heur.StackMove]()
+	for _, tt := range tests {
 
-		t.Run(fmt.Sprintf("picker test %d", tix), func(t *testing.T) {
+		t.Run("picker test "+tt.fen, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 
-			ranker := heur.NewMoveRanker()
-			hStack.Reset()
-			ms.Clear()
-			ms.Push()
-			movegen.GenNoisy(ms, b)
-			movegen.GenNotNoisy(ms, b)
-			allMoves := slices.Clone(ms.Frame())
-			numMoves := len(allMoves)
+			verif.Reset()
 
-			rand.Shuffle(len(allMoves), func(i, j int) {
-				allMoves[i], allMoves[j] = allMoves[j], allMoves[i]
-			})
+			verif.GenerateMoves(b)
 
-			failHighIx := rng.IntN(numMoves)
-			ranker.FailHigh(3, b, allMoves[:failHighIx], hStack)
-
-			hashMoveIx := rng.IntN(numMoves)
-			hashMove := ms.Frame()[hashMoveIx].Move
-
-			ms.Clear()
-
-			pck := picker.New(b, hashMove, ms, &ranker, hStack)
+			verif.ms.Push()
+			defer verif.ms.Pop()
+			pck := picker.New(b, verif.hashMove, verif.ms, verif.ply, &verif.ranker, verif.hStack)
 
 			state := verifyHash
 
@@ -110,69 +103,163 @@ func TestPicker(t *testing.T) {
 
 			for pck.Next() {
 				m := pck.Move().Move
-
-				assert.NotContains(t, yielded, *pck.Move(), "fen %s hashMove %s double yield %s", tt.fen, hashMove, m)
 				yielded = append(yielded, *pck.Move())
 
 				switch state {
 
 				case verifyHash:
 					state = verifyGoodCaptures
-					assert.Equal(t, hashMove, m, "fen %s, hashmove %s yielded %s", tt.fen, hashMove, pck.Move())
+					assertMovesEqual(t, verif.hashMove, pck.Move().Move, "hashmove")
 
 				case verifyGoodCaptures:
 					if (m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m)] != NoPiece) && heur.SEE(b, m, 0) {
-						assert.GreaterOrEqual(t, pck.Move().Weight, heur.Captures, "fen %s capture weight too low %s", tt.fen, m)
+						assertMoveWeight(t, assert.GreaterOrEqual, pck.Move(), heur.Captures, "capture weight too low")
 						continue
 					}
 
+					fallthrough
+
+				case verifyKiller:
 					state = verifyQuiets
+					if verif.killer != 0 {
+						assertMovesEqual(t, pck.Move().Move, verif.killer, "killer1")
+						assertMoveWeight(t, assert.Equal, pck.Move(), heur.KillerMove, "killer weight")
+						continue
+					}
+
 					fallthrough
 
 				case verifyQuiets:
 					if m.Promo() == NoPiece && b.SquaresToPiece[b.CaptureSq(m)] == NoPiece {
-						assert.Greater(t, pck.Move().Weight, -heur.Captures, "fen %s quiet weight too low %s", tt.fen, m)
-						assert.Less(t, pck.Move().Weight, heur.Captures, "fen %s quiet weight too high %s", tt.fen, m)
+						assertMoveWeight(t, assert.Greater, pck.Move(), -heur.Captures, "quiet weight too low")
+						assertMoveWeight(t, assert.Less, pck.Move(), heur.KillerMove, "quiet weight too high")
 						continue
 					}
 					state = verifyBadCaptures
 					fallthrough
 
 				case verifyBadCaptures:
-					assert.Less(t, pck.Move().Weight, -heur.Captures, "fen %s capture weight too high %s", tt.fen, m)
+					assertMoveWeight(t, assert.Less, pck.Move(), -heur.Captures, "capture weight too high")
 				}
 			}
 
 			ym := pck.YieldedMoves()
 			assert.Equal(t, ym, yielded, "fen %s", tt.fen)
-			for i := range yielded {
-				yielded[i].Weight = 0 // zero out for set-wise comparison
-			}
-			assert.ElementsMatch(t, yielded, allMoves, "fen %s", tt.fen)
 
-			// weight order is decreasing
-			for i, m := range ym {
-				if i > 0 {
-					assert.LessOrEqual(
-						t,
-						int(m.Weight),
-						int(ym[i-1].Weight),
-						"fen %s non-decreasing weights %s !>= %s",
-						tt.fen,
-						ym[i-1],
-						m,
-					)
-				}
-			}
+			assertUnique(t, yielded)
+			assertMovesSameSet(t, ym, verif.allMoves, "yielded moves mismatches all moves")
+			assertDescendingWeights(t, ym)
 		})
 	}
 }
 
-type state byte
+type State struct {
+	d        Depth
+	ply      Depth
+	rng      *rand.Rand
+	ms       *move.Store
+	hStack   *stack.Stack[heur.StackMove]
+	ranker   heur.MoveRanker
+	allMoves []move.Weighted
+	hashMove move.Move
+	killer   move.Move
+}
 
-const (
-	verifyHash = state(iota)
-	verifyGoodCaptures
-	verifyQuiets
-	verifyBadCaptures
-)
+func NewState() State {
+	return State{
+		d:      3, // any value
+		ply:    2, // <= d
+		rng:    rand.New(rand.NewPCG(832473287, 23292478578)),
+		ms:     move.NewStore(),
+		hStack: stack.New[heur.StackMove](),
+		ranker: heur.NewMoveRanker(),
+	}
+}
+
+func (pv *State) Reset() {
+	pv.ms.Clear()
+	pv.hStack.Reset()
+	pv.ranker.Clear()
+}
+
+func (pv *State) GenerateMoves(b *board.Board) {
+	pv.ms.Push()
+	defer pv.ms.Pop()
+
+	movegen.GenNotNoisy(pv.ms, b)
+	moves := pv.ms.Frame()
+
+	// the order is important here as killer1 has to be the one that failed high *after* killer2
+	failHighIx := pv.rng.IntN(len(moves) - 1)
+	pv.ranker.FailHigh(pv.d, pv.ply, b, moves[:failHighIx+1], pv.hStack)
+	pv.killer = moves[failHighIx].Move
+
+	movegen.GenNoisy(pv.ms, b)
+	moves = slices.Clone(pv.ms.Frame())
+	pv.rng.Shuffle(len(moves), func(i, j int) {
+		moves[i], moves[j] = moves[j], moves[i]
+	})
+
+	// hashMove can be picked from noisy or quiet
+	hashMoveIx := pv.rng.IntN(len(moves))
+	pv.hashMove = moves[hashMoveIx].Move
+
+	// remove collisions
+	if pv.hashMove == pv.killer {
+		pv.killer = 0
+	}
+
+	pv.allMoves = moves
+}
+
+func assertMovesSameSet(t *testing.T, left, right []move.Weighted, args ...any) {
+	leftMoves := removeWeights(left)
+	rightMoves := removeWeights(right)
+	assert.ElementsMatch(t, leftMoves, rightMoves, args...)
+}
+
+func removeWeights(weighted []move.Weighted) []string {
+	result := make([]string, 0, len(weighted))
+	for _, v := range weighted {
+		result = append(result, v.String())
+	}
+	return result
+}
+
+func assertDescendingWeights(t *testing.T, moves []move.Weighted) {
+	for i, m := range moves {
+		if i > 0 {
+			assert.LessOrEqual(t, int(m.Weight), int(moves[i-1].Weight), "non-decreasing weights %s !>= %s", moves[i-1], m)
+		}
+	}
+}
+
+func assertMovesEqual(t *testing.T, a, b move.Move, args ...any) {
+	tail := ""
+	if len(args) > 0 {
+		if str, ok := args[0].(string); ok {
+			tail = fmt.Sprintf(" "+str, args[1:]...)
+		}
+	}
+	assert.Equal(t, a, b, "%s != %s%s", a, b, tail)
+}
+
+func assertUnique(t *testing.T, moves []move.Weighted) {
+	for i, a := range moves {
+		for _, b := range moves[i+1:] {
+			assert.NotEqual(t, a, b, "move repeating %s", a)
+		}
+	}
+}
+
+type CmpFunc func(assert.TestingT, any, any, ...any) bool
+
+func assertMoveWeight(t *testing.T, cmp CmpFunc, m *move.Weighted, weight Score, args ...any) {
+	tail := ""
+	if len(args) > 0 {
+		if str, ok := args[0].(string); ok {
+			tail = fmt.Sprintf(" "+str, args[1:]...)
+		}
+	}
+	cmp(t, m.Weight, weight, "%s%s", m.Move, tail)
+}
