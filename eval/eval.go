@@ -125,7 +125,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 			e.addPieceValue(color, Rook, c)
 		}
 
-		outposts := ^e.pawns[color.Flip()].cover & e.attacks[color][Pawn]
+		outposts := e.outposts(color)
 
 		// bishops
 		for pieces := b.Pieces[Bishop] & b.Colors[color]; pieces != 0; pieces &= pieces - 1 {

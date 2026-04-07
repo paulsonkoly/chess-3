@@ -162,6 +162,11 @@ func (e *Eval[T]) isolatedPawns(pawns BitBoard, color Color) BitBoard {
 	return pawns &^ e.pawns[color].neighbourF
 }
 
+// outposts are squares defended by our pawns and not attackable by any enemy pawn.
+func (e *Eval[T]) outposts(color Color) BitBoard {
+	return ^e.pawns[color.Flip()].cover & e.attacks[color][Pawn]
+}
+
 func (e *Eval[T]) addPawnlessFlank(b *board.Board, c *CoeffSet[T]) {
 	pawns := b.Pieces[Pawn]
 	for color := range Colors {
