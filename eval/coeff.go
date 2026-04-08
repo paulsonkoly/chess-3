@@ -53,8 +53,6 @@ type CoeffSet[T ScoreType] struct {
 
 	// ProtectedPasser is the bonus for each protected passed pawn.
 	ProtectedPasser [2]T
-	// PasserKingDist is the bonus for our king being close / enemy king being far from passed pawn.
-	PasserKingDist [2]T
 	// PasserRank is the bonus for the passed pawn being on a specific rank.
 	PasserRank [2][6]T
 	// DoubledPawns is the penalty per doubled pawn (count of non-frontline pawns ie. the pawns in the pawn rearspan).

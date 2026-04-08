@@ -36,8 +36,6 @@ type PawnKingCache struct {
 }
 
 func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
-	e.addPassers(b, c)
-
 	var (
 		t     T
 		hash  board.Hash
@@ -114,31 +112,6 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 		e.pawnCache[hash%PawnCacheSize].accum[White][EG] = Score(accum[White][EG])
 		e.pawnCache[hash%PawnCacheSize].accum[Black][MG] = Score(accum[Black][MG])
 		e.pawnCache[hash%PawnCacheSize].accum[Black][EG] = Score(accum[Black][EG])
-	}
-}
-
-func (e *Eval[T]) addPassers(b *board.Board, c *CoeffSet[T]) {
-	// KPR, KPNB
-	if b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Queen] == 0 || b.Pieces[Rook]|b.Pieces[Queen] == 0 {
-
-		for color := range Colors {
-
-			// if there is a sole passer
-			passers := e.passers(color)
-			if passers != 0 && passers&(passers-1) == 0 {
-				sq := passers.LowestSet()
-
-				qSq := sq % 8
-				if color == White {
-					qSq += 56
-				}
-
-				kingDist := Chebishev(qSq, e.kings[color.Flip()].sq) - Chebishev(qSq, e.kings[color].sq)
-
-				e.sp[color][MG] += c.PasserKingDist[MG] * T(kingDist)
-				e.sp[color][EG] += c.PasserKingDist[EG] * T(kingDist)
-			}
-		}
 	}
 }
 

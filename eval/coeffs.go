@@ -188,7 +188,6 @@ ConnectedRooks: [2]Score{    1,    7},
 RookOnOpen: [2]Score{   41,   -2},
 RookOnSemiOpen: [2]Score{   20,    8},
 ProtectedPasser: [2]Score{   30,   -2},
-PasserKingDist: [2]Score{   23,    7},
 PasserRank: [2][6]Score{
 	{  -13,  -30,  -25,    2,   32,   89},
 	{   18,   23,   49,   75,  128,   69},
