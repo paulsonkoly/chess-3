@@ -66,17 +66,6 @@ func (v *Vector) Combine(other Vector, comb func(float64, float64) float64) {
 // coefficients (including the ones that are not tuned).
 type EngineRep eval.CoeffSet[float64]
 
-// // Eval returns the evaluation function result.
-// func (e *EngineRep) Eval(b *board.Board) float64 {
-// 	ev := eval.New[float64]()
-// 	score := ev.Score(b, (*eval.CoeffSet[float64])(e))
-//
-// 	if b.STM == Black {
-// 		score = -score // convert to side relative
-// 	}
-// 	return score
-// }
-
 // EngineCoeffs loads and converts the engine stored coeffs. The engine in16
 // representation is converted to float64.
 func EngineCoeffs() EngineRep {
