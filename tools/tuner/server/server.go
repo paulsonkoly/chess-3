@@ -18,6 +18,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
+	"github.com/paulsonkoly/chess-3/tools/tuner/eval"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tui"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
@@ -360,6 +361,7 @@ func minimizeK(ctx context.Context, fn string, tuiQueue chan<- tui.Update, pprof
 
 	tuiQueue <- tui.MsgUpdate{Msg: "minimising mse with k"}
 
+	ev := eval.New()
 	coeffs := tuning.EngineCoeffs()
 
 	k := 2.832 // a scaling constant
@@ -399,7 +401,7 @@ func minimizeK(ctx context.Context, fn string, tuiQueue chan<- tui.Update, pprof
 				if err := epd.Parse(line, &b, &res); err != nil {
 					return 0, err
 				}
-				score := coeffs.Eval(&b)
+				score := ev.Score(&b, (*eval.CoeffSet)(&coeffs))
 				sgm := tuning.Sigmoid(score, k+step)
 				eHigh += (res - sgm) * (res - sgm)
 				sgm = tuning.Sigmoid(score, k-step)
@@ -471,6 +473,8 @@ func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep
 	b := board.Board{}
 	res := 0.0
 
+	ev := eval.New()
+
 	for {
 		line, err := byLines.Read()
 		if err != nil {
@@ -484,7 +488,7 @@ func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep
 		if err != nil {
 			return 0, err
 		}
-		score := coeffs.Eval(&b)
+		score := ev.Score(&b, (*eval.CoeffSet)(coeffs))
 		sgm := tuning.Sigmoid(score, k)
 		sum += (res - sgm) * (res - sgm)
 		cnt++

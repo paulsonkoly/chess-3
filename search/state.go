@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/paulsonkoly/chess-3/eval"
 	"github.com/paulsonkoly/chess-3/heur"
 	"github.com/paulsonkoly/chess-3/move"
 	"github.com/paulsonkoly/chess-3/stack"
@@ -20,6 +21,7 @@ type Search struct {
 	ms      *move.Store
 	hstack  *stack.Stack[heur.StackMove]
 	pv      *pv
+	eval    *eval.Eval[Score]
 	gen     transp.Gen
 	aborted bool
 }
@@ -31,6 +33,7 @@ func New(size int) *Search {
 		ms:     move.NewStore(),
 		ranker: heur.NewMoveRanker(),
 		hstack: stack.New[heur.StackMove](),
+		eval:   eval.New[Score](),
 		pv:     newPV(),
 	}
 }
@@ -50,6 +53,7 @@ func (s *Search) Clear() {
 	s.gen = 0
 	s.tt.Clear()
 	s.ranker.Clear()
+	s.eval.Clear()
 }
 
 // Options structure contains all search options. The functional options

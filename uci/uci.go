@@ -404,7 +404,7 @@ func parseUCIMove(b *board.Board, uciM string) (move.Move, error) {
 }
 
 func (d *Driver) handleEval() {
-	fmt.Fprintln(d.output, eval.Eval(d.board, &eval.Coefficients))
+	fmt.Fprintln(d.output, eval.New[Score]().Score(d.board, &eval.Coefficients))
 }
 
 type timeControl struct {

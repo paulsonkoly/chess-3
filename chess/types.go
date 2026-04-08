@@ -82,6 +82,8 @@ const (
 	Rook
 	Queen
 	King
+
+	Pieces
 )
 
 func AllPieces() iter.Seq[Piece] {

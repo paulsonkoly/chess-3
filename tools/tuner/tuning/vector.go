@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/paulsonkoly/chess-3/board"
-	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval"
 )
 
@@ -67,16 +65,6 @@ func (v *Vector) Combine(other Vector, comb func(float64, float64) float64) {
 // EngineRep is the engine eval structure representation of all known
 // coefficients (including the ones that are not tuned).
 type EngineRep eval.CoeffSet[float64]
-
-// Eval returns the evaluation function result.
-func (e *EngineRep) Eval(b *board.Board) float64 {
-	score := eval.Eval(b, (*eval.CoeffSet[float64])(e))
-
-	if b.STM == Black {
-		score = -score // convert to side relative
-	}
-	return score
-}
 
 // EngineCoeffs loads and converts the engine stored coeffs. The engine in16
 // representation is converted to float64.
@@ -205,7 +193,7 @@ func setFieldFloats(dst reflect.Value, floats []float64) int {
 
 // Save saves e in the output stream out, with the header information
 // containing fn, epoch and mse.
-func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error {
+func (e *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error {
 	b := strings.Builder{}
 
 	b.WriteString("package eval\n\n")
@@ -220,7 +208,7 @@ func (c *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	b.WriteString("//nolint:goimports,gofmt,lll\n")
 
 	b.WriteString("var Coefficients = CoeffSet[Score]{\n")
-	unWrap := eval.CoeffSet[float64](*c)
+	unWrap := eval.CoeffSet[float64](*e)
 	structV := reflect.ValueOf(unWrap)
 	structT := reflect.TypeOf(unWrap)
 
