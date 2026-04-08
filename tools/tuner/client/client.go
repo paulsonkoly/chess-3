@@ -11,6 +11,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	"github.com/paulsonkoly/chess-3/tools/tuner/app"
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
+	"github.com/paulsonkoly/chess-3/tools/tuner/eval"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 )
@@ -147,6 +148,7 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) {
 }
 
 func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) {
+	ev := eval.New()
 	for cnt := 0; ; cnt++ {
 		slog.Debug("requesting job")
 		job, err := client.RequestJob()
@@ -203,7 +205,7 @@ func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFi
 				continue
 			}
 
-			score := eCoeffs.Eval(&b)
+			score := ev.Score(&b, (*eval.CoeffSet)(&eCoeffs))
 			sigm := tuning.Sigmoid(score, k)
 			loss := (res - sigm) * (res - sigm)
 
@@ -211,7 +213,7 @@ func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFi
 				old := *ptr
 				*ptr += tuning.Epsilon
 
-				score2 := eCoeffs.Eval(&b)
+				score2 := ev.Score(&b, (*eval.CoeffSet)(&eCoeffs))
 				sigm2 := tuning.Sigmoid(score2, k)
 				loss2 := (res - sigm2) * (res - sigm2)
 
