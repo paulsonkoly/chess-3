@@ -42,7 +42,7 @@ func isKNBvK(b *board.Board) bool {
 // KBCorners are knight-bishop checkmate corners based on parity of square.
 var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
 
-func (e *Eval[T]) KNBvK(b *board.Board, c *CoeffSet[T]) {
+func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
 	bishopSq := b.Pieces[Bishop].LowestSet()
 	knightSq := b.Pieces[Knight].LowestSet()
 

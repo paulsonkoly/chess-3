@@ -71,7 +71,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 
 	// special case checkmate patterns
 	if isKNBvK(b) { // knight and bishop checkmate
-		e.KNBvK(b, c)
+		e.knbvk(b, c)
 
 		return e.endgameScore(b)
 	}
