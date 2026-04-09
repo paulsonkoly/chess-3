@@ -44,7 +44,7 @@ type CoeffSet[T ScoreType] struct {
 	// Bishop outpost is the bonus for a bishop being on an outpost square.
 	BishopOutpost [2]T
 	// OppositeColoredBishops is the scale factor for opposite colored bishop drawishness.
-	OppositeColoredBishops [7]T
+	OppositeColoredBishops T
 
 	// ConnectedRooks is the bonus if rooks are connected.
 	ConnectedRooks [2]T

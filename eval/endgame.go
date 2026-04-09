@@ -78,13 +78,7 @@ func (e *Eval[T]) scaleBKvBK(b *board.Board, c *CoeffSet[T]) bool {
 		return false
 	}
 
-	otherCnt := (b.Pieces[Knight] | b.Pieces[Rook] | b.Pieces[Queen]).Count()
-
-	if otherCnt < 0 || otherCnt > len(c.OppositeColoredBishops)-1 {
-		return false
-	}
-	e.scaleFactor = c.OppositeColoredBishops[otherCnt]
-
+	e.scaleFactor = c.OppositeColoredBishops
 	return true
 }
 

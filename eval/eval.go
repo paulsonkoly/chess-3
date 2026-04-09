@@ -172,11 +172,5 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 
 	e.addKingAttacks(c)
 
-	score := e.taperedScore(b)
-
-	// drawishness
-	if _, ok := ((any)(score)).(Score); ok {
-		return T(int(score) * int(e.scaleFactor) / MaxScaleFactor)
-	}
-	return score * e.scaleFactor / MaxScaleFactor
+	return e.taperedScore(b)
 }
