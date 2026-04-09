@@ -5,6 +5,8 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
+const MaxScaleFactor = 128
+
 func insufficient(b *board.Board) bool {
 	if b.Pieces[Pawn]|b.Pieces[Queen]|b.Pieces[Rook] != 0 {
 		return false
@@ -28,7 +30,6 @@ func insufficient(b *board.Board) bool {
 }
 
 func isKNBvK(b *board.Board) bool {
-
 	whiteN := b.Pieces[Knight] & b.Colors[White]
 	blackN := b.Pieces[Knight] & b.Colors[Black]
 	whiteB := b.Pieces[Bishop] & b.Colors[White]
@@ -67,4 +68,29 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
 	cornerDist *= cornerDist
 
 	e.sp[victim.Flip()][EG] += T(cornerDist) * 30
+}
+
+func (e *Eval[T]) scaleBKvBK(b *board.Board, c *CoeffSet[T]) bool {
+	wBishop := b.Colors[White] & b.Pieces[Bishop]
+	bBishop := b.Colors[Black] & b.Pieces[Bishop]
+
+	if !wBishop.IsPow2() || !bBishop.IsPow2() || wBishop.LowestSet().Parity() == bBishop.LowestSet().Parity() {
+		return false
+	}
+
+	otherCnt := (b.Pieces[Knight] | b.Pieces[Rook] | b.Pieces[Queen]).Count()
+
+	if otherCnt < 0 || otherCnt > len(c.OppositeColoredBishops)-1 {
+		return false
+	}
+	e.scaleFactor = c.OppositeColoredBishops[otherCnt]
+
+	return true
+}
+
+func (e *Eval[T]) scaleFifty(b *board.Board) bool {
+	fifty := int(100 - b.FiftyCnt)
+	fifty *= fifty * MaxScaleFactor
+	e.scaleFactor = T(fifty / 10_000)
+	return true
 }
