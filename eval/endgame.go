@@ -78,6 +78,12 @@ func (e *Eval[T]) scaleBKvBK(b *board.Board, c *CoeffSet[T]) bool {
 		return false
 	}
 
+	if (b.Colors[White]&b.Pieces[Knight]).Count() != (b.Colors[Black]&b.Pieces[Knight]).Count() ||
+		(b.Colors[White]&b.Pieces[Rook]).Count() != (b.Colors[Black]&b.Pieces[Rook]).Count() ||
+		(b.Colors[White]&b.Pieces[Queen]).Count() != (b.Colors[Black]&b.Pieces[Queen]).Count() {
+		return false
+	}
+
 	e.scaleFactor = c.OppositeColoredBishops
 	return true
 }
