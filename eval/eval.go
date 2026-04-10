@@ -74,7 +74,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 		e.knbvk(b, c)
 		return e.endgameScore(b)
 	}
-	_ = e.scaleBKvBK(b, c) || e.scaleFifty(b)
+	_ = e.scaleOCB(b, c) || e.scaleFifty(b)
 
 	for color := range Colors {
 		e.pawns[color].calc(b, color)

@@ -70,7 +70,7 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
 	e.sp[victim.Flip()][EG] += T(cornerDist) * 30
 }
 
-func (e *Eval[T]) scaleBKvBK(b *board.Board, c *CoeffSet[T]) bool {
+func (e *Eval[T]) scaleOCB(b *board.Board, c *CoeffSet[T]) bool {
 	wBishop := b.Colors[White] & b.Pieces[Bishop]
 	bBishop := b.Colors[Black] & b.Pieces[Bishop]
 
@@ -78,14 +78,32 @@ func (e *Eval[T]) scaleBKvBK(b *board.Board, c *CoeffSet[T]) bool {
 		return false
 	}
 
-	if (b.Colors[White]&b.Pieces[Knight]).Count() != (b.Colors[Black]&b.Pieces[Knight]).Count() ||
-		(b.Colors[White]&b.Pieces[Rook]).Count() != (b.Colors[Black]&b.Pieces[Rook]).Count() ||
-		(b.Colors[White]&b.Pieces[Queen]).Count() != (b.Colors[Black]&b.Pieces[Queen]).Count() {
-		return false
+	knights, rooks, queens := b.Pieces[Knight], b.Pieces[Rook], b.Pieces[Queen]
+	others := knights | rooks | queens
+	if others == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[0]
+		return true
 	}
 
-	e.scaleFactor = c.OppositeColoredBishops
-	return true
+	wN, bN := b.Colors[White]&knights, b.Colors[Black]&knights
+	if wN.IsPow2() && bN.IsPow2() && rooks|queens == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[1]
+		return true
+	}
+
+	wR, bR := b.Colors[White]&rooks, b.Colors[Black]&rooks
+	if wR.IsPow2() && bR.IsPow2() && knights|queens == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[2]
+		return true
+	}
+
+	wQ, bQ := b.Colors[White]&queens, b.Colors[Black]&queens
+	if wQ.IsPow2() && bQ.IsPow2() && knights|rooks == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[3]
+		return true
+	}
+
+	return false
 }
 
 func (e *Eval[T]) scaleFifty(b *board.Board) bool {
