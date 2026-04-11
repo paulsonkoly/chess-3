@@ -16,6 +16,13 @@ func (e *Eval[T]) taperedScore(b *board.Board) T {
 	mgScore := e.sp[b.STM][MG] - e.sp[b.STM.Flip()][MG]
 	egScore := e.sp[b.STM][EG] - e.sp[b.STM.Flip()][EG]
 
+	// drawishness
+	if _, ok := ((any)(egScore)).(Score); ok {
+		egScore = T(int(egScore) * int(e.scaleFactor) / MaxScaleFactor)
+	} else {
+		egScore = egScore * e.scaleFactor / MaxScaleFactor
+	}
+
 	var phase int
 	for pType := Pawn; pType <= Queen; pType++ {
 		phase += b.Pieces[pType].Count() * Blend[pType]

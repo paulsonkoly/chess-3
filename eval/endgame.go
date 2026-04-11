@@ -5,6 +5,8 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
+const MaxScaleFactor = 128
+
 func insufficient(b *board.Board) bool {
 	if b.Pieces[Pawn]|b.Pieces[Queen]|b.Pieces[Rook] != 0 {
 		return false
@@ -28,7 +30,6 @@ func insufficient(b *board.Board) bool {
 }
 
 func isKNBvK(b *board.Board) bool {
-
 	whiteN := b.Pieces[Knight] & b.Colors[White]
 	blackN := b.Pieces[Knight] & b.Colors[Black]
 	whiteB := b.Pieces[Bishop] & b.Colors[White]
@@ -67,4 +68,50 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
 	cornerDist *= cornerDist
 
 	e.sp[victim.Flip()][EG] += T(cornerDist) * 30
+}
+
+func (e *Eval[T]) scaleOCB(b *board.Board, c *CoeffSet[T]) bool {
+	wBishop := b.Colors[White] & b.Pieces[Bishop]
+	bBishop := b.Colors[Black] & b.Pieces[Bishop]
+
+	if !wBishop.IsPow2() || !bBishop.IsPow2() || wBishop.LowestSet().Parity() == bBishop.LowestSet().Parity() {
+		return false
+	}
+
+	pawnDiff := Abs((b.Colors[White] & b.Pieces[Pawn]).Count() - (b.Colors[Black] & b.Pieces[Pawn]).Count())
+	pawnDiff = Clamp(pawnDiff, 0, 3)
+
+	knights, rooks, queens := b.Pieces[Knight], b.Pieces[Rook], b.Pieces[Queen]
+	others := knights | rooks | queens
+	if others == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff]
+		return true
+	}
+
+	wN, bN := b.Colors[White]&knights, b.Colors[Black]&knights
+	if wN.IsPow2() && bN.IsPow2() && rooks|queens == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[1][pawnDiff]
+		return true
+	}
+
+	wR, bR := b.Colors[White]&rooks, b.Colors[Black]&rooks
+	if wR.IsPow2() && bR.IsPow2() && knights|queens == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[2][pawnDiff]
+		return true
+	}
+
+	wQ, bQ := b.Colors[White]&queens, b.Colors[Black]&queens
+	if wQ.IsPow2() && bQ.IsPow2() && knights|rooks == 0 {
+		e.scaleFactor = c.OppositeColoredBishops[3][pawnDiff]
+		return true
+	}
+
+	return false
+}
+
+func (e *Eval[T]) scaleFifty(b *board.Board) bool {
+	fifty := int(100 - b.FiftyCnt)
+	fifty *= fifty * MaxScaleFactor
+	e.scaleFactor = T(fifty / 10_000)
+	return true
 }

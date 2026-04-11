@@ -21,6 +21,7 @@ const (
 
 type Eval[T ScoreType] struct {
 	sp            [Colors][Phases]T
+	scaleFactor   T
 	kingAttacks   [Colors]T
 	attacks       [Colors][Pieces]BitBoard
 	cover         [Colors]BitBoard
@@ -69,12 +70,11 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 		return 0
 	}
 
-	// special case checkmate patterns
-	if isKNBvK(b) { // knight and bishop checkmate
+	if isKNBvK(b) {
 		e.knbvk(b, c)
-
 		return e.endgameScore(b)
 	}
+	_ = e.scaleOCB(b, c) || e.scaleFifty(b)
 
 	for color := range Colors {
 		e.pawns[color].calc(b, color)
@@ -172,13 +172,5 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 
 	e.addKingAttacks(c)
 
-	score := e.taperedScore(b)
-	// drawishness
-	fifty := int(100 - b.FiftyCnt)
-	fifty *= fifty
-	if _, ok := ((any)(score)).(Score); ok {
-		return T(int(score) * fifty / 10000)
-	}
-
-	return score * T(fifty) / 10000
+	return e.taperedScore(b)
 }
