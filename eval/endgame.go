@@ -78,28 +78,31 @@ func (e *Eval[T]) scaleOCB(b *board.Board, c *CoeffSet[T]) bool {
 		return false
 	}
 
+	pawnDiff := Abs((b.Colors[White] & b.Pieces[Pawn]).Count() - (b.Colors[Black] & b.Pieces[Pawn]).Count())
+	pawnDiff = Clamp(pawnDiff, 0, 3)
+
 	knights, rooks, queens := b.Pieces[Knight], b.Pieces[Rook], b.Pieces[Queen]
 	others := knights | rooks | queens
 	if others == 0 {
-		e.scaleFactor = c.OppositeColoredBishops[0]
+		e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff]
 		return true
 	}
 
 	wN, bN := b.Colors[White]&knights, b.Colors[Black]&knights
 	if wN.IsPow2() && bN.IsPow2() && rooks|queens == 0 {
-		e.scaleFactor = c.OppositeColoredBishops[1]
+		e.scaleFactor = c.OppositeColoredBishops[1][pawnDiff]
 		return true
 	}
 
 	wR, bR := b.Colors[White]&rooks, b.Colors[Black]&rooks
 	if wR.IsPow2() && bR.IsPow2() && knights|queens == 0 {
-		e.scaleFactor = c.OppositeColoredBishops[2]
+		e.scaleFactor = c.OppositeColoredBishops[2][pawnDiff]
 		return true
 	}
 
 	wQ, bQ := b.Colors[White]&queens, b.Colors[Black]&queens
 	if wQ.IsPow2() && bQ.IsPow2() && knights|rooks == 0 {
-		e.scaleFactor = c.OppositeColoredBishops[3]
+		e.scaleFactor = c.OppositeColoredBishops[3][pawnDiff]
 		return true
 	}
 

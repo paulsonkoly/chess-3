@@ -184,7 +184,12 @@ KnightOutpost: [2][40]Score{
 KnightBehindPawn: [2]Score{    8,   21},
 BishopPair: [9]Score{  -41,   46,   57,   53,   45,   39,   36,   37,   33},
 BishopOutpost: [2]Score{   30,    7},
-OppositeColoredBishops: [4]Score{   62,  119,  105,   87},
+OppositeColoredBishops: [4][4]Score{
+	{   62,  119,  105,   87},
+	{   62,  119,  105,   87},
+	{   62,  119,  105,   87},
+	{   62,  119,  105,   87},
+},
 ConnectedRooks: [2]Score{    1,    6},
 RookOnOpen: [2]Score{   37,   -1},
 RookOnSemiOpen: [2]Score{   17,   11},
