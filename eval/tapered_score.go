@@ -31,13 +31,16 @@ func (e *Eval[T]) taperedScore(b *board.Board) T {
 	mgPhase := min(phase, MaxBlend)
 	egPhase := MaxBlend - mgPhase
 
+	fifty := int(100 - b.FiftyCnt)
+	fifty *= fifty
+
 	if _, ok := (any(mgScore)).(Score); ok {
-		v := int(mgScore)*mgPhase + int(egScore)*egPhase
-		return T(v / MaxBlend)
+		v := (int(mgScore)*mgPhase + int(egScore)*egPhase) * fifty
+		return T(v / MaxBlend / 10_000)
 	}
 
-	v := mgScore*T(mgPhase) + egScore*T(egPhase)
-	return v / MaxBlend
+	v := (mgScore*T(mgPhase) + egScore*T(egPhase)) * T(fifty)
+	return v / MaxBlend / 10_000
 }
 
 func (e *Eval[T]) endgameScore(b *board.Board) T {
