@@ -103,8 +103,5 @@ func (e *Eval[T]) scaleOCB(b *board.Board, c *CoeffSet[T]) {
 	wQ, bQ := b.Colors[White]&queens, b.Colors[Black]&queens
 	if wQ.IsPow2() && bQ.IsPow2() && knights|rooks == 0 {
 		e.scaleFactor = c.OppositeColoredBishops[3][pawnDiff]
-		return
 	}
-
-	return
 }

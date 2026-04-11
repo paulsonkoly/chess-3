@@ -75,7 +75,7 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 		return e.endgameScore(b)
 	}
 	e.scaleFactor = MaxScaleFactor
-	e.scaleOCB(b, c) 
+	e.scaleOCB(b, c)
 
 	for color := range Colors {
 		e.pawns[color].calc(b, color)
