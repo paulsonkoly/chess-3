@@ -68,7 +68,7 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 		accum[color][MG] += c.IsolatedPawns[MG] * isoCnt
 		accum[color][EG] += c.IsolatedPawns[EG] * isoCnt
 
-		for phalanxes := ((pawns & ^AFileBB) >> 1) & pawns; phalanxes != 0; phalanxes &= phalanxes -1 {
+		for phalanxes := ((pawns & ^AFileBB) >> 1) & pawns; phalanxes != 0; phalanxes &= phalanxes - 1 {
 			rank := phalanxes.LowestSet().Rank().FromPerspectiveOf(color)
 			accum[color][MG] += c.Phalanx[MG][rank]
 			accum[color][EG] += c.Phalanx[EG][rank]
