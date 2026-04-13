@@ -18,8 +18,8 @@ func (e *Eval[T]) addTempo(b *board.Board, c *CoeffSet[T]) {
 
 func (e *Eval[T]) addBishopPair(b *board.Board, c *CoeffSet[T]) {
 	for color := range Colors {
-		bishops := (b.Colors[color] & b.Pieces[Bishop]).Count()
-		pawns := (b.Colors[color] & b.Pieces[Pawn]).Count()
+		bishops := int(b.Counts[color][Bishop])
+		pawns := int(b.Counts[color][Pawn])
 
 		// technically FEN allows more than 8 pawns
 		pawns = min(pawns, len(c.BishopPair)-1)

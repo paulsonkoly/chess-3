@@ -10,10 +10,10 @@ func insufficient(b *board.Board) bool {
 		return false
 	}
 
-	wN := (b.Colors[White] & b.Pieces[Knight]).Count()
-	bN := (b.Colors[Black] & b.Pieces[Knight]).Count()
-	wB := (b.Colors[White] & b.Pieces[Bishop]).Count()
-	bB := (b.Colors[Black] & b.Pieces[Bishop]).Count()
+	wN := b.Counts[White][Knight]
+	bN := b.Counts[Black][Knight]
+	wB := b.Counts[White][Bishop]
+	bB := b.Counts[Black][Bishop]
 
 	if wN+bN+wB+bB <= 3 { // draw cases
 		wScr := wN + 3*wB

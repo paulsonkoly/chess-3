@@ -8,10 +8,11 @@ import (
 // Board is a chess position.
 type Board struct {
 	SquaresToPiece [64]Piece
-	Pieces         [7]BitBoard
+	Pieces         [Pieces]BitBoard
 	Colors         [2]BitBoard
 	hashes         []Hashes
 	fullMoves      int
+	Counts         [Colors][Pieces]byte
 	STM            Color
 	EnPassant      Square
 	Castles        Castles
@@ -252,6 +253,7 @@ func (b *Board) addPiece(c Color, p Piece, sq Square) Hash {
 	if p == NoPiece {
 		return 0
 	}
+	b.Counts[c][p]++
 	b.Colors[c] |= BitBoard(1) << sq
 	b.Pieces[p] |= BitBoard(1) << sq
 	b.SquaresToPiece[sq] = p
@@ -263,6 +265,7 @@ func (b *Board) removePiece(c Color, p Piece, sq Square) Hash {
 	if p == NoPiece {
 		return 0
 	}
+	b.Counts[c][p]--
 	b.Colors[c] &= ^(BitBoard(1) << sq)
 	b.Pieces[p] &= ^(BitBoard(1) << sq)
 	b.SquaresToPiece[sq] = NoPiece
@@ -300,7 +303,7 @@ func (b *Board) UndoNullMove(r Reverse) {
 }
 
 // func (b *Board) consistencyCheck() {
-// 	if b.Hash() != b.calculateHash() {
+// 	if b.Hashes().Full() != b.calculateHash().Full() {
 // 		panic("inconsistent hash")
 // 	}
 //
@@ -319,6 +322,14 @@ func (b *Board) UndoNullMove(r Reverse) {
 //
 // 		if bb != b.Pieces[piece] {
 // 			panic("inconsistent bitboard")
+// 		}
+// 	}
+//
+// 	for color := range Colors {
+// 		for pType := Pawn; pType <= Queen; pType++ {
+// 			if (b.Colors[color] & b.Pieces[pType]).Count() != int(b.Counts[color][pType]) {
+// 				panic("inconsistent counts")
+// 			}
 // 		}
 // 	}
 // }
