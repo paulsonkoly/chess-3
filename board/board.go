@@ -12,7 +12,7 @@ type Board struct {
 	Colors         [2]BitBoard
 	hashes         []Hashes
 	fullMoves      int
-	Counts         [Colors][Pieces]byte
+	Counts         [Colors][Pieces]int16
 	STM            Color
 	EnPassant      Square
 	Castles        Castles
