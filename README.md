@@ -10,6 +10,8 @@ chess-3 is occasionally online on Lichess using chess-2's [Lichess account](http
 
 ## CCRL
 
+[Computer Chess Rating Lists](https://computerchess.org.uk/4040/about.html)
+
 | version | ccrl elo    |
 |:-------:|------------:|
 | 4.0     |             |
