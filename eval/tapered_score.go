@@ -5,9 +5,12 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-// MaxBlend is the sum of pieces on the starting position each piece counted as
-// the corresponding Phase value.
-const MaxBlend = 24
+const (
+	// MaxBlend is the sum of pieces on the starting position each piece counted as
+	// the corresponding Phase value.
+	MaxBlend       = 24
+	MaxScaleFactor = 128
+)
 
 // Blend is game phase.
 var Blend = [...]int{0, 0, 1, 1, 2, 4, 0}
@@ -15,6 +18,13 @@ var Blend = [...]int{0, 0, 1, 1, 2, 4, 0}
 func (e *Eval[T]) taperedScore(b *board.Board) T {
 	mgScore := e.sp[b.STM][MG] - e.sp[b.STM.Flip()][MG]
 	egScore := e.sp[b.STM][EG] - e.sp[b.STM.Flip()][EG]
+
+	// drawishness
+	if _, ok := ((any)(egScore)).(Score); ok {
+		egScore = T(int(egScore) * int(e.scaleFactor) / MaxScaleFactor)
+	} else {
+		egScore = egScore * e.scaleFactor / MaxScaleFactor
+	}
 
 	var phase int
 	for pType := Pawn; pType <= Queen; pType++ {

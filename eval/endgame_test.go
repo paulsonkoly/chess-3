@@ -39,7 +39,7 @@ func TestInsufficient(t *testing.T) {
 	}
 }
 
-func TestIsKNBvK(t *testing.T) {
+func TestKBNvK(t *testing.T) {
 	tests := [...]struct {
 		name string
 		fen  string
@@ -65,7 +65,7 @@ func TestIsKNBvK(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
-			assert.Equal(t, tt.want, isKNBvK(b))
+			assert.Equal(t, tt.want, knbvk(b))
 		})
 	}
 }

@@ -27,8 +27,7 @@ func insufficient(b *board.Board) bool {
 	return false
 }
 
-func isKNBvK(b *board.Board) bool {
-
+func knbvk(b *board.Board) bool {
 	whiteN := b.Pieces[Knight] & b.Colors[White]
 	blackN := b.Pieces[Knight] & b.Colors[Black]
 	whiteB := b.Pieces[Bishop] & b.Colors[White]
@@ -42,7 +41,7 @@ func isKNBvK(b *board.Board) bool {
 // KBCorners are knight-bishop checkmate corners based on parity of square.
 var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
 
-func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
+func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
 	bishopSq := b.Pieces[Bishop].LowestSet()
 	knightSq := b.Pieces[Knight].LowestSet()
 
@@ -67,4 +66,6 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
 	cornerDist *= cornerDist
 
 	e.sp[victim.Flip()][EG] += T(cornerDist) * 30
+
+	return e.endgameScore(b)
 }
