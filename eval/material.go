@@ -24,19 +24,17 @@ type MaterialCache[T ScoreType] struct {
 // material count dispatcher and cache.
 func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	key := hash(0)
-	shift := 0
-	for color := range Colors {
-		for pType := Pawn; pType <= Queen; pType++ {
-			count := b.Counts[color][pType]
-			key |= hash(count) << shift
-			// maximal number of a piece of a single colour is 10, 2 + 8 promotions
-			// 4 bits enough, 6 fits in Hash
-			shift += 6
-		}
-	}
-	// the empty position (just kings) hash would be 0, which coincidentally the
-	// zero value of the hash key in the hash slot, causing a false hit.
-	key = murmur(key) + 1
+	// loop unrolled on hot path. ~1-2% NPS
+	key ^= board.PiecesRand[White][Pawn][b.Counts[White][Pawn]]
+	key ^= board.PiecesRand[White][Knight][b.Counts[White][Knight]]
+	key ^= board.PiecesRand[White][Bishop][b.Counts[White][Bishop]]
+	key ^= board.PiecesRand[White][Rook][b.Counts[White][Rook]]
+	key ^= board.PiecesRand[White][Queen][b.Counts[White][Queen]]
+	key ^= board.PiecesRand[Black][Pawn][b.Counts[Black][Pawn]]
+	key ^= board.PiecesRand[Black][Knight][b.Counts[Black][Knight]]
+	key ^= board.PiecesRand[Black][Bishop][b.Counts[Black][Bishop]]
+	key ^= board.PiecesRand[Black][Rook][b.Counts[Black][Rook]]
+	key ^= board.PiecesRand[Black][Queen][b.Counts[Black][Queen]]
 
 	entry := &e.materialCache[key%materialCacheSize]
 	if entry.hash == key {
@@ -60,15 +58,6 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	entry.evalID = evalID
 
 	return e.matFuncs[evalID](e, b, c)
-}
-
-func murmur(key hash) hash {
-	key ^= key >> 33
-	key *= 0xff51afd7ed558ccd
-	key ^= key >> 33
-	key *= 0xc4ceb9fe1a85ec53
-	key ^= key >> 33
-	return key
 }
 
 type evalID byte
