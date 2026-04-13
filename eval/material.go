@@ -5,26 +5,30 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-const MaterialCacheSize = 2 * 1024
+const materialCacheSize = 2 * 1024
 
 type (
-	Hash                  = board.Hash
-	EvalFunc[T ScoreType] = func(*Eval[T], *board.Board, *CoeffSet[T]) T
+	hash = board.Hash
+
+	// This crashes the go compiler with go 1.26 being type alias.
+	// https://github.com/golang/go/issues/78343
+	// Replace with type alias once fixed in 1.27.
+	evalFunc[T ScoreType] func(*Eval[T], *board.Board, *CoeffSet[T]) T
 )
 
 type MaterialCache[T ScoreType] struct {
-	hash   Hash
+	hash   hash
 	evalID evalID
 }
 
 // material count dispatcher and cache.
 func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
-	hash := Hash(0)
+	key := hash(0)
 	shift := 0
 	for color := range Colors {
 		for pType := Pawn; pType <= Queen; pType++ {
 			count := (b.Colors[color] & b.Pieces[pType]).Count()
-			hash |= Hash(count) << shift
+			key |= hash(count) << shift
 			// maximal number of a piece of a single colour is 10, 2 + 8 promotions
 			// 4 bits enough, 6 fits in Hash
 			shift += 6
@@ -32,10 +36,10 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	}
 	// the empty position (just kings) hash would be 0, which coincidentally the
 	// zero value of the hash key in the hash slot, causing a false hit.
-	hash = murmur(hash) + 1
+	key = murmur(key) + 1
 
-	entry := &e.materialCache[hash%MaterialCacheSize]
-	if entry.hash == hash {
+	entry := &e.materialCache[key%materialCacheSize]
+	if entry.hash == key {
 		return e.matFuncs[entry.evalID](e, b, c)
 	}
 
@@ -52,13 +56,13 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		evalID = evalPositionalID
 	}
 
-	entry.hash = hash
+	entry.hash = key
 	entry.evalID = evalID
 
 	return e.matFuncs[evalID](e, b, c)
 }
 
-func murmur(key Hash) Hash {
+func murmur(key hash) hash {
 	key ^= key >> 33
 	key *= 0xff51afd7ed558ccd
 	key ^= key >> 33
