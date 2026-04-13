@@ -117,6 +117,7 @@ func (fp *fenParser) position() error {
 			fp.b.Pieces[piece] |= bb
 			fp.b.Colors[color] |= bb
 			fp.b.SquaresToPiece[sq] = piece
+			fp.b.Counts[color][piece]++
 			file++
 
 		case ' ':

@@ -23,11 +23,11 @@ func (b Board) Valid() error {
 		if !(b.Colors[color] & b.Pieces[King]).IsPow2() {
 			return ErrWrongPieceCount
 		}
-		knights := (b.Colors[color] & b.Pieces[Knight]).Count()
-		bishops := (b.Colors[color] & b.Pieces[Bishop]).Count()
-		rooks := (b.Colors[color] & b.Pieces[Rook]).Count()
-		queens := (b.Colors[color] & b.Pieces[Queen]).Count()
-		pawns := (b.Colors[color] & b.Pieces[Pawn]).Count()
+		knights := b.Counts[color][Knight]
+		bishops := b.Counts[color][Bishop]
+		rooks := b.Counts[color][Rook]
+		queens := b.Counts[color][Queen]
+		pawns := b.Counts[color][Pawn]
 
 		// Compute the number of pieces that are guaranteed to be promoted Pawns.
 		pknights := max(2, knights) - 2

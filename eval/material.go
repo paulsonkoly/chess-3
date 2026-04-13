@@ -27,7 +27,7 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	shift := 0
 	for color := range Colors {
 		for pType := Pawn; pType <= Queen; pType++ {
-			count := (b.Colors[color] & b.Pieces[pType]).Count()
+			count := b.Counts[color][pType]
 			key |= hash(count) << shift
 			// maximal number of a piece of a single colour is 10, 2 + 8 promotions
 			// 4 bits enough, 6 fits in Hash
