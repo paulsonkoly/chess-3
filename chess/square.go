@@ -118,8 +118,14 @@ func (s Square) Rank() Coord {
 	return Coord((s >> 3) & 7)
 }
 
-// FromPerspectiveOf flips a rank of s to be from c's perspective. For white
+// FromPerspectiveOf flips the rank of s to be from c's perspective. For white
+// it's untouched, for black 0 maps to 7 and 7 maps to 0.
+func (s Square) FromPerspectiveOf(c Color) Square {
+	return ((64 - Square(c)) & 56) ^ s
+}
+
+// FromPerspectiveOf flips a rank r to be from c's perspective. For white
 // it's untouched, for black 0 maps to 7 and 7 maps to 0.
 func (r Coord) FromPerspectiveOf(c Color) Coord {
-	return Coord(c.Flip())*(r) + Coord(c)*(7-r)
+	return ((8 - Coord(c)) & 7) ^ r
 }

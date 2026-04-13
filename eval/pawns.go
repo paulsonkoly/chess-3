@@ -75,13 +75,7 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 		}
 
 		for passers := e.passers(color); passers != 0; passers &= passers - 1 {
-			sq := passers.LowestSet()
-
-			rank := sq / 8
-			if color == Black {
-				rank ^= 7
-			}
-
+			rank := passers.LowestSet().Rank().FromPerspectiveOf(color)
 			passer := passers & -passers
 
 			// if protected passers add protection bonus
@@ -95,11 +89,7 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 		}
 
 		for pieces := pawns; pieces != 0; pieces &= pieces - 1 {
-			sq := pieces.LowestSet()
-
-			if color == White {
-				sq ^= 56 // upside down
-			}
+			sq := pieces.LowestSet().FromPerspectiveOf(color.Flip()) // for white it's upside down
 
 			accum[color][MG] += c.PSqT[0][sq]
 			accum[color][EG] += c.PSqT[1][sq]
