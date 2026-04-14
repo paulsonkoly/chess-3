@@ -20,13 +20,13 @@ const (
 
 type Eval[T ScoreType] struct {
 	sp            [Colors][Phases]T
-	scaleFactor   T
+	scaleFactor   [Colors]T
 	kingAttacks   [Colors]T
 	attacks       [Colors][Pieces]BitBoard
 	cover         [Colors]BitBoard
 	pawns         [Colors]Pawns
 	kings         [Colors]Kings
-	matFuncs      [3]evalFunc[T]
+	matFuncs      [4]evalFunc[T]
 	pawnCache     []PawnCache
 	pawnKingCache []PawnKingCache
 	materialCache []MaterialCache[T]
@@ -50,7 +50,7 @@ func New[T ScoreType]() *Eval[T] {
 		pawnCache:     make([]PawnCache, PawnCacheSize),
 		pawnKingCache: make([]PawnKingCache, PawnKingCacheSize),
 		materialCache: make([]MaterialCache[T], materialCacheSize),
-		matFuncs:      [3]evalFunc[T]{evalInsufficient[T], evalKNBvK[T], evalPositional[T]},
+		matFuncs:      [4]evalFunc[T]{evalInsufficient[T], evalKNBvK[T], evalKNvKP[T], evalPositional[T]},
 	}
 }
 

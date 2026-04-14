@@ -17,14 +17,17 @@ var Blend = [...]int{0, 0, 1, 1, 2, 4, 0}
 
 func (e *Eval[T]) taperedScore(b *board.Board) T {
 	mgScore := e.sp[b.STM][MG] - e.sp[b.STM.Flip()][MG]
-	egScore := e.sp[b.STM][EG] - e.sp[b.STM.Flip()][EG]
 
 	// drawishness
-	if _, ok := ((any)(egScore)).(Score); ok {
-		egScore = T(int(egScore) * int(e.scaleFactor) / MaxScaleFactor)
+	var t T
+	if _, ok := ((any)(t)).(Score); ok {
+		e.sp[White][EG] = T(int(e.sp[White][EG]) * int(e.scaleFactor[White]) / MaxScaleFactor)
+		e.sp[Black][EG] = T(int(e.sp[Black][EG]) * int(e.scaleFactor[Black]) / MaxScaleFactor)
 	} else {
-		egScore = egScore * e.scaleFactor / MaxScaleFactor
+		e.sp[White][EG] = e.sp[White][EG] * e.scaleFactor[White] / MaxScaleFactor
+		e.sp[Black][EG] = e.sp[Black][EG] * e.scaleFactor[Black] / MaxScaleFactor
 	}
+	egScore := e.sp[b.STM][EG] - e.sp[b.STM.Flip()][EG]
 
 	var phase int
 	for pType := Pawn; pType <= Queen; pType++ {

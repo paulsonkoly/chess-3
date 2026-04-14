@@ -27,6 +27,31 @@ func insufficient(b *board.Board) bool {
 	return false
 }
 
+var traditionalPieceValues = [...]int{0, 1, 3, 3, 5, 9, 0}
+
+func knvkp(b *board.Board) bool {
+	if b.Pieces[Bishop]|b.Pieces[Rook]|b.Pieces[Queen] != 0 {
+		return false
+	}
+
+	var mat [Colors]int
+
+	for color := range Colors {
+		for pType := Pawn; pType <= Knight; pType++ {
+			mat[color] += traditionalPieceValues[pType] * int(b.Counts[color][pType])
+		}
+	}
+
+	switch {
+	case mat[White] < mat[Black]:
+		return b.Counts[Black][Knight] == 1 && b.Counts[Black][Pawn] == 0
+	case mat[Black] < mat[White]:
+		return b.Counts[White][Knight] == 1 && b.Counts[White][Pawn] == 0
+	default:
+		return false
+	}
+}
+
 func knbvk(b *board.Board) bool {
 	whiteN := b.Pieces[Knight] & b.Colors[White]
 	blackN := b.Pieces[Knight] & b.Colors[Black]

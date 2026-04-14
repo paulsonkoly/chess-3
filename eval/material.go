@@ -50,6 +50,9 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	case knbvk(b):
 		evalID = evalKNBvKID
 
+	case knvkp(b):
+		evalID = evalKNvKPID
+
 	default:
 		evalID = evalPositionalID
 	}
@@ -65,6 +68,7 @@ type evalID byte
 const (
 	evalInsufficientID = iota
 	evalKNBvKID
+	evalKNvKPID
 	evalPositionalID
 )
 
@@ -76,10 +80,25 @@ func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	return e.knbvk(b, c)
 }
 
+func evalKNvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	strongSide := Black
+	if b.Counts[White][Knight] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	e.scaleFactor[strongSide] = c.InsufficientKnight
+	e.scaleFactor[weakSide] = MaxScaleFactor
+
+	return e.positional(b, c)
+}
+
 func evalPositional[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	// drawishness
 	fifty := int(100 - b.FiftyCnt)
 	fifty *= fifty
-	e.scaleFactor = T((fifty * MaxScaleFactor) / 10_000)
+	sf := T((fifty * MaxScaleFactor) / 10_000)
+	e.scaleFactor[White] = sf
+	e.scaleFactor[Black] = sf
 	return e.positional(b, c)
 }

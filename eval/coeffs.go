@@ -201,4 +201,5 @@ Phalanx: [2][7]Score{
 },
 SafePawnThreats: [2]Score{   54,   18},
 Threats: [2]Score{   44,   24},
+InsufficientKnight: 128,
 }
