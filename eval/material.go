@@ -53,6 +53,9 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	case knvkp(b):
 		evalID = evalKNvKPID
 
+	case kbvkp(b):
+		evalID = evalKBvKPID
+
 	default:
 		evalID = evalPositionalID
 	}
@@ -69,6 +72,7 @@ const (
 	evalInsufficientID = iota
 	evalKNBvKID
 	evalKNvKPID
+	evalKBvKPID
 	evalPositionalID
 )
 
@@ -88,6 +92,19 @@ func evalKNvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	weakSide := strongSide.Flip()
 
 	e.scaleFactor[strongSide] = c.InsufficientKnight
+	e.scaleFactor[weakSide] = MaxScaleFactor
+
+	return e.positional(b, c)
+}
+
+func evalKBvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	strongSide := Black
+	if b.Counts[White][Bishop] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	e.scaleFactor[strongSide] = c.InsufficientBishop
 	e.scaleFactor[weakSide] = MaxScaleFactor
 
 	return e.positional(b, c)

@@ -38,7 +38,8 @@ func knvkp(b *board.Board) bool {
 
 	for color := range Colors {
 		for pType := Pawn; pType <= Knight; pType++ {
-			mat[color] += traditionalPieceValues[pType] * int(b.Counts[color][pType])
+			mat[color] += traditionalPieceValues[Pawn] * int(b.Counts[color][Pawn])
+			mat[color] += traditionalPieceValues[Knight] * int(b.Counts[color][Knight])
 		}
 	}
 
@@ -47,6 +48,28 @@ func knvkp(b *board.Board) bool {
 		return b.Counts[Black][Knight] == 1 && b.Counts[Black][Pawn] == 0
 	case mat[Black] < mat[White]:
 		return b.Counts[White][Knight] == 1 && b.Counts[White][Pawn] == 0
+	default:
+		return false
+	}
+}
+
+func kbvkp(b *board.Board) bool {
+	if b.Pieces[Knight]|b.Pieces[Rook]|b.Pieces[Queen] != 0 {
+		return false
+	}
+
+	var mat [Colors]int
+
+	for color := range Colors {
+		mat[color] += traditionalPieceValues[Pawn] * int(b.Counts[color][Pawn])
+		mat[color] += traditionalPieceValues[Bishop] * int(b.Counts[color][Bishop])
+	}
+
+	switch {
+	case mat[White] < mat[Black]:
+		return b.Counts[Black][Bishop] == 1 && b.Counts[Black][Pawn] == 0
+	case mat[Black] < mat[White]:
+		return b.Counts[White][Bishop] == 1 && b.Counts[White][Pawn] == 0
 	default:
 		return false
 	}
