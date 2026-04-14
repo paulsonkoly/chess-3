@@ -37,10 +37,8 @@ func knvkp(b *board.Board) bool {
 	var mat [Colors]int
 
 	for color := range Colors {
-		for pType := Pawn; pType <= Knight; pType++ {
-			mat[color] += traditionalPieceValues[Pawn] * int(b.Counts[color][Pawn])
-			mat[color] += traditionalPieceValues[Knight] * int(b.Counts[color][Knight])
-		}
+		mat[color] += traditionalPieceValues[Pawn] * int(b.Counts[color][Pawn])
+		mat[color] += traditionalPieceValues[Knight] * int(b.Counts[color][Knight])
 	}
 
 	switch {
