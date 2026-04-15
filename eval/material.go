@@ -36,6 +36,15 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	bQ := b.Counts[Black][Queen]
 
 	key := hash(0)
+
+	wBishop := b.Colors[White] & b.Pieces[Bishop]
+	bBishop := b.Colors[Black] & b.Pieces[Bishop]
+	ocb := wB == 1 && bB == 1 && wBishop.LowestSet().Parity() != bBishop.LowestSet().Parity()
+	if ocb {
+		// index 63 is guaranted to be unused as there can't be 63 bishops
+		key ^= board.PiecesRand[White][Bishop][63]
+	}
+
 	// loop unrolled on hot path. ~1-2% NPS
 	key ^= board.PiecesRand[White][Pawn][wP]
 	key ^= board.PiecesRand[White][Knight][wN]
@@ -52,10 +61,6 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	if entry.hash == key {
 		return e.matFuncs[entry.evalID](e, b, c)
 	}
-
-	wBishop := b.Colors[White] & b.Pieces[Bishop]
-	bBishop := b.Colors[Black] & b.Pieces[Bishop]
-	ocb := wB == 1 && bB == 1 && wBishop.LowestSet().Parity() != bBishop.LowestSet().Parity()
 
 	var evalID evalID
 	switch {
