@@ -23,32 +23,61 @@ type MaterialCache[T ScoreType] struct {
 
 // material count dispatcher and cache.
 func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
+
+	wP := b.Counts[White][Pawn]
+	wN := b.Counts[White][Knight]
+	wB := b.Counts[White][Bishop]
+	wR := b.Counts[White][Rook]
+	wQ := b.Counts[White][Queen]
+	bP := b.Counts[Black][Pawn]
+	bN := b.Counts[Black][Knight]
+	bB := b.Counts[Black][Bishop]
+	bR := b.Counts[Black][Rook]
+	bQ := b.Counts[Black][Queen]
+
 	key := hash(0)
 	// loop unrolled on hot path. ~1-2% NPS
-	key ^= board.PiecesRand[White][Pawn][b.Counts[White][Pawn]]
-	key ^= board.PiecesRand[White][Knight][b.Counts[White][Knight]]
-	key ^= board.PiecesRand[White][Bishop][b.Counts[White][Bishop]]
-	key ^= board.PiecesRand[White][Rook][b.Counts[White][Rook]]
-	key ^= board.PiecesRand[White][Queen][b.Counts[White][Queen]]
-	key ^= board.PiecesRand[Black][Pawn][b.Counts[Black][Pawn]]
-	key ^= board.PiecesRand[Black][Knight][b.Counts[Black][Knight]]
-	key ^= board.PiecesRand[Black][Bishop][b.Counts[Black][Bishop]]
-	key ^= board.PiecesRand[Black][Rook][b.Counts[Black][Rook]]
-	key ^= board.PiecesRand[Black][Queen][b.Counts[Black][Queen]]
+	key ^= board.PiecesRand[White][Pawn][wP]
+	key ^= board.PiecesRand[White][Knight][wN]
+	key ^= board.PiecesRand[White][Bishop][wB]
+	key ^= board.PiecesRand[White][Rook][wR]
+	key ^= board.PiecesRand[White][Queen][wQ]
+	key ^= board.PiecesRand[Black][Pawn][bP]
+	key ^= board.PiecesRand[Black][Knight][bN]
+	key ^= board.PiecesRand[Black][Bishop][bB]
+	key ^= board.PiecesRand[Black][Rook][bR]
+	key ^= board.PiecesRand[Black][Queen][bQ]
 
 	entry := &e.materialCache[key%materialCacheSize]
 	if entry.hash == key {
 		return e.matFuncs[entry.evalID](e, b, c)
 	}
 
-	var evalID evalID
+	wBishop := b.Colors[White] & b.Pieces[Bishop]
+	bBishop := b.Colors[Black] & b.Pieces[Bishop]
+	ocb := wB == 1 && bB == 1 && wBishop.LowestSet().Parity() != bBishop.LowestSet().Parity()
 
+	var evalID evalID
 	switch {
-	case insufficient(b):
+
+	case wP == 0 && bP == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
+		wN+bN+wB+bB <= 3 && max((wN+3*wB)-(bN+3*bB), (bN+3*bB)-(wN+3*wB)) <= 3:
 		evalID = evalInsufficientID
 
 	case knbvk(b):
 		evalID = evalKNBvKID
+
+	case ocb && wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0:
+		evalID = evalOCBID
+
+	case ocb && wN == 1 && bN == 1 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0:
+		evalID = evalOCBKnightsID
+
+	case ocb && wN == 0 && bN == 0 && wR == 1 && bR == 1 && wQ == 0 && bQ == 0:
+		evalID = evalOCBRooksID
+
+	case ocb && wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 1 && bQ == 1:
+		evalID = evalOCBQueensID
 
 	default:
 		evalID = evalPositionalID
@@ -65,6 +94,10 @@ type evalID byte
 const (
 	evalInsufficientID = iota
 	evalKNBvKID
+	evalOCBID
+	evalOCBKnightsID
+	evalOCBRooksID
+	evalOCBQueensID
 	evalPositionalID
 )
 
@@ -74,6 +107,31 @@ func evalInsufficient[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T
 
 func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	return e.knbvk(b, c)
+}
+
+func evalOCB[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	return e.positional(b, c)
+}
+
+func evalOCBKnights[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	return e.positional(b, c)
+}
+
+func evalOCBRooks[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	return e.positional(b, c)
+}
+
+func evalOCBQueens[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	return e.positional(b, c)
+}
+
+func pawnDiff(b *board.Board) int {
+	pawnDiff := Abs((b.Colors[White] & b.Pieces[Pawn]).Count() - (b.Colors[Black] & b.Pieces[Pawn]).Count())
+	return Clamp(pawnDiff, 0, 3)
 }
 
 func evalPositional[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {

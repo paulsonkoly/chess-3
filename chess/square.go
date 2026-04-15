@@ -118,6 +118,11 @@ func (s Square) Rank() Coord {
 	return Coord((s >> 3) & 7)
 }
 
+// Parity is 0 for dark squares 1 for light squares.
+func (s Square) Parity() Coord {
+	return s.File() ^ s.Rank()
+}
+
 // FromPerspectiveOf flips a rank of s to be from c's perspective. For white
 // it's untouched, for black 0 maps to 7 and 7 maps to 0.
 func (r Coord) FromPerspectiveOf(c Color) Coord {

@@ -26,7 +26,7 @@ type Eval[T ScoreType] struct {
 	cover         [Colors]BitBoard
 	pawns         [Colors]Pawns
 	kings         [Colors]Kings
-	matFuncs      [3]evalFunc[T]
+	matFuncs      [7]evalFunc[T]
 	pawnCache     []PawnCache
 	pawnKingCache []PawnKingCache
 	materialCache []MaterialCache[T]
@@ -50,7 +50,15 @@ func New[T ScoreType]() *Eval[T] {
 		pawnCache:     make([]PawnCache, PawnCacheSize),
 		pawnKingCache: make([]PawnKingCache, PawnKingCacheSize),
 		materialCache: make([]MaterialCache[T], materialCacheSize),
-		matFuncs:      [3]evalFunc[T]{evalInsufficient[T], evalKNBvK[T], evalPositional[T]},
+		matFuncs: [7]evalFunc[T]{
+			evalInsufficient[T],
+			evalKNBvK[T],
+			evalOCB[T],
+			evalOCBKnights[T],
+			evalOCBRooks[T],
+			evalOCBQueens[T],
+			evalPositional[T],
+		},
 	}
 }
 

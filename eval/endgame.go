@@ -5,28 +5,6 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-func insufficient(b *board.Board) bool {
-	if b.Pieces[Pawn]|b.Pieces[Queen]|b.Pieces[Rook] != 0 {
-		return false
-	}
-
-	wN := b.Counts[White][Knight]
-	bN := b.Counts[Black][Knight]
-	wB := b.Counts[White][Bishop]
-	bB := b.Counts[Black][Bishop]
-
-	if wN+bN+wB+bB <= 3 { // draw cases
-		wScr := wN + 3*wB
-		bScr := bN + 3*bB
-
-		if max(wScr-bScr, bScr-wScr) <= 3 {
-			return true
-		}
-	}
-
-	return false
-}
-
 func knbvk(b *board.Board) bool {
 	whiteN := b.Pieces[Knight] & b.Colors[White]
 	blackN := b.Pieces[Knight] & b.Colors[Black]
