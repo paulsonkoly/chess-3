@@ -116,17 +116,17 @@ func evalOCB[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 }
 
 func evalOCBKnights[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	e.scaleFactor = c.OppositeColoredBishops[1][pawnDiff(b)]
 	return e.positional(b, c)
 }
 
 func evalOCBRooks[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	e.scaleFactor = c.OppositeColoredBishops[2][pawnDiff(b)]
 	return e.positional(b, c)
 }
 
 func evalOCBQueens[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	e.scaleFactor = c.OppositeColoredBishops[3][pawnDiff(b)]
 	return e.positional(b, c)
 }
 
