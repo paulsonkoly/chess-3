@@ -49,22 +49,25 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 	base := start
 
 	for idD := Depth(0); idD < MaxPlies && (idD <= opts.Depth || opts.PonderHit != nil); idD++ {
+		d := idD
 		awOk := false // aspiration window succeeded
 		factor := Score(1)
 		var scoreSample Score
 
 		for !awOk {
-			scoreSample = s.alphaBeta(b, alpha, beta, idD, 0, PVNode, opts)
+			scoreSample = s.alphaBeta(b, alpha, beta, d, 0, PVNode, opts)
 
 			switch {
 
 			case scoreSample <= alpha:
 				alpha -= factor * Score(params.WindowSize)
 				factor *= 2
+				d = idD
 
 			case scoreSample >= beta:
 				beta += factor * Score(params.WindowSize)
 				factor *= 2
+				d = max(1, idD-1)
 
 			default:
 				awOk = true
