@@ -64,7 +64,8 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		wN+bN+wB+bB <= 3 && max((wN+3*wB)-(bN+3*bB), (bN+3*bB)-(wN+3*wB)) <= 3:
 		evalID = evalInsufficientID
 
-	case knbvk(b):
+	case wP == 0 && bP == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
+		((wN == 1 && wB == 1 && bN == 0 && bB == 0) || (wN == 0 && wB == 0 && bN == 1 && bB == 1)):
 		evalID = evalKNBvKID
 
 	case ocb && wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0:

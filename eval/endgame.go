@@ -5,17 +5,6 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-func knbvk(b *board.Board) bool {
-	whiteN := b.Pieces[Knight] & b.Colors[White]
-	blackN := b.Pieces[Knight] & b.Colors[Black]
-	whiteB := b.Pieces[Bishop] & b.Colors[White]
-	blackB := b.Pieces[Bishop] & b.Colors[Black]
-
-	return b.Pieces[Pawn]|b.Pieces[Rook]|b.Pieces[Queen] == 0 &&
-		((whiteN.IsPow2() && whiteB.IsPow2() && (blackN|blackB) == 0) ||
-			(blackN.IsPow2() && blackB.IsPow2() && (whiteN|whiteB) == 0))
-}
-
 // KBCorners are knight-bishop checkmate corners based on parity of square.
 var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
 
