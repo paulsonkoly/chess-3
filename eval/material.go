@@ -136,7 +136,7 @@ func evalOCBQueens[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 }
 
 func pawnDiff(b *board.Board) int {
-	pawnDiff := Abs((b.Colors[White] & b.Pieces[Pawn]).Count() - (b.Colors[Black] & b.Pieces[Pawn]).Count())
+	pawnDiff := int(Abs(b.Counts[White][Pawn] - b.Counts[Black][Pawn]))
 	return Clamp(pawnDiff, 0, 3)
 }
 
