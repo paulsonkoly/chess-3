@@ -14,13 +14,14 @@ chess-3 is occasionally online on Lichess using chess-2's [Lichess account](http
 
 | version | ccrl elo    |
 |:-------:|------------:|
-| 4.0     |             |
+| 4.0     | [3039][4.0] |
 | 3.0     | [2994][3.0] |
-| 2.0     | [2792][2.0] |
-| 1.0     | [2655][1.0] |
+| 2.0     | [2795][2.0] |
+| 1.0     | [2656][1.0] |
 
 > _The CCRL Elo numbers might fluctuate over time, the CCRL site has the most up-to-date numbers._
 
+[4.0]: https://computerchess.org.uk/4040/cgi/engine_details.cgi?match_length=30&print=Details+(text)&eng=Chess-3%204.0%2064-bit#Chess-3_4_0_64-bit
 [3.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%203.0%2064-bit#Chess-3_3_0_64-bit
 [2.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%202.0%2064-bit#Chess-3_2_0_64-bit
 [1.0]: https://www.computerchess.org.uk/ccrl/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Chess-3%201.47%2064-bit#Chess-3_1_47_64-bit
