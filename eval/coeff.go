@@ -45,7 +45,7 @@ type CoeffSet[T ScoreType] struct {
 	BishopOutpost [2]T
 	// OppositeColoredBishops is the scale factor for opposite colored bishop drawishness.
 	// Indexed by other piece presence: nothing, pair of knights, rooks, queens; and pawn count difference.
-	OppositeColoredBishops [4][4]T
+	OppositeColoredBishops [3][4]T
 
 	// ConnectedRooks is the bonus if rooks are connected.
 	ConnectedRooks [2]T

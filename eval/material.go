@@ -82,9 +82,6 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	case ocb && wN == 0 && bN == 0 && wR == 1 && bR == 1 && wQ == 0 && bQ == 0:
 		evalID = evalOCBRooksID
 
-	case ocb && wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 1 && bQ == 1:
-		evalID = evalOCBQueensID
-
 	default:
 		evalID = evalPositionalID
 	}
@@ -103,7 +100,6 @@ const (
 	evalOCBID
 	evalOCBKnightsID
 	evalOCBRooksID
-	evalOCBQueensID
 	evalPositionalID
 )
 
@@ -127,11 +123,6 @@ func evalOCBKnights[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 
 func evalOCBRooks[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	e.scaleFactor = c.OppositeColoredBishops[2][pawnDiff(b)]
-	return e.positional(b, c)
-}
-
-func evalOCBQueens[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	e.scaleFactor = c.OppositeColoredBishops[3][pawnDiff(b)]
 	return e.positional(b, c)
 }
 
