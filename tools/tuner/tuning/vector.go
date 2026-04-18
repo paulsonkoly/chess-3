@@ -213,7 +213,10 @@ func (e *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	structT := reflect.TypeOf(unWrap)
 
 	for i := range structT.NumField() {
-		typ := strings.ReplaceAll(structT.Field(i).Type.String(), "float64", "Score")
+		typ := ""
+		if structT.Field(i).Type.Kind() == reflect.Array {
+			typ = strings.ReplaceAll(structT.Field(i).Type.String(), "float64", "Score")
+		}
 		fmt.Fprintf(&b, "%s: %s", structT.Field(i).Name, typ)
 		writeField(&b, structV.Field(i), 0)
 		b.WriteString(",\n")

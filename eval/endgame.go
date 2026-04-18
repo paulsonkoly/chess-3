@@ -10,10 +10,10 @@ func insufficient(b *board.Board) bool {
 		return false
 	}
 
-	wN := (b.Colors[White] & b.Pieces[Knight]).Count()
-	bN := (b.Colors[Black] & b.Pieces[Knight]).Count()
-	wB := (b.Colors[White] & b.Pieces[Bishop]).Count()
-	bB := (b.Colors[Black] & b.Pieces[Bishop]).Count()
+	wN := b.Counts[White][Knight]
+	bN := b.Counts[Black][Knight]
+	wB := b.Counts[White][Bishop]
+	bB := b.Counts[Black][Bishop]
 
 	if wN+bN+wB+bB <= 3 { // draw cases
 		wScr := wN + 3*wB
@@ -27,8 +27,53 @@ func insufficient(b *board.Board) bool {
 	return false
 }
 
-func isKNBvK(b *board.Board) bool {
+var traditionalPieceValues = [...]int{0, 1, 3, 3, 5, 9, 0}
 
+func knvkp(b *board.Board) bool {
+	if b.Pieces[Bishop]|b.Pieces[Rook]|b.Pieces[Queen] != 0 {
+		return false
+	}
+
+	var mat [Colors]int
+
+	for color := range Colors {
+		mat[color] += traditionalPieceValues[Pawn] * int(b.Counts[color][Pawn])
+		mat[color] += traditionalPieceValues[Knight] * int(b.Counts[color][Knight])
+	}
+
+	switch {
+	case mat[White] < mat[Black]:
+		return b.Counts[Black][Knight] == 1 && b.Counts[Black][Pawn] == 0
+	case mat[Black] < mat[White]:
+		return b.Counts[White][Knight] == 1 && b.Counts[White][Pawn] == 0
+	default:
+		return false
+	}
+}
+
+func kbvkp(b *board.Board) bool {
+	if b.Pieces[Knight]|b.Pieces[Rook]|b.Pieces[Queen] != 0 {
+		return false
+	}
+
+	var mat [Colors]int
+
+	for color := range Colors {
+		mat[color] += traditionalPieceValues[Pawn] * int(b.Counts[color][Pawn])
+		mat[color] += traditionalPieceValues[Bishop] * int(b.Counts[color][Bishop])
+	}
+
+	switch {
+	case mat[White] < mat[Black]:
+		return b.Counts[Black][Bishop] == 1 && b.Counts[Black][Pawn] == 0
+	case mat[Black] < mat[White]:
+		return b.Counts[White][Bishop] == 1 && b.Counts[White][Pawn] == 0
+	default:
+		return false
+	}
+}
+
+func knbvk(b *board.Board) bool {
 	whiteN := b.Pieces[Knight] & b.Colors[White]
 	blackN := b.Pieces[Knight] & b.Colors[Black]
 	whiteB := b.Pieces[Bishop] & b.Colors[White]
@@ -42,7 +87,7 @@ func isKNBvK(b *board.Board) bool {
 // KBCorners are knight-bishop checkmate corners based on parity of square.
 var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
 
-func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
+func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
 	bishopSq := b.Pieces[Bishop].LowestSet()
 	knightSq := b.Pieces[Knight].LowestSet()
 
@@ -67,4 +112,6 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) {
 	cornerDist *= cornerDist
 
 	e.sp[victim.Flip()][EG] += T(cornerDist) * 30
+
+	return e.endgameScore(b)
 }
