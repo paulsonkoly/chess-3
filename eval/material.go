@@ -73,13 +73,13 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		((wN == 1 && wB == 1 && bN == 0 && bB == 0) || (wN == 0 && wB == 0 && bN == 1 && bB == 1)):
 		evalID = evalKNBvKID
 
-	case ocb && wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0:
+	case ocb && wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 && pawnDiff(b) <= 3:
 		evalID = evalOCBID
 
-	case ocb && wN == 1 && bN == 1 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0:
+	case ocb && wN == 1 && bN == 1 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 && pawnDiff(b) <= 3:
 		evalID = evalOCBKnightsID
 
-	case ocb && wN == 0 && bN == 0 && wR == 1 && bR == 1 && wQ == 0 && bQ == 0:
+	case ocb && wN == 0 && bN == 0 && wR == 1 && bR == 1 && wQ == 0 && bQ == 0 && pawnDiff(b) <= 3:
 		evalID = evalOCBRooksID
 
 	default:
@@ -127,8 +127,7 @@ func evalOCBRooks[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 }
 
 func pawnDiff(b *board.Board) int {
-	pawnDiff := int(Abs(b.Counts[White][Pawn] - b.Counts[Black][Pawn]))
-	return Clamp(pawnDiff, 0, 3)
+	return int(Abs(b.Counts[White][Pawn] - b.Counts[Black][Pawn]))
 }
 
 func evalPositional[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
