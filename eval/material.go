@@ -41,7 +41,7 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	bBishop := b.Colors[Black] & b.Pieces[Bishop]
 	ocb := wB == 1 && bB == 1 && wBishop.LowestSet().Parity() != bBishop.LowestSet().Parity()
 	if ocb {
-		// index 63 is guaranted to be unused as there can't be 63 bishops
+		// index 63 is guaranteed to be unused as there can't be 63 bishops
 		key ^= board.PiecesRand[White][Bishop][63]
 	}
 
@@ -95,7 +95,7 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 type evalID byte
 
 const (
-	evalInsufficientID = iota
+	evalInsufficientID = evalID(iota)
 	evalKNBvKID
 	evalOCBID
 	evalOCBKnightsID
