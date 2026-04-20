@@ -326,7 +326,7 @@ func (b *Board) UndoNullMove(r Reverse) {
 // 	}
 //
 // 	for color := range Colors {
-// 		for pType := Pawn; pType <= Queen; pType++ {
+// 		for pType := Pawn; pType <= King; pType++ {
 // 			if (b.Colors[color] & b.Pieces[pType]).Count() != int(b.Counts[color][pType]) {
 // 				panic("inconsistent counts")
 // 			}
