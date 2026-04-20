@@ -83,11 +83,11 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		evalID = evalOCBRooksID
 
 	case wB == 0 && bB == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
-	((wN == 1 && wP == 0 && bP < 3) || (bN == 1 && bP == 0 && wP < 3)):
+		((wN == 1 && wP == 0 && bP < 3) || (bN == 1 && bP == 0 && wP < 3)):
 		evalID = evalKNvKPID
 
 	case wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
-	((wB == 1 && wP == 0 && bP < 3) || (bB == 1 && bP == 0 && wP < 3)):
+		((wB == 1 && wP == 0 && bP < 3) || (bB == 1 && bP == 0 && wP < 3)):
 		evalID = evalKBvKPID
 
 	default:
@@ -171,12 +171,11 @@ func evalKBvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	return e.positional(b, c)
 }
 
-
 func evalPositional[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	// drawishness
 	fifty := int(100 - b.FiftyCnt)
 	fifty *= fifty
-	sf :=T((fifty * MaxScaleFactor) / 10_000)
+	sf := T((fifty * MaxScaleFactor) / 10_000)
 	e.scaleFactor = [Colors]T{sf, sf}
 	return e.positional(b, c)
 }
