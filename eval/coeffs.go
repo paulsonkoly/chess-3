@@ -140,7 +140,7 @@ TempoBonus: [2]Score{   25,   19},
 KingAttackPieces: [4]Score{    3,    4,    2,    2},
 SafeChecks: [4]Score{    8,    4,    8,    5},
 UnsafeChecks: [4]Score{    2,    2,    3,    2},
-KingOpenFile: [3]Score{   19,   18,   -1},
+KingOpenFile: [3]Score{   18,   19,   -1},
 KingShelter: [3][7]Score{
 	{  -13,  -15,  -18,  -18,  -18,  -19,  -18},
 	{    0,  -13,  -15,  -16,  -17,  -18,  -17},
