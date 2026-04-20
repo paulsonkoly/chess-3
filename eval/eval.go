@@ -20,13 +20,13 @@ const (
 
 type Eval[T ScoreType] struct {
 	sp            [Colors][Phases]T
-	scaleFactor   T
+	scaleFactor   [Colors]T
 	kingAttacks   [Colors]T
 	attacks       [Colors][Pieces]BitBoard
 	cover         [Colors]BitBoard
 	pawns         [Colors]Pawns
 	kings         [Colors]Kings
-	matFuncs      [6]evalFunc[T]
+	matFuncs      [evalIDs]evalFunc[T]
 	pawnCache     []PawnCache
 	pawnKingCache []PawnKingCache
 	materialCache []MaterialCache[T]
@@ -46,19 +46,20 @@ type Kings struct {
 }
 
 func New[T ScoreType]() *Eval[T] {
-	return &Eval[T]{
+	e := &Eval[T]{
 		pawnCache:     make([]PawnCache, PawnCacheSize),
 		pawnKingCache: make([]PawnKingCache, PawnKingCacheSize),
 		materialCache: make([]MaterialCache[T], materialCacheSize),
-		matFuncs: [6]evalFunc[T]{
-			evalInsufficient[T],
-			evalKNBvK[T],
-			evalOCB[T],
-			evalOCBKnights[T],
-			evalOCBRooks[T],
-			evalPositional[T],
-		},
 	}
+	e.matFuncs[evalInsufficientID] = evalInsufficient[T]
+	e.matFuncs[evalKNBvKID] = evalKNBvK[T]
+	e.matFuncs[evalOCBID] = evalOCB[T]
+	e.matFuncs[evalOCBKnightsID] = evalOCBKnights[T]
+	e.matFuncs[evalOCBRooksID] = evalOCBRooks[T]
+	e.matFuncs[evalKNvKPID] = evalKNvKP[T]
+	e.matFuncs[evalKBvKPID] = evalKBvKP[T]
+	e.matFuncs[evalPositionalID] = evalPositional[T]
+	return e
 }
 
 func (e *Eval[T]) Clear() {

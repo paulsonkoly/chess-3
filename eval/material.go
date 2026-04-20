@@ -82,6 +82,14 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 	case ocb && wN == 0 && bN == 0 && wR == 1 && bR == 1 && wQ == 0 && bQ == 0 && pawnDiff(b) <= 3:
 		evalID = evalOCBRooksID
 
+	case wB == 0 && bB == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
+	((wN == 1 && wP == 0 && bP < 3) || (bN == 1 && bP == 0 && wP < 3)):
+		evalID = evalKNvKPID
+
+	case wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
+	((wB == 1 && wP == 0 && bP < 3) || (bB == 1 && bP == 0 && wP < 3)):
+		evalID = evalKBvKPID
+
 	default:
 		evalID = evalPositionalID
 	}
@@ -100,7 +108,11 @@ const (
 	evalOCBID
 	evalOCBKnightsID
 	evalOCBRooksID
+	evalKNvKPID
+	evalKBvKPID
 	evalPositionalID
+
+	evalIDs
 )
 
 func evalInsufficient[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
@@ -112,17 +124,20 @@ func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 }
 
 func evalOCB[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	e.scaleFactor = c.OppositeColoredBishops[0][pawnDiff(b)]
+	sf := c.OppositeColoredBishops[0][pawnDiff(b)]
+	e.scaleFactor = [Colors]T{sf, sf}
 	return e.positional(b, c)
 }
 
 func evalOCBKnights[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	e.scaleFactor = c.OppositeColoredBishops[1][pawnDiff(b)]
+	sf := c.OppositeColoredBishops[1][pawnDiff(b)]
+	e.scaleFactor = [Colors]T{sf, sf}
 	return e.positional(b, c)
 }
 
 func evalOCBRooks[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	e.scaleFactor = c.OppositeColoredBishops[2][pawnDiff(b)]
+	sf := c.OppositeColoredBishops[2][pawnDiff(b)]
+	e.scaleFactor = [Colors]T{sf, sf}
 	return e.positional(b, c)
 }
 
@@ -130,10 +145,38 @@ func pawnDiff(b *board.Board) int {
 	return int(Abs(b.Counts[White][Pawn] - b.Counts[Black][Pawn]))
 }
 
+func evalKNvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	strongSide := Black
+	if b.Counts[White][Knight] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	e.scaleFactor[strongSide] = c.InsufficientKnight
+	e.scaleFactor[weakSide] = MaxScaleFactor
+
+	return e.positional(b, c)
+}
+
+func evalKBvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	strongSide := Black
+	if b.Counts[White][Bishop] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	e.scaleFactor[strongSide] = c.InsufficientBishop
+	e.scaleFactor[weakSide] = MaxScaleFactor
+
+	return e.positional(b, c)
+}
+
+
 func evalPositional[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	// drawishness
 	fifty := int(100 - b.FiftyCnt)
 	fifty *= fifty
-	e.scaleFactor = T((fifty * MaxScaleFactor) / 10_000)
+	sf :=T((fifty * MaxScaleFactor) / 10_000)
+	e.scaleFactor = [Colors]T{sf, sf}
 	return e.positional(b, c)
 }
