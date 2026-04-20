@@ -83,11 +83,11 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		evalID = evalOCBRooksID
 
 	case wB == 0 && bB == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
-		((wN == 1 && wP == 0 && bP < 3) || (bN == 1 && bP == 0 && wP < 3)):
+		((wN == 1 && wP == 0 && bN == 0 && bP < 3) || (bN == 1 && bP == 0 && wN == 0 && wP < 3)):
 		evalID = evalKNvKPID
 
 	case wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
-		((wB == 1 && wP == 0 && bP < 3) || (bB == 1 && bP == 0 && wP < 3)):
+		((wB == 1 && wP == 0 && bB == 0 && bP < 3) || (bB == 1 && bP == 0 && wB == 0 && wP < 3)):
 		evalID = evalKBvKPID
 
 	default:
