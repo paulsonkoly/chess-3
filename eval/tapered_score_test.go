@@ -46,14 +46,14 @@ func TestTaperedScore(t *testing.T) {
 
 func evalForScore(scores [Colors][Phases]Score) *Eval[Score] {
 	e := New[Score]()
-	e.scaleFactor = MaxScaleFactor
+	e.scaleFactor = [Colors]Score{MaxScaleFactor, MaxScaleFactor}
 	e.sp = scores
 	return e
 }
 
 func evalForFloat64(scores [Colors][Phases]Score) *Eval[float64] {
 	e := New[float64]()
-	e.scaleFactor = MaxScaleFactor
+	e.scaleFactor = [Colors]float64{MaxScaleFactor, MaxScaleFactor}
 	e.sp[White][MG] += float64(scores[White][MG])
 	e.sp[White][EG] += float64(scores[White][EG])
 	e.sp[Black][MG] += float64(scores[Black][MG])
