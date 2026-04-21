@@ -9,6 +9,8 @@ import (
 var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
 
 func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
+	e.sp = [Colors][Phases]T{}
+
 	bishopSq := b.Pieces[Bishop].LowestSet()
 	knightSq := b.Pieces[Knight].LowestSet()
 
