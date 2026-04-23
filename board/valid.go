@@ -17,8 +17,10 @@ var (
 
 // Valid determines if the position is legal (reachable from startpos) in chess.
 // Useful for validating a syntactically correct fen which might yield an invalid position.
+// Given that some UIs send fens with EP set when EP is not possible due to
+// pins or missing pawns, we accept these but set b.EnPassant to 0.
 // Returns error nil if the position is valid.
-func (b Board) Valid() error {
+func (b *Board) Valid() error {
 	for color := White; color <= Black; color++ {
 		if !(b.Colors[color] & b.Pieces[King]).IsPow2() {
 			return ErrWrongPieceCount
@@ -71,9 +73,16 @@ func (b Board) Valid() error {
 
 		occ := b.Colors[White] | b.Colors[Black]
 		epBB := BitBoardFromSquares(b.EnPassant)
+		if epBB&occ != 0 {
+			return ErrWrongEnPassant
+		}
+
 		capturingBB := attacks.PawnCaptureMoves(epBB, b.STM.Flip()) & b.Pieces[Pawn] & b.Colors[b.STM]
 		capturedBB := attacks.PawnSinglePushMoves(epBB, b.STM.Flip()) & b.Pieces[Pawn] & b.Colors[b.STM.Flip()]
-		if capturingBB == 0 || capturedBB == 0 || epBB&occ != 0 {
+		if capturingBB == 0 {
+			b.EnPassant = 0
+		}
+		if capturedBB == 0 {
 			return ErrWrongEnPassant
 		}
 
@@ -88,7 +97,7 @@ func (b Board) Valid() error {
 			}
 		}
 		if !hasUnpinned {
-			return ErrWrongEnPassant
+			b.EnPassant = 0
 		}
 	}
 	return nil

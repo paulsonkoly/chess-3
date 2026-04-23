@@ -12,114 +12,136 @@ import (
 
 func TestValid(t *testing.T) {
 	tests := []struct {
-		name string
-		fen  string
-		want error
+		name    string
+		fen     string
+		wantFEN string
+		want    error
 	}{
 		{
-			name: "startpos",
-			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			want: nil,
+			name:    "startpos",
+			fen:     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			wantFEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			want:    nil,
 		},
 		{
-			name: "empty",
-			fen:  "8/8/8/8/8/8/8/8 w KQkq - 0 1",
-			want: board.ErrWrongPieceCount,
+			name:    "empty",
+			fen:     "8/8/8/8/8/8/8/8 w KQkq - 0 1",
+			wantFEN: "8/8/8/8/8/8/8/8 w KQkq - 0 1",
+			want:    board.ErrWrongPieceCount,
 		},
 		{
-			name: "8 queens",
-			fen:  "3k4/8/8/8/8/3K4/QQQQQQQQ/8 w - - 0 1",
-			want: nil,
+			name:    "8 queens",
+			fen:     "3k4/8/8/8/8/3K4/QQQQQQQQ/8 w - - 0 1",
+			wantFEN: "3k4/8/8/8/8/3K4/QQQQQQQQ/8 w - - 0 1",
+			want:    nil,
 		},
 		{
-			name: "9 queens",
-			fen:  "3k4/8/8/8/8/3K4/QQQQQQQQ/3Q4 w - - 0 1",
-			want: nil,
+			name:    "9 queens",
+			fen:     "3k4/8/8/8/8/3K4/QQQQQQQQ/3Q4 w - - 0 1",
+			wantFEN: "3k4/8/8/8/8/3K4/QQQQQQQQ/3Q4 w - - 0 1",
+			want:    nil,
 		},
 		{
-			name: "10 queens",
-			fen:  "3k4/8/8/8/8/3K4/QQQQQQQQ/3QQ3 w - - 0 1",
-			want: board.ErrWrongPieceCount,
+			name:    "10 queens",
+			fen:     "3k4/8/8/8/8/3K4/QQQQQQQQ/3QQ3 w - - 0 1",
+			wantFEN: "3k4/8/8/8/8/3K4/QQQQQQQQ/3QQ3 w - - 0 1",
+			want:    board.ErrWrongPieceCount,
 		},
 		{
-			name: "2 queens 8 pawns",
-			fen:  "k7/8/8/8/PPPPPPPP/KQ6/Q7/8 w - - 0 1",
-			want: board.ErrWrongPieceCount,
+			name:    "2 queens 8 pawns",
+			fen:     "k7/8/8/8/PPPPPPPP/KQ6/Q7/8 w - - 0 1",
+			wantFEN: "k7/8/8/8/PPPPPPPP/KQ6/Q7/8 w - - 0 1",
+			want:    board.ErrWrongPieceCount,
 		},
 		{
-			name: "4 pawns 5 queens 3 knights",
-			fen:  "2k5/8/8/8/8/PPPP4/KQQ2NNN/QQQ5 w - - 0 1",
-			want: board.ErrWrongPieceCount,
+			name:    "4 pawns 5 queens 3 knights",
+			fen:     "2k5/8/8/8/8/PPPP4/KQQ2NNN/QQQ5 w - - 0 1",
+			wantFEN: "2k5/8/8/8/8/PPPP4/KQQ2NNN/QQQ5 w - - 0 1",
+			want:    board.ErrWrongPieceCount,
 		},
 		{
-			name: "bad white short castle - rook missing",
-			fen:  "4k3/8/8/8/8/8/8/R3K1R1 w KQ - 0 1",
-			want: board.ErrWrongCastle,
+			name:    "bad white short castle - rook missing",
+			fen:     "4k3/8/8/8/8/8/8/R3K1R1 w KQ - 0 1",
+			wantFEN: "4k3/8/8/8/8/8/8/R3K1R1 w KQ - 0 1",
+			want:    board.ErrWrongCastle,
 		},
 		{
-			name: "bad white short castle - king at wrong place",
-			fen:  "4k3/8/8/8/8/8/8/R2K3R w K - 0 1",
-			want: board.ErrWrongCastle,
+			name:    "bad white short castle - king at wrong place",
+			fen:     "4k3/8/8/8/8/8/8/R2K3R w K - 0 1",
+			wantFEN: "4k3/8/8/8/8/8/8/R2K3R w K - 0 1",
+			want:    board.ErrWrongCastle,
 		},
 		{
-			name: "bad black long castle - rook missing",
-			fen:  "4k2r/8/8/8/8/8/8/3K4 w q - 0 1",
-			want: board.ErrWrongCastle,
+			name:    "bad black long castle - rook missing",
+			fen:     "4k2r/8/8/8/8/8/8/3K4 w q - 0 1",
+			wantFEN: "4k2r/8/8/8/8/8/8/3K4 w q - 0 1",
+			want:    board.ErrWrongCastle,
 		},
 		{
-			name: "bad black long castle - king at wrong place",
-			fen:  "r2k4/8/8/8/8/8/8/3K4 w q - 0 1",
-			want: board.ErrWrongCastle,
+			name:    "bad black long castle - king at wrong place",
+			fen:     "r2k4/8/8/8/8/8/8/3K4 w q - 0 1",
+			wantFEN: "r2k4/8/8/8/8/8/8/3K4 w q - 0 1",
+			want:    board.ErrWrongCastle,
 		},
 		{
-			name: "valid en passant white to move",
-			fen:  "4k3/8/8/1pP5/8/8/8/4K3 w - b6 0 1",
-			want: nil,
+			name:    "valid en passant white to move",
+			fen:     "4k3/8/8/1pP5/8/8/8/4K3 w - b6 0 1",
+			wantFEN: "4k3/8/8/1pP5/8/8/8/4K3 w - b6 0 1",
+			want:    nil,
 		},
 		{
-			name: "valid en passant black to move",
-			fen:  "4k3/8/8/8/1Pp5/8/8/4K3 b - b3 0 1",
-			want: nil,
+			name:    "valid en passant black to move",
+			fen:     "4k3/8/8/8/1Pp5/8/8/4K3 b - b3 0 1",
+			wantFEN: "4k3/8/8/8/1Pp5/8/8/4K3 b - b3 0 1",
+			want:    nil,
 		},
 		{
-			name: "wrong rank for white",
-			fen:  "4k3/8/8/8/1Pp5/8/8/4K3 w - b4 0 1",
-			want: board.ErrWrongEnPassant,
+			name:    "wrong rank for white",
+			fen:     "4k3/8/8/8/1Pp5/8/8/4K3 w - b4 0 1",
+			wantFEN: "4k3/8/8/8/1Pp5/8/8/4K3 w - b4 0 1",
+			want:    board.ErrWrongEnPassant,
 		},
 		{
-			name: "wrong rank for black",
-			fen:  "4k3/8/8/1pP5/8/8/8/4K3 b - b5 0 1",
-			want: board.ErrWrongEnPassant,
+			name:    "wrong rank for black",
+			fen:     "4k3/8/8/1pP5/8/8/8/4K3 b - b5 0 1",
+			wantFEN: "4k3/8/8/1pP5/8/8/8/4K3 b - b5 0 1",
+			want:    board.ErrWrongEnPassant,
 		},
 		{
-			name: "missing capturing pawn",
-			fen:  "4k3/8/8/8/1P6/8/8/4K3 b - b3 0 1",
-			want: board.ErrWrongEnPassant,
+			name:    "missing capturing pawn",
+			fen:     "4k3/8/8/8/1P6/8/8/4K3 b - b3 0 1",
+			wantFEN: "4k3/8/8/8/1P6/8/8/4K3 b - - 0 1",
+			want:    nil,
 		},
 		{
-			name: "missing captured pawn",
-			fen:  "4k3/8/8/8/2p5/8/8/4K3 b - b3 0 1",
-			want: board.ErrWrongEnPassant,
+			name:    "missing captured pawn",
+			fen:     "4k3/8/8/8/2p5/8/8/4K3 b - b3 0 1",
+			wantFEN: "4k3/8/8/8/2p5/8/8/4K3 b - b3 0 1",
+			want:    board.ErrWrongEnPassant,
 		},
 		{
-			name: "en passant square occupied",
-			fen:  "4k3/8/8/8/1Pp5/1P6/8/4K3 b - b3 0 1",
-			want: board.ErrWrongEnPassant,
+			name:    "en passant square occupied",
+			fen:     "4k3/8/8/8/1Pp5/1P6/8/4K3 b - b3 0 1",
+			wantFEN: "4k3/8/8/8/1Pp5/1P6/8/4K3 b - b3 0 1",
+			want:    board.ErrWrongEnPassant,
 		},
 		{
-			name: "king in check after capture",
-			fen:  "8/8/8/8/RPp2k2/8/8/4K3 b - b3 0 1",
-			want: board.ErrWrongEnPassant,
+			name:    "king in check after capture",
+			fen:     "8/8/8/8/RPp2k2/8/8/4K3 b - b3 0 1",
+			wantFEN: "8/8/8/8/RPp2k2/8/8/4K3 b - - 0 1",
+			want:    nil,
 		},
 		{
-			name: "king is not in check from 1 possible capture but in check from other",
-			fen:  "2k5/8/8/8/pPp5/8/8/2R1K3 b - b3 0 1",
-			want: nil,
+			name:    "king is not in check from 1 possible capture but in check from other",
+			fen:     "2k5/8/8/8/pPp5/8/8/2R1K3 b - b3 0 1",
+			wantFEN: "2k5/8/8/8/pPp5/8/8/2R1K3 b - b3 0 1",
+			want:    nil,
 		},
 		{
-			name: "non side to move in check",
-			fen:  "4kb1r/B2pqBpp/3P1n2/Q7/PP2PPP1/1K4RP/8/8 w - - 0 1",
-			want: board.ErrNSTMInCheck,
+			name:    "non side to move in check",
+			fen:     "4kb1r/B2pqBpp/3P1n2/Q7/PP2PPP1/1K4RP/8/8 w - - 0 1",
+			wantFEN: "4kb1r/B2pqBpp/3P1n2/Q7/PP2PPP1/1K4RP/8/8 w - - 0 1",
+			want:    board.ErrNSTMInCheck,
 		},
 	}
 
@@ -127,6 +149,7 @@ func TestValid(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			assert.Equal(t, tt.want, b.Valid(), "fen: %s", tt.fen)
+			assert.Equal(t, tt.wantFEN, b.FEN())
 		})
 	}
 }
