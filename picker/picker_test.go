@@ -85,8 +85,8 @@ func TestPicker(t *testing.T) {
 			hStack.Reset()
 			ms.Clear()
 			ms.Push()
-			movegen.GenNoisy(ms, b)
-			movegen.GenNotNoisy(ms, b)
+			movegen.Noisy(ms, b)
+			movegen.Quiet(ms, b)
 			allMoves := slices.Clone(ms.Frame())
 			numMoves := len(allMoves)
 

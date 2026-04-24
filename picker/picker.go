@@ -62,7 +62,7 @@ func (p *Picker) Next() bool {
 
 	case genNoisy:
 		p.state = yieldGoodNoisy
-		movegen.GenNoisy(p.ms, p.board)
+		movegen.Noisy(p.ms, p.board)
 		moves := p.ms.Frame()
 
 		for i := p.ix; i < len(moves); i++ {
@@ -101,7 +101,7 @@ func (p *Picker) Next() bool {
 		p.state = yieldRest
 
 		quietStart := len(p.ms.Frame())
-		movegen.GenNotNoisy(p.ms, p.board)
+		movegen.Quiet(p.ms, p.board)
 		moves := p.ms.Frame()
 
 		for i := quietStart; i < len(moves); i++ {

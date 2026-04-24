@@ -86,8 +86,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 					// give up on ponder
 					ponder = 0
 
-					movegen.GenNoisy(s.ms, b)
-					movegen.GenNotNoisy(s.ms, b)
+					movegen.Noisy(s.ms, b)
+					movegen.Quiet(s.ms, b)
 					moves := s.ms.Frame()
 
 					for _, pseudo := range moves {
@@ -563,7 +563,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	s.ms.Push()
 	defer s.ms.Pop()
 
-	movegen.GenNoisy(s.ms, b)
+	movegen.Noisy(s.ms, b)
 
 	delta := standPat + Score(params.StandPatDelta)
 	// fail soft upper bound
