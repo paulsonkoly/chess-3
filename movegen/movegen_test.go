@@ -272,7 +272,7 @@ func TestMoves(t *testing.T) {
 	}
 }
 
-func TestGenNoisy(t *testing.T) {
+func TestNoisy(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
