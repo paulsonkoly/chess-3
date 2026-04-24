@@ -25,8 +25,8 @@ func perft(ms *move.Store, b *board.Board, depth Depth, split bool) int {
 	ms.Push()
 	defer ms.Pop()
 
-	movegen.GenNoisy(ms, b)
-	movegen.GenNotNoisy(ms, b)
+	movegen.Noisy(ms, b)
+	movegen.Quiet(ms, b)
 
 	for _, m := range ms.Frame() {
 		r := b.MakeMove(m.Move)
