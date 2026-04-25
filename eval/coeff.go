@@ -76,4 +76,8 @@ type CoeffSet[T ScoreType] struct {
 	InsufficientKnight T
 	// InsufficientBishop is the score reduction factor for the strong side only having a bishop.
 	InsufficientBishop T
+	// KRvKN is the score reduction factor for the side with a rook for KRvKN endgame.
+	KRvKN T
+	// KRvKB is the score reduction factor for the side with a rook for KRvKB endgame.
+	KRvKB T
 }

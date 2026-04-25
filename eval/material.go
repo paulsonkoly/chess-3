@@ -90,6 +90,14 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		((wB == 1 && wP == 0 && bB == 0 && bP < 3) || (bB == 1 && bP == 0 && wB == 0 && wP < 3)):
 		evalID = evalKBvKPID
 
+	case wP == 0 && bP == 0 && wB == 0 && bB == 0 && wQ == 0 && bQ == 0 &&
+		((wN == 1 && wR == 0 && bN == 0 && bR == 1) || (wN == 0 && wR == 1 && bN == 1 && bR == 0)):
+		evalID = evalKRvKNID
+
+	case wP == 0 && bP == 0 && wN == 0 && bN == 0 && wQ == 0 && bQ == 0 &&
+		((wB == 1 && wR == 0 && bB == 0 && bR == 1) || (wB == 0 && wR == 1 && bB == 1 && bR == 0)):
+		evalID = evalKRvKBID
+
 	default:
 		evalID = evalPositionalID
 	}
@@ -110,6 +118,8 @@ const (
 	evalOCBRooksID
 	evalKNvKPID
 	evalKBvKPID
+	evalKRvKNID
+	evalKRvKBID
 	evalPositionalID
 
 	evalIDs
@@ -166,6 +176,32 @@ func evalKBvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	weakSide := strongSide.Flip()
 
 	e.scaleFactor[strongSide] = c.InsufficientBishop
+	e.scaleFactor[weakSide] = MaxScaleFactor
+
+	return e.positional(b, c)
+}
+
+func evalKRvKN[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	strongSide := Black
+	if b.Counts[White][Rook] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	e.scaleFactor[strongSide] = c.KRvKN
+	e.scaleFactor[weakSide] = MaxScaleFactor
+
+	return e.positional(b, c)
+}
+
+func evalKRvKB[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	strongSide := Black
+	if b.Counts[White][Rook] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	e.scaleFactor[strongSide] = c.KRvKB
 	e.scaleFactor[weakSide] = MaxScaleFactor
 
 	return e.positional(b, c)
