@@ -46,21 +46,20 @@ func (e *Eval[T]) Score(b *board.Board, c *CoeffSet[T]) T {
 		for pType := Pawn; pType <= King; pType++ {
 			for pieces := b.Colors[color] & b.Pieces[pType]; pieces != 0; pieces &= pieces - 1 {
 				if pType != King {
-					sq := pieces.LowestSet()
-
-					if color == White {
-						sq ^= 56 // upside down
-					}
-
-					ix := pType - 1
-
-					e.sp[color][MG] += c.PSqT[2*ix][sq]
-					e.sp[color][EG] += c.PSqT[2*ix+1][sq]
+					e.sp[color][MG] += c.PieceValues[MG][pType]
+					e.sp[color][EG] += c.PieceValues[EG][pType]
 
 					phase += Blend[pType]
 				}
-				e.sp[color][MG] += c.PieceValues[MG][pType]
-				e.sp[color][EG] += c.PieceValues[EG][pType]
+
+				sq := pieces.LowestSet()
+				if color == White {
+					sq ^= 56 // upside down
+				}
+
+				ix := pType - 1
+				e.sp[color][MG] += c.PSqT[2*ix][sq]
+				e.sp[color][EG] += c.PSqT[2*ix+1][sq]
 			}
 		}
 	}
