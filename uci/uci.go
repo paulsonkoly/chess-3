@@ -470,6 +470,8 @@ func (tc timeControl) hardLimit(stm Color) int64 {
 	return Clamp(4*tc.softLimit(stm), TimeSafetyMargin, timeLeft-TimeSafetyMargin)
 }
 
+var goArgsWithVal = [...]string{"wtime", "btime", "winc", "binc", "depth", "nodes", "movetime", "movestogo"}
+
 func (d *Driver) handleGo(args []string) (quit bool) {
 	opts := make([]search.Option, 0, 4)
 
@@ -478,9 +480,7 @@ func (d *Driver) handleGo(args []string) (quit bool) {
 	tc := timeControl{}
 
 	for i := range args {
-		if slices.Contains(
-			[]string{"wtime", "btime", "winc", "binc", "depth", "nodes", "movetime", "movestogo"}, args[i]) &&
-			len(args) <= i+1 {
+		if slices.Contains(goArgsWithVal[:], args[i]) && len(args) <= i+1 {
 			fmt.Fprintln(d.err, "argument missing")
 			return false
 		}
