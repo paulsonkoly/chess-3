@@ -548,8 +548,11 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		defer s.ms.Pop()
 
 		movegen.NoisyEvasions(s.ms, b, checkers)
+		noisies := s.ms.Frame()
+		for i := range noisies {
+			noisies[i].Weight = s.ranker.RankNoisy(noisies[i].Move, b, nil)
+		}
 		movegen.QuietEvasions(s.ms, b, checkers)
-
 		moves := s.ms.Frame()
 
 		maxim = -Inf - 1
