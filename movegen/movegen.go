@@ -255,3 +255,38 @@ func Quiet(ms *move.Store, b *board.Board) {
 	shortCastle(ms, b)
 	longCastle(ms, b)
 }
+
+// NoisyEvasions generates all pseudo legal moves when in check by pieces
+// located at checkers.
+// Note: this function panics is if there are no checkers. Also more than 2
+// checkers should be impossible, but it is handled as if there were 2
+// checkers.
+func NoisyEvasions(ms *move.Store, b *board.Board, checkers BitBoard) {
+	self := b.Colors[b.STM]
+	them := b.Colors[b.STM.Flip()]
+	occ := b.Colors[White] | b.Colors[Black]
+
+	gen := generator{
+		self: self,
+		them: them,
+		occ:  occ,
+	}
+
+	switch {
+	case checkers == 0:
+		panic("NoisNoisyEvasions called with no checkers.")
+	case checkers.One():
+		gen.kingMoves(ms, b, Full, them)
+		gen.knightMoves(ms, b, Full, checkers)
+		gen.bishopMoves(ms, b, Full, checkers)
+		gen.rookMoves(ms, b, Full, checkers)
+		gen.queenMoves(ms, b, Full, checkers)
+
+		gen.promoPushMoves(ms, b, Full)
+		gen.pawnCaptureMoves(ms, b)
+		gen.pawnCapturePromoMoves(ms, b)
+		gen.enPassant(ms, b)
+	case checkers.Many():
+		gen.kingMoves(ms, b, Full, them)
+	}
+}

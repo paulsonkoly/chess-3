@@ -89,7 +89,7 @@ func TestIsPow2(t *testing.T) {
 	for _, tt := range tests {
 		name := fmt.Sprintf("0x%016x", tt.bb)
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.bb.IsPow2())
+			assert.Equal(t, tt.want, tt.bb.One())
 		})
 	}
 }
