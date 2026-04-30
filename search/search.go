@@ -542,81 +542,110 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		}
 	}
 
-	inCheck := b.InCheck(b.STM)
+	var maxim Score
+	if checkers := b.Checkers(); checkers != 0 {
+		s.ms.Push()
+		defer s.ms.Pop()
 
-	if inCheck {
-		if b.IsCheckmate() {
-			return -Inf + Score(ply)
+		movegen.NoisyEvasions(s.ms, b, checkers)
+		movegen.QuietEvasions(s.ms, b, checkers)
+
+		moves := s.ms.Frame()
+
+		maxim = -Inf - 1
+		hasLegal := false
+		for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
+			r := b.MakeMove(m.Move)
+
+			if b.InCheck(b.STM.Flip()) {
+				b.UndoMove(m.Move, r)
+				continue
+			}
+			hasLegal = true
+
+			curr := -s.quiescence(b, -beta, -alpha, ply+1, opts)
+			b.UndoMove(m.Move, r)
+
+			if curr >= beta {
+				transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, m.Move, curr, transp.LowerBound)
+				return curr
+			}
+			maxim = max(maxim, curr)
+			alpha = max(alpha, curr)
+
+			if s.abort(opts) {
+				return Inv
+			}
 		}
-	} else {
+		if !hasLegal {
+			maxim = -Inf + Score(ply)
+		}
+	} else { // !inCheck
 		if b.IsStalemate() {
 			return 0
 		}
-	}
 
-	standPat := s.eval.Score(b, &eval.Coefficients)
-
-	if !inCheck && standPat >= beta {
-		return standPat
-	}
-
-	s.ms.Push()
-	defer s.ms.Pop()
-
-	movegen.Noisy(s.ms, b)
-
-	delta := standPat + Score(params.StandPatDelta)
-	// fail soft upper bound
-	maxim := standPat
-	alpha = max(alpha, standPat)
-
-	moves := s.ms.Frame()
-
-	s.rankMovesQ(b, moves)
-
-	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
-
-		if m.Weight < 0 {
-			break
+		standPat := s.eval.Score(b, &eval.Coefficients)
+		if standPat >= beta {
+			return standPat
 		}
 
-		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
+		s.ms.Push()
+		defer s.ms.Pop()
+		movegen.Noisy(s.ms, b)
 
-		r := b.MakeMove(m.Move)
+		delta := standPat + Score(params.StandPatDelta)
 
-		if b.InCheck(b.STM.Flip()) {
+		// fail soft upper bound
+		maxim = standPat
+		alpha = max(alpha, standPat)
+
+		moves := s.ms.Frame()
+
+		s.rankMovesQ(b, moves)
+
+		for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
+			if m.Weight < 0 {
+				break
+			}
+
+			captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
+
+			r := b.MakeMove(m.Move)
+
+			if b.InCheck(b.STM.Flip()) {
+				b.UndoMove(m.Move, r)
+				continue
+			}
+
+			gain := heur.PieceValues[captured]
+
+			if m.Promo() != NoPiece {
+				gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
+			}
+
+			if gain+delta < alpha {
+				b.UndoMove(m.Move, r)
+				break
+			}
+
+			curr := -s.quiescence(b, -beta, -alpha, ply+1, opts)
 			b.UndoMove(m.Move, r)
-			continue
-		}
 
-		gain := heur.PieceValues[captured]
+			if curr >= beta {
+				transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, m.Move, curr, transp.LowerBound)
+				return curr
+			}
+			maxim = max(maxim, curr)
+			alpha = max(alpha, curr)
 
-		if m.Promo() != NoPiece {
-			gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
-		}
-
-		if gain+delta < alpha {
-			b.UndoMove(m.Move, r)
-			break
-		}
-
-		curr := -s.quiescence(b, -beta, -alpha, ply+1, opts)
-		b.UndoMove(m.Move, r)
-
-		if curr >= beta {
-			transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, m.Move, curr, transp.LowerBound)
-			return curr
-		}
-		maxim = max(maxim, curr)
-		alpha = max(alpha, curr)
-
-		if s.abort(opts) {
-			return Inv
+			if s.abort(opts) {
+				return Inv
+			}
 		}
 	}
 
 	transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, 0, maxim, transp.UpperBound)
-
 	return maxim
 }
 
