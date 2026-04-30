@@ -352,6 +352,11 @@ func (b *Board) InCheck(who Color) bool {
 	return b.IsAttacked(who.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[who]&b.Pieces[King])
 }
 
+func (b *Board) Checkers() BitBoard {
+	king := b.Colors[b.STM] & b.Pieces[King]
+	return b.Attackers(king, b.Colors[White]|b.Colors[Black], b.STM.Flip())
+}
+
 var shifts = [2]Square{8, -8}
 
 // CanEnPassant determines if we need to change the en passant state of the

@@ -352,3 +352,73 @@ func TestIsAttacked(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckers(t *testing.T) {
+	tests := []struct {
+		name string
+		fen  string
+		want BitBoard
+	}{
+		{
+			name: "king not in check",
+			fen:  "8/1k6/8/8/8/8/8/RNBQKBNR b - - 0 1",
+			want: 0,
+		},
+		{
+			name: "king in check by knight",
+			fen:  "8/8/8/8/8/2k5/8/RNBQKBNR b - - 0 1",
+			want: BitBoardFromSquares(B1),
+		},
+		{
+			name: "king in check by bishop",
+			fen:  "8/8/8/8/8/4k3/8/RNBQKBNR b - - 0 1",
+			want: BitBoardFromSquares(C1),
+		},
+		{
+			name: "bishop does not attack through a blocking piece",
+			fen:  "8/8/8/8/8/4k3/3N4/R1BQKBNR b - - 0 1",
+			want: 0,
+		},
+		{
+			name: "king in check by rook",
+			fen:  "k7/8/8/8/8/8/8/RNBQKBNR b - - 0 1",
+			want: BitBoardFromSquares(A1),
+		},
+		{
+			name: "rook does not attack through a blocking piece",
+			fen:  "k7/8/8/8/8/N7/8/R1BQKBNR b - - 0 1",
+			want: 0,
+		},
+		{
+			name: "king in check by queen",
+			fen:  "8/8/8/8/3k4/8/8/RNBQKBNR b - - 0 1",
+			want: BitBoardFromSquares(D1),
+		},
+		{
+			name: "queen does not attack through a blocking piece",
+			fen:  "8/8/8/8/6k1/8/4N3/RNBQKB1R b - - 0 1",
+			want: 0,
+		},
+		{
+			name: "king in check by pawn",
+			fen:  "8/8/8/8/5k2/4P3/8/K7 b - - 0 1",
+			want: BitBoardFromSquares(E3),
+		},
+		{
+			name: "king not in check by pawn wrap",
+			fen:  "8/8/8/8/7k/P7/8/K7 b - - 0 1",
+			want: 0,
+		},
+		{
+			name: "king in double check",
+			fen:  "8/8/8/8/5R1k/8/8/K3B3 b - - 0 1",
+			want: BitBoardFromSquares(E1, F4),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Must(board.FromFEN(tt.fen))
+			assert.Equal(t, tt.want, b.Checkers(), "fen: %s", tt.fen)
+		})
+	}
+}

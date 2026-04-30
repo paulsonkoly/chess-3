@@ -256,37 +256,59 @@ func Quiet(ms *move.Store, b *board.Board) {
 	longCastle(ms, b)
 }
 
-// NoisyEvasions generates all pseudo legal moves when in check by pieces
+// NoisyEvasions generates all pseudo legal noisy moves when in check by pieces
 // located at checkers.
-// Note: this function panics is if there are no checkers. Also more than 2
-// checkers should be impossible, but it is handled as if there were 2
-// checkers.
+// Note: this function should be called with either 1 or 2 checkers.
 func NoisyEvasions(ms *move.Store, b *board.Board, checkers BitBoard) {
-	self := b.Colors[b.STM]
 	them := b.Colors[b.STM.Flip()]
-	occ := b.Colors[White] | b.Colors[Black]
-
-	gen := generator{
-		self: self,
-		them: them,
-		occ:  occ,
-	}
 
 	switch {
-	case checkers == 0:
-		panic("NoisNoisyEvasions called with no checkers.")
 	case checkers.One():
-		gen.kingMoves(ms, b, Full, them)
-		gen.knightMoves(ms, b, Full, checkers)
-		gen.bishopMoves(ms, b, Full, checkers)
-		gen.rookMoves(ms, b, Full, checkers)
-		gen.queenMoves(ms, b, Full, checkers)
+		occ := b.Colors[White] | b.Colors[Black]
 
-		gen.promoPushMoves(ms, b, Full)
-		gen.pawnCaptureMoves(ms, b)
-		gen.pawnCapturePromoMoves(ms, b)
-		gen.enPassant(ms, b)
+		kingMoves(ms, b, them)
+		knightMoves(ms, b, checkers)
+		bishopMoves(ms, b, checkers)
+		rookMoves(ms, b, checkers)
+		queenMoves(ms, b, checkers)
+
+		promoPushMoves(ms, b, ^occ)
+		pawnCaptureMoves(ms, b, checkers)
+		pawnCapturePromoMoves(ms, b, checkers)
+		enPassant(ms, b)
 	case checkers.Many():
-		gen.kingMoves(ms, b, Full, them)
+		kingMoves(ms, b, them)
+	}
+}
+
+// QuietEvasions generates all pseudo legal quiet moves when in check by pieces
+// located at checkers.
+// Note: this function should be called with either 1 or 2 checkers.
+func QuietEvasions(ms *move.Store, b *board.Board, checkers BitBoard) {
+	occ := b.Colors[White] | b.Colors[Black]
+
+	switch {
+	case checkers.One():
+		kingMoves(ms, b, ^occ)
+
+		// a knight or a pawn check cannot be blocked
+		if checkers&(b.Pieces[Pawn]|b.Pieces[Knight]) != 0 {
+			return
+		}
+		checkerSq := checkers.LowestSet()
+		kingSq := (b.Colors[b.STM] & b.Pieces[King]).LowestSet()
+		ray := attacks.InBetween[checkerSq][kingSq]
+		mask := ^occ & ray
+
+		knightMoves(ms, b, mask)
+		bishopMoves(ms, b, mask)
+		rookMoves(ms, b, mask)
+		queenMoves(ms, b, mask)
+
+		singlePushMoves(ms, b, mask)
+		doublePushMoves(ms, b, mask)
+
+	case checkers.Many():
+		kingMoves(ms, b, ^occ)
 	}
 }
