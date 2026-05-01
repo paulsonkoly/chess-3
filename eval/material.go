@@ -99,7 +99,7 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		evalID = evalKRvKBID
 
 	case wP == 0 && bP == 0 && wB == 0 && bB == 0 && wN == 0 && bN == 0 &&
-		((wR == 1 && wQ == 0 && bR == 0 && bQ == 1) || (wR == 0 && wQ == 1 && bR == 1 && bQ == 1)):
+		((wR == 1 && wQ == 0 && bR == 0 && bQ == 1) || (wR == 0 && wQ == 1 && bR == 1 && bQ == 0)):
 		evalID = evalKQvKRID
 
 	default:
