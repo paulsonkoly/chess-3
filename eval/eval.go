@@ -60,6 +60,7 @@ func New[T ScoreType]() *Eval[T] {
 	e.matFuncs[evalKBvKPID] = evalKBvKP[T]
 	e.matFuncs[evalKRvKNID] = evalKRvKN[T]
 	e.matFuncs[evalKRvKBID] = evalKRvKB[T]
+	e.matFuncs[evalKQvKRID] = evalKQvKR[T]
 	e.matFuncs[evalPositionalID] = evalPositional[T]
 	return e
 }
