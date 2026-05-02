@@ -64,7 +64,7 @@ type StackMove struct {
 }
 
 // RankNoisy returns the heuristic rank of a noisy move.
-func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board, _ *stack.Stack[StackMove]) Score {
+func (mr *MoveRanker) RankNoisy(m move.Move, b *board.Board) Score {
 	promo := m.Promo()
 	attacker := b.SquaresToPiece[m.From()]
 	victim := b.SquaresToPiece[b.CaptureSq(m)]
@@ -119,6 +119,33 @@ func (mr *MoveRanker) RankQuiet(m move.Move, b *board.Board, stack *stack.Stack[
 	}
 
 	return score
+}
+
+// RankNoisyEvasion returns the heuristic weight for the noisy evasion move m.
+func (mr *MoveRanker) RankNoisyEvasion(m move.Move, b *board.Board) Score {
+	promo := m.Promo()
+	attacker := b.SquaresToPiece[m.From()]
+	victim := b.SquaresToPiece[b.CaptureSq(m)]
+
+	if promo != NoPiece {
+		promo -= Pawn // Knight, Bishop, Rook, Queen => 0: NoPiece, 1: Knight, ... etc.
+	}
+
+	// Promo/MVV/LVA
+	// we tried replacing LVA with capthist, but it doesn't give much for us.
+	// Within a Promo/MVV bucket there is hardly ever more than 1 move. The
+	// ordering there doesn't matter much.
+	invAttacker := King - attacker
+	// invAttacker range 0..5
+	// victim range 0..6
+	// promo range 0..3
+	score := Score(promo)*6*7 + Score(victim)*6 + Score(invAttacker)
+	return Captures + score
+}
+
+// RankQuietEvasion returns the heuristic weight for a quiet evasion move m.
+func (mr *MoveRanker) RankQuietEvasion(m move.Move, b *board.Board) Score {
+	return mr.history.LookUp(b.STM, m.From(), m.To())
 }
 
 // FailHigh updates the history / continuation stores based on the move buffer

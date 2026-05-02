@@ -102,7 +102,7 @@ func TestPicker(t *testing.T) {
 
 			ms.Clear()
 
-			pck := picker.New(b, hashMove, ms, &ranker, hStack)
+			pck := picker.NewMain(b, hashMove, ms, &ranker, hStack)
 
 			state := verifyHash
 
