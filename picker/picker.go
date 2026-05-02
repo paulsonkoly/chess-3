@@ -1,5 +1,11 @@
 // Package picker is a lazy move loop iterator. Generating moves or ranking
 // them are delayed in the hopes of beta cut or pruning.
+//
+// Use AllMoves picker in case all pseudo legal moves are needed, this is the
+// case from the main search.
+//
+// Use NoisyOrEvasions in case only noisy moves are needed or in check all
+// evasions are needed. This is the case in a qsearch.
 package picker
 
 import (
@@ -11,51 +17,57 @@ import (
 	"github.com/paulsonkoly/chess-3/stack"
 )
 
-type picker struct {
-	board  *board.Board
-	ms     *move.Store
-	ranker *heur.MoveRanker
-	ix     int
-	state  state
-}
-
-// Main is the move iterator for a given position in the main search.
-type Main struct {
-	picker
+// AllMoves is the move iterator for a given position that iterates all pseudo
+// legal moves.
+type AllMoves struct {
+	yielder
+	board    *board.Board
+	ranker   *heur.MoveRanker
 	hstack   *stack.Stack[heur.StackMove]
 	hashMove move.Move
+	state    state
 }
 
-// NewMain creates a new move iterator for the position represented by b.
+// NewAllMoves creates a new move iterator for the position represented by b.
 // ms points to the move store. ranker points to heur.Ranker. hstack points to
 // the history stack.
-func NewMain(
+func NewAllMoves(
 	b *board.Board,
 	ms *move.Store,
 	ranker *heur.MoveRanker,
 	hashMove move.Move,
 	hstack *stack.Stack[heur.StackMove],
-) Main {
-	return Main{picker: picker{board: b, ms: ms, ranker: ranker}, hashMove: hashMove, hstack: hstack}
+) AllMoves {
+	return AllMoves{yielder: yielder{ms: ms}, board: b, ranker: ranker, hashMove: hashMove, hstack: hstack}
 }
 
-// QSearch is the move iterator for a given position in the quiessence search.
-type QSearch struct {
-	picker
+// NoisyOrEvasions is the move iterator for a given position that iterates
+// noisy moves or when in check all evasions.
+type NoisyOrEvasions struct {
+	yielder
+	board    *board.Board
+	ranker   *heur.MoveRanker
 	checkers BitBoard
+	state    state
 }
 
-// NewQSearch creates a new move iterator for the position represented by b.
-// ms points to the move store. ranker points to heur.Ranker. hstack points to
-// the history stack.
-func NewQSearch(b *board.Board, ms *move.Store, ranker *heur.MoveRanker, checkers BitBoard) QSearch {
-	return QSearch{picker: picker{board: b, ms: ms, ranker: ranker}, checkers: checkers}
+// NewNoisyOrEvasions creates a new move iterator for the position represented by b.
+// ms points to the move store. ranker points to heur.Ranker. checkers has the
+// squares of pieces giving check.
+func NewNoisyOrEvasions(b *board.Board, ms *move.Store, ranker *heur.MoveRanker, checkers BitBoard) NoisyOrEvasions {
+	var state state
+	if checkers == 0 {
+		state = genNoisy
+	} else {
+		state = genNoisyEvasion
+	}
+	return NoisyOrEvasions{yielder: yielder{ms: ms}, board: b, ranker: ranker, state: state, checkers: checkers}
 }
 
 type state byte
 
 const (
-	start state = iota
+	pickHash state = iota
 	genNoisy
 	yieldGoodNoisy
 	genQuiet
@@ -65,133 +77,129 @@ const (
 	yieldRest
 )
 
-func (p *Main) Next() bool {
-	switch p.state {
+func (am *AllMoves) Next() bool {
+	switch am.state {
 
-	case start:
-		p.state = genNoisy
-		if p.board.IsPseudoLegal(p.hashMove) {
+	case pickHash:
+		am.state = genNoisy
+		if am.board.IsPseudoLegal(am.hashMove) {
 			// we put the hash move in the actual store move buffer, in case we need
 			// to update histories on fail high
-			m := p.ms.Alloc(p.hashMove)
+			m := am.ms.Alloc(am.hashMove)
 			m.Weight = heur.HashMove
-			p.ix++
+			am.ix++
 			return true
 		}
 		fallthrough
 
 	case genNoisy:
-		p.state = yieldGoodNoisy
-		movegen.Noisy(p.ms, p.board)
-		moves := p.ms.Frame()
+		am.state = yieldGoodNoisy
+		movegen.Noisy(am.ms, am.board)
+		moves := am.ms.Frame()
 
-		for i := p.ix; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
+		for i := am.ix; i < len(moves); i++ {
+			if am.hashMove == moves[i].Move {
 				// hash move was already yielded
 				moves[i].Weight = -heur.HashMove
 			} else {
-				moves[i].Weight = p.ranker.RankNoisy(moves[i].Move, p.board)
+				moves[i].Weight = am.ranker.RankNoisy(moves[i].Move, am.board)
 			}
 		}
 
 		fallthrough
 
 	case yieldGoodNoisy:
-		if p.yield(0) {
+		if am.yield(0) {
 			return true
 		}
 
-		p.state = genQuiet
+		am.state = genQuiet
 		fallthrough
 
 	case genQuiet:
-		p.state = yieldRest
+		am.state = yieldRest
 
-		quietStart := len(p.ms.Frame())
-		movegen.Quiet(p.ms, p.board)
-		moves := p.ms.Frame()
+		quietStart := len(am.ms.Frame())
+		movegen.Quiet(am.ms, am.board)
+		moves := am.ms.Frame()
 
 		for i := quietStart; i < len(moves); i++ {
-			if p.hashMove == moves[i].Move {
+			if am.hashMove == moves[i].Move {
 				// hash move was already yielded
 				moves[i].Weight = -heur.HashMove
 			} else {
-				moves[i].Weight = p.ranker.RankQuiet(moves[i].Move, p.board, p.hstack)
+				moves[i].Weight = am.ranker.RankQuiet(moves[i].Move, am.board, am.hstack)
 			}
 		}
 		fallthrough
 
 	case yieldRest:
-		return p.yield(-heur.HashMove + 1)
+		return am.yield(-heur.HashMove + 1)
 	}
 
 	return false
 }
 
-func (qs *QSearch) QSNext() bool {
+func (noe *NoisyOrEvasions) Next() bool {
 	for {
-		switch qs.state {
-
-		case start:
-			if qs.checkers != 0 {
-				qs.state = genNoisyEvasion
-				continue
-			} else {
-				qs.state = genNoisy
-			}
-			fallthrough
+		switch noe.state {
 
 		case genNoisy:
-			qs.state = yieldRest
-			movegen.Noisy(qs.ms, qs.board)
-			moves := qs.ms.Frame()
+			noe.state = yieldRest
+			movegen.Noisy(noe.ms, noe.board)
+			moves := noe.ms.Frame()
 
-			for i := qs.ix; i < len(moves); i++ {
-				moves[i].Weight = qs.ranker.RankNoisy(moves[i].Move, qs.board)
+			for i := noe.ix; i < len(moves); i++ {
+				moves[i].Weight = noe.ranker.RankNoisy(moves[i].Move, noe.board)
 			}
 			continue
 
 		case genNoisyEvasion:
-			qs.state = yieldNoisyEvasion
-			movegen.NoisyEvasions(qs.ms, qs.board, qs.checkers)
-			moves := qs.ms.Frame()
+			noe.state = yieldNoisyEvasion
+			movegen.NoisyEvasions(noe.ms, noe.board, noe.checkers)
+			moves := noe.ms.Frame()
 
-			for i := qs.ix; i < len(moves); i++ {
-				moves[i].Weight = qs.ranker.RankNoisyEvasion(moves[i].Move, qs.board)
+			for i := noe.ix; i < len(moves); i++ {
+				moves[i].Weight = noe.ranker.RankNoisyEvasion(moves[i].Move, noe.board)
 			}
 			fallthrough
 
 		case yieldNoisyEvasion:
-			if qs.yield(-Inf) {
+			if noe.yield(-Inf) {
 				return true
 			}
 
-			qs.state = genQuietEvasion
+			noe.state = genQuietEvasion
 			fallthrough
 
 		case genQuietEvasion:
-			qs.state = yieldRest
+			noe.state = yieldRest
 
-			quietStart := len(qs.ms.Frame())
-			movegen.QuietEvasions(qs.ms, qs.board, qs.checkers)
-			moves := qs.ms.Frame()
+			quietStart := len(noe.ms.Frame())
+			movegen.QuietEvasions(noe.ms, noe.board, noe.checkers)
+			moves := noe.ms.Frame()
 
 			for i := quietStart; i < len(moves); i++ {
-				moves[i].Weight = qs.ranker.RankQuietEvasion(moves[i].Move, qs.board)
+				moves[i].Weight = noe.ranker.RankQuietEvasion(moves[i].Move, noe.board)
 			}
 			fallthrough
 
 		case yieldRest:
-			return qs.yield(-Inf)
+			return noe.yield(-Inf)
 		}
 	}
 }
 
-func (p *picker) yield(threshold Score) bool {
-	moves := p.ms.Frame()
+type yielder struct {
+	ms *move.Store
+	ix int
+}
+
+func (y *yielder) yield(threshold Score) bool {
+	moves := y.ms.Frame()
 	maxim := threshold
 	best := -1
-	for i := p.ix; i < len(moves); i++ {
+	for i := y.ix; i < len(moves); i++ {
 		if maxim < moves[i].Weight {
 			maxim = moves[i].Weight
 			best = i
@@ -199,8 +207,8 @@ func (p *picker) yield(threshold Score) bool {
 	}
 
 	if best != -1 {
-		moves[p.ix], moves[best] = moves[best], moves[p.ix]
-		p.ix++
+		moves[y.ix], moves[best] = moves[best], moves[y.ix]
+		y.ix++
 		return true
 	}
 
@@ -209,11 +217,11 @@ func (p *picker) yield(threshold Score) bool {
 
 // Move is the currently yielded move. It's only valid if Next() is called
 // first and if it returned true.
-func (p *picker) Move() *move.Weighted {
-	return &p.ms.Frame()[p.ix-1]
+func (y *yielder) Move() *move.Weighted {
+	return &y.ms.Frame()[y.ix-1]
 }
 
 // YieldedMoves returns a slice of yielded moves so far.
-func (p *picker) YieldedMoves() []move.Weighted {
-	return p.ms.Frame()[:p.ix]
+func (y *yielder) YieldedMoves() []move.Weighted {
+	return y.ms.Frame()[:y.ix]
 }

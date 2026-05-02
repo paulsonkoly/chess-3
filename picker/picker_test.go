@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPicker(t *testing.T) {
+func TestAllMoves(t *testing.T) {
 	tests := []struct {
 		fen string
 	}{
@@ -102,7 +102,7 @@ func TestPicker(t *testing.T) {
 
 			ms.Clear()
 
-			pck := picker.NewMain(b, hashMove, ms, &ranker, hStack)
+			pck := picker.NewAllMoves(b, ms, &ranker, hashMove, hStack)
 
 			state := verifyHash
 
@@ -117,10 +117,10 @@ func TestPicker(t *testing.T) {
 				switch state {
 
 				case verifyHash:
-					state = verifyGoodCaptures
+					state = verifyGoodNoisies
 					assert.Equal(t, hashMove, m, "fen %s, hashmove %s yielded %s", tt.fen, hashMove, pck.Move())
 
-				case verifyGoodCaptures:
+				case verifyGoodNoisies:
 					if (m.Promo() != NoPiece || b.SquaresToPiece[b.CaptureSq(m)] != NoPiece) && heur.SEE(b, m, 0) {
 						assert.GreaterOrEqual(t, pck.Move().Weight, heur.Captures, "fen %s capture weight too low %s", tt.fen, m)
 						continue
@@ -135,10 +135,10 @@ func TestPicker(t *testing.T) {
 						assert.Less(t, pck.Move().Weight, heur.Captures, "fen %s quiet weight too high %s", tt.fen, m)
 						continue
 					}
-					state = verifyBadCaptures
+					state = verifyBadNoisies
 					fallthrough
 
-				case verifyBadCaptures:
+				case verifyBadNoisies:
 					assert.Less(t, pck.Move().Weight, -heur.Captures, "fen %s capture weight too high %s", tt.fen, m)
 				}
 			}
@@ -172,7 +172,7 @@ type state byte
 
 const (
 	verifyHash = state(iota)
-	verifyGoodCaptures
+	verifyGoodNoisies
 	verifyQuiets
-	verifyBadCaptures
+	verifyBadNoisies
 )
