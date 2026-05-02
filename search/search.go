@@ -561,36 +561,13 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		alpha = max(alpha, standPat)
 	}
 
-	// if inCheck {
-	// 	if b.IsCheckmate() {
-	// 		return -Inf + Score(ply)
-	// 	}
-	// } else {
-	// }
-
-	// if !inCheck && standPat >= beta {
-	// 	return standPat
-	// }
-
 	s.ms.Push()
 	defer s.ms.Pop()
 
-	picker := picker.NewNoisyOrEvasions(b, s.ms, &s.ranker, checkers)
+	pck := picker.NewNoisyOrEvasions(b, s.ms, &s.ranker, checkers)
 
-	// movegen.Noisy(s.ms, b)
-
-	// delta := standPat + Score(params.StandPatDelta)
-	// fail soft upper bound
-	// maxim := standPat
-	// alpha = max(alpha, standPat)
-
-	// moves := s.ms.Frame()
-	//
-	// s.rankMovesQ(b, moves)
-	for picker.Next() {
-		m := picker.Move()
-
-		// for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
+	for pck.Next() {
+		m := pck.Move()
 
 		var captured Piece
 		if checkers == 0 {
@@ -640,29 +617,3 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 
 	return maxim
 }
-
-// func (s *Search) rankMovesQ(b *board.Board, moves []move.Weighted) {
-// 	for ix, m := range moves {
-// 		moves[ix].Weight = s.ranker.RankNoisy(m.Move, b, s.hstack)
-// 	}
-// }
-//
-// func getNextMove(moves []move.Weighted, ix int) (*move.Weighted, int) {
-// 	maxim := -Inf - 1
-// 	best := -1
-// 	for jx := ix + 1; jx < len(moves); jx++ {
-// 		if maxim < moves[jx].Weight {
-// 			maxim = moves[jx].Weight
-// 			best = jx
-// 		}
-// 	}
-//
-// 	if best == -1 {
-// 		return nil, ix
-// 	}
-// 	ix++
-//
-// 	moves[ix], moves[best] = moves[best], moves[ix]
-//
-// 	return &moves[ix], ix
-// }
