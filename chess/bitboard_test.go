@@ -72,7 +72,7 @@ func TestCount(t *testing.T) {
 	}
 }
 
-func TestIsPow2(t *testing.T) {
+func TestOne(t *testing.T) {
 	tests := []struct {
 		bb   BitBoard
 		want bool
