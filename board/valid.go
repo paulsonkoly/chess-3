@@ -22,7 +22,7 @@ var (
 // Returns error nil if the position is valid.
 func (b *Board) Valid() error {
 	for color := White; color <= Black; color++ {
-		if !(b.Colors[color] & b.Pieces[King]).IsPow2() {
+		if !(b.Colors[color] & b.Pieces[King]).One() {
 			return ErrWrongPieceCount
 		}
 		knights := b.Counts[color][Knight]

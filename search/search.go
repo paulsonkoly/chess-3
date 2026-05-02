@@ -285,7 +285,7 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 	}
 
-	pck := picker.New(b, hashMove, s.ms, &s.ranker, s.hstack)
+	pck := picker.NewAllMoves(b, s.ms, &s.ranker, hashMove, s.hstack)
 	s.ms.Push()
 	defer s.ms.Pop()
 
@@ -542,45 +542,42 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		}
 	}
 
-	inCheck := b.InCheck(b.STM)
+	checkers := b.Checkers()
+	var standPat, delta Score
+	maxim := -Inf - 1
 
-	if inCheck {
-		if b.IsCheckmate() {
-			return -Inf + Score(ply)
-		}
-	} else {
+	if checkers == 0 {
 		if b.IsStalemate() {
 			return 0
 		}
-	}
 
-	standPat := s.eval.Score(b, &eval.Coefficients)
+		standPat = s.eval.Score(b, &eval.Coefficients)
+		if standPat >= beta {
+			return standPat
+		}
 
-	if !inCheck && standPat >= beta {
-		return standPat
+		delta = standPat + Score(params.StandPatDelta)
+		maxim = standPat
+		alpha = max(alpha, standPat)
 	}
 
 	s.ms.Push()
 	defer s.ms.Pop()
 
-	movegen.Noisy(s.ms, b)
+	pck := picker.NewNoisyOrEvasions(b, s.ms, &s.ranker, checkers)
+	hasLegal := false
 
-	delta := standPat + Score(params.StandPatDelta)
-	// fail soft upper bound
-	maxim := standPat
-	alpha = max(alpha, standPat)
+	for pck.Next() {
+		m := pck.Move()
 
-	moves := s.ms.Frame()
+		var captured Piece
+		if checkers == 0 {
+			if m.Weight < 0 {
+				break
+			}
 
-	s.rankMovesQ(b, moves)
-
-	for m, ix := getNextMove(moves, -1); m != nil; m, ix = getNextMove(moves, ix) {
-
-		if m.Weight < 0 {
-			break
+			captured = b.SquaresToPiece[b.CaptureSq(m.Move)]
 		}
-
-		captured := b.SquaresToPiece[b.CaptureSq(m.Move)]
 
 		r := b.MakeMove(m.Move)
 
@@ -589,15 +586,19 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 			continue
 		}
 
-		gain := heur.PieceValues[captured]
+		hasLegal = true
 
-		if m.Promo() != NoPiece {
-			gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
-		}
+		if checkers == 0 {
+			// this is done post MakeMove so it doesn't trigger on non-legal moves.
+			gain := heur.PieceValues[captured]
+			if m.Promo() != NoPiece {
+				gain += heur.PieceValues[m.Promo()] - heur.PieceValues[Pawn]
+			}
 
-		if gain+delta < alpha {
-			b.UndoMove(m.Move, r)
-			break
+			if gain+delta < alpha {
+				b.UndoMove(m.Move, r)
+				break
+			}
 		}
 
 		curr := -s.quiescence(b, -beta, -alpha, ply+1, opts)
@@ -615,33 +616,11 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		}
 	}
 
+	if checkers != 0 && !hasLegal {
+		maxim = -Inf + Score(ply)
+	}
+
 	transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, 0, maxim, transp.UpperBound)
 
 	return maxim
-}
-
-func (s *Search) rankMovesQ(b *board.Board, moves []move.Weighted) {
-	for ix, m := range moves {
-		moves[ix].Weight = s.ranker.RankNoisy(m.Move, b, s.hstack)
-	}
-}
-
-func getNextMove(moves []move.Weighted, ix int) (*move.Weighted, int) {
-	maxim := -Inf - 1
-	best := -1
-	for jx := ix + 1; jx < len(moves); jx++ {
-		if maxim < moves[jx].Weight {
-			maxim = moves[jx].Weight
-			best = jx
-		}
-	}
-
-	if best == -1 {
-		return nil, ix
-	}
-	ix++
-
-	moves[ix], moves[best] = moves[best], moves[ix]
-
-	return &moves[ix], ix
 }

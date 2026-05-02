@@ -25,134 +25,6 @@ func (b *Board) Attackers(squares BitBoard, occ BitBoard, color Color) BitBoard 
 	return res
 }
 
-func (b *Board) Block(squares BitBoard, color Color) BitBoard {
-	blockers := b.Colors[color]
-	res := BitBoard(0)
-	occ := b.Colors[White] | b.Colors[Black]
-
-	for sqrs := squares; sqrs != 0; sqrs &= sqrs - 1 {
-		sq := sqrs.LowestSet()
-
-		sub := BitBoard(0)
-
-		/* king can't block */
-		sub |= attacks.KnightMoves(sq) & b.Pieces[Knight]
-		sub |= attacks.BishopMoves(sq, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])
-		sub |= attacks.RookMoves(sq, occ) & (b.Pieces[Rook] | b.Pieces[Queen])
-
-		res |= sub & blockers
-	}
-
-	// we are making a pawn move backwards, so ignore the pawn in occupancy, as
-	// we are moving where the actual pawn is, but don't ignore a blocking pawn
-	// otherwise we would jump over it. See:
-	// 6k1/8/8/1b6/3PP3/r1PKP3/2PRB3/8 w - - 0 1
-	occNoPawn := occ & ^(b.Pieces[Pawn] & blockers)
-
-	/* double pawn push blocking */
-	dpawn := RankBB(FourthRank.FromPerspectiveOf(color)) & squares
-	dpawn = attacks.PawnSinglePushMoves(dpawn, color.Flip()) &^ occ
-	dpawn = attacks.PawnSinglePushMoves(dpawn, color.Flip()) &^ occNoPawn
-
-	res |= ((attacks.PawnSinglePushMoves(squares, color.Flip()) & ^occNoPawn) | dpawn) & blockers & b.Pieces[Pawn]
-
-	return res
-}
-
-// IsCheckmate determines whether the position is checkmate. The king should be
-// in check.
-func (b *Board) IsCheckmate() bool {
-	king := b.Pieces[King] & b.Colors[b.STM]
-	occ := b.Colors[White] | b.Colors[Black]
-	opp := b.Colors[b.STM.Flip()]
-
-	attackers := b.Attackers(king, occ, b.STM.Flip())
-
-	// making the king move first
-	kingSq := king.LowestSet()
-	kMvs := attacks.KingMoves(kingSq) & ^b.Colors[b.STM]
-
-	for ; kMvs != 0; kMvs &= kMvs - 1 {
-		to := kMvs & -kMvs
-
-		if !b.IsAttacked(b.STM.Flip(), occ&^king, to) {
-			return false
-		}
-	}
-
-	if attackers.Count() > 1 { // double check, and king can't move
-		return true
-	}
-
-	attacker := attackers // only 1 attacker
-
-	//  see if we can capture the attacker
-	defenders := b.Attackers(attacker, occ, b.STM)
-	// remove the king, if the king can capture the attacker it would have done
-	// in the king moves try
-	defenders &= ^king
-
-	// are all my defenders pinned in a way that they can't capture the attacker
-	for ; defenders != 0; defenders &= defenders - 1 {
-		defender := defenders & -defenders
-		nocc := occ
-		pinned := false
-
-		//  dummy mk move
-		nocc &= ^defender
-		opp &= ^attacker
-
-		if (attacks.BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & opp) != 0 {
-			pinned = true
-		} else if (attacks.RookMoves(kingSq, nocc) & (b.Pieces[Rook] | b.Pieces[Queen]) & opp) != 0 {
-			pinned = true
-		}
-
-		if !pinned {
-			return false
-		}
-	}
-
-	// en passant capture
-	if b.EnPassant != 0 {
-		epPawn := attacks.PawnSinglePushMoves(BitBoard(1)<<b.EnPassant, b.STM.Flip())
-
-		if epPawn == attacker {
-			return false
-		}
-	}
-
-	// block the attacker
-	aSq := attacker.LowestSet()
-	blocked := attacks.InBetween[kingSq][aSq] & ^(king | attacker)
-
-	defenders = b.Block(blocked, b.STM)
-
-	for ; defenders != 0; defenders &= defenders - 1 {
-		defender := defenders & -defenders
-		nocc := occ
-		opp := b.Colors[b.STM.Flip()]
-		pinned := false
-
-		//  dummy mk move
-		nocc &= ^defender
-		// we move somewhere on the blocked squares
-		nocc |= blocked
-
-		if (attacks.BishopMoves(kingSq, nocc) & (b.Pieces[Bishop] | b.Pieces[Queen]) & opp) != 0 {
-			pinned = true
-		} else if attacks.RookMoves(kingSq, nocc)&(b.Pieces[Rook]|b.Pieces[Queen])&opp != 0 {
-			pinned = true
-		}
-
-		if !pinned {
-			return false
-		}
-	}
-
-	return true
-}
-
 // IsStalemate determines whether the position is stalemate. The king shouldn't
 // be in check.
 func (b *Board) IsStalemate() bool {
@@ -348,8 +220,17 @@ func (b *Board) IsAttacked(by Color, occ, target BitBoard) bool {
 	return false
 }
 
-func (b *Board) InCheck(who Color) bool {
-	return b.IsAttacked(who.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[who]&b.Pieces[King])
+// InCheck determines if side is in check on b.
+func (b *Board) InCheck(side Color) bool {
+	return b.IsAttacked(side.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[side]&b.Pieces[King])
+}
+
+// Checkers returns a BitBoard with bits set on squares with pieces giving check.
+// Note: by the rules of chess the pop count in a BitBoard returned by Checkers
+// should be between 0 and 2.
+func (b *Board) Checkers() BitBoard {
+	king := b.Colors[b.STM] & b.Pieces[King]
+	return b.Attackers(king, b.Colors[White]|b.Colors[Black], b.STM.Flip())
 }
 
 var shifts = [2]Square{8, -8}

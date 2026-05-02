@@ -255,3 +255,60 @@ func Quiet(ms *move.Store, b *board.Board) {
 	shortCastle(ms, b)
 	longCastle(ms, b)
 }
+
+// NoisyEvasions generates all pseudo legal noisy moves when in check by pieces
+// located at checkers.
+// Note: this function should be called with either 1 or 2 checkers.
+func NoisyEvasions(ms *move.Store, b *board.Board, checkers BitBoard) {
+	them := b.Colors[b.STM.Flip()]
+
+	switch {
+	case checkers.One():
+		occ := b.Colors[White] | b.Colors[Black]
+
+		kingMoves(ms, b, them)
+		knightMoves(ms, b, checkers)
+		bishopMoves(ms, b, checkers)
+		rookMoves(ms, b, checkers)
+		queenMoves(ms, b, checkers)
+
+		promoPushMoves(ms, b, ^occ)
+		pawnCaptureMoves(ms, b, checkers)
+		pawnCapturePromoMoves(ms, b, checkers)
+		enPassant(ms, b)
+	case checkers.Many():
+		kingMoves(ms, b, them)
+	}
+}
+
+// QuietEvasions generates all pseudo legal quiet moves when in check by pieces
+// located at checkers.
+// Note: this function should be called with either 1 or 2 checkers.
+func QuietEvasions(ms *move.Store, b *board.Board, checkers BitBoard) {
+	occ := b.Colors[White] | b.Colors[Black]
+
+	switch {
+	case checkers.One():
+		kingMoves(ms, b, ^occ)
+
+		// a knight or a pawn check cannot be blocked
+		if checkers&(b.Pieces[Pawn]|b.Pieces[Knight]) != 0 {
+			return
+		}
+		checkerSq := checkers.LowestSet()
+		kingSq := (b.Colors[b.STM] & b.Pieces[King]).LowestSet()
+		ray := attacks.InBetween[checkerSq][kingSq]
+		mask := ^occ & ray
+
+		knightMoves(ms, b, mask)
+		bishopMoves(ms, b, mask)
+		rookMoves(ms, b, mask)
+		queenMoves(ms, b, mask)
+
+		singlePushMoves(ms, b, mask)
+		doublePushMoves(ms, b, mask)
+
+	case checkers.Many():
+		kingMoves(ms, b, ^occ)
+	}
+}

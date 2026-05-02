@@ -27,9 +27,14 @@ func (bb BitBoard) Count() int {
 	return bits.OnesCount64(uint64(bb))
 }
 
-// IsPow2 determines if exactly 1 bit is set in bb.
-func (bb BitBoard) IsPow2() bool {
+// One determines if exactly 1 bit is set in bb.
+func (bb BitBoard) One() bool {
 	return bb&(bb-1) == 0 && bb != 0
+}
+
+// Many determines if more than 1 bit is set in bb.
+func (bb BitBoard) Many() bool {
+	return bb&(bb-1) != 0
 }
 
 const (

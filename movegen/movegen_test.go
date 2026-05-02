@@ -335,3 +335,72 @@ func TestNoisy(t *testing.T) {
 		})
 	}
 }
+
+func TestEvasions(t *testing.T) {
+	tests := []struct {
+		name     string
+		checkers BitBoard
+		fen      string
+		want     []string
+	}{
+		{
+			name:     "simple blockable check",
+			checkers: BitBoardFromSquares(E2),
+			fen:      "1b2k3/8/8/8/8/8/4R3/K3R3 b - - 0 1",
+			want:     []string{"b8e5", "e8d8", "e8d7", "e8f8", "e8f7"},
+		},
+		{
+			name:     "simple capturable check",
+			checkers: BitBoardFromSquares(E2),
+			fen:      "4k3/8/8/7b/8/8/4R3/K4R2 b - - 0 1",
+			want:     []string{"h5e2", "e8d8", "e8d7"},
+		},
+		{
+			name:     "double check",
+			checkers: BitBoardFromSquares(E2, D6),
+			fen:      "4k3/8/3N4/7b/8/8/4R3/K3R3 b - - 0 1",
+			want:     []string{"e8d8", "e8d7", "e8f8"},
+		},
+		{
+			name:     "check mate",
+			checkers: BitBoardFromSquares(C6),
+			fen:      "k1N5/2K5/2B5/8/8/8/8/8 b - - 0 1",
+			want:     []string{},
+		},
+	}
+
+	ms := move.NewStore()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Must(board.FromFEN(tt.fen))
+
+			ms.Push()
+			defer ms.Pop()
+
+			movegen.NoisyEvasions(ms, b, tt.checkers)
+			movegen.QuietEvasions(ms, b, tt.checkers)
+
+			filter := ms.Frame()[:0]
+			for _, m := range ms.Frame() {
+				r := b.MakeMove(m.Move)
+
+				if b.InCheck(b.STM.Flip()) {
+					b.UndoMove(m.Move, r)
+					continue
+				}
+				b.UndoMove(m.Move, r)
+
+				filter = append(filter, m)
+			}
+
+			uciStrs := make([]string, 0, len(filter))
+
+			for _, m := range filter {
+				uciStrs = append(uciStrs, m.String())
+			}
+
+			assert.ElementsMatch(t, uciStrs, tt.want, "fen %s", tt.fen)
+		})
+	}
+}
