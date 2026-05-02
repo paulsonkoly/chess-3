@@ -25,40 +25,6 @@ func (b *Board) Attackers(squares BitBoard, occ BitBoard, color Color) BitBoard 
 	return res
 }
 
-func (b *Board) Block(squares BitBoard, color Color) BitBoard {
-	blockers := b.Colors[color]
-	res := BitBoard(0)
-	occ := b.Colors[White] | b.Colors[Black]
-
-	for sqrs := squares; sqrs != 0; sqrs &= sqrs - 1 {
-		sq := sqrs.LowestSet()
-
-		sub := BitBoard(0)
-
-		/* king can't block */
-		sub |= attacks.KnightMoves(sq) & b.Pieces[Knight]
-		sub |= attacks.BishopMoves(sq, occ) & (b.Pieces[Bishop] | b.Pieces[Queen])
-		sub |= attacks.RookMoves(sq, occ) & (b.Pieces[Rook] | b.Pieces[Queen])
-
-		res |= sub & blockers
-	}
-
-	// we are making a pawn move backwards, so ignore the pawn in occupancy, as
-	// we are moving where the actual pawn is, but don't ignore a blocking pawn
-	// otherwise we would jump over it. See:
-	// 6k1/8/8/1b6/3PP3/r1PKP3/2PRB3/8 w - - 0 1
-	occNoPawn := occ & ^(b.Pieces[Pawn] & blockers)
-
-	/* double pawn push blocking */
-	dpawn := RankBB(FourthRank.FromPerspectiveOf(color)) & squares
-	dpawn = attacks.PawnSinglePushMoves(dpawn, color.Flip()) &^ occ
-	dpawn = attacks.PawnSinglePushMoves(dpawn, color.Flip()) &^ occNoPawn
-
-	res |= ((attacks.PawnSinglePushMoves(squares, color.Flip()) & ^occNoPawn) | dpawn) & blockers & b.Pieces[Pawn]
-
-	return res
-}
-
 // IsStalemate determines whether the position is stalemate. The king shouldn't
 // be in check.
 func (b *Board) IsStalemate() bool {
@@ -254,10 +220,14 @@ func (b *Board) IsAttacked(by Color, occ, target BitBoard) bool {
 	return false
 }
 
-func (b *Board) InCheck(who Color) bool {
-	return b.IsAttacked(who.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[who]&b.Pieces[King])
+// InCheck determines if side is in check on b.
+func (b *Board) InCheck(side Color) bool {
+	return b.IsAttacked(side.Flip(), b.Colors[White]|b.Colors[Black], b.Colors[side]&b.Pieces[King])
 }
 
+// Checkers returns a BitBoard with bits set on squares with pieces giving check.
+// Note: by the rules of chess the pop count in a BitBoard returned by Checkers
+// should be between 0 and 2.
 func (b *Board) Checkers() BitBoard {
 	king := b.Colors[b.STM] & b.Pieces[King]
 	return b.Attackers(king, b.Colors[White]|b.Colors[Black], b.STM.Flip())
