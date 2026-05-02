@@ -565,6 +565,7 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 	defer s.ms.Pop()
 
 	pck := picker.NewNoisyOrEvasions(b, s.ms, &s.ranker, checkers)
+	hasLegal := false
 
 	for pck.Next() {
 		m := pck.Move()
@@ -584,6 +585,8 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 			b.UndoMove(m.Move, r)
 			continue
 		}
+
+		hasLegal = true
 
 		if checkers == 0 {
 			// this is done post MakeMove so it doesn't trigger on non-legal moves.
@@ -611,6 +614,10 @@ func (s *Search) quiescence(b *board.Board, alpha, beta Score, ply Depth, opts *
 		if s.abort(opts) {
 			return Inv
 		}
+	}
+
+	if checkers != 0 && !hasLegal {
+		maxim = -Inf + Score(ply)
 	}
 
 	transpT.Insert(b.Hashes().Full(), s.gen, 0, ply, 0, maxim, transp.UpperBound)
