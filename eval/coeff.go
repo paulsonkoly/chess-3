@@ -18,10 +18,11 @@ type CoeffSet[T ScoreType] struct {
 	UnsafeChecks [4]T
 	// KingOpenFile is the bonus for enemy king missing shelter pawn, per 3 files.
 	KingOpenFile [3]T
-	// KingShelter is the bonus for damage on the opponent's king shelter, per 3 files per pawn distance.
-	KingShelter [3][7]T
-	// KingStorm is the bonus pawn storming the opponent's king, per 3 files per pawn distance.
-	KingStorm [3][7]T
+	// KingShelter is the bonus for damage on the opponent's king shelter, per
+	// central or flank, per 3 files per pawn distance.
+	KingShelter [2][3][7]T
+	// KingStorm is the bonus pawn storming the opponent's king, per central or flank, per 3 files per pawn distance.
+	KingStorm [2][3][7]T
 	// KingAttackMagnitude encodes the importance of attacking the enemy king.
 	KingAttackMagnitude [2]T
 

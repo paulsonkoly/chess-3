@@ -205,6 +205,12 @@ func (e *Eval[T]) addStormShelter(b *board.Board, c *CoeffSet[T]) {
 
 	for color := range Colors {
 		eKing := e.kings[color.Flip()].sq
+
+		onFlank := 0
+		if b.Colors[color]&b.Pieces[King]&(DFileBB|EFileBB) == 0 {
+			onFlank = 1
+		}
+
 		kFile := eKing.File()
 		kRank := eKing.Rank()
 
@@ -224,12 +230,12 @@ func (e *Eval[T]) addStormShelter(b *board.Board, c *CoeffSet[T]) {
 
 			if storm := frontLine & fileBB; storm != 0 {
 				dist := Abs(kRank - storm.LowestSet().Rank())
-				accum[color] += c.KingStorm[0][dist]
+				accum[color] += c.KingStorm[onFlank][0][dist]
 			}
 
 			if shelter := backMost & fileBB; shelter != 0 {
 				dist := Abs(kRank - shelter.LowestSet().Rank())
-				accum[color] -= c.KingShelter[0][dist]
+				accum[color] -= c.KingShelter[onFlank][0][dist]
 			} else {
 				accum[color] += c.KingOpenFile[0]
 			}
@@ -241,12 +247,12 @@ func (e *Eval[T]) addStormShelter(b *board.Board, c *CoeffSet[T]) {
 
 			if storm := frontLine & fileBB; storm != 0 {
 				dist := Abs(kRank - storm.LowestSet().Rank())
-				accum[color] += c.KingStorm[1][dist]
+				accum[color] += c.KingStorm[onFlank][1][dist]
 			}
 
 			if shelter := backMost & fileBB; shelter != 0 {
 				dist := Abs(kRank - shelter.LowestSet().Rank())
-				accum[color] -= c.KingShelter[1][dist]
+				accum[color] -= c.KingShelter[onFlank][1][dist]
 			} else {
 				accum[color] += c.KingOpenFile[1]
 			}
@@ -261,12 +267,12 @@ func (e *Eval[T]) addStormShelter(b *board.Board, c *CoeffSet[T]) {
 
 			if storm := frontLine & fileBB; storm != 0 {
 				dist := Abs(kRank - storm.LowestSet().Rank())
-				accum[color] += c.KingStorm[2][dist]
+				accum[color] += c.KingStorm[onFlank][2][dist]
 			}
 
 			if shelter := backMost & fileBB; shelter != 0 {
 				dist := Abs(kRank - shelter.LowestSet().Rank())
-				accum[color] -= c.KingShelter[2][dist]
+				accum[color] -= c.KingShelter[onFlank][2][dist]
 			} else {
 				accum[color] += c.KingOpenFile[2]
 			}
