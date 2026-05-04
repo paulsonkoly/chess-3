@@ -207,7 +207,7 @@ func (e *Eval[T]) addStormShelter(b *board.Board, c *CoeffSet[T]) {
 		eKing := e.kings[color.Flip()].sq
 
 		onFlank := 0
-		if b.Colors[color]&b.Pieces[King]&(DFileBB|EFileBB) == 0 {
+		if b.Colors[color.Flip()]&b.Pieces[King]&(DFileBB|EFileBB) == 0 {
 			onFlank = 1
 		}
 
