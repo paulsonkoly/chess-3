@@ -19,6 +19,8 @@ func (e *Eval[T]) addStormShelter(b *board.Board, c *CoeffSet[T]) {
 		accum [2]T
 	)
 
+	// It is not possible to cache in the tuner as the coeffs are changing, thus
+	// score always needs recomputing.
 	if _, ok := any(t).(Score); ok {
 		wKHash := board.PiecesRand[White][King][e.kings[White].sq]
 		bKHash := board.PiecesRand[Black][King][e.kings[Black].sq]
@@ -123,6 +125,28 @@ const (
 	normalShelter
 )
 
+// shelter maps the formation of pawns in the kings "porch" area to a unique index.
+// In normal case when the king is not on an edge file and not in enemy
+// territory these squares comprise of the intersection of the kingfile, king
+// neighbouring files with the 2 ranks in front of the king from color
+// perspective. The squares where there is a shelter pawn are then packed down
+// to a 6-bit index. For the queenside the bit pattern is horizontally
+// mirrored. The rank closer to the king is always on less significant bits
+// then the rank further away - for black there is a vertical mirror.
+//
+// Example:
+//
+//	color: White
+//	kingSq: F3
+//	porch: E4, F4, G4, E5, F5, G5
+//	result 0-5 bit index: 0: E4 1: Fl 2: G4 3: E5 4: F5 5: G5
+//
+// Example2:
+//
+//	color: Black
+//	kingSq: B5
+//	porch: A3, B3, C3, A4, B4, C4
+//	result 0-5 bit index: 0: C4 1: B4 2: A4 3: C3 4: B3 5: A3
 func shelter(b *board.Board, color Color) (int, shelterKind) {
 	king := b.Colors[color] & b.Pieces[King]
 	kingSq := king.LowestSet()
