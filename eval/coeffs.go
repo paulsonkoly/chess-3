@@ -141,11 +141,6 @@ KingAttackPieces: [4]Score{    3,    3,    2,    2},
 SafeChecks: [4]Score{    8,    4,    7,    5},
 UnsafeChecks: [4]Score{    2,    2,    3,    2},
 KingOpenFile: [3]Score{   19,   18,   -1},
-KingShelter: [3][7]Score{
-	{  -13,  -15,  -18,  -18,  -18,  -19,  -17},
-	{    0,  -13,  -16,  -16,  -18,  -18,  -17},
-	{    6,    5,    5,    3,    1,    2,    3},
-},
 KingStorm: [3][7]Score{
 	{  -12,  -10,    3,    2,    0,   -1,   -1},
 	{    0,  -14,    1,   -2,   -2,   -3,   -2},
