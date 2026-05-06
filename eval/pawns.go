@@ -28,13 +28,6 @@ type PawnCache struct {
 	accum [Colors][Phases]Score
 }
 
-const PawnKingCacheSize = 16 * 1024
-
-type PawnKingCache struct {
-	hash  board.Hash
-	accum [Colors]Score
-}
-
 func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 	e.addPassers(b, c)
 
@@ -180,106 +173,6 @@ func (e *Eval[T]) addPawnlessFlank(b *board.Board, c *CoeffSet[T]) {
 			e.sp[color][MG] += c.PawnlessFlank[MG]
 			e.sp[color][EG] += c.PawnlessFlank[EG]
 		}
-	}
-}
-
-func (e *Eval[T]) addStormShelter(b *board.Board, c *CoeffSet[T]) {
-	var (
-		t     T
-		hash  board.Hash
-		accum [2]T
-	)
-
-	if _, ok := any(t).(Score); ok {
-		wKHash := board.PiecesRand[White][King][e.kings[White].sq]
-		bKHash := board.PiecesRand[Black][King][e.kings[Black].sq]
-		hash = b.Hashes().Pawn ^ wKHash ^ bKHash
-
-		if e.pawnKingCache[hash%PawnKingCacheSize].hash == hash {
-			entry := &e.pawnKingCache[hash%PawnKingCacheSize].accum
-			e.kingAttacks[White] += T(entry[White])
-			e.kingAttacks[Black] += T(entry[Black])
-			return
-		}
-	}
-
-	for color := range Colors {
-		eKing := e.kings[color.Flip()].sq
-		kFile := eKing.File()
-		kRank := eKing.Rank()
-
-		frontLine := e.pawns[color].frontline
-		backMost := e.pawns[color.Flip()].backmost
-
-		var central, front, side Coord
-		if kFile >= EFile {
-			central, front, side = kFile-1, kFile, kFile+1
-		} else {
-			central, front, side = kFile+1, kFile, kFile-1
-		}
-
-		// central
-		{
-			fileBB := FileBB(central & 7)
-
-			if storm := frontLine & fileBB; storm != 0 {
-				dist := Abs(kRank - storm.LowestSet().Rank())
-				accum[color] += c.KingStorm[0][dist]
-			}
-
-			if shelter := backMost & fileBB; shelter != 0 {
-				dist := Abs(kRank - shelter.LowestSet().Rank())
-				accum[color] -= c.KingShelter[0][dist]
-			} else {
-				accum[color] += c.KingOpenFile[0]
-			}
-		}
-
-		// front
-		{
-			fileBB := FileBB(front & 7)
-
-			if storm := frontLine & fileBB; storm != 0 {
-				dist := Abs(kRank - storm.LowestSet().Rank())
-				accum[color] += c.KingStorm[1][dist]
-			}
-
-			if shelter := backMost & fileBB; shelter != 0 {
-				dist := Abs(kRank - shelter.LowestSet().Rank())
-				accum[color] -= c.KingShelter[1][dist]
-			} else {
-				accum[color] += c.KingOpenFile[1]
-			}
-		}
-
-		// side
-		{
-			if side < 0 || side >= 8 {
-				continue
-			}
-			fileBB := FileBB(side & 7)
-
-			if storm := frontLine & fileBB; storm != 0 {
-				dist := Abs(kRank - storm.LowestSet().Rank())
-				accum[color] += c.KingStorm[2][dist]
-			}
-
-			if shelter := backMost & fileBB; shelter != 0 {
-				dist := Abs(kRank - shelter.LowestSet().Rank())
-				accum[color] -= c.KingShelter[2][dist]
-			} else {
-				accum[color] += c.KingOpenFile[2]
-			}
-		}
-	}
-
-	e.kingAttacks[White] += accum[White]
-	e.kingAttacks[Black] += accum[Black]
-
-	if _, ok := any(t).(Score); ok {
-		e.pawnKingCache[hash%PawnKingCacheSize].hash = hash
-		e.pawnKingCache[hash%PawnKingCacheSize].accum[White] = Score(accum[White])
-		e.pawnKingCache[hash%PawnKingCacheSize].accum[Black] = Score(accum[Black])
 	}
 }
 
