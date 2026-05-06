@@ -50,21 +50,21 @@ func (e *Eval[T]) addPSqT(color Color, pType Piece, sq Square, c *CoeffSet[T]) {
 }
 
 func (e *Eval[T]) addKingAttacks(c *CoeffSet[T]) {
-	whiteSgm := sigmoidal(e.kingAttacks[White])
-	blackSgm := sigmoidal(e.kingAttacks[Black])
+	wKA := e.kingAttacks[White]
+	bKA := e.kingAttacks[Black]
 
 	var t T
 	if _, ok := ((any)(t).(Score)); ok {
-		e.sp[White][MG] += T(((int)(whiteSgm) * (int)(c.KingAttackMagnitude[MG])) / 64)
-		e.sp[Black][MG] += T(((int)(blackSgm) * (int)(c.KingAttackMagnitude[MG])) / 64)
-		e.sp[White][EG] += T(((int)(whiteSgm) * (int)(c.KingAttackMagnitude[EG])) / 64)
-		e.sp[Black][EG] += T(((int)(blackSgm) * (int)(c.KingAttackMagnitude[EG])) / 64)
+		e.sp[White][MG] += T(((int)(wKA) * (int)(c.KingAttackMagnitude[MG])) / 64)
+		e.sp[Black][MG] += T(((int)(bKA) * (int)(c.KingAttackMagnitude[MG])) / 64)
+		e.sp[White][EG] += T(((int)(wKA) * (int)(c.KingAttackMagnitude[EG])) / 64)
+		e.sp[Black][EG] += T(((int)(bKA) * (int)(c.KingAttackMagnitude[EG])) / 64)
 		return
 	}
-	e.sp[White][MG] += (whiteSgm * c.KingAttackMagnitude[MG]) / 64
-	e.sp[Black][MG] += (blackSgm * c.KingAttackMagnitude[MG]) / 64
-	e.sp[White][EG] += (whiteSgm * c.KingAttackMagnitude[EG]) / 64
-	e.sp[Black][EG] += (blackSgm * c.KingAttackMagnitude[EG]) / 64
+	e.sp[White][MG] += (wKA * c.KingAttackMagnitude[MG]) / 64
+	e.sp[Black][MG] += (bKA * c.KingAttackMagnitude[MG]) / 64
+	e.sp[White][EG] += (wKA * c.KingAttackMagnitude[EG]) / 64
+	e.sp[Black][EG] += (bKA * c.KingAttackMagnitude[EG]) / 64
 }
 
 func (e *Eval[T]) addThreats(b *board.Board, c *CoeffSet[T]) {
