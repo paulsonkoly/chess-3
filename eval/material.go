@@ -156,7 +156,7 @@ func pawnDiff(b *board.Board) int {
 
 func evalKMvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	strongSide := Black
-	if b.Counts[White][Knight] == 1 {
+	if b.Counts[White][Knight] == 1 || b.Counts[White][Bishop] == 1 {
 		strongSide = White
 	}
 	weakSide := strongSide.Flip()
