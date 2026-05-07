@@ -38,5 +38,5 @@ var DefaultTargets = []string{
 	"BishopPair", "BishopOutpost", "OppositeColoredBishops",
 	"ConnectedRooks", "RookOnOpen", "RookOnSemiOpen",
 	"PawnlessFlank",
-	"InsufficientKnight", "InsufficientBishop", "KRvKN", "KRvKB",
+	"InsufficientMinor", "KRvKN", "KRvKB",
 }

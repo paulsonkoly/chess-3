@@ -216,8 +216,7 @@ Phalanx: [2][7]Score{
 },
 SafePawnThreats: [2]Score{   52,   20},
 Threats: [2]Score{   42,   25},
-InsufficientKnight:   52,
-InsufficientBishop:   52,
+InsufficientMinor:   52,
 KRvKN:   77,
 KRvKB:   65,
 }
