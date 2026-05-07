@@ -84,11 +84,11 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 
 	case wB == 0 && bB == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
 		((wN == 1 && wP == 0 && bN == 0 && bP < 3) || (bN == 1 && bP == 0 && wN == 0 && wP < 3)):
-		evalID = evalKNvKPID
+		evalID = evalKMvKPID
 
 	case wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
 		((wB == 1 && wP == 0 && bB == 0 && bP < 3) || (bB == 1 && bP == 0 && wB == 0 && wP < 3)):
-		evalID = evalKBvKPID
+		evalID = evalKMvKPID
 
 	case wP == 0 && bP == 0 && wB == 0 && bB == 0 && wQ == 0 && bQ == 0 &&
 		((wN == 1 && wR == 0 && bN == 0 && bR == 1) || (wN == 0 && wR == 1 && bN == 1 && bR == 0)):
@@ -116,8 +116,7 @@ const (
 	evalOCBID
 	evalOCBKnightsID
 	evalOCBRooksID
-	evalKNvKPID
-	evalKBvKPID
+	evalKMvKPID
 	evalKRvKNID
 	evalKRvKBID
 	evalPositionalID
@@ -155,27 +154,14 @@ func pawnDiff(b *board.Board) int {
 	return int(Abs(b.Counts[White][Pawn] - b.Counts[Black][Pawn]))
 }
 
-func evalKNvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+func evalKMvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	strongSide := Black
 	if b.Counts[White][Knight] == 1 {
 		strongSide = White
 	}
 	weakSide := strongSide.Flip()
 
-	e.scaleFactor[strongSide] = c.InsufficientKnight
-	e.scaleFactor[weakSide] = MaxScaleFactor
-
-	return e.positional(b, c)
-}
-
-func evalKBvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	strongSide := Black
-	if b.Counts[White][Bishop] == 1 {
-		strongSide = White
-	}
-	weakSide := strongSide.Flip()
-
-	e.scaleFactor[strongSide] = c.InsufficientBishop
+	e.scaleFactor[strongSide] = c.InsufficientMinor
 	e.scaleFactor[weakSide] = MaxScaleFactor
 
 	return e.positional(b, c)

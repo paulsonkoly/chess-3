@@ -76,10 +76,8 @@ type CoeffSet[T ScoreType] struct {
 	//Threats is the bonus for threatening an enemy piece.
 	Threats [2]T
 
-	// InsufficientKnight is the score reduction factor for the strong side only having a knight.
-	InsufficientKnight T
-	// InsufficientBishop is the score reduction factor for the strong side only having a bishop.
-	InsufficientBishop T
+	// InsufficientMinor is the score reduction factor for the strong side only having a minor piece.
+	InsufficientMinor T
 	// KRvKN is the score reduction factor for the side with a rook for KRvKN endgame.
 	KRvKN T
 	// KRvKB is the score reduction factor for the side with a rook for KRvKB endgame.
