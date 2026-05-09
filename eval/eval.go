@@ -3,6 +3,7 @@ package eval
 import (
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
+	_ "github.com/paulsonkoly/chess-3/eval/kpvk"
 )
 
 // ScoreType defines the evaluation result type. The engine uses int16 for

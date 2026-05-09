@@ -141,11 +141,6 @@ func (e *Eval[T]) addPassers(b *board.Board, c *CoeffSet[T]) {
 	}
 }
 
-func Chebishev(a, b Square) int {
-	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
-	return max(Abs(ax-bx), Abs(ay-by))
-}
-
 // passers are pawns not stoppable by enemy pawns without them changing file.
 func (e *Eval[T]) passers(color Color) BitBoard {
 	return e.pawns[color].frontline & ^(e.pawns[color.Flip()].frontspan | (e.pawns[color.Flip()].cover))
