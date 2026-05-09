@@ -1,12 +1,44 @@
 package kpvk
 
 import (
-	"fmt"
 	"iter"
 
 	"github.com/paulsonkoly/chess-3/attacks"
+	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 )
+
+func Winning(b *board.Board) bool {
+	wKingSq := (b.Colors[White] & b.Pieces[King]).LowestSet()
+	bKingSq := (b.Colors[Black] & b.Pieces[King]).LowestSet()
+	pawn := b.Pieces[Pawn]
+	pawnSq := pawn.LowestSet()
+	stm := b.STM
+
+	// vertical mirror, swap sides. kpvk only supports white as the strong side.
+	if b.Colors[Black]&pawn != 0 {
+		wKingSq, bKingSq = bKingSq^56, wKingSq^56
+		pawnSq ^= 56
+		stm = stm.Flip()
+	}
+
+	// horizontal mirror, kpvk only supports pawn on the queen side.
+	if pawn&(EFileBB|FFileBB|GFileBB|HFileBB) != 0 {
+		wKingSq ^= 7
+		bKingSq ^= 7
+		pawnSq ^= 7
+	}
+
+	p := position{
+		whiteKing: wKingSq,
+		blackKing: bKingSq,
+		pawnFile:  pawnSq.File(),
+		pawnRank:  pawnSq.Rank(),
+		stm:       stm,
+	}
+
+	return lut.Get(&p) == Win
+}
 
 type position struct {
 	whiteKing Square
@@ -162,10 +194,6 @@ func init() {
 		pSq := SquareAt(p.pawnFile, p.pawnRank)
 		qSq := SquareAt(p.pawnFile, EighthRank)
 
-		if p.whiteKing == 8 && p.blackKing == 2 && p.pawnFile == 2 && p.pawnRank == 2 && p.stm == 1 {
-			fmt.Printf("%v %v\n", *p, lut.Get(p))
-		}
-
 		switch {
 
 		case Chebishev(p.whiteKing, p.blackKing) <= 1: // kings take each other
@@ -185,20 +213,18 @@ func init() {
 			lut.Set(p, Win)
 			unknowns--
 		}
-
-		fmt.Printf("%v %v\n", *p, lut.Get(p))
 	}
 
-	iter := 0
 	for unknowns > 0 {
-		fmt.Printf("iter: %d unknowns: %d\n", iter, unknowns)
-		iter++
 		for p := range allPositions() {
 			if lut.Get(p) != Unknown {
 				continue
 			}
 
 			k := Draw
+			if p.stm == Black {
+				k = Win
+			}
 
 			for child := range p.children() {
 				switch lut.Get(child) {
@@ -210,15 +236,19 @@ func init() {
 					k = Unknown
 
 				case Invalid:
-					fmt.Println(child)
 					panic("children() generated an invalid position from an unknown position")
 
 				case Win:
-					k = Win
-					goto End
+					if p.stm == White {
+						k = Win
+						goto End
+					}
 
 				case Draw:
-					// if all are drawn then this a draw.
+					if p.stm == Black {
+						k = Draw
+						goto End
+					}
 				}
 			}
 
@@ -229,18 +259,4 @@ func init() {
 			}
 		}
 	}
-
-	invCnt, drawCnt, winCnt := 0, 0, 0
-
-	for p := range allPositions() {
-		switch lut.Get(p) {
-		case Invalid:
-			invCnt++
-		case Draw:
-			drawCnt++
-		case Win:
-			winCnt++
-		}
-	}
-	fmt.Printf("inv: %d draw: %d win: %d\n", invCnt, drawCnt, winCnt)
 }
