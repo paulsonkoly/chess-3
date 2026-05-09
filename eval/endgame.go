@@ -29,9 +29,9 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
 	e.sp[victim.Flip()][EG] += c.PieceValues[EG][Knight]
 	e.sp[victim.Flip()][EG] += c.PieceValues[EG][Bishop]
 
-	parity := (bishopSq.File() + bishopSq.Rank()) & 1
-
+	parity := bishopSq.Parity()
 	cornerDist := min(Chebyshev(victimKSq, KBCorners[parity][0]), Chebyshev(victimKSq, KBCorners[parity][1]))
+
 	cornerDist = 7 - cornerDist
 	cornerDist *= cornerDist
 
@@ -66,4 +66,50 @@ func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	e.sp[strongSide][EG] = c.PieceValues[EG][Queen] - T(pawnRank)*15
 
 	return e.endgameScore(b)
+}
+
+// kbpvk is the bishop+pawn endgame where a rook pawn draws if the opponent's
+// king can reach the queening square and the bishop is on the opposite color
+// complex.
+func (e *Eval[T]) kbpvk(b *board.Board, c *CoeffSet[T]) T {
+	// if not a Rook-pawn then normal positional eval
+	e.scaleFactor = [2]T{MaxScaleFactor, MaxScaleFactor}
+	var flank Coord
+	switch {
+
+	case b.Pieces[Pawn]&^AFileBB == 0:
+		flank = 0
+
+	case b.Pieces[Pawn]&^HFileBB == 0:
+		flank = 1
+
+	default:
+		return e.positional(b, c)
+	}
+
+	strongSide := Black
+	if b.Counts[White][Bishop] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	queeningSq := KBCorners[flank^Coord(weakSide)][weakSide]
+	bishopSq := b.Pieces[Bishop].LowestSet()
+
+	// is the bishop controlling the queningSquare?
+	if bishopSq.Parity() == queeningSq.Parity() {
+		return e.positional(b, c)
+	}
+
+	victimK := b.Colors[weakSide] & b.Pieces[King]
+	victimKSq := victimK.LowestSet()
+
+	dist := Chebyshev(queeningSq, victimKSq)
+	if dist <= 1 {
+		return 0
+	}
+	e.scaleFactor[strongSide] = MaxScaleFactor * T(dist-1) / T(dist)
+	e.scaleFactor[weakSide] = MaxScaleFactor
+
+	return e.positional(b, c)
 }
