@@ -106,6 +106,11 @@ func SquareAt(file Coord, rank Coord) Square {
 	return Square(rank*8)&RankMask + Square(file)&FileMask
 }
 
+func Chebishev(a, b Square) int {
+	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
+	return max(Abs(ax-bx), Abs(ay-by))
+}
+
 func (s Square) String() string {
 	return fmt.Sprintf("%c%c", s%8+'a', s/8+'1')
 }
