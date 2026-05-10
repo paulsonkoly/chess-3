@@ -3,6 +3,7 @@ package eval
 import (
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
+	"github.com/paulsonkoly/chess-3/eval/kpvk"
 )
 
 const materialCacheSize = 2 * 1024
@@ -69,6 +70,9 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		wN+bN+wB+bB <= 3 && max((wN+3*wB)-(bN+3*bB), (bN+3*bB)-(wN+3*wB)) <= 3:
 		evalID = evalInsufficientID
 
+	case wN == 0 && bN == 0 && wB == 0 && bB == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 && wP+bP == 1:
+		evalID = evalKPvKID
+
 	case wP == 0 && bP == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
 		((wN == 1 && wB == 1 && bN == 0 && bB == 0) || (wN == 0 && wB == 0 && bN == 1 && bB == 1)):
 		evalID = evalKNBvKID
@@ -112,6 +116,7 @@ type evalID byte
 
 const (
 	evalInsufficientID = evalID(iota)
+	evalKPvKID
 	evalKNBvKID
 	evalOCBID
 	evalOCBKnightsID
@@ -126,6 +131,14 @@ const (
 
 func evalInsufficient[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	return 0
+}
+
+func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	if !kpvk.Winning(b) {
+		return 0
+	}
+	e.scaleFactor = [Colors]T{MaxScaleFactor, MaxScaleFactor}
+	return e.positional(b, c)
 }
 
 func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
