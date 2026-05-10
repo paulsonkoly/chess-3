@@ -213,6 +213,19 @@ func init() {
 			lut.Set(p, Draw)
 			unknowns--
 
+		case p.blackKing == SquareAt(p.pawnFile, p.pawnRank+1) && p.pawnRank < SeventhRank:
+			lut.Set(p, Draw)
+			unknowns--
+
+		case p.whiteKing == SquareAt(p.pawnFile, p.pawnRank+1) && p.blackKing == SquareAt(p.pawnFile, p.pawnRank+3) &&
+			p.pawnRank < FifthRank && p.stm == White:
+			lut.Set(p, Draw)
+			unknowns--
+
+		case p.blackKing == A8 && p.pawnFile == AFile:
+			lut.Set(p, Draw)
+			unknowns--
+
 		case p.pawnRank == SeventhRank && (Chebishev(p.whiteKing, qSq) == 1 || Chebishev(p.blackKing, qSq) > 1+int(p.stm)):
 			// pawn can queen
 			lut.Set(p, Win)
