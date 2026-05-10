@@ -1,6 +1,7 @@
 package kpvk
 
 import (
+	"fmt"
 	"iter"
 
 	"github.com/paulsonkoly/chess-3/attacks"
@@ -196,7 +197,7 @@ func init() {
 
 		switch {
 
-		case Chebishev(p.whiteKing, p.blackKing) <= 1: // kings take each other
+		case Chebishev(p.whiteKing, p.blackKing) <= 1: // kings take each other, or on top of each other
 			lut.Set(p, Invalid)
 			unknowns--
 
@@ -204,11 +205,15 @@ func init() {
 			lut.Set(p, Invalid)
 			unknowns--
 
+		case p.stm == White && attacks.PawnCaptureMoves(BitBoardFromSquares(pSq), White)&BitBoardFromSquares(p.blackKing) != 0:
+			lut.Set(p, Invalid)
+			unknowns--
+
 		case Chebishev(p.whiteKing, pSq) > 1 && Chebishev(p.blackKing, pSq) == 1 && p.stm == Black: // pawn can be captured
 			lut.Set(p, Draw)
 			unknowns--
 
-		case p.pawnRank == SeventhRank && (Chebishev(p.whiteKing, qSq) == 1 || Chebishev(p.blackKing, qSq) > 1):
+		case p.pawnRank == SeventhRank && (Chebishev(p.whiteKing, qSq) == 1 || Chebishev(p.blackKing, qSq) > 1+int(p.stm)):
 			// pawn can queen
 			lut.Set(p, Win)
 			unknowns--
@@ -216,46 +221,62 @@ func init() {
 	}
 
 	for unknowns > 0 {
+		fmt.Println("unknowns", unknowns)
 		for p := range allPositions() {
 			if lut.Get(p) != Unknown {
 				continue
 			}
 
-			k := Draw
-			if p.stm == Black {
-				k = Win
-			}
-
+			hasAny, hasUnknown, hasWin, hasDraw := false, false, false, false
 			for child := range p.children() {
+				hasAny = true
+
 				switch lut.Get(child) {
 
 				case Unknown:
-					// if the child is unknown this can be a draw or a win, if we see an
-					// other child that is win, we can say it's a win. Otherwise stays
-					// unknown.
-					k = Unknown
+					hasUnknown = true
 
 				case Invalid:
 					panic("children() generated an invalid position from an unknown position")
 
 				case Win:
-					if p.stm == White {
-						k = Win
-						goto End
-					}
+					hasWin = true
 
 				case Draw:
-					if p.stm == Black {
-						k = Draw
-						goto End
-					}
+					hasDraw = true
 				}
 			}
 
-		End:
-			if k != Unknown {
-				lut.Set(p, k)
-				unknowns--
+			if p.stm == White {
+				switch {
+
+				case hasWin:
+					lut.Set(p, Win)
+					unknowns--
+
+				case !hasAny:
+					lut.Set(p, Draw)
+					unknowns--
+
+				case !hasUnknown && hasDraw:
+					lut.Set(p, Draw)
+					unknowns--
+				}
+			} else {
+				switch {
+
+				case hasDraw:
+					lut.Set(p, Draw)
+					unknowns--
+
+				case !hasAny:
+					lut.Set(p, Draw)
+					unknowns--
+
+				case !hasUnknown && hasWin:
+					lut.Set(p, Win)
+					unknowns--
+				}
 			}
 		}
 	}
