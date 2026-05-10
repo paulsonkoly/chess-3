@@ -194,6 +194,8 @@ func init() {
 	for p := range allPositions() {
 		pSq := SquareAt(p.pawnFile, p.pawnRank)
 		qSq := SquareAt(p.pawnFile, EighthRank)
+		wKingCover := attacks.KingMoves(p.whiteKing)
+		bKingCover := attacks.KingMoves(p.blackKing)
 
 		switch {
 
@@ -222,11 +224,21 @@ func init() {
 			lut.Set(p, Draw)
 			unknowns--
 
-		case p.blackKing == A8 && p.pawnFile == AFile:
+		case p.pawnFile == AFile && p.blackKing.File() == AFile && p.blackKing.Rank() > p.pawnRank:
 			lut.Set(p, Draw)
 			unknowns--
 
-		case p.pawnRank == SeventhRank && (Chebishev(p.whiteKing, qSq) == 1 || Chebishev(p.blackKing, qSq) > 1+int(p.stm)):
+		case p.pawnFile == AFile && p.whiteKing.File() == AFile && p.whiteKing.Rank() > p.pawnRank &&
+			p.blackKing.File() == CFile && p.blackKing.Rank() == p.whiteKing.Rank() && p.stm == White:
+			lut.Set(p, Draw)
+			unknowns--
+
+		case p.whiteKing == A7 && p.blackKing == C8 && p.pawnFile == AFile && p.stm == White:
+			lut.Set(p, Draw)
+			unknowns--
+
+		case p.pawnRank == SeventhRank && p.stm == White && qSq != p.whiteKing && qSq != p.blackKing &&
+			(wKingCover|^bKingCover)&BitBoardFromSquares(qSq) != 0:
 			// pawn can queen
 			lut.Set(p, Win)
 			unknowns--
@@ -238,6 +250,10 @@ func init() {
 		for p := range allPositions() {
 			if lut.Get(p) != Unknown {
 				continue
+			}
+
+			if unknowns == 50 {
+				fmt.Println(p.whiteKing, p.blackKing, SquareAt(p.pawnFile, p.pawnRank), p.stm)
 			}
 
 			hasAny, hasUnknown, hasWin, hasDraw := false, false, false, false
