@@ -1,6 +1,7 @@
 package kpvk
 
 import (
+	"fmt"
 	"iter"
 
 	"github.com/paulsonkoly/chess-3/attacks"
@@ -9,6 +10,8 @@ import (
 )
 
 // Winning determines if a KPvK endgame is winning or a draw.
+// Note: calling this function with anything other than a KPvK position is
+// invalid.
 func Winning(b *board.Board) bool {
 	wKingSq := (b.Colors[White] & b.Pieces[King]).LowestSet()
 	bKingSq := (b.Colors[Black] & b.Pieces[King]).LowestSet()
@@ -195,23 +198,27 @@ func init() {
 	for p := range allPositions() {
 		pSq := SquareAt(p.pawnFile, p.pawnRank)
 		qSq := SquareAt(p.pawnFile, EighthRank)
-		wKingCover := attacks.KingMoves(p.whiteKing)
-		bKingCover := attacks.KingMoves(p.blackKing)
 
 		pawn := BitBoardFromSquares(pSq)
 		queen := BitBoardFromSquares(qSq)
 		wKing := BitBoardFromSquares(p.whiteKing)
 		bKing := BitBoardFromSquares(p.blackKing)
 
+		wKingCover := attacks.KingMoves(p.whiteKing)
+		bKingCover := attacks.KingMoves(p.blackKing)
+		pawnCover := attacks.PawnCaptureMoves(pawn, White)
+		pawnFront1 := pawn << 8
+		pawnFront3 := pawn << 24
+
 		unknowns--
 		switch {
 
 		// kings can take each other or pieces are on top of each other
-		case wKingCover&bKing != 0 || bKingCover&wKing != 0 || wKing == bKing || wKing == pawn || bKing == pawn:
+		case wKingCover&bKing != 0 || bKingCover&wKing != 0 || (wKing|bKing|pawn).Count() != 3:
 			lut.Set(p, Invalid)
 
 		// black is in check and it's white to move
-		case p.stm == White && attacks.PawnCaptureMoves(pawn, White)&bKing != 0:
+		case p.stm == White && pawnCover&bKing != 0:
 			lut.Set(p, Invalid)
 
 		// pawn can be captured
@@ -223,15 +230,22 @@ func init() {
 			queen != wKing && queen != bKing && (wKingCover|^bKingCover)&queen != 0:
 			lut.Set(p, Win)
 
+		// black stalemated
+		case p.stm == Black && bKingCover & ^(wKingCover|pawnCover) == 0:
+			lut.Set(p, Draw)
+
+		// white stalemated
+		case p.stm == White && wKingCover & ^(bKingCover|pawn) == 0 && pawnFront1&(wKing|bKing) != 0:
+			lut.Set(p, Draw)
+
 		// disconnected draws - edge cases not reachable from the above rules
 
 		// black king in front of the pawn
-		case p.blackKing == SquareAt(p.pawnFile, p.pawnRank+1) && p.pawnRank < SeventhRank:
+		case bKing&pawnFront1 != 0 && p.pawnRank < SeventhRank:
 			lut.Set(p, Draw)
 
 		// black king holding opposition
-		case p.whiteKing == SquareAt(p.pawnFile, p.pawnRank+1) && p.blackKing == SquareAt(p.pawnFile, p.pawnRank+3) &&
-			p.pawnRank < FifthRank && p.stm == White:
+		case p.stm == White && wKing&pawnFront1 != 0 && bKing&pawnFront3 != 0 && p.pawnRank < FifthRank:
 			lut.Set(p, Draw)
 
 		// black reached in front of the rook pawn
@@ -253,14 +267,14 @@ func init() {
 	}
 
 	for unknowns > 0 {
+		fmt.Println("unkowns", unknowns)
 		for p := range allPositions() {
 			if lut.Get(p) != Unknown {
 				continue
 			}
 
-			hasAny, hasUnknown, hasWin, hasDraw := false, false, false, false
+			hasUnknown, hasWin, hasDraw := false, false, false
 			for child := range p.children() {
-				hasAny = true
 
 				switch lut.Get(child) {
 
@@ -285,10 +299,6 @@ func init() {
 					lut.Set(p, Win)
 					unknowns--
 
-				case !hasAny:
-					lut.Set(p, Draw)
-					unknowns--
-
 				case !hasUnknown && hasDraw:
 					lut.Set(p, Draw)
 					unknowns--
@@ -297,10 +307,6 @@ func init() {
 				switch {
 
 				case hasDraw:
-					lut.Set(p, Draw)
-					unknowns--
-
-				case !hasAny:
 					lut.Set(p, Draw)
 					unknowns--
 
