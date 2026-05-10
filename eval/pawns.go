@@ -132,7 +132,7 @@ func (e *Eval[T]) addPassers(b *board.Board, c *CoeffSet[T]) {
 					qSq += 56
 				}
 
-				kingDist := Chebishev(qSq, e.kings[color.Flip()].sq) - Chebishev(qSq, e.kings[color].sq)
+				kingDist := Chebyshev(qSq, e.kings[color.Flip()].sq) - Chebyshev(qSq, e.kings[color].sq)
 
 				e.sp[color][MG] += c.PasserKingDist[MG] * T(kingDist)
 				e.sp[color][EG] += c.PasserKingDist[EG] * T(kingDist)

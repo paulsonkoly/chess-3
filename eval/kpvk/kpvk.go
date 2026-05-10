@@ -12,6 +12,10 @@ import (
 // Note: calling this function with anything other than a KPvK position is
 // invalid.
 func Winning(b *board.Board) bool {
+	if b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Rook]|b.Pieces[Queen] != 0 || !b.Pieces[Pawn].One() {
+		panic("non-KPvK position")
+	}
+
 	wKingSq := (b.Colors[White] & b.Pieces[King]).LowestSet()
 	bKingSq := (b.Colors[Black] & b.Pieces[King]).LowestSet()
 	pawn := b.Pieces[Pawn]
@@ -266,6 +270,7 @@ func init() {
 	}
 
 	for unknowns > 0 {
+		modified := 0
 		for p := range allPositions() {
 			if lut.Get(p) != Unknown {
 				continue
@@ -299,8 +304,12 @@ func init() {
 
 			if upd != Unknown {
 				lut.Set(p, upd)
-				unknowns--
+				modified++
 			}
+		}
+		unknowns -= modified
+		if unknowns > 0 && modified == 0 {
+			panic("covering KPvK endgames stuck")
 		}
 	}
 }

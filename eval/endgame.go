@@ -30,7 +30,7 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
 
 	parity := (bishopSq.File() + bishopSq.Rank()) & 1
 
-	cornerDist := min(Chebishev(victimKSq, KBCorners[parity][0]), Chebishev(victimKSq, KBCorners[parity][1]))
+	cornerDist := min(Chebyshev(victimKSq, KBCorners[parity][0]), Chebyshev(victimKSq, KBCorners[parity][1]))
 	cornerDist = 7 - cornerDist
 	cornerDist *= cornerDist
 

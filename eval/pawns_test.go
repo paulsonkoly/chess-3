@@ -67,7 +67,8 @@ func TestPassers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			e := New[Score]()
-			e.Score(b, &Coefficients)
+			e.pawns[White].calc(b, White)
+			e.pawns[Black].calc(b, Black)
 
 			assert.Equal(t, tt.want, e.passers(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
