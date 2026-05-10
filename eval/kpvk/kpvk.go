@@ -1,7 +1,6 @@
 package kpvk
 
 import (
-	"fmt"
 	"iter"
 
 	"github.com/paulsonkoly/chess-3/attacks"
@@ -267,53 +266,40 @@ func init() {
 	}
 
 	for unknowns > 0 {
-		fmt.Println("unkowns", unknowns)
 		for p := range allPositions() {
 			if lut.Get(p) != Unknown {
 				continue
 			}
 
-			hasUnknown, hasWin, hasDraw := false, false, false
-			for child := range p.children() {
-
-				switch lut.Get(child) {
-
-				case Unknown:
-					hasUnknown = true
-
-				case Invalid:
-					panic("children() generated an invalid position from an unknown position")
-
-				case Win:
-					hasWin = true
-
-				case Draw:
-					hasDraw = true
-				}
+			// white wants the one winnig line if exists, black wants the one
+			// drawing line if exists, if there is none but there are unkowns there is
+			// still a chance to get what we want, but if all known, and opposite of
+			// what we want then that is the result.
+			want := Win
+			upd := Draw
+			if p.stm == Black {
+				want = Draw
+				upd = Win
 			}
 
-			if p.stm == White {
-				switch {
+			for child := range p.children() {
+				got := lut.Get(child)
 
-				case hasWin:
-					lut.Set(p, Win)
-					unknowns--
+				switch got {
 
-				case !hasUnknown && hasDraw:
-					lut.Set(p, Draw)
-					unknowns--
+				case want:
+					upd = got
+					goto End
+
+				case Unknown:
+					upd = Unknown
 				}
-			} else {
-				switch {
+			}
+		End:
 
-				case hasDraw:
-					lut.Set(p, Draw)
-					unknowns--
-
-				case !hasUnknown && hasWin:
-					lut.Set(p, Win)
-					unknowns--
-				}
+			if upd != Unknown {
+				lut.Set(p, upd)
+				unknowns--
 			}
 		}
 	}
