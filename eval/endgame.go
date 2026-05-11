@@ -56,7 +56,7 @@ func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	pawnSq := pawn.LowestSet()
 
 	pawnRank := pawnSq.Rank().FromPerspectiveOf(strongSide)
-	e.sp[strongSide][EG] += c.PasserRank[EG][pawnRank]
+	e.sp[strongSide][EG] += T(pawnRank) * 150
 
 	strongKingSq := (b.Colors[strongSide] & b.Pieces[King]).LowestSet()
 	e.sp[strongSide][EG] += (7 - T(Chebyshev(pawnSq, strongKingSq))) * 10
