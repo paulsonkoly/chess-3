@@ -44,7 +44,7 @@ func Winning(b *board.Board) bool {
 		stm:       stm,
 	}
 
-	return lut.Get(&p) == Win
+	return lut.get(&p) == win
 }
 
 type position struct {
@@ -157,13 +157,13 @@ func allPositions() iter.Seq[*position] {
 	}
 }
 
-type Kind byte
+type kind byte
 
 const (
-	Unknown = Kind(iota)
-	Invalid
-	Draw
-	Win
+	unknown = kind(iota)
+	invalid
+	draw
+	win
 )
 
 const (
@@ -172,18 +172,18 @@ const (
 	size = count / 4
 )
 
-type table [size]Kind
+type table [size]kind
 
 var lut = table{}
 
-func (t *table) Set(p *position, k Kind) {
+func (t *table) set(p *position, k kind) {
 	index := index(p)
 
 	t[index/4] &= ^(3 << (2 * (index & 3)))
 	t[index/4] |= k << (2 * (index & 3))
 }
 
-func (t *table) Get(p *position) Kind {
+func (t *table) get(p *position) kind {
 	index := index(p)
 	return (t[index/4] >> (2 * (index & 3))) & 3
 }
@@ -218,51 +218,51 @@ func init() {
 
 		// kings can take each other or pieces are on top of each other
 		case wKingCover&bKing != 0 || bKingCover&wKing != 0 || (wKing|bKing|pawn).Count() != 3:
-			lut.Set(p, Invalid)
+			lut.set(p, invalid)
 
 		// black is in check and it's white to move
 		case p.stm == White && pawnCover&bKing != 0:
-			lut.Set(p, Invalid)
+			lut.set(p, invalid)
 
 		// pawn can be captured
 		case p.stm == Black && bKingCover&pawn != 0 && wKingCover&pawn == 0:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		// pawn queens
 		case p.stm == White && p.pawnRank == SeventhRank &&
 			queen != wKing && queen != bKing && (wKingCover|^bKingCover)&queen != 0:
-			lut.Set(p, Win)
+			lut.set(p, win)
 
 		// black stalemated
 		case p.stm == Black && bKingCover & ^(wKingCover|pawnCover) == 0:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		// white stalemated
 		case p.stm == White && wKingCover & ^(bKingCover|pawn) == 0 && pawnFront1&(wKing|bKing) != 0:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		// disconnected draws - edge cases not reachable from the above rules
 
 		// black king in front of the pawn
 		case bKing&pawnFront1 != 0 && p.pawnRank < SeventhRank:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		// black king holding opposition
 		case p.stm == White && wKing&pawnFront1 != 0 && bKing&pawnFront3 != 0 && p.pawnRank < FifthRank:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		// black reached in front of the rook pawn
 		case p.pawnFile == AFile && p.blackKing.File() == AFile && p.blackKing.Rank() > p.pawnRank:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		// white blocking the rook pawn and black can shoulder white to keep on rook file.
 		case p.pawnFile == AFile && p.whiteKing.File() == AFile && p.whiteKing.Rank() > p.pawnRank &&
 			p.blackKing.File() == CFile && p.blackKing.Rank() == p.whiteKing.Rank() && p.stm == White:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		// this position represents the last disconnected cycle.
 		case p.whiteKing == A7 && p.blackKing == C8 && p.pawnFile == AFile && p.stm == White:
-			lut.Set(p, Draw)
+			lut.set(p, draw)
 
 		default:
 			unknowns++
@@ -272,7 +272,7 @@ func init() {
 	for unknowns > 0 {
 		modified := 0
 		for p := range allPositions() {
-			if lut.Get(p) != Unknown {
+			if lut.get(p) != unknown {
 				continue
 			}
 
@@ -280,15 +280,15 @@ func init() {
 			// drawing line if exists, if there is none but there are unknowns there is
 			// still a chance to get what we want, but if all known, and opposite of
 			// what we want then that is the result.
-			want := Win
-			upd := Draw
+			want := win
+			upd := draw
 			if p.stm == Black {
-				want = Draw
-				upd = Win
+				want = draw
+				upd = win
 			}
 
 			for child := range p.children() {
-				got := lut.Get(child)
+				got := lut.get(child)
 
 				switch got {
 
@@ -296,14 +296,14 @@ func init() {
 					upd = got
 					goto End
 
-				case Unknown:
-					upd = Unknown
+				case unknown:
+					upd = unknown
 				}
 			}
 		End:
 
-			if upd != Unknown {
-				lut.Set(p, upd)
+			if upd != unknown {
+				lut.set(p, upd)
 				modified++
 			}
 		}
