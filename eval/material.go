@@ -137,8 +137,24 @@ func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	if !kpvk.Winning(b) {
 		return 0
 	}
-	e.scaleFactor = [Colors]T{MaxScaleFactor, MaxScaleFactor}
-	return e.positional(b, c)
+	pawn := b.Pieces[Pawn]
+	strongSide := White
+	if b.Colors[Black]&pawn != 0 {
+		strongSide = Black
+	}
+	weakSide := strongSide.Flip()
+
+	// Sufficiently large score that allows simplifications even with piece
+	// sacrifices into won KPvK endgames. pushesLeft should encourage progress,
+	// eventually pushing the pawn. Pawn on the seventh can't be more than the queen
+	// value, otherwise we refuse to queen.
+	pushesLeft := pawn.LowestSet().Rank().FromPerspectiveOf(weakSide)
+	score := c.PieceValues[EG][Queen] - T(pushesLeft)*30
+	if b.STM == strongSide {
+		return score
+	} else {
+		return -score
+	}
 }
 
 func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
