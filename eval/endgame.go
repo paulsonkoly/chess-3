@@ -3,6 +3,7 @@ package eval
 import (
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
+	"github.com/paulsonkoly/chess-3/eval/kpvk"
 )
 
 // KBCorners are knight-bishop checkmate corners based on parity of square.
@@ -30,11 +31,39 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
 
 	parity := (bishopSq.File() + bishopSq.Rank()) & 1
 
-	cornerDist := min(Chebishev(victimKSq, KBCorners[parity][0]), Chebishev(victimKSq, KBCorners[parity][1]))
+	cornerDist := min(Chebyshev(victimKSq, KBCorners[parity][0]), Chebyshev(victimKSq, KBCorners[parity][1]))
 	cornerDist = 7 - cornerDist
 	cornerDist *= cornerDist
 
 	e.sp[victim.Flip()][EG] += T(cornerDist) * 30
+
+	return e.endgameScore(b)
+}
+
+func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	if !kpvk.Winning(b) {
+		return 0
+	}
+	pawn := b.Pieces[Pawn]
+	strongSide := White
+	if b.Colors[Black]&pawn != 0 {
+		strongSide = Black
+	}
+	weakSide := strongSide.Flip()
+
+	e.sp = [Colors][2]T{}
+
+	pawnSq := pawn.LowestSet()
+
+	pawnRank := pawnSq.Rank().FromPerspectiveOf(strongSide)
+	e.sp[strongSide][EG] += T(pawnRank) * 120
+
+	strongKingSq := (b.Colors[strongSide] & b.Pieces[King]).LowestSet()
+	e.sp[strongSide][EG] += (7 - T(Chebyshev(pawnSq, strongKingSq))) * 10
+
+	weakKingSq := (b.Colors[weakSide] & b.Pieces[King]).LowestSet()
+	queenSq := SquareAt(pawnSq.File(), EighthRank.FromPerspectiveOf(strongSide))
+	e.sp[weakSide][EG] += (7 - T(Chebyshev(queenSq, weakKingSq))) * 8
 
 	return e.endgameScore(b)
 }

@@ -1,0 +1,315 @@
+package kpvk
+
+import (
+	"iter"
+
+	"github.com/paulsonkoly/chess-3/attacks"
+	"github.com/paulsonkoly/chess-3/board"
+	. "github.com/paulsonkoly/chess-3/chess"
+)
+
+// Winning determines if a KPvK endgame is winning or a draw.
+// Note: calling this function with anything other than a KPvK position is
+// invalid.
+func Winning(b *board.Board) bool {
+	if b.Pieces[Knight]|b.Pieces[Bishop]|b.Pieces[Rook]|b.Pieces[Queen] != 0 || !b.Pieces[Pawn].One() {
+		panic("non-KPvK position")
+	}
+
+	wKingSq := (b.Colors[White] & b.Pieces[King]).LowestSet()
+	bKingSq := (b.Colors[Black] & b.Pieces[King]).LowestSet()
+	pawn := b.Pieces[Pawn]
+	pawnSq := pawn.LowestSet()
+	stm := b.STM
+
+	// vertical mirror, swap sides. kpvk only supports white as the strong side.
+	if b.Colors[Black]&pawn != 0 {
+		wKingSq, bKingSq = bKingSq^56, wKingSq^56
+		pawnSq ^= 56
+		stm = stm.Flip()
+	}
+
+	// horizontal mirror, kpvk only supports pawn on the queen side.
+	if pawn&(EFileBB|FFileBB|GFileBB|HFileBB) != 0 {
+		wKingSq ^= 7
+		bKingSq ^= 7
+		pawnSq ^= 7
+	}
+
+	p := position{
+		whiteKing: wKingSq,
+		blackKing: bKingSq,
+		pawnFile:  pawnSq.File(),
+		pawnRank:  pawnSq.Rank(),
+		stm:       stm,
+	}
+
+	return lut.get(&p) == win
+}
+
+type position struct {
+	whiteKing Square
+	blackKing Square
+	pawnFile  Coord
+	pawnRank  Coord
+	stm       Color
+}
+
+func (p *position) children() iter.Seq[*position] {
+	child := position{stm: p.stm.Flip()}
+
+	occ := BitBoardFromSquares(p.whiteKing, p.blackKing, SquareAt(p.pawnFile, p.pawnRank))
+
+	return func(yield func(*position) bool) {
+
+		if p.stm == Black {
+
+			child.whiteKing = p.whiteKing
+			child.pawnFile = p.pawnFile
+			child.pawnRank = p.pawnRank
+
+			whitePawn := BitBoardFromSquares(SquareAt(p.pawnFile, p.pawnRank))
+			whiteCover := attacks.KingMoves(p.whiteKing) | attacks.PawnCaptureMoves(whitePawn, White)
+			mask := ^(whiteCover | occ)
+
+			for kingMoves := attacks.KingMoves(p.blackKing) & mask; kingMoves != 0; kingMoves &= kingMoves - 1 {
+				child.blackKing = kingMoves.LowestSet()
+
+				if !yield(&child) {
+					return
+				}
+			}
+
+		} else {
+
+			child.blackKing = p.blackKing
+
+			blackCover := attacks.KingMoves(p.blackKing)
+			mask := ^(blackCover | occ)
+
+			for kingMoves := attacks.KingMoves(p.whiteKing) & mask; kingMoves != 0; kingMoves &= kingMoves - 1 {
+				child.whiteKing = kingMoves.LowestSet()
+				child.pawnFile = p.pawnFile
+				child.pawnRank = p.pawnRank
+
+				if !yield(&child) {
+					return
+				}
+			}
+
+			child.whiteKing = p.whiteKing
+
+			occ := BitBoardFromSquares(p.whiteKing, p.blackKing)
+			thirdSq := SquareAt(p.pawnFile, ThirdRank)
+			fourthSq := SquareAt(p.pawnFile, FourthRank)
+
+			switch p.pawnRank {
+
+			case SecondRank:
+				if BitBoardFromSquares(thirdSq, fourthSq)&occ == 0 {
+					child.pawnFile = p.pawnFile
+					child.pawnRank = FourthRank
+					if !yield(&child) {
+						return
+					}
+				}
+				fallthrough
+
+			case ThirdRank, FourthRank, FifthRank, SixthRank:
+				if BitBoardFromSquares(SquareAt(p.pawnFile, p.pawnRank+1))&occ == 0 {
+					child.pawnFile = p.pawnFile
+					child.pawnRank = p.pawnRank + 1
+					if !yield(&child) {
+						return
+					}
+				}
+
+			case SeventhRank:
+				// already queening
+			}
+		}
+	}
+}
+
+func allPositions() iter.Seq[*position] {
+	var p position
+	return func(yield func(*position) bool) {
+
+		for stm := range Colors {
+			for wK := range Squares {
+				for bK := range Squares {
+					for pF := range Coord(4) {
+						for pR := SecondRank; pR <= SeventhRank; pR++ {
+							p.stm = stm
+							p.whiteKing = wK
+							p.blackKing = bK
+							p.pawnFile = pF
+							p.pawnRank = pR
+
+							if !yield(&p) {
+								return
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+type kind byte
+
+const (
+	unknown = kind(iota)
+	invalid
+	draw
+	win
+)
+
+const (
+	count = int(Colors) * int(Squares) * int(Squares) * 4 * 6
+	// size is the byte size of the LUT. 2 bits per kind, fitted in an 8 bit byte => 4 entries per byte.
+	size = count / 4
+)
+
+type table [size]kind
+
+var lut = table{}
+
+func (t *table) set(p *position, k kind) {
+	index := index(p)
+
+	t[index/4] &= ^(3 << (2 * (index & 3)))
+	t[index/4] |= k << (2 * (index & 3))
+}
+
+func (t *table) get(p *position) kind {
+	index := index(p)
+	return (t[index/4] >> (2 * (index & 3))) & 3
+}
+
+func index(p *position) int {
+	return int(p.stm)*int(Squares)*int(Squares)*4*6 +
+		int(p.whiteKing)*int(Squares)*4*6 +
+		int(p.blackKing)*4*6 +
+		int(p.pawnFile)*6 +
+		int(p.pawnRank-1)
+}
+
+func init() {
+	unknowns := count
+	for p := range allPositions() {
+		pSq := SquareAt(p.pawnFile, p.pawnRank)
+		qSq := SquareAt(p.pawnFile, EighthRank)
+
+		pawn := BitBoardFromSquares(pSq)
+		queen := BitBoardFromSquares(qSq)
+		wKing := BitBoardFromSquares(p.whiteKing)
+		bKing := BitBoardFromSquares(p.blackKing)
+
+		wKingCover := attacks.KingMoves(p.whiteKing)
+		bKingCover := attacks.KingMoves(p.blackKing)
+		pawnCover := attacks.PawnCaptureMoves(pawn, White)
+		pawnFront1 := pawn << 8
+		pawnFront3 := pawn << 24
+
+		unknowns--
+		switch {
+
+		// kings can take each other or pieces are on top of each other
+		case wKingCover&bKing != 0 || bKingCover&wKing != 0 || (wKing|bKing|pawn).Count() != 3:
+			lut.set(p, invalid)
+
+		// black is in check and it's white to move
+		case p.stm == White && pawnCover&bKing != 0:
+			lut.set(p, invalid)
+
+		// pawn can be captured
+		case p.stm == Black && bKingCover&pawn != 0 && wKingCover&pawn == 0:
+			lut.set(p, draw)
+
+		// pawn queens
+		case p.stm == White && p.pawnRank == SeventhRank &&
+			queen != wKing && queen != bKing && (wKingCover|^bKingCover)&queen != 0:
+			lut.set(p, win)
+
+		// black stalemated
+		case p.stm == Black && bKingCover & ^(wKingCover|pawnCover) == 0:
+			lut.set(p, draw)
+
+		// white stalemated
+		case p.stm == White && wKingCover & ^(bKingCover|pawn) == 0 && pawnFront1&(wKing|bKing) != 0:
+			lut.set(p, draw)
+
+		// disconnected draws - edge cases not reachable from the above rules
+
+		// black king in front of the pawn
+		case bKing&pawnFront1 != 0 && p.pawnRank < SeventhRank:
+			lut.set(p, draw)
+
+		// black king holding opposition
+		case p.stm == White && wKing&pawnFront1 != 0 && bKing&pawnFront3 != 0 && p.pawnRank < FifthRank:
+			lut.set(p, draw)
+
+		// black reached in front of the rook pawn
+		case p.pawnFile == AFile && p.blackKing.File() == AFile && p.blackKing.Rank() > p.pawnRank:
+			lut.set(p, draw)
+
+		// white blocking the rook pawn and black can shoulder white to keep on rook file.
+		case p.pawnFile == AFile && p.whiteKing.File() == AFile && p.whiteKing.Rank() > p.pawnRank &&
+			p.blackKing.File() == CFile && p.blackKing.Rank() == p.whiteKing.Rank() && p.stm == White:
+			lut.set(p, draw)
+
+		// this position represents the last disconnected cycle.
+		case p.whiteKing == A7 && p.blackKing == C8 && p.pawnFile == AFile && p.stm == White:
+			lut.set(p, draw)
+
+		default:
+			unknowns++
+		}
+	}
+
+	for unknowns > 0 {
+		modified := 0
+		for p := range allPositions() {
+			if lut.get(p) != unknown {
+				continue
+			}
+
+			// white wants the one winning line if exists, black wants the one
+			// drawing line if exists, if there is none but there are unknowns there is
+			// still a chance to get what we want, but if all known, and opposite of
+			// what we want then that is the result.
+			want := win
+			upd := draw
+			if p.stm == Black {
+				want = draw
+				upd = win
+			}
+
+			for child := range p.children() {
+				got := lut.get(child)
+
+				switch got {
+
+				case want:
+					upd = got
+					goto End
+
+				case unknown:
+					upd = unknown
+				}
+			}
+		End:
+
+			if upd != unknown {
+				lut.set(p, upd)
+				modified++
+			}
+		}
+		unknowns -= modified
+		if unknowns > 0 && modified == 0 {
+			panic("covering KPvK endgames stuck")
+		}
+	}
+}

@@ -52,6 +52,7 @@ func New[T ScoreType]() *Eval[T] {
 		materialCache: make([]MaterialCache[T], materialCacheSize),
 	}
 	e.matFuncs[evalInsufficientID] = evalInsufficient[T]
+	e.matFuncs[evalKPvKID] = evalKPvK[T]
 	e.matFuncs[evalKNBvKID] = evalKNBvK[T]
 	e.matFuncs[evalOCBID] = evalOCB[T]
 	e.matFuncs[evalOCBKnightsID] = evalOCBKnights[T]

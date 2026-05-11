@@ -67,7 +67,8 @@ func TestPassers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			e := New[Score]()
-			e.Score(b, &Coefficients)
+			e.pawns[White].calc(b, White)
+			e.pawns[Black].calc(b, Black)
 
 			assert.Equal(t, tt.want, e.passers(tt.color), "fen %s color %v", tt.fen, tt.color)
 		})
@@ -104,7 +105,8 @@ func TestDoubledPawns(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			e := New[Score]()
-			e.Score(b, &Coefficients)
+			e.pawns[White].calc(b, White)
+			e.pawns[Black].calc(b, Black)
 
 			assert.Equal(
 				t,
@@ -140,7 +142,8 @@ func TestIsolatedPawns(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Must(board.FromFEN(tt.fen))
 			e := New[Score]()
-			e.Score(b, &Coefficients)
+			e.pawns[White].calc(b, White)
+			e.pawns[Black].calc(b, Black)
 
 			assert.Equal(t, tt.want, e.isolatedPawns(
 				b.Colors[tt.color]&b.Pieces[Pawn],
