@@ -276,8 +276,8 @@ func init() {
 				continue
 			}
 
-			// white wants the one winnig line if exists, black wants the one
-			// drawing line if exists, if there is none but there are unkowns there is
+			// white wants the one winning line if exists, black wants the one
+			// drawing line if exists, if there is none but there are unknowns there is
 			// still a chance to get what we want, but if all known, and opposite of
 			// what we want then that is the result.
 			want := Win
