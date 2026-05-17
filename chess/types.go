@@ -14,7 +14,7 @@ const MaxPlies = 64
 type Score int16
 
 const (
-	Inf = Score(12_000)  // Inf is the checkmate score.
+	Inf = Score(31_000)  // Inf is the checkmate score.
 	Inv = Score(-32_000) // Inv is an invalid score. It is guaranteed to be less than any valid scores.
 )
 
