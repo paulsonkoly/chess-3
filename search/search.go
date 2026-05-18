@@ -148,8 +148,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 			return
 		}
 
-		alpha = score - Score(params.WindowSize)
-		beta = score + Score(params.WindowSize)
+		alpha = max(score-Score(params.WindowSize), -Inf-1)
+		beta = min(score+Score(params.WindowSize), Inf+1)
 	}
 	return
 }
