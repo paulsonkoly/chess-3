@@ -263,7 +263,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 
 		// null move pruning
-		if d > Depth(params.NMPDepthLimit) &&
+		if nType != PVNode &&
+			d > Depth(params.NMPDepthLimit) &&
 			staticEval >= beta &&
 			b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
