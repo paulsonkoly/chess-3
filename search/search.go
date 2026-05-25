@@ -50,7 +50,7 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 
 	for idD := Depth(0); idD < MaxPlies && (idD <= opts.Depth || opts.PonderHit != nil); idD++ {
 		awOk := false // aspiration window succeeded
-		factor := Score(1)
+		factor := 1
 		var scoreSample Score
 
 		for !awOk {
@@ -59,11 +59,11 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 			switch {
 
 			case scoreSample <= alpha:
-				alpha -= factor * Score(params.WindowSize)
+				alpha = Score(max(-int(Inf)-1, int(alpha)-factor*params.WindowSize))
 				factor *= 2
 
 			case scoreSample >= beta:
-				beta += factor * Score(params.WindowSize)
+				beta = Score(min(int(Inf)+1, int(beta)+factor*params.WindowSize))
 				factor *= 2
 
 			default:
@@ -138,8 +138,8 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 			return
 		}
 
-		alpha = score - Score(params.WindowSize)
-		beta = score + Score(params.WindowSize)
+		alpha = max(score-Score(params.WindowSize), -Inf-1)
+		beta = min(score+Score(params.WindowSize), Inf+1)
 	}
 	return
 }
@@ -263,7 +263,8 @@ func (s *Search) alphaBeta(b *board.Board, alpha, beta Score, d, ply Depth, nTyp
 		}
 
 		// null move pruning
-		if d > Depth(params.NMPDepthLimit) &&
+		if nType != PVNode &&
+			d > Depth(params.NMPDepthLimit) &&
 			staticEval >= beta &&
 			b.Colors[b.STM] & ^(b.Pieces[Pawn]|b.Pieces[King]) != 0 {
 
