@@ -59,11 +59,21 @@ func (s *Search) iterativeDeepen(b *board.Board, opts *Options) (score Score, mo
 			switch {
 
 			case scoreSample <= alpha:
-				alpha -= factor * Score(params.WindowSize)
+				gap := factor * Score(params.WindowSize)
+				if -Inf-1+gap > alpha { // underflow
+					alpha = -Inf - 1
+				} else {
+					alpha -= gap
+				}
 				factor *= 2
 
 			case scoreSample >= beta:
-				beta += factor * Score(params.WindowSize)
+				gap := factor * Score(params.WindowSize)
+				if Inf+1-gap < beta { // overflow
+					beta = Inf + 1
+				} else {
+					beta += gap
+				}
 				factor *= 2
 
 			default:
