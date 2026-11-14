@@ -461,7 +461,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 				}
 			}
 			if cnt == 0 {
-				return 0, ErrInvalidEpd
+				return 0, errInvalidEpd
 			}
 			eHigh /= float64(cnt)
 			eLow /= float64(cnt)
@@ -502,7 +502,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 	return k, nil
 }
 
-var ErrInvalidEpd = errors.New("invalid epd file")
+var errInvalidEpd = errors.New("invalid epd file")
 
 func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 	byLines, err := epd.OpenByLines(fn)
@@ -545,7 +545,7 @@ func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep
 	}
 	if cnt == 0 {
 		slog.Error("no lines in epd", "filename", fn)
-		return 0, ErrInvalidEpd
+		return 0, errInvalidEpd
 	}
 	return sum / float64(cnt), nil
 }

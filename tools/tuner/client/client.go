@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -21,7 +22,7 @@ import (
 
 var (
 	errServerShutdown   = errors.New("server shutdown")
-	ErrRetriesExhausted = errors.New("retries exhausted")
+	errRetriesExhausted = errors.New("retries exhausted")
 )
 
 const (
@@ -161,7 +162,7 @@ func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) er
 		retry++
 	}
 	slog.Error("can't retrieve epd", "retry", retry)
-	return ErrRetriesExhausted
+	return errRetriesExhausted
 }
 
 func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) error {
@@ -215,36 +216,50 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 			slog.Error("chunk mapping error", "error", err)
 			return err
 		}
-		for {
-			line, err := fChunk.Read()
-			if err != nil {
-				if err == io.EOF {
-					fChunk.Close()
-					break
+		chunkErr := func() error {
+			defer fChunk.Close()
+
+			for {
+				if err := ctx.Err(); err != nil {
+					return err
 				}
-				slog.Warn("read error", "error", err)
-				continue
+
+				line, err := fChunk.Read()
+				if err != nil {
+					if errors.Is(err, io.EOF) {
+						return nil
+					}
+					return fmt.Errorf("read chunk: %w", err)
+				}
+				if err := epd.Parse([]byte(line), &b, &res); err != nil {
+					slog.Warn("parse error", "error", err)
+					continue
+				}
+
+				score := ev.Score(&b, (*eval.CoeffSet)(&eCoeffs))
+				sigm := tuning.Sigmoid(score, k)
+				loss := (res - sigm) * (res - sigm)
+
+				for i, ptr := range eCoeffs.TunedParams(tuning.DefaultTargets) {
+					old := *ptr
+					*ptr += tuning.Epsilon
+
+					score2 := ev.Score(&b, (*eval.CoeffSet)(&eCoeffs))
+					sigm2 := tuning.Sigmoid(score2, k)
+					loss2 := (res - sigm2) * (res - sigm2)
+
+					grads.ModifyElem(i, func(g float64) float64 { return g + (loss2-loss)/tuning.Epsilon })
+					*ptr = old
+				}
 			}
-			if err := epd.Parse([]byte(line), &b, &res); err != nil {
-				slog.Warn("parse error", "error", err)
-				continue
+		}()
+		if chunkErr != nil {
+			if ctx.Err() != nil {
+				// A sibling worker stopped or failed; it owns the real result.
+				return nil
 			}
-
-			score := ev.Score(&b, (*eval.CoeffSet)(&eCoeffs))
-			sigm := tuning.Sigmoid(score, k)
-			loss := (res - sigm) * (res - sigm)
-
-			for i, ptr := range eCoeffs.TunedParams(tuning.DefaultTargets) {
-				old := *ptr
-				*ptr += tuning.Epsilon
-
-				score2 := ev.Score(&b, (*eval.CoeffSet)(&eCoeffs))
-				sigm2 := tuning.Sigmoid(score2, k)
-				loss2 := (res - sigm2) * (res - sigm2)
-
-				grads.ModifyElem(i, func(g float64) float64 { return g + (loss2-loss)/tuning.Epsilon })
-				*ptr = old
-			}
+			slog.Error("chunk processing error", "error", chunkErr)
+			return chunkErr
 		}
 
 		if cnt == 0 {
