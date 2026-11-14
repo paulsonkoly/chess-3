@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/tuner/eval"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -40,13 +42,16 @@ const (
 )
 
 func Run(args []string) int {
-	var epdFileName string
-	var host string
-	var port int
-	var outFn string
-	var minKPProf string
-	var minKMProf string
-	var maxEpochs int
+	var (
+		epdFileName string
+		host        string
+		port        int
+		outFn       string
+		minKPProf   string
+		minKMProf   string
+		maxEpochs   int
+		metricsPort int
+	)
 
 	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
 	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
@@ -56,6 +61,7 @@ func Run(args []string) int {
 	sFlags.StringVar(&minKPProf, "kpprof", "", "filename for gathering cpu profiling data from the mse minimization with k")
 	sFlags.StringVar(&minKMProf, "kmprof", "", "filename for gathering mem profiling data from the mse minimization with k")
 	sFlags.IntVar(&maxEpochs, "maxEpochs", 0, "number of epochs (0 disables)")
+	sFlags.IntVar(&metricsPort, "metricsPort", 9111, "port for prometheus metrics endpoint (0 disables)")
 	sFlags.Parse(args)
 
 	if epdFileName == "" {
@@ -71,6 +77,11 @@ func Run(args []string) int {
 		maxEpochs = math.MaxInt
 	}
 
+	if metricsPort < 0 {
+		slog.Error("metricsPort negative", slog.Int("metricsPort", metricsPort))
+		return app.ExitFailure
+	}
+
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -78,6 +89,39 @@ func Run(args []string) int {
 	defer sigCleanup()
 
 	eg := errgroup.Group{}
+
+	if metricsPort != 0 {
+		metricsLis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, metricsPort))
+		if err != nil {
+			slog.Error("failed to bind metrics port", "host", host, "port", metricsPort, "error", err)
+			return app.ExitFailure
+		}
+		metricsSrv := &http.Server{
+			Handler:           promhttp.Handler(),
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+
+		eg.Go(func() error {
+			if err := metricsSrv.Serve(metricsLis); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				cancel()
+				return fmt.Errorf("metrics serve: %w", err)
+			}
+			return nil
+		})
+
+		eg.Go(func() error {
+			<-ctx.Done()
+
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer shutdownCancel()
+
+			if err := metricsSrv.Shutdown(shutdownCtx); err != nil {
+				metricsSrv.Close()
+				return fmt.Errorf("metrics shutdown: %w", err)
+			}
+			return nil
+		})
+	}
 
 	k, err := minimizeK(ctx, epdFileName, minKPProf, minKMProf)
 	if err != nil {
@@ -93,6 +137,8 @@ func Run(args []string) int {
 		slog.Error("failed to bind port", "host", host, "port", port, "error", err)
 		return app.ExitFailure
 	}
+	slog.Info("listening for incoming connections", slog.String("host", host), slog.Int("port", port))
+	tunerReady.Set(1)
 
 	jobQueue := make(chan shim.Job, JobQueueDepth)
 	resultQueue := make(chan shim.Result, ResultQueueDepth)
@@ -107,10 +153,10 @@ func Run(args []string) int {
 		return nil
 	})
 
-	slog.Info("listening for incoming connections", slog.String("host", host), slog.Int("port", port))
 	srv := shim.NewServer(epdFileName, jobQueue, resultQueue, shutdown)
 	eg.Go(func() error {
 		defer cancel()
+		defer tunerReady.Set(0)
 		if err := srv.Serve(lis); err != nil {
 			return fmt.Errorf("grpc serve: %w", err)
 		}
