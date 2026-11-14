@@ -15,11 +15,11 @@ type EPDInfo struct {
 
 // Job is a workload sent to a client.
 type Job struct {
-	UUID         uuid.UUID         // UUID uniquely identifies a job request/response.
-	Epoch        int               // Epoch is the tuning epoch.
-	Range        tuning.Range      // Range is the EPD range for the workload.
-	Coefficients tuning.Vector     // Coefficients are the tuned coefficients for the current batch.
-	K            float64           // K is the sigmoid constant.
+	UUID         uuid.UUID     // UUID uniquely identifies a job request/response.
+	Epoch        int           // Epoch is the tuning epoch.
+	Range        tuning.Range  // Range is the EPD range for the workload.
+	Coefficients tuning.Vector // Coefficients are the tuned coefficients for the current batch.
+	K            float64       // K is the sigmoid constant.
 }
 
 // Result is the workload result.

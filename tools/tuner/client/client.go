@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"io"
 	"log/slog"
@@ -15,13 +16,20 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/tuner/eval"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+var (
+	ErrRetriesExhausted = errors.New("retries exhausted")
 )
 
 const (
 	EPDRetryCount = 10
 )
 
-func Run(args []string) {
+func Run(args []string) int {
 	var host string
 	var port int
 	var numThreads int
@@ -41,41 +49,45 @@ func Run(args []string) {
 	client, err := shim.NewClient(host, port)
 	if err != nil {
 		slog.Error("error creating client", "error", err)
-		os.Exit(app.ExitFailure)
+		return app.ExitFailure
 	}
 	defer client.Close()
 
 	slog.Info("connected to server", "host", host, "port", port)
 
-	epdInfo := obtainEPDInfo(ctx, client)
-	obtainEPD(ctx, epdInfo, client)
+	epdInfo, err := client.RequestEPDInfo(ctx)
+	if err != nil {
+		slog.Error("failed requesting EPD info", slog.String("error", err.Error()))
+		return app.ExitFailure
+	}
+	if err := obtainEPD(ctx, epdInfo, client); err != nil {
+		return app.ExitFailure
+	}
 
 	chunker, err := epd.NewChunker(epdInfo.Filename)
 	if err != nil {
 		slog.Error("chunker error", "error", err)
-		os.Exit(app.ExitFailure)
+		return app.ExitFailure
 	}
 
+	eg, ctx := errgroup.WithContext(ctx)
+
 	for range numThreads {
-		go clientWorker(ctx, chunker, client, workerPProf, workerMProf)
+		eg.Go(func() error {
+			return clientWorker(ctx, chunker, client, workerPProf, workerMProf)
+		})
 		workerPProf = "" // only profile in the first worker
 		workerMProf = ""
 	}
 
-	select {}
-}
-
-func obtainEPDInfo(ctx context.Context, client shim.Client) shim.EPDInfo {
-	slog.Debug("requesting epd info")
-	epdInfo, err := client.RequestEPDInfo(ctx)
-	if err != nil {
-		slog.Error("failed requesting epd info", "error", err)
-		os.Exit(app.ExitFailure)
+	if err := eg.Wait(); err != nil {
+		return app.ExitFailure
 	}
-	return epdInfo
+
+	return 0
 }
 
-func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) {
+func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) error {
 	var retry int
 
 	for haveEPD := false; !haveEPD && retry < EPDRetryCount; {
@@ -92,13 +104,13 @@ func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) {
 			stream, err := client.StreamEPD(ctx)
 			if err != nil {
 				slog.Error("stream error", "error", err)
-				os.Exit(app.ExitFailure)
+				return err
 			}
 
 			f, err := os.Create(epdInfo.Filename)
 			if err != nil {
 				slog.Error("file creation error", "error", err, "filename", epdInfo.Filename)
-				os.Exit(app.ExitFailure)
+				return err
 			}
 
 			for {
@@ -118,13 +130,13 @@ func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) {
 
 			if err := f.Close(); err != nil {
 				slog.Error("error closing file", "error", err)
-				os.Exit(app.ExitFailure)
+				return err
 			}
 		} else {
 			fChecksum, err := epd.Checksum(epdInfo.Filename)
 			if err != nil {
 				slog.Error("checksum calculation error", "error", err)
-				os.Exit(app.ExitFailure)
+				return err
 			}
 
 			if !epdInfo.Checksum.Matches(fChecksum) {
@@ -137,27 +149,31 @@ func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) {
 				slog.Debug("deleting local epd", "filename", epdInfo.Filename)
 				if err := os.Remove(epdInfo.Filename); err != nil {
 					slog.Error("can't remove bad epd file", "error", err)
-					os.Exit(app.ExitFailure)
+					return err
 				}
 			} else {
-				return
+				return nil
 			}
 		}
 
 		retry++
 	}
 	slog.Error("can't retrieve epd", "retry", retry)
-	os.Exit(app.ExitFailure)
+	return ErrRetriesExhausted
 }
 
-func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) {
+func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) error {
 	ev := eval.New()
 	for cnt := 0; ; cnt++ {
 		slog.Debug("requesting job")
 		job, err := client.RequestJob(ctx)
 		if err != nil {
+			switch status.Code(err) {
+			case codes.Unavailable, codes.Canceled:
+				return nil
+			}
 			slog.Error("job request error", "error", err)
-			os.Exit(app.ExitFailure)
+			return err
 		}
 		slog.Info("received job", "job", job)
 
@@ -168,11 +184,11 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 				pprofOsFile, err = os.Create(pprofFile)
 				if err != nil {
 					slog.Error("pprof file creation error", "error", err)
-					os.Exit(app.ExitFailure)
+					return err
 				}
 				if err := pprof.StartCPUProfile(pprofOsFile); err != nil {
 					slog.Error("pprof start error", "error", err)
-					os.Exit(app.ExitFailure)
+					return err
 				}
 			}
 		}
@@ -191,7 +207,7 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 		fChunk, err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
 			slog.Error("chunk mapping error", "error", err)
-			os.Exit(app.ExitFailure)
+			return err
 		}
 		for {
 			line, err := fChunk.Read()
@@ -230,7 +246,7 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 				f, err := os.Create(memprofFile)
 				if err != nil {
 					slog.Error("memory profile error", "error", err)
-					os.Exit(app.ExitFailure)
+					return err
 				}
 				runtime.GC() // get up-to-date statistics
 				// Lookup("allocs") creates a profile similar to go test -memprofile.
@@ -238,18 +254,18 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 				// that has inuse_space as the default index.
 				if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
 					slog.Error("memory profile error", "error", err)
-					os.Exit(app.ExitFailure)
+					return err
 				}
 				if err := f.Close(); err != nil {
 					slog.Error("memory profile close", "error", err)
-					os.Exit(app.ExitFailure)
+					return err
 				}
 			}
 			if pprofOsFile != nil {
 				pprof.StopCPUProfile()
 				if err := pprofOsFile.Close(); err != nil {
 					slog.Error("cpu profile close", "error", err)
-					os.Exit(app.ExitFailure)
+					return err
 				}
 			}
 		}
@@ -259,7 +275,12 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 			Gradients: grads,
 		}
 		if err := client.RegisterResult(ctx, results); err != nil {
+			switch status.Code(err) {
+			case codes.Unavailable, codes.Canceled:
+				return nil
+			}
 			slog.Warn("failed to register results", "error", err)
+			return err
 		}
 	}
 }

@@ -52,6 +52,7 @@ Usage of client:
 ### Server
 
 The server orchestrates the tuning and outputs the coefficients after each passed tuning epoch.
+Interrupting the server during the tune retains the coeffs.go file from the last successful epoch.
 
 ```
 Usage of server:
@@ -63,6 +64,8 @@ Usage of server:
     	filename for gathering mem profiling data from the mse minimization with k
   -kpprof string
     	filename for gathering cpu profiling data from the mse minimization with k
+  -maxEpochs int
+    	number of epochs (0 disables)
   -out string
     	coeff output file (default "coeffs.go")
   -port int
