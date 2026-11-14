@@ -57,10 +57,11 @@ func Run(args []string) int {
 
 	epdInfo, err := client.RequestEPDInfo(ctx)
 	if err != nil {
-		slog.Error("failed requesting EPD info", slog.String("error", err.Error()))
+		slog.Error("failed requesting EPD info", "error", err)
 		return app.ExitFailure
 	}
 	if err := obtainEPD(ctx, epdInfo, client); err != nil {
+		slog.Error("failed obtaining EPD", "error", err)
 		return app.ExitFailure
 	}
 
@@ -84,6 +85,7 @@ func Run(args []string) int {
 	}
 
 	if err := eg.Wait(); err != nil && !errors.Is(err, errServerShutdown) {
+		slog.Error("client failed", "error", err)
 		return app.ExitFailure
 	}
 
@@ -91,9 +93,9 @@ func Run(args []string) int {
 }
 
 func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) error {
-	var retry int
+	var lastErr error
 
-	for haveEPD := false; !haveEPD && retry < EPDRetryCount; {
+	for retry := 0; retry < EPDRetryCount; retry++ {
 
 		exists := false
 		stat, err := os.Stat(epdInfo.Filename)
@@ -103,66 +105,71 @@ func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) er
 
 		if !exists {
 			slog.Info("downloading epd", "filename", epdInfo.Filename, "checksum", epdInfo.Checksum)
-
-			stream, err := client.StreamEPD(ctx)
-			if err != nil {
-				slog.Error("stream error", "error", err)
+			if err := downloadEPD(ctx, epdInfo, client); err != nil {
 				return err
 			}
-
-			f, err := os.Create(epdInfo.Filename)
-			if err != nil {
-				slog.Error("file creation error", "error", err, "filename", epdInfo.Filename)
-				return err
-			}
-
-			for {
-				line, err := stream.Recv()
-				if err != nil {
-					if err != io.EOF {
-						slog.Warn("stream error", "error", err)
-					}
-					break
-				}
-
-				_, err = f.WriteString(line + "\n")
-				if err != nil {
-					slog.Warn("write error", "error", err)
-				}
-			}
-
-			if err := f.Close(); err != nil {
-				slog.Error("error closing file", "error", err)
-				return err
-			}
-		} else {
-			fChecksum, err := epd.Checksum(epdInfo.Filename)
-			if err != nil {
-				slog.Error("checksum calculation error", "error", err)
-				return err
-			}
-
-			if !epdInfo.Checksum.Matches(fChecksum) {
-				slog.Warn(
-					"epd checksum mismatch",
-					"filename", epdInfo.Filename,
-					"epdF.Checksum", fChecksum,
-					"epdInfo.Checksum", epdInfo.Checksum)
-
-				slog.Debug("deleting local epd", "filename", epdInfo.Filename)
-				if err := os.Remove(epdInfo.Filename); err != nil {
-					slog.Error("can't remove bad epd file", "error", err)
-					return err
-				}
-			} else {
-				return nil
-			}
+			continue
 		}
 
-		retry++
+		fChecksum, err := epd.Checksum(epdInfo.Filename)
+		if err != nil {
+			return fmt.Errorf("checksum %q: %w", epdInfo.Filename, err)
+		}
+
+		if epdInfo.Checksum.Matches(fChecksum) {
+			return nil
+		}
+
+		lastErr = fmt.Errorf("checksum mismatch for %q", epdInfo.Filename)
+		slog.Warn(
+			"epd checksum mismatch",
+			"filename", epdInfo.Filename,
+			"epdF.Checksum", fChecksum,
+			"epdInfo.Checksum", epdInfo.Checksum)
+
+		slog.Debug("deleting local epd", "filename", epdInfo.Filename)
+		if err := os.Remove(epdInfo.Filename); err != nil {
+			return fmt.Errorf("remove bad epd %q: %w", epdInfo.Filename, err)
+		}
 	}
-	slog.Error("can't retrieve epd", "retry", retry)
-	return errRetriesExhausted
+
+	if lastErr == nil {
+		return errRetriesExhausted
+	}
+	return fmt.Errorf("%w after %d attempts: %w", errRetriesExhausted, EPDRetryCount, lastErr)
+}
+
+// downloadEPD streams the EPD file from the server. A failed write or read is an
+// error: a partially written file would only be caught later by the checksum.
+func downloadEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) (err error) {
+	stream, err := client.StreamEPD(ctx)
+	if err != nil {
+		return fmt.Errorf("stream epd: %w", err)
+	}
+
+	f, err := os.Create(epdInfo.Filename)
+	if err != nil {
+		return fmt.Errorf("create epd %q: %w", epdInfo.Filename, err)
+	}
+	defer func() {
+		if cerr := f.Close(); cerr != nil {
+			err = errors.Join(err, fmt.Errorf("close epd %q: %w", epdInfo.Filename, cerr))
+		}
+	}()
+
+	for {
+		line, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return fmt.Errorf("receive epd: %w", err)
+		}
+
+		if _, err := f.WriteString(line + "\n"); err != nil {
+			return fmt.Errorf("write epd: %w", err)
+		}
+	}
 }
 
 func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) error {
@@ -176,8 +183,7 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 				// A sibling worker stopped or failed; it owns the real result.
 				return nil
 			}
-			slog.Error("job request error", "error", err)
-			return err
+			return fmt.Errorf("request job: %w", err)
 		case shutdown:
 			slog.Info("server shutdown")
 			return errServerShutdown
@@ -190,12 +196,10 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 			if pprofFile != "" {
 				pprofOsFile, err = os.Create(pprofFile)
 				if err != nil {
-					slog.Error("pprof file creation error", "error", err)
-					return err
+					return fmt.Errorf("create cpu profile %q: %w", pprofFile, err)
 				}
 				if err := pprof.StartCPUProfile(pprofOsFile); err != nil {
-					slog.Error("pprof start error", "error", err)
-					return err
+					return fmt.Errorf("start cpu profile: %w", err)
 				}
 			}
 		}
@@ -213,8 +217,7 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 
 		fChunk, err := chunker.Open(job.Epoch, job.Range.Start, job.Range.End)
 		if err != nil {
-			slog.Error("chunk mapping error", "error", err)
-			return err
+			return fmt.Errorf("open chunk epoch %d range %d-%d: %w", job.Epoch, job.Range.Start, job.Range.End, err)
 		}
 		chunkErr := func() error {
 			defer fChunk.Close()
@@ -232,8 +235,7 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 					return fmt.Errorf("read chunk: %w", err)
 				}
 				if err := epd.Parse([]byte(line), &b, &res); err != nil {
-					slog.Warn("parse error", "error", err)
-					continue
+					return fmt.Errorf("parse epd line %q: %w", line, err)
 				}
 
 				score := ev.Score(&b, (*eval.CoeffSet)(&eCoeffs))
@@ -258,7 +260,6 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 				// A sibling worker stopped or failed; it owns the real result.
 				return nil
 			}
-			slog.Error("chunk processing error", "error", chunkErr)
 			return chunkErr
 		}
 
@@ -266,27 +267,23 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 			if memprofFile != "" {
 				f, err := os.Create(memprofFile)
 				if err != nil {
-					slog.Error("memory profile error", "error", err)
-					return err
+					return fmt.Errorf("create memory profile %q: %w", memprofFile, err)
 				}
 				runtime.GC() // get up-to-date statistics
 				// Lookup("allocs") creates a profile similar to go test -memprofile.
 				// Alternatively, use Lookup("heap") for a profile
 				// that has inuse_space as the default index.
 				if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
-					slog.Error("memory profile error", "error", err)
-					return err
+					return fmt.Errorf("write memory profile: %w", err)
 				}
 				if err := f.Close(); err != nil {
-					slog.Error("memory profile close", "error", err)
-					return err
+					return fmt.Errorf("close memory profile: %w", err)
 				}
 			}
 			if pprofOsFile != nil {
 				pprof.StopCPUProfile()
 				if err := pprofOsFile.Close(); err != nil {
-					slog.Error("cpu profile close", "error", err)
-					return err
+					return fmt.Errorf("close cpu profile: %w", err)
 				}
 			}
 		}
@@ -300,8 +297,7 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 				// A sibling worker stopped or failed; it owns the real result.
 				return nil
 			}
-			slog.Warn("failed to register results", "error", err)
-			return err
+			return fmt.Errorf("register result: %w", err)
 		}
 	}
 }

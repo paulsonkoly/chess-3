@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
 	"math"
@@ -25,6 +24,7 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/tuner/eval"
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -90,7 +90,7 @@ func Run(args []string) int {
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		slog.Error("failed to bind port", "host", host, "port", port)
+		slog.Error("failed to bind port", "host", host, "port", port, "error", err)
 		return app.ExitFailure
 	}
 
@@ -102,8 +102,7 @@ func Run(args []string) int {
 		defer close(shutdown)
 		err := epdProcess(ctx, epdFileName, outFn, k, maxEpochs, jobQueue, resultQueue)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			slog.Error("epd process", slog.String("error", err.Error()))
-			return err
+			return fmt.Errorf("epd process: %w", err)
 		}
 		return nil
 	})
@@ -113,8 +112,7 @@ func Run(args []string) int {
 	eg.Go(func() error {
 		defer cancel()
 		if err := srv.Serve(lis); err != nil {
-			slog.Error("grpc error", slog.String("error", err.Error()))
-			return err
+			return fmt.Errorf("grpc serve: %w", err)
 		}
 		return nil
 	})
@@ -136,6 +134,7 @@ func Run(args []string) int {
 	})
 
 	if err := eg.Wait(); err != nil {
+		slog.Error("server failed", "error", err)
 		return app.ExitFailure
 	}
 
@@ -242,7 +241,7 @@ func epdProcess(
 
 	mse, err := fileMSE(ctx, fn, k, &eCoeffs)
 	if err != nil {
-		return fmt.Errorf("mse calculation %w", err)
+		return fmt.Errorf("mse calculation: %w", err)
 	}
 
 	coeffs := eCoeffs.ToVector(tuning.DefaultTargets)
@@ -256,7 +255,7 @@ func epdProcess(
 
 	chunker, err := epd.NewChunker(fn)
 	if err != nil {
-		return fmt.Errorf("epd file open %w", err)
+		return fmt.Errorf("epd file open: %w", err)
 	}
 
 	for epoch := 1; epoch <= maxEpochs; {
@@ -346,7 +345,7 @@ func epdProcess(
 					// no results coming in yet
 
 				case <-ctx.Done():
-					return nil
+					return ctx.Err()
 				}
 			}
 
@@ -370,11 +369,11 @@ func epdProcess(
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
 		newMSE, err := fileMSE(ctx, fn, k, &eCoeffs)
 		if err != nil {
-			return fmt.Errorf("mse calculation %w", err)
+			return fmt.Errorf("mse calculation: %w", err)
 		}
 
 		if err := saveCoeffs(fn, outFn, epoch, newMSE, eCoeffs); err != nil {
-			return fmt.Errorf("coeff saving %w", err)
+			return fmt.Errorf("coeff saving: %w", err)
 		}
 
 		// epoch completed, output coeffs and drop learning rate based on MSE change
@@ -395,11 +394,11 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 	if pprofFile != "" {
 		f, err := os.Create(pprofFile)
 		if err != nil {
-			return 0, fmt.Errorf("pprof file creation %w", err)
+			return 0, fmt.Errorf("create cpu profile %q: %w", pprofFile, err)
 		}
 		defer f.Close()
 		if err := pprof.StartCPUProfile(f); err != nil {
-			return 0, fmt.Errorf("pprof start %w", err)
+			return 0, fmt.Errorf("start cpu profile: %w", err)
 		}
 		defer pprof.StopCPUProfile()
 	}
@@ -415,7 +414,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 
 	mse, err := fileMSE(ctx, fn, k, &coeffs)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("mse calculation: %w", err)
 	}
 	slog.Info("K update", slog.Float64("K", k), slog.Float64("step", step))
 
@@ -423,7 +422,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 	res := 0.0
 	byLines, err := epd.OpenByLines(fn)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("open epd %q: %w", fn, err)
 	}
 	defer byLines.Close()
 
@@ -436,15 +435,17 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 			for {
 				line, err := byLines.Read()
 				if err != nil {
-					if err == io.EOF {
-						byLines.Rewind()
+					if errors.Is(err, io.EOF) {
+						if err := byLines.Rewind(); err != nil {
+							return 0, fmt.Errorf("rewind epd %q: %w", fn, err)
+						}
 						break
 					}
-					return 0, err
+					return 0, fmt.Errorf("read epd %q: %w", fn, err)
 				}
 
 				if err := epd.Parse(line, &b, &res); err != nil {
-					return 0, err
+					return 0, fmt.Errorf("parse epd line %q: %w", line, err)
 				}
 				score := ev.Score(&b, (*eval.CoeffSet)(&coeffs))
 				sgm := tuning.Sigmoid(score, k+step)
@@ -461,7 +462,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 				}
 			}
 			if cnt == 0 {
-				return 0, errInvalidEpd
+				return 0, fmt.Errorf("%w: %q", errInvalidEpd, fn)
 			}
 			eHigh /= float64(cnt)
 			eLow /= float64(cnt)
@@ -488,7 +489,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 	if memprofFile != "" {
 		f, err := os.Create(memprofFile)
 		if err != nil {
-			return 0, fmt.Errorf("memory profile file %w", err)
+			return 0, fmt.Errorf("create memory profile %q: %w", memprofFile, err)
 		}
 		defer f.Close()
 		runtime.GC() // get up-to-date statistics
@@ -496,7 +497,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 		// Alternatively, use Lookup("heap") for a profile
 		// that has inuse_space as the default index.
 		if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
-			return 0, fmt.Errorf("memory profile %w", err)
+			return 0, fmt.Errorf("write memory profile: %w", err)
 		}
 	}
 	return k, nil
@@ -507,7 +508,7 @@ var errInvalidEpd = errors.New("invalid epd file")
 func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 	byLines, err := epd.OpenByLines(fn)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("open epd %q: %w", fn, err)
 	}
 	defer byLines.Close()
 
@@ -521,15 +522,15 @@ func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep
 	for {
 		line, err := byLines.Read()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
-			return 0, err
+			return 0, fmt.Errorf("read epd %q: %w", fn, err)
 		}
 
 		err = epd.Parse(line, &b, &res)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("parse epd line %q: %w", line, err)
 		}
 		score := ev.Score(&b, (*eval.CoeffSet)(coeffs))
 		sgm := tuning.Sigmoid(score, k)
@@ -544,8 +545,7 @@ func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep
 		}
 	}
 	if cnt == 0 {
-		slog.Error("no lines in epd", "filename", fn)
-		return 0, errInvalidEpd
+		return 0, fmt.Errorf("%w: %q", errInvalidEpd, fn)
 	}
 	return sum / float64(cnt), nil
 }
@@ -554,7 +554,7 @@ func saveCoeffs(epdFn, outFn string, epoch int, mse float64, eCoeffs tuning.Engi
 	dir := filepath.Dir(outFn)
 	tmp, err := os.CreateTemp(dir, "")
 	if err != nil {
-		return err
+		return fmt.Errorf("create temp file in %q: %w", dir, err)
 	}
 	// this fails on the normal path as the file is already gone. This is here to
 	// ensures that we never leave a temp file behind in case of error - unless
@@ -562,19 +562,19 @@ func saveCoeffs(epdFn, outFn string, epoch int, mse float64, eCoeffs tuning.Engi
 	defer func() { _ = os.Remove(tmp.Name()) }()
 
 	if err := eCoeffs.Save(tmp, epdFn, epoch, mse); err != nil {
-		return err
+		return fmt.Errorf("write coeffs: %w", err)
 	}
 	if err := tmp.Sync(); err != nil {
-		return err
+		return fmt.Errorf("sync coeffs %q: %w", tmp.Name(), err)
 	}
 	if err := os.Chmod(tmp.Name(), 0o644); err != nil {
-		return err
+		return fmt.Errorf("chmod coeffs %q: %w", tmp.Name(), err)
 	}
 	if err := tmp.Close(); err != nil {
-		return err
+		return fmt.Errorf("close coeffs %q: %w", tmp.Name(), err)
 	}
 	if err := os.Rename(tmp.Name(), outFn); err != nil {
-		return err
+		return fmt.Errorf("rename coeffs to %q: %w", outFn, err)
 	}
 
 	return nil
