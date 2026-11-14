@@ -5,13 +5,17 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
 	"math"
 	"net"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,13 +39,14 @@ const (
 	ClientWaitTime = 100
 )
 
-func Run(args []string) {
+func Run(args []string) int {
 	var epdFileName string
 	var host string
 	var port int
 	var outFn string
 	var minKPProf string
 	var minKMProf string
+	var maxEpochs int
 
 	sFlags := flag.NewFlagSet("server", flag.ExitOnError)
 	sFlags.StringVar(&epdFileName, "epd", "", "epd file name")
@@ -50,38 +55,91 @@ func Run(args []string) {
 	sFlags.StringVar(&outFn, "out", "coeffs.go", "coeff output file")
 	sFlags.StringVar(&minKPProf, "kpprof", "", "filename for gathering cpu profiling data from the mse minimization with k")
 	sFlags.StringVar(&minKMProf, "kmprof", "", "filename for gathering mem profiling data from the mse minimization with k")
+	sFlags.IntVar(&maxEpochs, "maxEpochs", 0, "number of epochs (0 disables)")
 	sFlags.Parse(args)
 
 	if epdFileName == "" {
 		slog.Error("no epd file given")
-		os.Exit(app.ExitFailure)
+		return app.ExitFailure
+	}
+
+	switch {
+	case maxEpochs < 0:
+		slog.Error("maxEpochs negative", slog.Int("maxEpochs", maxEpochs))
+		return app.ExitFailure
+	case maxEpochs == 0:
+		maxEpochs = math.MaxInt
 	}
 
 	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ctx, sigCleanup := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer sigCleanup()
+
+	eg := errgroup.Group{}
 
 	k, err := minimizeK(ctx, epdFileName, minKPProf, minKMProf)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return 0
+		}
 		slog.Error("k minimization error", "error", err)
-		os.Exit(app.ExitFailure)
+		return app.ExitFailure
 	}
-
-	jobQueue := make(chan shim.Job, JobQueueDepth)
-	resultQueue := make(chan shim.Result, ResultQueueDepth)
-
-	go epdProcess(ctx, epdFileName, outFn, k, jobQueue, resultQueue)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		slog.Error("failed to bind port", "host", host, "port", port)
-		os.Exit(app.ExitFailure)
+		return app.ExitFailure
 	}
 
-	slog.Info("listening for incoming connections", slog.String("host", host), slog.Int("port", port))
-	srv := shim.NewServer(epdFileName, jobQueue, resultQueue)
-	go srv.Serve(lis)
+	jobQueue := make(chan shim.Job, JobQueueDepth)
+	resultQueue := make(chan shim.Result, ResultQueueDepth)
+	shutdown := make(chan struct{})
 
-	<-ctx.Done()
-	srv.Stop()
+	eg.Go(func() error {
+		defer close(shutdown)
+		err := epdProcess(ctx, epdFileName, outFn, k, maxEpochs, jobQueue, resultQueue)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			slog.Error("epd process", slog.String("error", err.Error()))
+			return err
+		}
+		return nil
+	})
+
+	slog.Info("listening for incoming connections", slog.String("host", host), slog.Int("port", port))
+	srv := shim.NewServer(epdFileName, jobQueue, resultQueue, shutdown)
+	eg.Go(func() error {
+		defer cancel()
+		if err := srv.Serve(lis); err != nil {
+			slog.Error("grpc error", slog.String("error", err.Error()))
+			return err
+		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		<-shutdown
+		finished := make(chan struct{})
+		go func() {
+			srv.GracefulStop()
+			close(finished)
+		}()
+
+		select {
+		case <-time.After(5 * time.Second):
+			srv.Stop()
+		case <-finished:
+		}
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		return app.ExitFailure
+	}
+
+	return 0
 }
 
 // serverJob is what the server tracks about a job.
@@ -176,15 +234,15 @@ func epdProcess(
 	fn,
 	outFn string,
 	k float64,
+	maxEpochs int,
 	jobQueue chan<- shim.Job,
 	resultQueue <-chan shim.Result,
-) {
+) error {
 	eCoeffs := tuning.EngineCoeffs()
 
 	mse, err := fileMSE(ctx, fn, k, &eCoeffs)
 	if err != nil {
-		slog.Error("mse calculation error", "error", err)
-		os.Exit(app.ExitFailure)
+		return fmt.Errorf("mse calculation %w", err)
 	}
 
 	coeffs := eCoeffs.ToVector(tuning.DefaultTargets)
@@ -198,11 +256,10 @@ func epdProcess(
 
 	chunker, err := epd.NewChunker(fn)
 	if err != nil {
-		slog.Error("open error", "error", err)
-		os.Exit(app.ExitFailure)
+		return fmt.Errorf("epd file open %w", err)
 	}
 
-	for epoch := 1; true; {
+	for epoch := 1; epoch <= maxEpochs; {
 		slog.Info("epoch update", slog.Int("epoch", epoch))
 
 		for batch := range tuning.Batches(chunker.LineCount()) {
@@ -257,8 +314,12 @@ func epdProcess(
 						slog.Duration("ttl", sJob.ttl),
 					)
 
-					// send the job to the client handler
-					jobQueue <- sJob.Job
+					select {
+					case jobQueue <- sJob.Job:
+						// send the job to the client handler
+					case <-ctx.Done():
+						return ctx.Err()
+					}
 				}
 
 				// register results
@@ -285,7 +346,7 @@ func epdProcess(
 					// no results coming in yet
 
 				case <-ctx.Done():
-					return
+					return nil
 				}
 			}
 
@@ -309,17 +370,12 @@ func epdProcess(
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
 		newMSE, err := fileMSE(ctx, fn, k, &eCoeffs)
 		if err != nil {
-			slog.Error("mse calculation error", "error", err)
-			os.Exit(app.ExitFailure)
+			return fmt.Errorf("mse calculation %w", err)
 		}
 
-		f, err := os.Create(outFn)
-		if err != nil {
-			slog.Error("coeffs.go", "error", err)
-			os.Exit(app.ExitFailure)
+		if err := saveCoeffs(fn, outFn, epoch, newMSE, eCoeffs); err != nil {
+			return fmt.Errorf("coeff saving %w", err)
 		}
-		eCoeffs.Save(f, fn, epoch, newMSE)
-		f.Close()
 
 		// epoch completed, output coeffs and drop learning rate based on MSE change
 		epoch++
@@ -332,19 +388,18 @@ func epdProcess(
 		}
 		mse = newMSE
 	}
+	return nil
 }
 
 func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (float64, error) {
 	if pprofFile != "" {
 		f, err := os.Create(pprofFile)
 		if err != nil {
-			slog.Error("pprof file creation error", "error", err)
-			os.Exit(app.ExitFailure)
+			return 0, fmt.Errorf("pprof file creation %w", err)
 		}
 		defer f.Close()
 		if err := pprof.StartCPUProfile(f); err != nil {
-			slog.Error("pprof start error", "error", err)
-			os.Exit(app.ExitFailure)
+			return 0, fmt.Errorf("pprof start %w", err)
 		}
 		defer pprof.StopCPUProfile()
 	}
@@ -406,7 +461,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 				}
 			}
 			if cnt == 0 {
-				return 0, ErrInvalidEpd
+				return 0, errInvalidEpd
 			}
 			eHigh /= float64(cnt)
 			eLow /= float64(cnt)
@@ -433,8 +488,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 	if memprofFile != "" {
 		f, err := os.Create(memprofFile)
 		if err != nil {
-			slog.Error("memory profile error", "error", err)
-			os.Exit(app.ExitFailure)
+			return 0, fmt.Errorf("memory profile file %w", err)
 		}
 		defer f.Close()
 		runtime.GC() // get up-to-date statistics
@@ -442,14 +496,13 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 		// Alternatively, use Lookup("heap") for a profile
 		// that has inuse_space as the default index.
 		if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
-			slog.Error("memory profile error", "error", err)
-			os.Exit(app.ExitFailure)
+			return 0, fmt.Errorf("memory profile %w", err)
 		}
 	}
 	return k, nil
 }
 
-var ErrInvalidEpd = errors.New("invalid epd file")
+var errInvalidEpd = errors.New("invalid epd file")
 
 func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep) (float64, error) {
 	byLines, err := epd.OpenByLines(fn)
@@ -492,7 +545,37 @@ func fileMSE(ctx context.Context, fn string, k float64, coeffs *tuning.EngineRep
 	}
 	if cnt == 0 {
 		slog.Error("no lines in epd", "filename", fn)
-		return 0, ErrInvalidEpd
+		return 0, errInvalidEpd
 	}
 	return sum / float64(cnt), nil
+}
+
+func saveCoeffs(epdFn, outFn string, epoch int, mse float64, eCoeffs tuning.EngineRep) error {
+	dir := filepath.Dir(outFn)
+	tmp, err := os.CreateTemp(dir, "")
+	if err != nil {
+		return err
+	}
+	// this fails on the normal path as the file is already gone. This is here to
+	// ensures that we never leave a temp file behind in case of error - unless
+	// our process is killed.
+	defer func() { _ = os.Remove(tmp.Name()) }()
+
+	if err := eCoeffs.Save(tmp, epdFn, epoch, mse); err != nil {
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0o644); err != nil {
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp.Name(), outFn); err != nil {
+		return err
+	}
+
+	return nil
 }

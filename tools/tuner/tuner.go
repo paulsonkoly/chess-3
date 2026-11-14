@@ -30,14 +30,16 @@ func main() {
 	sIx := slices.Index(os.Args, "server")
 	cIx := slices.Index(os.Args, "client")
 
+	var exitStatus int
 	switch {
 	case sIx == -1 && cIx == -1:
 		panic("one of the 'server' or 'client' commands need to be specified")
 	case sIx != -1 && cIx != -1:
 		panic("'server' and 'client' commands cannot be both specified")
 	case sIx != -1:
-		server.Run(os.Args[sIx+1:])
+		exitStatus = server.Run(os.Args[sIx+1:])
 	case cIx != -1:
-		client.Run(os.Args[cIx+1:])
+		exitStatus = client.Run(os.Args[cIx+1:])
 	}
+	os.Exit(exitStatus)
 }

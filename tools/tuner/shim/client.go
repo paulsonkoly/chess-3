@@ -57,13 +57,17 @@ func (c *Client) RequestEPDInfo(ctx context.Context) (EPDInfo, error) {
 	return epdInfoFromGrpc(gepdInfo)
 }
 
-func (c *Client) RequestJob(ctx context.Context) (Job, error) {
+func (c *Client) RequestJob(ctx context.Context) (Job, bool, error) {
 	gJob, err := c.grpc.RequestJob(ctx, &pb.JobRequest{})
 	if err != nil {
-		return Job{}, err
+		return Job{}, false, err
+	}
+	if gJob.GetShutdown() {
+		return Job{}, true, nil
 	}
 
-	return jobFromGrpc(gJob)
+	job, err := jobFromGrpc(gJob)
+	return job, false, err
 }
 
 func (c *Client) RegisterResult(ctx context.Context, result Result) error {

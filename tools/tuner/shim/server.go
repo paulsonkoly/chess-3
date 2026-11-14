@@ -2,13 +2,16 @@ package shim
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"path"
+	"time"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 type Server struct {
@@ -16,30 +19,43 @@ type Server struct {
 	tuner tunerServer
 }
 
-func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result) *Server {
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+const connEstablishTimeout = 5 * time.Second
+
+func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result, done <-chan struct{}) *Server {
+	grpcServer := grpc.NewServer(grpc.ConnectionTimeout(connEstablishTimeout))
 	s := tunerServer{
 		jobQueue:    jobQueue,
 		resultQueue: resultQueue,
+		done:        done,
 		filename:    fn,
 	}
 	pb.RegisterTunerServer(grpcServer, s)
 	return &Server{tuner: s, grpc: grpcServer}
 }
 
-func (s *Server) Serve(lis net.Listener) {
-	s.grpc.Serve(lis)
+func (s *Server) Serve(lis net.Listener) error {
+	if err := s.grpc.Serve(lis); err != nil {
+		if errors.Is(err, grpc.ErrServerStopped) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *Server) GracefulStop() {
+	s.grpc.GracefulStop()
 }
 
 func (s *Server) Stop() {
-	s.grpc.GracefulStop()
+	s.grpc.Stop()
 }
 
 type tunerServer struct {
 	pb.UnimplementedTunerServer
 	jobQueue    <-chan Job
 	resultQueue chan<- Result
+	done        <-chan struct{}
 	filename    string
 }
 
@@ -65,18 +81,40 @@ func (s tunerServer) StreamEPD(_ *pb.EPDStreamRequest, stream grpc.ServerStreami
 	return epd.Stream(s.filename, streamer{stream})
 }
 
-func (s tunerServer) RequestJob(_ context.Context, _ *pb.JobRequest) (*pb.JobResponse, error) {
-	job := <-s.jobQueue
+func (s tunerServer) RequestJob(ctx context.Context, _ *pb.JobRequest) (*pb.JobResponse, error) {
+	// Prefer telling the client to stop over handing out more work.
+	select {
+	case <-s.done:
+		return &pb.JobResponse{Shutdown: true}, nil
+	default:
+	}
 
-	return job.toGrpc()
+	select {
+	case job := <-s.jobQueue:
+		return job.toGrpc()
+	case <-s.done:
+		return &pb.JobResponse{Shutdown: true}, nil
+	case <-ctx.Done():
+		// The client went away, the server will re-schedule this job.
+		return nil, status.FromContextError(ctx.Err()).Err()
+	}
 }
 
-func (s tunerServer) RegisterResult(_ context.Context, r *pb.ResultRequest) (*pb.ResultAck, error) {
+func (s tunerServer) RegisterResult(ctx context.Context, r *pb.ResultRequest) (*pb.ResultAck, error) {
 	result, err := resultFromGrpc(r)
 	if err != nil {
 		return nil, err
 	}
 
-	s.resultQueue <- result
-	return nil, nil
+	select {
+	case s.resultQueue <- result:
+	case <-ctx.Done():
+		// The client went away, the server will re-schedule this job.
+		return nil, status.FromContextError(ctx.Err()).Err()
+	case <-s.done:
+		// The server is shutting down, the result is no longer needed. This is
+		// not a client error.
+	}
+
+	return &pb.ResultAck{}, nil
 }
