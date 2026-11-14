@@ -316,9 +316,6 @@ func epdProcess(
 			tuiQueue <- tui.BatchTimeUpdate{Duration: time.Since(batchStart)}
 		}
 
-		// epoch completed, output coeffs and drop learning rate based on MSE change
-		epoch++
-
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
 		newMSE, err := fileMSE(ctx, fn, k, &eCoeffs)
 		if err != nil {
@@ -333,6 +330,9 @@ func epdProcess(
 		}
 		eCoeffs.Save(f, fn, epoch, newMSE)
 		f.Close()
+
+		// epoch completed, output coeffs and drop learning rate based on MSE change
+		epoch++
 
 		tuiQueue <- tui.MSEUpdate{MSE: newMSE}
 
