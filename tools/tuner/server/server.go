@@ -298,6 +298,20 @@ func epdProcess(
 	sumJobTimes := 0 * time.Second
 	completeJobCnt := 0
 
+	mseBest := mse
+	epochsSinceImprovement := 0
+
+	// The initial MSE is the top of the curve, recorded as epoch 0.
+	tunerEpoch.Set(0)
+	tunerMSE.Set(mse)
+	tunerMSEInitial.Set(mse)
+	tunerMSEBest.Set(mse)
+	tunerMSEDelta.Set(0)
+	tunerMSERelativeDelta.Set(0)
+	tunerEpochsSinceImprovement.Set(0)
+	tunerLearningRate.Set(lr)
+	tunerK.Set(k)
+
 	slog.Info("LR update", slog.Float64("LR", lr))
 
 	chunker, err := epd.NewChunker(fn)
@@ -305,8 +319,18 @@ func epdProcess(
 		return fmt.Errorf("epd file open: %w", err)
 	}
 
+	numBatches := 0
+	for range tuning.Batches(chunker.LineCount()) {
+		numBatches++
+	}
+	tunerBatchesPerEpoch.Set(float64(numBatches))
+
 	for epoch := 1; epoch <= maxEpochs; {
 		slog.Info("epoch update", slog.Int("epoch", epoch))
+
+		epochStart := time.Now()
+		batchesDone := 0
+		tunerEpochProgressRatio.Set(0)
 
 		for batch := range tuning.Batches(chunker.LineCount()) {
 			slog.Info("batch update", slog.Int("start", batch.Start), slog.Int("end", batch.End))
@@ -411,6 +435,12 @@ func epdProcess(
 			coeffs.Sub(step)
 
 			slog.Info("batch time update", slog.Duration("duration", time.Since(batchStart)))
+
+			batchesDone++
+			if numBatches > 0 {
+				tunerEpochProgressRatio.Set(float64(batchesDone) / float64(numBatches))
+			}
+			tunerPositionsProcessed.Add(float64(batch.Len()))
 		}
 
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
@@ -423,6 +453,29 @@ func epdProcess(
 			return fmt.Errorf("coeff saving: %w", err)
 		}
 
+		tunerEpoch.Set(float64(epoch))
+		tunerMSE.Set(newMSE)
+		tunerEpochsCompleted.Inc()
+		tunerEpochDuration.Set(time.Since(epochStart).Seconds())
+
+		delta := newMSE - mse
+		tunerMSEDelta.Set(delta)
+
+		relDelta := 0.0
+		if mse != 0 {
+			relDelta = delta / mse
+		}
+		tunerMSERelativeDelta.Set(relDelta)
+
+		if newMSE < mseBest {
+			mseBest = newMSE
+			epochsSinceImprovement = 0
+			tunerMSEBest.Set(mseBest)
+		} else {
+			epochsSinceImprovement++
+		}
+		tunerEpochsSinceImprovement.Set(float64(epochsSinceImprovement))
+
 		// epoch completed, output coeffs and drop learning rate based on MSE change
 		epoch++
 
@@ -430,6 +483,7 @@ func epdProcess(
 
 		if newMSE > mse {
 			lr /= 2
+			tunerLearningRate.Set(lr)
 			slog.Info("lr update", slog.Float64("lr", lr))
 		}
 		mse = newMSE
@@ -456,6 +510,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 	coeffs := tuning.EngineCoeffs()
 
 	k := 2.832 // a scaling constant
+	tunerK.Set(k)
 	improved := true
 	step := 1.0
 
@@ -526,6 +581,7 @@ func minimizeK(ctx context.Context, fn string, pprofFile, memprofFile string) (f
 				improved = true
 				mse = nE
 				k = nK
+				tunerK.Set(k)
 				slog.Info("mse update", slog.Float64("mse", mse))
 				slog.Info("K update", slog.Float64("K", k), slog.Float64("step", step))
 			}
