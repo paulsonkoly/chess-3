@@ -67,6 +67,4 @@ Usage of server:
     	coeff output file (default "coeffs.go")
   -port int
     	port to listen on (default 9001)
-  -tui
-    	render a tui
 ```
