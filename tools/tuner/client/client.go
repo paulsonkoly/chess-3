@@ -17,11 +17,10 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/tuner/shim"
 	"github.com/paulsonkoly/chess-3/tools/tuner/tuning"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var (
+	errServerShutdown   = errors.New("server shutdown")
 	ErrRetriesExhausted = errors.New("retries exhausted")
 )
 
@@ -72,15 +71,18 @@ func Run(args []string) int {
 
 	eg, ctx := errgroup.WithContext(ctx)
 
-	for range numThreads {
+	for ix := range numThreads {
 		eg.Go(func() error {
-			return clientWorker(ctx, chunker, client, workerPProf, workerMProf)
+			// only profile in the first worker
+			if ix == 0 {
+				return clientWorker(ctx, chunker, client, workerPProf, workerMProf)
+			} else {
+				return clientWorker(ctx, chunker, client, "", "")
+			}
 		})
-		workerPProf = "" // only profile in the first worker
-		workerMProf = ""
 	}
 
-	if err := eg.Wait(); err != nil {
+	if err := eg.Wait(); err != nil && !errors.Is(err, errServerShutdown) {
 		return app.ExitFailure
 	}
 
@@ -166,14 +168,18 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 	ev := eval.New()
 	for cnt := 0; ; cnt++ {
 		slog.Debug("requesting job")
-		job, err := client.RequestJob(ctx)
-		if err != nil {
-			switch status.Code(err) {
-			case codes.Unavailable, codes.Canceled:
+		job, shutdown, err := client.RequestJob(ctx)
+		switch {
+		case err != nil:
+			if ctx.Err() != nil {
+				// A sibling worker stopped or failed; it owns the real result.
 				return nil
 			}
 			slog.Error("job request error", "error", err)
 			return err
+		case shutdown:
+			slog.Info("server shutdown")
+			return errServerShutdown
 		}
 		slog.Info("received job", "job", job)
 
@@ -275,8 +281,8 @@ func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client,
 			Gradients: grads,
 		}
 		if err := client.RegisterResult(ctx, results); err != nil {
-			switch status.Code(err) {
-			case codes.Unavailable, codes.Canceled:
+			if ctx.Err() != nil {
+				// A sibling worker stopped or failed; it owns the real result.
 				return nil
 			}
 			slog.Warn("failed to register results", "error", err)

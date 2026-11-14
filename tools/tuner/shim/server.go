@@ -10,7 +10,6 @@ import (
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -81,15 +80,22 @@ func (s tunerServer) StreamEPD(_ *pb.EPDStreamRequest, stream grpc.ServerStreami
 }
 
 func (s tunerServer) RequestJob(ctx context.Context, _ *pb.JobRequest) (*pb.JobResponse, error) {
+	// Prefer telling the client to stop over handing out more work.
+	select {
+	case <-s.done:
+		return &pb.JobResponse{Shutdown: true}, nil
+	default:
+	}
+
 	select {
 	case job := <-s.jobQueue:
 		return job.toGrpc()
 	case <-s.done:
-		return nil, status.Error(codes.Unavailable, "server shutting down")
+		return &pb.JobResponse{Shutdown: true}, nil
 	case <-ctx.Done():
-		// client went away, the server will re-schedule this job. Not a server error.
+		// The client went away, the server will re-schedule this job.
+		return nil, status.FromContextError(ctx.Err()).Err()
 	}
-	return nil, nil
 }
 
 func (s tunerServer) RegisterResult(ctx context.Context, r *pb.ResultRequest) (*pb.ResultAck, error) {
@@ -100,10 +106,13 @@ func (s tunerServer) RegisterResult(ctx context.Context, r *pb.ResultRequest) (*
 
 	select {
 	case s.resultQueue <- result:
-	case <-s.done:
-		return nil, status.Error(codes.Unavailable, "server shutting down")
 	case <-ctx.Done():
-		// client went away, the server will re-schedule this job. Not a server error.
+		// The client went away, the server will re-schedule this job.
+		return nil, status.FromContextError(ctx.Err()).Err()
+	case <-s.done:
+		// The server is shutting down, the result is no longer needed. This is
+		// not a client error.
 	}
-	return nil, nil
+
+	return &pb.ResultAck{}, nil
 }

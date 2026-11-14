@@ -33,6 +33,7 @@ message JobResponse {
   int32 end = 4;
   double k = 5;
   repeated double coefficients = 6;
+  bool shutdown = 7;
 }
 
 message ResultRequest {
