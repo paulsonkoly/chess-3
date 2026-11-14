@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"path"
+	"time"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
@@ -18,9 +19,10 @@ type Server struct {
 	tuner tunerServer
 }
 
+const connEstablishTimeout = 5 * time.Second
+
 func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result, done <-chan struct{}) *Server {
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer(grpc.ConnectionTimeout(connEstablishTimeout))
 	s := tunerServer{
 		jobQueue:    jobQueue,
 		resultQueue: resultQueue,
