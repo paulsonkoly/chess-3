@@ -95,7 +95,7 @@ func Run(args []string) int {
 func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) error {
 	var lastErr error
 
-	for retry := 0; retry < EPDRetryCount; retry++ {
+	for range EPDRetryCount {
 
 		exists := false
 		stat, err := os.Stat(epdInfo.Filename)
