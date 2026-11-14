@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"flag"
 	"io"
 	"log/slog"
@@ -35,6 +36,8 @@ func Run(args []string) {
 	sFlags.StringVar(&workerMProf, "wmprof", "", "filename for gathering mem profiling data from the first job of the worker")
 	sFlags.Parse(args)
 
+	ctx := context.Background()
+
 	client, err := shim.NewClient(host, port)
 	if err != nil {
 		slog.Error("error creating client", "error", err)
@@ -44,8 +47,8 @@ func Run(args []string) {
 
 	slog.Info("connected to server", "host", host, "port", port)
 
-	epdInfo := obtainEPDInfo(client)
-	obtainEPD(epdInfo, client)
+	epdInfo := obtainEPDInfo(ctx, client)
+	obtainEPD(ctx, epdInfo, client)
 
 	chunker, err := epd.NewChunker(epdInfo.Filename)
 	if err != nil {
@@ -54,7 +57,7 @@ func Run(args []string) {
 	}
 
 	for range numThreads {
-		go clientWorker(chunker, client, workerPProf, workerMProf)
+		go clientWorker(ctx, chunker, client, workerPProf, workerMProf)
 		workerPProf = "" // only profile in the first worker
 		workerMProf = ""
 	}
@@ -62,9 +65,9 @@ func Run(args []string) {
 	select {}
 }
 
-func obtainEPDInfo(client shim.Client) shim.EPDInfo {
+func obtainEPDInfo(ctx context.Context, client shim.Client) shim.EPDInfo {
 	slog.Debug("requesting epd info")
-	epdInfo, err := client.RequestEPDInfo()
+	epdInfo, err := client.RequestEPDInfo(ctx)
 	if err != nil {
 		slog.Error("failed requesting epd info", "error", err)
 		os.Exit(app.ExitFailure)
@@ -72,7 +75,7 @@ func obtainEPDInfo(client shim.Client) shim.EPDInfo {
 	return epdInfo
 }
 
-func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) {
+func obtainEPD(ctx context.Context, epdInfo shim.EPDInfo, client shim.Client) {
 	var retry int
 
 	for haveEPD := false; !haveEPD && retry < EPDRetryCount; {
@@ -86,7 +89,7 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) {
 		if !exists {
 			slog.Info("downloading epd", "filename", epdInfo.Filename, "checksum", epdInfo.Checksum)
 
-			stream, err := client.StreamEPD()
+			stream, err := client.StreamEPD(ctx)
 			if err != nil {
 				slog.Error("stream error", "error", err)
 				os.Exit(app.ExitFailure)
@@ -147,11 +150,11 @@ func obtainEPD(epdInfo shim.EPDInfo, client shim.Client) {
 	os.Exit(app.ExitFailure)
 }
 
-func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) {
+func clientWorker(ctx context.Context, chunker *epd.Chunker, client shim.Client, pprofFile, memprofFile string) {
 	ev := eval.New()
 	for cnt := 0; ; cnt++ {
 		slog.Debug("requesting job")
-		job, err := client.RequestJob()
+		job, err := client.RequestJob(ctx)
 		if err != nil {
 			slog.Error("job request error", "error", err)
 			os.Exit(app.ExitFailure)
@@ -255,7 +258,7 @@ func clientWorker(chunker *epd.Chunker, client shim.Client, pprofFile, memprofFi
 			UUID:      job.UUID,
 			Gradients: grads,
 		}
-		if err := client.RegisterResult(results); err != nil {
+		if err := client.RegisterResult(ctx, results); err != nil {
 			slog.Warn("failed to register results", "error", err)
 		}
 	}

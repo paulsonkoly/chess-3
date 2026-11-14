@@ -29,8 +29,8 @@ func (c *Client) Close() {
 	c.conn.Close()
 }
 
-func (c *Client) StreamEPD() (Stream, error) {
-	gstream, err := c.grpc.StreamEPD(context.Background(), &pb.EPDStreamRequest{})
+func (c *Client) StreamEPD(ctx context.Context) (Stream, error) {
+	gstream, err := c.grpc.StreamEPD(ctx, &pb.EPDStreamRequest{})
 	if err != nil {
 		return Stream{}, err
 	}
@@ -49,28 +49,28 @@ func (s *Stream) Recv() (string, error) {
 	return gLine.Line, nil
 }
 
-func (c *Client) RequestEPDInfo() (EPDInfo, error) {
-	gepdInfo, err := c.grpc.RequestEPDInfo(context.Background(), &pb.EPDInfoRequest{})
+func (c *Client) RequestEPDInfo(ctx context.Context) (EPDInfo, error) {
+	gepdInfo, err := c.grpc.RequestEPDInfo(ctx, &pb.EPDInfoRequest{})
 	if err != nil {
-		return EPDInfo{}, nil
+		return EPDInfo{}, err
 	}
 	return epdInfoFromGrpc(gepdInfo)
 }
 
-func (c *Client) RequestJob() (Job, error) {
-	gJob, err := c.grpc.RequestJob(context.Background(), &pb.JobRequest{})
+func (c *Client) RequestJob(ctx context.Context) (Job, error) {
+	gJob, err := c.grpc.RequestJob(ctx, &pb.JobRequest{})
 	if err != nil {
-		return Job{}, nil
+		return Job{}, err
 	}
 
 	return jobFromGrpc(gJob)
 }
 
-func (c *Client) RegisterResult(result Result) error {
+func (c *Client) RegisterResult(ctx context.Context, result Result) error {
 	gResult, err := result.toGrpc()
 	if err != nil {
 		return err
 	}
-	_, err = c.grpc.RegisterResult(context.Background(), gResult)
+	_, err = c.grpc.RegisterResult(ctx, gResult)
 	return err
 }
