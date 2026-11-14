@@ -99,6 +99,7 @@ func Run(args []string) int {
 		metricsSrv := &http.Server{
 			Handler:           promhttp.Handler(),
 			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       5 * time.Second,
 		}
 
 		eg.Go(func() error {
