@@ -2,12 +2,12 @@ package shim
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"path"
 
 	"github.com/paulsonkoly/chess-3/tools/tuner/epd"
 	pb "github.com/paulsonkoly/chess-3/tools/tuner/grpc/tuner"
-	"github.com/paulsonkoly/chess-3/tools/tuner/tui"
 	"google.golang.org/grpc"
 )
 
@@ -16,13 +16,12 @@ type Server struct {
 	tuner tunerServer
 }
 
-func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result, tuiQueue chan<- tui.Update) *Server {
+func NewServer(fn string, jobQueue <-chan Job, resultQueue chan<- Result) *Server {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	s := tunerServer{
 		jobQueue:    jobQueue,
 		resultQueue: resultQueue,
-		tuiQueue:    tuiQueue,
 		filename:    fn,
 	}
 	pb.RegisterTunerServer(grpcServer, s)
@@ -41,7 +40,6 @@ type tunerServer struct {
 	pb.UnimplementedTunerServer
 	jobQueue    <-chan Job
 	resultQueue chan<- Result
-	tuiQueue    chan<- tui.Update
 	filename    string
 }
 
@@ -51,7 +49,7 @@ func (s tunerServer) RequestEPDInfo(context.Context, *pb.EPDInfoRequest) (*pb.EP
 		return nil, err
 	}
 	base := path.Base(s.filename)
-	s.tuiQueue <- tui.MsgUpdate{Msg: "responding epdInfo", Args: []any{"filename", base, "checksum", chkSum}}
+	slog.Debug("responding epdInfo", slog.String("filename", base), slog.String("checksum", chkSum.String()))
 	return &pb.EPDInfo{Filename: base, Checksum: chkSum.Bytes()}, nil
 }
 
