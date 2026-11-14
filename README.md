@@ -14,10 +14,10 @@ chess-3 is occasionally online on Lichess using chess-2's [Lichess account](http
 
 | version | ccrl elo    |
 |:-------:|------------:|
-| 4.0     | [3033][4.0] |
+| 4.0     | [3040][4.0] |
 | 3.0     | [2994][3.0] |
-| 2.0     | [2794][2.0] |
-| 1.0     | [2656][1.0] |
+| 2.0     | [2796][2.0] |
+| 1.0     | [2650][1.0] |
 
 > _The CCRL Elo numbers might fluctuate over time, the CCRL site has the most up-to-date numbers._
 
