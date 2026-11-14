@@ -66,6 +66,8 @@ Usage of server:
     	filename for gathering cpu profiling data from the mse minimization with k
   -maxEpochs int
     	number of epochs (0 disables)
+  -metricsPort int
+    	port for prometheus metrics endpoint (0 disables) (default 9111)
   -out string
     	coeff output file (default "coeffs.go")
   -port int
