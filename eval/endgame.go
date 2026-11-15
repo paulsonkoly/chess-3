@@ -55,15 +55,15 @@ func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 
 	pawnSq := pawn.LowestSet()
 
-	pawnRank := pawnSq.Rank().FromPerspectiveOf(strongSide)
-	e.sp[strongSide][EG] += T(pawnRank) * 120
-
-	strongKingSq := (b.Colors[strongSide] & b.Pieces[King]).LowestSet()
-	e.sp[strongSide][EG] += (7 - T(Chebyshev(pawnSq, strongKingSq))) * 10
-
-	weakKingSq := (b.Colors[weakSide] & b.Pieces[King]).LowestSet()
-	queenSq := SquareAt(pawnSq.File(), EighthRank.FromPerspectiveOf(strongSide))
-	e.sp[weakSide][EG] += (7 - T(Chebyshev(queenSq, weakKingSq))) * 8
+	// we incrementally increase the score based on pawn rank, encouraging pawn
+	// advancement, the score should be kept below queen value so we queen at the
+	// end, but large enough so we simplify into this if it's a winning endgame.
+	//
+	// we purposefully leave king distances out, because if we are here we know
+	// the king can support the pawn. (this might need reconsidering in the
+	// future).
+	pawnRank := pawnSq.Rank().FromPerspectiveOf(weakSide)
+	e.sp[strongSide][EG] = c.PieceValues[EG][Queen] - T(pawnRank)*15
 
 	return e.endgameScore(b)
 }
