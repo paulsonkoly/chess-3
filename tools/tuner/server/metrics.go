@@ -49,7 +49,7 @@ var (
 	})
 	tunerJobsScheduled = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "tuner_jobs_scheduled_total",
-		Help: "jobs dispatched to clients",
+		Help: "jobs scheduled for clients",
 	})
 	tunerSchedulerJobTimeAvg = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "tuner_scheduler_job_time_avg_seconds",
