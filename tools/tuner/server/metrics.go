@@ -27,6 +27,10 @@ var (
 		Name: "tuner_epoch_duration_seconds",
 		Help: "wall-clock duration of the last successful epoch",
 	})
+	tunerBatchDuration = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "tuner_batch_duration_seconds",
+		Help: "wall-clock duration of the last completed batch",
+	})
 	tunerLearningRate = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "tuner_learning_rate",
 		Help: "learning rate used for the next epoch",
@@ -38,6 +42,18 @@ var (
 	tunerPositionsProcessed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "tuner_positions_processed_total",
 		Help: "EPD positions processed in completed batches",
+	})
+	tunerChunksCompleted = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "tuner_chunks_completed_total",
+		Help: "chunks completed with a result",
+	})
+	tunerJobsScheduled = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "tuner_jobs_scheduled_total",
+		Help: "jobs dispatched to clients",
+	})
+	tunerSchedulerJobTimeAvg = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "tuner_scheduler_job_time_avg_seconds",
+		Help: "running average job time used to calculate the job TTL",
 	})
 	tunerBatchesPerEpoch = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "tuner_batches_per_epoch",

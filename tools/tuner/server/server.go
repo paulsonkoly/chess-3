@@ -387,6 +387,7 @@ func epdProcess(
 					select {
 					case jobQueue <- sJob.Job:
 						// send the job to the client handler
+						tunerJobsScheduled.Inc()
 					case <-ctx.Done():
 						return ctx.Err()
 					}
@@ -405,11 +406,13 @@ func epdProcess(
 						if !chunk.completed {
 							grads.Add(result.Gradients)
 							chunk.completed = true
+							tunerChunksCompleted.Inc()
 							slog.Debug("result matched job", slog.Int("chunkIx", match.chunkIx), slog.Int("jobIx", match.jobIx))
 						}
 						// either way it's a data point for the running average of job times.
 						sumJobTimes += time.Since(job.startTime)
 						completeJobCnt++
+						tunerSchedulerJobTimeAvg.Set((sumJobTimes / time.Duration(completeJobCnt)).Seconds())
 					}
 
 				case <-time.After(ClientWaitTime * time.Millisecond):
@@ -434,7 +437,9 @@ func epdProcess(
 
 			coeffs.Sub(step)
 
-			slog.Info("batch time update", slog.Duration("duration", time.Since(batchStart)))
+			batchDuration := time.Since(batchStart)
+			tunerBatchDuration.Set(batchDuration.Seconds())
+			slog.Info("batch time update", slog.Duration("duration", batchDuration))
 
 			batchesDone++
 			if numBatches > 0 {
