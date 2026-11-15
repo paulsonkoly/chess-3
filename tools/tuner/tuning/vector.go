@@ -227,6 +227,10 @@ func (e *EngineRep) Save(out io.Writer, fn string, epoch int, mse float64) error
 	return err
 }
 
+// RoundCoeff returns the integer value a coefficient is written as in the
+// generated engine coefficients file.
+func RoundCoeff(f float64) int { return int(math.Round(f)) }
+
 func writeField(b *strings.Builder, v reflect.Value, indent int) {
 	switch v.Kind() {
 
@@ -275,10 +279,7 @@ func writeField(b *strings.Builder, v reflect.Value, indent int) {
 		}
 
 	case reflect.Float64:
-		f := v.Float()
-		r := int(math.Round(f))
-
-		fmt.Fprintf(b, "%4d", r)
+		fmt.Fprintf(b, "%4d", RoundCoeff(v.Float()))
 
 	default:
 		panic("unexpected kind " + v.Kind().String())
