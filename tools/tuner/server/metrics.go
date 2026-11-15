@@ -63,6 +63,22 @@ var (
 		Name: "tuner_epoch_progress_ratio",
 		Help: "fraction of the current epoch's batches completed, 0..1",
 	})
+	tunerCoeffsChanged = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "tuner_coeffs_changed",
+		Help: "tuned coefficients whose rounded value changed in the last successful epoch",
+	})
+	tunerCoeffsChangedRatio = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "tuner_coeffs_changed_ratio",
+		Help: "fraction of tuned coefficients whose rounded value changed in the last successful epoch, 0..1",
+	})
+	tunerCoeffsStableEpochs = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "tuner_coeffs_stable_epochs",
+		Help: "consecutive successful epochs with no tuned coefficient change",
+	})
+	tunerTunedCoeffs = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "tuner_tuned_coeffs",
+		Help: "number of tuned coefficients",
+	})
 
 	tunerMSEInitial = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "tuner_mse_initial",

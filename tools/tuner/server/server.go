@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"slices"
 	"syscall"
 	"time"
 
@@ -300,6 +301,7 @@ func epdProcess(
 
 	mseBest := mse
 	epochsSinceImprovement := 0
+	stableEpochs := 0
 
 	// The initial MSE is the top of the curve, recorded as epoch 0.
 	tunerEpoch.Set(0)
@@ -311,6 +313,10 @@ func epdProcess(
 	tunerEpochsSinceImprovement.Set(0)
 	tunerLearningRate.Set(lr)
 	tunerK.Set(k)
+	tunerCoeffsChanged.Set(0)
+	tunerCoeffsChangedRatio.Set(0)
+	tunerCoeffsStableEpochs.Set(0)
+	tunerTunedCoeffs.Set(float64(len(coeffs.VectorToSlice())))
 
 	slog.Info("LR update", slog.Float64("LR", lr))
 
@@ -331,6 +337,7 @@ func epdProcess(
 		epochStart := time.Now()
 		batchesDone := 0
 		tunerEpochProgressRatio.Set(0)
+		epochCoeffs := slices.Clone(coeffs.VectorToSlice())
 
 		for batch := range tuning.Batches(chunker.LineCount()) {
 			slog.Info("batch update", slog.Int("start", batch.Start), slog.Int("end", batch.End))
@@ -448,6 +455,22 @@ func epdProcess(
 			tunerPositionsProcessed.Add(float64(batch.Len()))
 		}
 
+		// Count the net rounded change over the epoch. The generated
+		// coefficients file stores integers, so compare what is written, not
+		// the raw floating point values.
+		changed := 0
+		finalCoeffs := coeffs.VectorToSlice()
+		for i, prev := range epochCoeffs {
+			if tuning.RoundCoeff(prev) != tuning.RoundCoeff(finalCoeffs[i]) {
+				changed++
+			}
+		}
+		tuned := len(epochCoeffs)
+		changedRatio := 0.0
+		if tuned > 0 {
+			changedRatio = float64(changed) / float64(tuned)
+		}
+
 		eCoeffs.SetVector(coeffs, tuning.DefaultTargets)
 		newMSE, err := fileMSE(ctx, fn, k, &eCoeffs)
 		if err != nil {
@@ -462,6 +485,17 @@ func epdProcess(
 		tunerMSE.Set(newMSE)
 		tunerEpochsCompleted.Inc()
 		tunerEpochDuration.Set(time.Since(epochStart).Seconds())
+
+		// Coefficient churn is published only after the save succeeded, so the
+		// chart always describes the coefficients file on disk.
+		if changed == 0 {
+			stableEpochs++
+		} else {
+			stableEpochs = 0
+		}
+		tunerCoeffsChanged.Set(float64(changed))
+		tunerCoeffsChangedRatio.Set(changedRatio)
+		tunerCoeffsStableEpochs.Set(float64(stableEpochs))
 
 		delta := newMSE - mse
 		tunerMSEDelta.Set(delta)
