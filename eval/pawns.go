@@ -132,18 +132,13 @@ func (e *Eval[T]) addPassers(b *board.Board, c *CoeffSet[T]) {
 					qSq += 56
 				}
 
-				kingDist := Chebishev(qSq, e.kings[color.Flip()].sq) - Chebishev(qSq, e.kings[color].sq)
+				kingDist := Chebyshev(qSq, e.kings[color.Flip()].sq) - Chebyshev(qSq, e.kings[color].sq)
 
 				e.sp[color][MG] += c.PasserKingDist[MG] * T(kingDist)
 				e.sp[color][EG] += c.PasserKingDist[EG] * T(kingDist)
 			}
 		}
 	}
-}
-
-func Chebishev(a, b Square) int {
-	ax, ay, bx, by := int(a%8), int(a/8), int(b%8), int(b/8)
-	return max(Abs(ax-bx), Abs(ay-by))
 }
 
 // passers are pawns not stoppable by enemy pawns without them changing file.
