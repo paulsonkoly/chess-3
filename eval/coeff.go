@@ -82,4 +82,8 @@ type CoeffSet[T ScoreType] struct {
 	KRvKN T
 	// KRvKB is the score reduction factor for the side with a rook for KRvKB endgame.
 	KRvKB T
+	// KRNvKR is the score reduction factor for the side of RN versus R.
+	KRNvKR T
+	// KRBvKR is the score reduction factor for the side of RB versus R.
+	KRBvKR T
 }
