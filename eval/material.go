@@ -77,7 +77,7 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		evalID = evalKNBvKID
 
 	case wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
-		((wP >= 1 && bP == 0 && wB == 1 && bB == 0) || (wP == 0 && bP >= 1 && wB == 0 && bB == 1)):
+		((wP == 1 && bP == 0 && wB == 1 && bB == 0) || (wP == 0 && bP == 1 && wB == 0 && bB == 1)):
 		evalID = evalKBPvKID
 
 	case ocb && wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 && pawnDiff(b) <= 3:
