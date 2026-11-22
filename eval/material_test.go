@@ -84,6 +84,11 @@ func TestMaterial(t *testing.T) {
 		{"4k3/8/8/8/8/8/8/4KBN1 w - - 0 1", evalKNBvKID},
 		{"4kbn1/8/8/8/8/8/8/4K3 w - - 0 1", evalKNBvKID},
 
+		// evalKBPvKID
+		{"4k3/8/8/8/8/8/4P3/2B1K3 w - - 0 1", evalKBPvKID},
+		{"4kb2/p7/8/8/8/8/8/4K3 w - - 0 1", evalKBPvKID},
+		{"1k6/1B6/7P/8/8/2K5/8/8 w - - 0 1", evalKBPvKID}, // wrong-coloured rook pawn case from endgame_test.go
+
 		// evalOCBID
 		{"b3k3/p7/8/8/8/8/P7/2B1K3 w - - 0 1", evalOCBID},
 		{"b3k3/8/8/8/8/8/PPP5/2B1K3 w - - 0 1", evalOCBID},
@@ -121,6 +126,7 @@ func TestMaterial(t *testing.T) {
 		{"4kb2/p7/8/8/8/8/P7/2B1K3 w - - 0 1", evalPositionalID},   // same-coloured bishops, not OCB
 		{"b3k3/8/8/8/8/8/PPPP4/2B1K3 w - - 0 1", evalPositionalID}, // OCB but pawnDiff > 3
 		{"4k3/8/8/8/8/8/8/2BBK3 w - - 0 1", evalPositionalID},      // KBBvK: minor-value diff > 3
+		{"4k3/8/8/8/8/8/PPP5/2B1K3 w - - 0 1", evalPositionalID},   // bishop + multiple pawns is not KBPvK
 	}
 
 	for _, tt := range tests {
