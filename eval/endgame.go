@@ -41,7 +41,7 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
 	return e.endgameScore(b)
 }
 
-func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+func (e *Eval[T]) kpvk(b *board.Board, c *CoeffSet[T]) T {
 	if !kpvk.Winning(b) {
 		return 0
 	}

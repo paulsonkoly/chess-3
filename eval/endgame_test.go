@@ -8,6 +8,52 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestKPvKDrawing(t *testing.T) {
+	fen := "3k4/3p4/8/8/8/3K4/8/8 b - - 0 1"
+	b := Must(board.FromFEN(fen))
+	e := New[Score]()
+	assert.Zero(t, e.kpvk(b, &Coefficients), "fen %s should be drawing", fen)
+}
+
+func TestKPvKWinningScores(t *testing.T) {
+	// position samples from a winning line where black queens, sample
+	// taken after each pawn advancement.
+	positions := [...]string{
+		"3k4/3p4/8/8/8/8/5K2/8 b - - 0 1",
+		"8/8/3p4/8/2k5/8/3K4/8 w - - 0 8",
+		"8/8/8/3p4/2k5/4K3/8/8 w - - 0 9",
+		"8/8/8/8/3p4/4k3/8/3K4 w - - 0 12",
+		"8/8/8/8/8/3pk3/8/2K5 w - - 0 13",
+		"8/8/8/8/8/4k3/3p4/3K4 w - - 0 14",
+	}
+
+	// normalize to the winning side's perspective
+	normalize := func(stm Color, score Score) Score {
+		t.Helper()
+		if stm == Black {
+			return score
+		}
+		return -score
+	}
+
+	queenValue := Coefficients.PieceValues[EG][Queen]
+
+	e := New[Score]()
+	b := Must(board.FromFEN(positions[0]))
+	prev := normalize(b.STM, e.kpvk(b, &Coefficients))
+	assert.Positive(t, prev, "fen %s", positions[0])
+	assert.Less(t, prev, queenValue, "fen %s", positions[0])
+
+	for i := 1; i < len(positions); i++ {
+		b = Must(board.FromFEN(positions[i]))
+		next := normalize(b.STM, e.kpvk(b, &Coefficients))
+		assert.Greater(t, next, prev, "fen %s monotonicity", positions[i])
+		assert.Less(t, next, queenValue, "fen %s", positions[i])
+
+		prev = next
+	}
+}
+
 type kbpvkCase struct {
 	fen     string
 	winning bool

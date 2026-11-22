@@ -145,6 +145,10 @@ func evalInsufficient[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T
 	return 0
 }
 
+func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
+	return e.kpvk(b, c)
+}
+
 func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	return e.knbvk(b, c)
 }
