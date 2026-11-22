@@ -1,6 +1,7 @@
 package eval
 
 import (
+	"github.com/paulsonkoly/chess-3/attacks"
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval/kpvk"
@@ -29,9 +30,9 @@ func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
 	e.sp[victim.Flip()][EG] += c.PieceValues[EG][Knight]
 	e.sp[victim.Flip()][EG] += c.PieceValues[EG][Bishop]
 
-	parity := (bishopSq.File() + bishopSq.Rank()) & 1
-
+	parity := bishopSq.Parity()
 	cornerDist := min(Chebyshev(victimKSq, KBCorners[parity][0]), Chebyshev(victimKSq, KBCorners[parity][1]))
+
 	cornerDist = 7 - cornerDist
 	cornerDist *= cornerDist
 
@@ -66,4 +67,91 @@ func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	e.sp[strongSide][EG] = c.PieceValues[EG][Queen] - T(pawnRank)*15
 
 	return e.endgameScore(b)
+}
+
+// kbpvk is the bishop+pawn endgame where a rook pawn draws if the opponent's
+// king can reach the queening square and the bishop is on the opposite color
+// complex.
+// There is no way to give exact answer without table bases, so this code is a
+// mere estimation.
+func (e *Eval[T]) kbpvk(b *board.Board, c *CoeffSet[T]) T {
+	// if not a Rook-pawn then normal positional eval
+	e.scaleFactor = [2]T{MaxScaleFactor, MaxScaleFactor}
+	var flank Coord
+	switch {
+
+	case b.Pieces[Pawn]&^AFileBB == 0:
+		flank = 0
+
+	case b.Pieces[Pawn]&^HFileBB == 0:
+		flank = 1
+
+	default:
+		return e.positional(b, c)
+	}
+
+	strongSide := Black
+	if b.Counts[White][Bishop] == 1 {
+		strongSide = White
+	}
+	weakSide := strongSide.Flip()
+
+	queeningSq := KBCorners[flank^Coord(weakSide)][weakSide]
+	bishopSq := b.Pieces[Bishop].LowestSet()
+
+	// if bishop controls queening square then normal positional eval
+	if bishopSq.Parity() == queeningSq.Parity() {
+		return e.positional(b, c)
+	}
+
+	pawnSq := b.Pieces[Pawn].LowestSet()
+	weakK := b.Colors[weakSide] & b.Pieces[King]
+	weakKSq := weakK.LowestSet()
+	strongK := b.Colors[strongSide] & b.Pieces[King]
+	strongKSq := strongK.LowestSet()
+
+	if b.STM == weakSide &&
+		attacks.KingMoves(weakKSq)&b.Pieces[Pawn] != 0 && // pawn is attacked
+		(attacks.KingMoves(strongKSq)|attacks.BishopMoves(bishopSq, strongK))&b.Pieces[Pawn] == 0 { // not defended
+		return 0
+	}
+
+	weakDist := Chebyshev(queeningSq, weakKSq)
+	if weakDist <= 1 {
+		return 0
+	}
+	if b.STM == strongSide {
+		weakDist++
+	}
+
+	pawnDist := Chebyshev(pawnSq, queeningSq)
+	// double pushes
+	pawnDist = min(pawnDist, 5)
+
+	// if the pawn can be pushed to the queening square without any support
+	if weakDist-pawnDist >= 2 {
+		return e.positional(b, c)
+	}
+
+	strongDist := Chebyshev(queeningSq, strongKSq)
+	if strongDist <= 1 {
+		return e.positional(b, c)
+	}
+
+	margin := weakDist - strongDist
+	var scale T
+	switch {
+	case margin <= 0:
+		scale = 0
+	case margin == 1:
+		scale = MaxScaleFactor * 7 / 10
+	case margin == 2:
+		scale = MaxScaleFactor * 85 / 100
+	default:
+		scale = MaxScaleFactor
+	}
+	e.scaleFactor[strongSide] = scale
+	e.scaleFactor[weakSide] = 0 // weak side cannot win
+
+	return e.positional(b, c)
 }
