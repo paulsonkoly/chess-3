@@ -38,13 +38,13 @@ func (c *callCounter) reset() {
 	}
 }
 
-type mockMaterialDispatch[T ScoreType] struct {
+type dispatchRecorder[T ScoreType] struct {
 	*Eval[T]
 	callCounter callCounter
 }
 
-func newMockMaterialDispatch[T ScoreType]() *mockMaterialDispatch[T] {
-	m := &mockMaterialDispatch[T]{Eval: New[T]()}
+func newDispatchRecorder[T ScoreType]() *dispatchRecorder[T] {
+	m := &dispatchRecorder[T]{Eval: New[T]()}
 	for i := range evalIDs {
 		m.matFuncs[i] = func(*Eval[T], *board.Board, *CoeffSet[T]) T {
 			m.callCounter.inc(i)
@@ -54,7 +54,7 @@ func newMockMaterialDispatch[T ScoreType]() *mockMaterialDispatch[T] {
 	return m
 }
 
-func (m *mockMaterialDispatch[T]) run(b *board.Board) *callCounter {
+func (m *dispatchRecorder[T]) run(b *board.Board) *callCounter {
 	// reset for fresh run
 	m.callCounter.reset()
 	// we dont care about returned call of original
@@ -87,7 +87,7 @@ func TestMaterial(t *testing.T) {
 		// evalKBPvKID
 		{"4k3/8/8/8/8/8/4P3/2B1K3 w - - 0 1", evalKBPvKID},
 		{"4kb2/p7/8/8/8/8/8/4K3 w - - 0 1", evalKBPvKID},
-		{"1k6/1B6/7P/8/8/2K5/8/8 w - - 0 1", evalKBPvKID}, // wrong-coloured rook pawn case from endgame_test.go
+		{"1k6/1B6/7P/8/8/2K5/8/8 w - - 0 1", evalKBPvKID}, // wrong-coloured rook pawn
 
 		// evalOCBID
 		{"b3k3/p7/8/8/8/8/P7/2B1K3 w - - 0 1", evalOCBID},
@@ -131,7 +131,7 @@ func TestMaterial(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.fen, func(t *testing.T) {
-			mockEval := newMockMaterialDispatch[Score]()
+			mockEval := newDispatchRecorder[Score]()
 			b := Must(board.FromFEN(tt.fen))
 			assert.True(t, mockEval.run(b).callsOnce(tt.want), "fen %s calls once evalId %v", tt.fen, tt.want)
 			assert.True(t, mockEval.run(b).onlyCalls(tt.want), "fen %s only calls evalId %v", tt.fen, tt.want)
