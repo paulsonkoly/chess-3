@@ -68,7 +68,59 @@ func TestMaterial(t *testing.T) {
 		fen  string
 		want evalID
 	}{
+		// evalInsufficientID
+		{"4k3/8/8/8/8/8/8/4K3 w - - 0 1", evalInsufficientID},
+		{"4k3/8/8/8/8/8/8/1N2K3 w - - 0 1", evalInsufficientID},
+		{"4k3/8/8/8/8/8/8/2B1K3 w - - 0 1", evalInsufficientID},
+		{"4k3/8/8/8/8/8/8/1NN1K3 w - - 0 1", evalInsufficientID},
+		{"b3k3/8/8/8/8/8/8/2B1K3 w - - 0 1", evalInsufficientID},
+
+		// evalKPvKID
+		{"4k3/8/8/8/8/8/4P3/4K3 w - - 0 1", evalKPvKID},
+		{"4k3/p7/8/8/8/8/8/4K3 w - - 0 1", evalKPvKID},
+		{"4k3/8/8/8/3P4/8/8/4K3 w - - 0 1", evalKPvKID},
+
+		// evalKNBvKID
+		{"4k3/8/8/8/8/8/8/4KBN1 w - - 0 1", evalKNBvKID},
+		{"4kbn1/8/8/8/8/8/8/4K3 w - - 0 1", evalKNBvKID},
+
+		// evalOCBID
+		{"b3k3/p7/8/8/8/8/P7/2B1K3 w - - 0 1", evalOCBID},
+		{"b3k3/8/8/8/8/8/PPP5/2B1K3 w - - 0 1", evalOCBID},
+
+		// evalOCBKnightsID
+		{"bn2k3/p7/8/8/8/8/P7/1NB1K3 w - - 0 1", evalOCBKnightsID},
+
+		// evalOCBRooksID
+		{"b3k2r/p7/8/8/8/8/P7/2B1K2R w - - 0 1", evalOCBRooksID},
+
+		// evalKMvKPID
+		{"4k3/p7/8/8/8/8/8/1N2K3 w - - 0 1", evalKMvKPID},
+		{"4kn2/8/8/8/8/8/P7/4K3 w - - 0 1", evalKMvKPID},
+		{"4k3/p7/8/8/8/8/8/2B1K3 w - - 0 1", evalKMvKPID},
+		{"4kb2/8/8/8/8/8/P7/4K3 w - - 0 1", evalKMvKPID},
+
+		// evalKRvKNID
+		{"1n2k3/8/8/8/8/8/8/4K2R w - - 0 1", evalKRvKNID},
+		{"4k2r/8/8/8/8/8/8/1N2K3 w - - 0 1", evalKRvKNID},
+
+		// evalKRvKBID
+		{"2b1k3/8/8/8/8/8/8/4K2R w - - 0 1", evalKRvKBID},
+		{"4k2r/8/8/8/8/8/8/2B1K3 w - - 0 1", evalKRvKBID},
+
+		// evalKRNvKRID
+		{"4k2r/8/8/8/8/8/8/1N2K2R w - - 0 1", evalKRNvKRID},
+		{"1n2k2r/8/8/8/8/8/8/4K2R w - - 0 1", evalKRNvKRID},
+
+		// evalKRBvKRID
+		{"4k2r/8/8/8/8/8/8/2B1K2R w - - 0 1", evalKRBvKRID},
+		{"2b1k2r/8/8/8/8/8/8/4K2R w - - 0 1", evalKRBvKRID},
+
+		// evalPositionalID
 		{StartPosFEN, evalPositionalID},
+		{"4kb2/p7/8/8/8/8/P7/2B1K3 w - - 0 1", evalPositionalID},   // same-coloured bishops, not OCB
+		{"b3k3/8/8/8/8/8/PPPP4/2B1K3 w - - 0 1", evalPositionalID}, // OCB but pawnDiff > 3
+		{"4k3/8/8/8/8/8/8/2BBK3 w - - 0 1", evalPositionalID},      // KBBvK: minor-value diff > 3
 	}
 
 	for _, tt := range tests {
