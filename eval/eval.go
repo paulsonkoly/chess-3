@@ -53,7 +53,7 @@ func New[T ScoreType]() *Eval[T] {
 	}
 	e.matFuncs[evalInsufficientID] = evalInsufficient[T]
 	e.matFuncs[evalKPvKID] = evalKPvK[T]
-	e.matFuncs[evalKNBvKID] = evalKNBvK[T]
+	e.matFuncs[evalKBNvKID] = evalKNBvK[T]
 	e.matFuncs[evalKBPvKID] = evalKBPvK[T]
 	e.matFuncs[evalOCBID] = evalOCB[T]
 	e.matFuncs[evalOCBKnightsID] = evalOCBKnights[T]

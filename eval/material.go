@@ -74,7 +74,7 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 
 	case wP == 0 && bP == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
 		((wN == 1 && wB == 1 && bN == 0 && bB == 0) || (wN == 0 && wB == 0 && bN == 1 && bB == 1)):
-		evalID = evalKNBvKID
+		evalID = evalKBNvKID
 
 	case wN == 0 && bN == 0 && wR == 0 && bR == 0 && wQ == 0 && bQ == 0 &&
 		((wP == 1 && bP == 0 && wB == 1 && bB == 0) || (wP == 0 && bP == 1 && wB == 0 && bB == 1)):
@@ -126,7 +126,7 @@ type evalID byte
 const (
 	evalInsufficientID = evalID(iota)
 	evalKPvKID
-	evalKNBvKID
+	evalKBNvKID
 	evalKBPvKID
 	evalOCBID
 	evalOCBKnightsID
@@ -149,8 +149,8 @@ func evalKPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	return e.kpvk(b, c)
 }
 
-func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
-	return e.knbvk(b, c)
+func evalKNBvK[T ScoreType](e *Eval[T], b *board.Board, _ *CoeffSet[T]) T {
+	return e.kbnvk(b)
 }
 
 func evalKBPvK[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
