@@ -38,7 +38,7 @@ func (e *Eval[T]) kbnvk(b *board.Board) T {
 
 	// base score to ensure we transition into this unless the position was more winning.
 	// (don't give up a queen or rook just to simplify into this mate).
-	base := T(300)
+	base := T(750)
 	e.sp[strongSide][EG] += base + T(cornerDist)*60
 
 	return e.endgameScore(b)
