@@ -5,6 +5,7 @@ import (
 	"github.com/paulsonkoly/chess-3/board"
 	. "github.com/paulsonkoly/chess-3/chess"
 	"github.com/paulsonkoly/chess-3/eval/kpvk"
+	"github.com/paulsonkoly/chess-3/eval/krpvkr"
 )
 
 // KBCorners are knight-bishop checkmate corners based on parity of square.
@@ -163,4 +164,57 @@ func (e *Eval[T]) kbpvk(b *board.Board, c *CoeffSet[T]) T {
 	e.scaleFactor[weakSide] = 0 // weak side cannot win
 
 	return e.positional(b, c)
+}
+
+func (e *Eval[T]) krpvkr(b *board.Board) T {
+	e.sp = [Colors][Phases]T{}
+
+	const (
+		base                      = 190
+		pawnAdvancementFactor     = 15
+		strongKingClosenessFactor = 5
+		weakKClosenessFactor      = 5
+		weakKIntercepting         = 10
+	)
+
+	pawn := b.Pieces[Pawn]
+
+	strongSide := White
+	if pawn&b.Colors[Black] != 0 {
+		strongSide = Black
+	}
+	weakSide := strongSide.Flip()
+
+	pawnSq := pawn.LowestSet()
+	strongKSq := (b.Pieces[King] & b.Colors[strongSide]).LowestSet()
+	weakK := b.Pieces[King] & b.Colors[weakSide]
+	weakKSq := weakK.LowestSet()
+
+	e.sp[strongSide][EG] += T(base)
+	e.sp[strongSide][EG] += T(pawnSq.Rank().FromPerspectiveOf(strongSide)) * pawnAdvancementFactor
+	e.sp[strongSide][EG] += T(7-Chebyshev(strongKSq, pawnSq)) * strongKingClosenessFactor
+
+	e.sp[weakSide][EG] += T(7-Chebyshev(weakKSq, pawnSq)) * weakKClosenessFactor
+
+	// weak king in a position to intercept the pawn
+	area := frontFill(pawn|attacks.PawnCaptureMoves(pawn, strongSide), strongSide)
+	if weakK&area != 0 {
+		e.sp[weakSide][EG] += weakKIntercepting
+	}
+
+	scale := krpvkr.ScaleFactor[T](b)
+	e.scaleFactor = [Colors]T{scale, scale}
+
+	// todo: this is now duplicated, factor it out.
+	var t T
+	if _, ok := ((any)(t)).(Score); ok {
+		e.sp[White][EG] = T(int(e.sp[White][EG]) * int(e.scaleFactor[White]) / MaxScaleFactor)
+		e.sp[Black][EG] = T(int(e.sp[Black][EG]) * int(e.scaleFactor[Black]) / MaxScaleFactor)
+	} else {
+		e.sp[White][EG] = e.sp[White][EG] * e.scaleFactor[White] / MaxScaleFactor
+		e.sp[Black][EG] = e.sp[Black][EG] * e.scaleFactor[Black] / MaxScaleFactor
+	}
+	egScore := e.sp[b.STM][EG] - e.sp[b.STM.Flip()][EG]
+
+	return egScore
 }

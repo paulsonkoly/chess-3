@@ -1,5 +1,7 @@
 package eval
 
+import . "github.com/paulsonkoly/chess-3/chess"
+
 type CoeffSet[T ScoreType] struct {
 	// PSqT is tapered piece square tables.
 	PSqT [12][64]T

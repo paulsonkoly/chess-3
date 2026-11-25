@@ -97,6 +97,10 @@ func (e *Eval[T]) material(b *board.Board, c *CoeffSet[T]) T {
 		((wB == 1 && wP == 0 && bB == 0 && bP < 3) || (bB == 1 && bP == 0 && wB == 0 && wP < 3)):
 		evalID = evalKMvKPID
 
+	case wN == 0 && wB == 0 && wR == 1 && wQ == 0 && bN == 0 && bB == 0 && bR == 1 && bQ == 0 &&
+		((wP == 1 && bP == 0) || (wP == 0 && bP == 1)):
+		evalID = evalKRPvKRID
+
 	case wP == 0 && bP == 0 && wB == 0 && bB == 0 && wQ == 0 && bQ == 0 &&
 		((wN == 1 && wR == 0 && bN == 0 && bR == 1) || (wN == 0 && wR == 1 && bN == 1 && bR == 0)):
 		evalID = evalKRvKNID
@@ -132,6 +136,7 @@ const (
 	evalOCBKnightsID
 	evalOCBRooksID
 	evalKMvKPID
+	evalKRPvKRID
 	evalKRvKNID
 	evalKRvKBID
 	evalKRNvKRID
@@ -190,6 +195,10 @@ func evalKMvKP[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {
 	e.scaleFactor[weakSide] = MaxScaleFactor
 
 	return e.positional(b, c)
+}
+
+func evalKRPvKR[T ScoreType](e *Eval[T], b *board.Board, _ *CoeffSet[T]) T {
+	return e.krpvkr(b)
 }
 
 func evalKRvKN[T ScoreType](e *Eval[T], b *board.Board, c *CoeffSet[T]) T {

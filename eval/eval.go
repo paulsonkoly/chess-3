@@ -5,10 +5,6 @@ import (
 	. "github.com/paulsonkoly/chess-3/chess"
 )
 
-// ScoreType defines the evaluation result type. The engine uses int16 for
-// score type, as defined in types. The tuner uses float64.
-type ScoreType interface{ Score | float64 }
-
 type Phase byte
 
 const (
@@ -59,6 +55,7 @@ func New[T ScoreType]() *Eval[T] {
 	e.matFuncs[evalOCBKnightsID] = evalOCBKnights[T]
 	e.matFuncs[evalOCBRooksID] = evalOCBRooks[T]
 	e.matFuncs[evalKMvKPID] = evalKMvKP[T]
+	e.matFuncs[evalKRPvKRID] = evalKRPvKR[T]
 	e.matFuncs[evalKRvKNID] = evalKRvKN[T]
 	e.matFuncs[evalKRvKBID] = evalKRvKB[T]
 	e.matFuncs[evalKRNvKRID] = evalKRNvKR[T]

@@ -11,6 +11,10 @@ type Depth int8
 
 const MaxPlies = 64
 
+// ScoreType defines the evaluation result type. The engine uses int16 for
+// score type, as defined in types. The tuner uses float64.
+type ScoreType interface{ Score | float64 }
+
 type Score int16
 
 const (

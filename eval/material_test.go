@@ -105,6 +105,10 @@ func TestMaterial(t *testing.T) {
 		{"4k3/p7/8/8/8/8/8/2B1K3 w - - 0 1", evalKMvKPID},
 		{"4kb2/8/8/8/8/8/P7/4K3 w - - 0 1", evalKMvKPID},
 
+		// evalKRPvKRID
+		{"r3k3/8/8/8/8/1R6/7P/4K3 w - - 0 1", evalKRPvKRID},
+		{"8/3p4/3k4/8/1r6/8/4R3/4K3 b - - 0 1", evalKRPvKRID},
+
 		// evalKRvKNID
 		{"1n2k3/8/8/8/8/8/8/4K2R w - - 0 1", evalKRvKNID},
 		{"4k2r/8/8/8/8/8/8/1N2K3 w - - 0 1", evalKRvKNID},
