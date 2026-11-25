@@ -8,6 +8,101 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestKBNvKPositive(t *testing.T) {
+	// random kbnvk stm is winning.
+	fens := [...]string{
+		"8/5k2/8/8/2K5/8/4B3/1N6 w - - 0 1",
+		"8/2K2k2/8/1N3B2/8/8/8/8 w - - 0 1",
+		"4n3/5k2/2K5/4b3/8/8/8/8 b - - 0 1",
+		"2B5/8/K7/8/N4k2/8/8/8 w - - 0 1",
+		"8/1b6/8/3k4/8/3K4/3n4/8 b - - 0 1",
+		"8/8/2k5/8/3b2K1/3n4/8/8 b - - 0 1",
+		"8/8/4K3/3n4/8/8/k7/6b1 b - - 0 1",
+		"8/8/5K2/8/8/5b2/k7/1n6 b - - 0 1",
+		"8/2k5/7n/2K5/8/8/7b/8 b - - 0 1",
+		"8/1K1B4/8/8/5N2/8/8/k7 w - - 0 1",
+		"8/n7/8/2b5/8/3k4/K7/8 b - - 0 1",
+		"k2B4/8/8/K7/8/8/3N4/8 w - - 0 1",
+		"8/1K6/8/8/3k4/3b4/4n3/8 b - - 0 1",
+		"8/K3k3/8/8/8/8/2b5/4n3 b - - 0 1",
+		"8/b3k3/8/8/7K/8/8/2n5 b - - 0 1",
+		"6k1/8/8/8/K7/3B4/1N6/8 w - - 0 1",
+		"2K5/8/6N1/5B2/2k5/8/8/8 w - - 0 1",
+		"1b6/3K4/8/8/8/4n3/8/4k3 b - - 0 1",
+		"8/k7/6N1/1K5B/8/8/8/8 w - - 0 1",
+		"8/k3n1b1/8/8/8/8/6K1/8 b - - 0 1",
+		"8/2n1K1k1/8/8/8/8/5b2/8 b - - 0 1",
+		"2K5/8/8/8/6n1/8/2k5/6b1 b - - 0 1",
+		"8/5b2/8/8/5n2/8/8/k6K b - - 0 1",
+	}
+	for _, fen := range fens {
+		t.Run(fen, func(t *testing.T) {
+			b := Must(board.FromFEN(fen))
+			e := New[Score]()
+
+			assert.Positive(t, e.kbnvk(b), "fen %s", fen)
+		})
+	}
+}
+
+func TestKBNvKMonotonicity(t *testing.T) {
+	// winning side to move positions sampled from a stockfish self play
+	// (5s/move) till mate, in order.
+	positions := [...]string{
+		"7k/8/8/8/8/8/8/KB5N w - - 0 1",
+		"8/6k1/8/8/8/8/1K6/1B5N w - - 2 2",
+		"8/8/5k2/8/8/2K5/8/1B5N w - - 4 3",
+		"8/6k1/8/8/3K4/8/8/1B5N w - - 6 4",
+		"7k/8/8/4K3/8/8/8/1B5N w - - 8 5",
+		"8/6k1/8/4K3/8/8/B7/7N w - - 10 6",
+		"8/8/7k/5K2/8/8/B7/7N w - - 12 7",
+		"8/7k/5K2/8/8/8/B7/7N w - - 14 8",
+		"7k/8/5K2/8/8/8/B4N2/8 w - - 16 9",
+		"8/7k/5K2/8/8/7N/B7/8 w - - 18 10",
+		"7k/8/5K2/6N1/8/8/B7/8 w - - 20 11",
+		"6k1/8/5K2/6N1/8/8/8/1B6 w - - 22 12",
+		"5k2/5N2/5K2/8/8/8/8/1B6 w - - 24 13",
+		"4k3/5N1B/5K2/8/8/8/8/8 w - - 26 14",
+		"3k4/7B/5K2/4N3/8/8/8/8 w - - 28 15",
+		"4k3/8/5K2/4N3/4B3/8/8/8 w - - 30 16",
+		"5k2/8/5K2/3BN3/8/8/8/8 w - - 32 17",
+		"4k3/3N4/5K2/3B4/8/8/8/8 w - - 34 18",
+		"3k4/3N4/4K3/3B4/8/8/8/8 w - - 36 19",
+		"4k3/3N4/3K4/3B4/8/8/8/8 w - - 38 20",
+		"3k4/3N4/3KB3/8/8/8/8/8 w - - 40 21",
+		"2k5/3N1B2/3K4/8/8/8/8/8 w - - 42 22",
+		"3k4/5B2/3K4/2N5/8/8/8/8 w - - 44 23",
+		"2k5/1N3B2/3K4/8/8/8/8/8 w - - 46 24",
+		"1k6/1N3B2/2K5/8/8/8/8/8 w - - 48 25",
+		"8/k4B2/2KN4/8/8/8/8/8 w - - 50 26",
+		"1k6/8/2KN4/8/2B5/8/8/8 w - - 52 27",
+		"k7/8/1K1N4/8/2B5/8/8/8 w - - 54 28",
+		"8/k1K5/3N4/8/2B5/8/8/8 w - - 56 29",
+		"k1N5/2K5/8/8/2B5/8/8/8 w - - 58 30",
+	}
+	scores := make([]float64, 0, len(positions))
+	e := New[float64]()
+	for _, fen := range positions {
+		b := Must(board.FromFEN(fen))
+		scores = append(scores, e.kbnvk(b))
+	}
+
+	// the stockfish line does not completely align with our heuristic, so we
+	// just assert an overall upward trend instead of per-sample monotonicity.
+	var sumX, sumY, sumXY, sumXX float64
+	for i, score := range scores {
+		x, y := float64(i), score
+		sumX += x
+		sumY += y
+		sumXY += x * y
+		sumXX += x * x
+	}
+	n := float64(len(scores))
+	slope := (n*sumXY - sumX*sumY) / (n*sumXX - sumX*sumX)
+
+	assert.Greater(t, slope, float64(0), "path to mate has no positive trend: %v", scores)
+}
+
 func TestKPvKDrawing(t *testing.T) {
 	fen := "3k4/3p4/8/8/8/3K4/8/8 b - - 0 1"
 	b := Must(board.FromFEN(fen))

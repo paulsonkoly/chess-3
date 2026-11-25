@@ -80,9 +80,9 @@ func TestMaterial(t *testing.T) {
 		{"4k3/p7/8/8/8/8/8/4K3 w - - 0 1", evalKPvKID},
 		{"4k3/8/8/8/3P4/8/8/4K3 w - - 0 1", evalKPvKID},
 
-		// evalKNBvKID
-		{"4k3/8/8/8/8/8/8/4KBN1 w - - 0 1", evalKNBvKID},
-		{"4kbn1/8/8/8/8/8/8/4K3 w - - 0 1", evalKNBvKID},
+		// evalKBNvKID
+		{"4k3/8/8/8/8/8/8/4KBN1 w - - 0 1", evalKBNvKID},
+		{"4kbn1/8/8/8/8/8/8/4K3 w - - 0 1", evalKBNvKID},
 
 		// evalKBPvKID
 		{"4k3/8/8/8/8/8/4P3/2B1K3 w - - 0 1", evalKBPvKID},

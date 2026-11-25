@@ -10,33 +10,42 @@ import (
 // KBCorners are knight-bishop checkmate corners based on parity of square.
 var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
 
-func (e *Eval[T]) knbvk(b *board.Board, c *CoeffSet[T]) T {
+func (e *Eval[T]) kbnvk(b *board.Board) T {
 	e.sp = [Colors][Phases]T{}
+
+	const (
+		kingDistFactor   = 5
+		knightDistFactor = 3
+		cornerDistFactor = 60
+		// base score to ensure we transition into this unless the position was more winning.
+		// (don't give up a queen or rook just to simplify into this mate).
+		base = 750
+	)
 
 	bishopSq := b.Pieces[Bishop].LowestSet()
 	knightSq := b.Pieces[Knight].LowestSet()
 
-	victim := White
+	weakSide := White
 	if b.Pieces[Bishop]&b.Colors[White] != 0 {
-		victim = Black
+		weakSide = Black
 	}
-	victimKSq := (b.Pieces[King] & b.Colors[victim]).LowestSet()
-	attackKSq := (b.Pieces[King] & b.Colors[victim.Flip()]).LowestSet()
+	strongSide := weakSide.Flip()
+	weakKSq := (b.Pieces[King] & b.Colors[weakSide]).LowestSet()
+	strongKSq := (b.Pieces[King] & b.Colors[strongSide]).LowestSet()
 
-	e.addPSqT(victim, King, victimKSq, c)
-	e.addPSqT(victim.Flip(), King, attackKSq, c)
-	e.addPSqT(victim.Flip(), Knight, knightSq, c)
-	e.addPSqT(victim.Flip(), Bishop, bishopSq, c)
-	e.sp[victim.Flip()][EG] += c.PieceValues[EG][Knight]
-	e.sp[victim.Flip()][EG] += c.PieceValues[EG][Bishop]
+	// strong king far from weak king
+	e.sp[weakSide][EG] += T(Chebyshev(weakKSq, strongKSq)) * kingDistFactor
+
+	// knight far from weak king
+	e.sp[weakSide][EG] += T(Chebyshev(weakKSq, knightSq)) * knightDistFactor
 
 	parity := bishopSq.Parity()
-	cornerDist := min(Chebyshev(victimKSq, KBCorners[parity][0]), Chebyshev(victimKSq, KBCorners[parity][1]))
+	cornerDist := min(Chebyshev(weakKSq, KBCorners[parity][0]), Chebyshev(weakKSq, KBCorners[parity][1]))
 
 	cornerDist = 7 - cornerDist
 	cornerDist *= cornerDist
 
-	e.sp[victim.Flip()][EG] += T(cornerDist) * 30
+	e.sp[strongSide][EG] += base + T(cornerDist)*cornerDistFactor
 
 	return e.endgameScore(b)
 }
