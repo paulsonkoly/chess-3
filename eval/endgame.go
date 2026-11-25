@@ -13,6 +13,15 @@ var KBCorners = [2][2]Square{{A1, H8}, {H1, A8}}
 func (e *Eval[T]) kbnvk(b *board.Board) T {
 	e.sp = [Colors][Phases]T{}
 
+	const (
+		kingDistFactor   = 5
+		knightDistFactor = 3
+		cornerDistFactor = 60
+		// base score to ensure we transition into this unless the position was more winning.
+		// (don't give up a queen or rook just to simplify into this mate).
+		base = 750
+	)
+
 	bishopSq := b.Pieces[Bishop].LowestSet()
 	knightSq := b.Pieces[Knight].LowestSet()
 
@@ -25,10 +34,10 @@ func (e *Eval[T]) kbnvk(b *board.Board) T {
 	strongKSq := (b.Pieces[King] & b.Colors[strongSide]).LowestSet()
 
 	// strong king far from weak king
-	e.sp[weakSide][EG] += T(Chebyshev(weakKSq, strongKSq)) * 5
+	e.sp[weakSide][EG] += T(Chebyshev(weakKSq, strongKSq)) * kingDistFactor
 
 	// knight far from weak king
-	e.sp[weakSide][EG] += T(Chebyshev(weakKSq, knightSq)) * 3
+	e.sp[weakSide][EG] += T(Chebyshev(weakKSq, knightSq)) * knightDistFactor
 
 	parity := bishopSq.Parity()
 	cornerDist := min(Chebyshev(weakKSq, KBCorners[parity][0]), Chebyshev(weakKSq, KBCorners[parity][1]))
@@ -36,10 +45,7 @@ func (e *Eval[T]) kbnvk(b *board.Board) T {
 	cornerDist = 7 - cornerDist
 	cornerDist *= cornerDist
 
-	// base score to ensure we transition into this unless the position was more winning.
-	// (don't give up a queen or rook just to simplify into this mate).
-	base := T(750)
-	e.sp[strongSide][EG] += base + T(cornerDist)*60
+	e.sp[strongSide][EG] += base + T(cornerDist)*cornerDistFactor
 
 	return e.endgameScore(b)
 }
