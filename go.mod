@@ -3,6 +3,7 @@ module github.com/paulsonkoly/chess-3
 go 1.26
 
 require (
+	github.com/quasilyte/go-ruleguard/dsl v0.3.23
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
 )

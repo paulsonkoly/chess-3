@@ -89,7 +89,7 @@ func (b Board) calculateHash() Hashes {
 	}
 
 	if b.EnPassant != 0 {
-		hashes.NonPawn ^= epFileRand[b.EnPassant%8]
+		hashes.NonPawn ^= epFileRand[b.EnPassant.File()]
 	}
 
 	return hashes
