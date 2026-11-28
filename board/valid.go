@@ -21,7 +21,7 @@ var (
 // pins or missing pawns, we accept these but set b.EnPassant to 0.
 // Returns error nil if the position is valid.
 func (b *Board) Valid() error {
-	for color := White; color <= Black; color++ {
+	for color := range Colors {
 		if !(b.Colors[color] & b.Pieces[King]).One() {
 			return ErrWrongPieceCount
 		}

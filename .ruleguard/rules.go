@@ -19,4 +19,12 @@ func chessHelpers(m dsl.Matcher) {
 	m.Match(`$c ^ 1`).
 		Where(m.File().Imports(chessPkg) && m["c"].Type.Is("chess.Color")).
 		Report(`use $c.Flip()`)
+
+	m.Match(`for $c := White; $c <= Black; $c++ { $*_ }`).
+		Where(m.File().Imports(chessPkg) && m["c"].Type.Is("chess.Color")).
+		Report(`use range Colors`)
+
+	m.Match(`for $p := NoPiece; $p <= King; $p++ { $*_ }`).
+		Where(m.File().Imports(chessPkg) && m["p"].Type.Is("chess.Piece")).
+		Report(`use range Pieces`)
 }
