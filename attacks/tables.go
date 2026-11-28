@@ -227,8 +227,8 @@ func init() {
 func calcBishopAttacks(sq Square, occ BitBoard) BitBoard {
 	result := BitBoard(0)
 
-	r := int(sq / 8)
-	f := int(sq % 8)
+	r := sq.Rank()
+	f := sq.File()
 
 	for rr, ff := r+1, f+1; rr <= 7 && ff <= 7; {
 		result |= (1 << (ff + rr*8))
@@ -270,8 +270,8 @@ func calcBishopAttacks(sq Square, occ BitBoard) BitBoard {
 func calcRookAttacks(sq Square, occ BitBoard) BitBoard {
 	result := BitBoard(0)
 
-	r := int(sq / 8)
-	f := int(sq % 8)
+	r := sq.Rank()
+	f := sq.File()
 
 	for rr := r + 1; rr <= 7; rr++ {
 		result |= (1 << (f + rr*8))

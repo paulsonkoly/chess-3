@@ -70,10 +70,7 @@ func (e *Eval[T]) addPawns(b *board.Board, c *CoeffSet[T]) {
 		for passers := e.passers(color); passers != 0; passers &= passers - 1 {
 			sq := passers.LowestSet()
 
-			rank := sq / 8
-			if color == Black {
-				rank ^= 7
-			}
+			rank := sq.Rank().FromPerspectiveOf(color)
 
 			passer := passers & -passers
 
@@ -127,10 +124,7 @@ func (e *Eval[T]) addPassers(b *board.Board, c *CoeffSet[T]) {
 			if passers != 0 && passers&(passers-1) == 0 {
 				sq := passers.LowestSet()
 
-				qSq := sq % 8
-				if color == White {
-					qSq += 56
-				}
+				qSq := SquareAt(sq.File(), EighthRank.FromPerspectiveOf(color))
 
 				kingDist := Chebyshev(qSq, e.kings[color.Flip()].sq) - Chebyshev(qSq, e.kings[color].sq)
 

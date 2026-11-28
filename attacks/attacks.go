@@ -45,5 +45,5 @@ func PawnCaptureMoves(b BitBoard, color Color) BitBoard {
 // PawnSinglePushMoves is the bitboard set where the pawns of color color can
 // push a single square forward from any of the squares set in b.
 func PawnSinglePushMoves(b BitBoard, color Color) BitBoard {
-	return ((b)<<8)>>((color)<<4) | ((b)>>8)<<((color^1)<<4)
+	return ((b)<<8)>>((color)<<4) | ((b)>>8)<<((color.Flip())<<4)
 }

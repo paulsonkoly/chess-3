@@ -3,6 +3,7 @@ run:
   relative-path-mode: gitroot
 linters:
   enable:
+    - gocritic
     - revive
     - staticcheck
     - godoclint
@@ -14,6 +15,14 @@ linters:
     - testifylint
     - tparallel
   settings:
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - ruleguard
+      settings:
+        ruleguard:
+          failOn: dsl,import
+          rules: '${base-path}/.ruleguard/rules.go'
     staticcheck:
       checks:
         - all
@@ -29,6 +38,13 @@ linters:
             - allowed-packages: ["github.com/paulsonkoly/chess-3/chess"]
   exclusions:
     generated: lax
+    rules:
+      - path: '^tools/'
+        linters:
+          - gocritic
+      - path: '^eval/coeffs\.go$'
+        linters:
+          - gocritic
     presets:
       - comments
       - common-false-positives

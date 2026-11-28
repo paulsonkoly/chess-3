@@ -131,5 +131,5 @@ func (s Square) Parity() Coord {
 // FromPerspectiveOf flips a rank of s to be from c's perspective. For white
 // it's untouched, for black 0 maps to 7 and 7 maps to 0.
 func (r Coord) FromPerspectiveOf(c Color) Coord {
-	return Coord(c.Flip())*(r) + Coord(c)*(7-r)
+	return r ^ Coord(c)*7
 }
